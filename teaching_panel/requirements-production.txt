@@ -1,0 +1,51 @@
+# ========================================
+# Production Requirements for Teaching Panel
+# Install with: pip install -r requirements-production.txt
+# ========================================
+
+# Core Django
+Django>=4.2.0,<5.0
+djangorestframework>=3.14.0
+django-cors-headers>=4.0.0
+djangorestframework-simplejwt>=5.3.0
+
+# Security & Authentication
+PyJWT>=2.8.0
+django-recaptcha>=4.1.0
+
+# Task Queue & Scheduling
+celery>=5.3.0
+redis>=5.0.0
+django-celery-beat>=2.8.0
+
+# HTTP & API
+requests>=2.31.0
+
+# Configuration
+python-decouple>=3.8
+python-dotenv>=1.0.0
+
+# Azure Cosmos DB (Optional)
+azure-cosmos>=4.7.0
+
+# Production Database Drivers (uncomment as needed)
+# PostgreSQL (recommended for production)
+# psycopg2-binary>=2.9.9
+
+# MySQL/MariaDB
+# mysqlclient>=2.2.0
+
+# Production Web Server
+gunicorn>=21.2.0
+gevent>=23.9.1
+
+# Static Files & Storage
+whitenoise>=6.6.0
+dj-database-url>=2.1.0
+
+# Monitoring & Logging
+# sentry-sdk>=1.40.0
+
+# Environment & Tools
+# python-dateutil>=2.8.2
+# pytz>=2024.1

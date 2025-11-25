@@ -1,0 +1,193 @@
+# 📚 Teaching Panel
+
+> Полноценная LMS (Learning Management System) для управления курсами, уроками и домашними заданиями с интеграцией Zoom.
+
+**🚀 [Начните здесь: START_HERE.md](START_HERE.md)** | **📊 [Полное резюме: SUMMARY.md](SUMMARY.md)**
+
+---
+
+## 🚀 Технологический стек
+
+- **Backend**: Django 4.2 + Django REST Framework
+- **Frontend**: React 18
+- **Database**: SQLite (для разработки) / PostgreSQL (для production)
+- **API Integration**: Zoom API v2
+
+## 📁 Структура проекта
+
+```
+WEB panel/
+├── teaching_panel/          # Django backend
+│   ├── manage.py
+│   ├── requirements.txt
+│   ├── teaching_panel/      # Настройки проекта
+│   │   ├── settings.py
+│   │   ├── urls.py
+│   │   └── ...
+│   └── core/                # Основное приложение
+│       ├── models.py        # Модели данных
+│       ├── serializers.py   # DRF сериализаторы
+│       ├── views.py         # API views
+│       ├── zoom_service.py  # Интеграция с Zoom
+│       └── ...
+└── frontend/                # React frontend
+    ├── package.json
+    ├── public/
+    └── src/
+        ├── App.js
+        ├── apiService.js    # API клиент
+        └── ...
+```
+
+## 🛠️ Установка и запуск
+
+### Backend (Django)
+
+1. Перейдите в папку с Django проектом:
+```powershell
+cd "teaching_panel"
+```
+
+2. Создайте виртуальное окружение:
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+3. Установите зависимости:
+```powershell
+pip install -r requirements.txt
+```
+
+4. Создайте файл `.env` (скопируйте из `.env.example`):
+```powershell
+cp .env.example .env
+```
+
+5. Выполните миграции:
+```powershell
+python manage.py makemigrations
+python manage.py migrate
+```
+
+6. Создайте суперпользователя:
+```powershell
+python manage.py createsuperuser
+```
+
+7. Запустите сервер:
+```powershell
+python manage.py runserver
+```
+
+Backend будет доступен на `http://127.0.0.1:8000`
+Admin панель: `http://127.0.0.1:8000/admin`
+API: `http://127.0.0.1:8000/api/`
+
+### Frontend (React)
+
+1. Перейдите в папку frontend:
+```powershell
+cd ..\frontend
+```
+
+2. Установите зависимости:
+```powershell
+npm install
+```
+
+3. Запустите development сервер:
+```powershell
+npm start
+```
+
+Frontend будет доступен на `http://localhost:3000`
+
+## 📚 API Endpoints
+
+### Courses
+- `GET /api/courses/` - Список всех курсов
+- `POST /api/courses/` - Создать курс
+- `GET /api/courses/{id}/` - Детали курса
+- `PUT /api/courses/{id}/` - Обновить курс
+- `DELETE /api/courses/{id}/` - Удалить курс
+- `POST /api/courses/{id}/add_student/` - Добавить студента
+- `POST /api/courses/{id}/remove_student/` - Удалить студента
+
+### Lessons
+- `GET /api/lessons/` - Список уроков
+- `GET /api/lessons/?course={id}` - Уроки по курсу
+- `POST /api/lessons/` - Создать урок
+- `POST /api/lessons/{id}/create_zoom_meeting/` - Создать Zoom встречу
+
+### Assignments
+- `GET /api/assignments/` - Список заданий
+- `GET /api/assignments/?lesson={id}` - Задания по уроку
+- `POST /api/assignments/` - Создать задание
+- `GET /api/assignments/{id}/submissions/` - Сдачи задания
+
+### Submissions
+- `GET /api/submissions/` - Список сдач
+- `POST /api/submissions/` - Сдать задание
+- `POST /api/submissions/{id}/grade/` - Поставить оценку
+
+## 🎥 Интеграция с Zoom
+
+Для работы с Zoom API нужно:
+
+1. Зарегистрироваться на [Zoom Marketplace](https://marketplace.zoom.us/)
+2. Создать JWT App
+3. Получить API Key и API Secret
+4. Добавить их в файл `.env`:
+```
+ZOOM_API_KEY=your_api_key
+ZOOM_API_SECRET=your_api_secret
+```
+
+## 🔧 Модели данных
+
+### Course (Курс)
+- title - Название
+- description - Описание
+- teacher - Преподаватель (ForeignKey to User)
+- students - Студенты (ManyToMany to User)
+
+### Lesson (Урок)
+- course - Курс
+- title - Название
+- start_time - Время начала
+- end_time - Время окончания
+- zoom_meeting_id - ID встречи Zoom
+- zoom_join_url - Ссылка на встречу
+
+### Assignment (Задание)
+- lesson - Урок
+- title - Название
+- description - Описание
+- due_date - Срок сдачи
+- max_points - Максимальный балл
+
+### Submission (Сдача)
+- assignment - Задание
+- student - Студент
+- content - Содержание работы
+- grade - Оценка
+- feedback - Обратная связь
+
+## 📝 TODO
+
+- [ ] Добавить аутентификацию JWT
+- [ ] Создать компоненты для управления уроками
+- [ ] Создать компоненты для домашних заданий
+- [ ] Добавить календарь расписания
+- [ ] Реализовать загрузку файлов
+- [ ] Добавить уведомления
+- [ ] Интеграция с Google Calendar
+
+## 🤝 Разработка с GitHub Copilot
+
+Этот проект создан с использованием GitHub Copilot. Prompts для генерации кода находятся в комментариях.
+
+## 📄 Лицензия
+
+MIT

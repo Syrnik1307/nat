@@ -1,0 +1,553 @@
+/* ================================================
+   СТРАНИЦА АУТЕНТИФИКАЦИИ - СИНЯЯ ТЕМА
+   ================================================ */
+
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-blue-gradient);
+  padding: 2rem 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-container::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.auth-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  padding: 3rem 2.5rem;
+  box-shadow: var(--shadow-xl);
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.auth-subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.auth-backlink {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.back-button {
+  background: transparent;
+  border: none;
+  color: var(--primary-blue);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.back-button:hover {
+  color: var(--primary-blue-dark);
+  transform: translateX(-4px);
+}
+
+/* ================================================
+   ВЫБОР РОЛИ
+   ================================================ */
+
+.role-selection {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.role-card {
+  background: var(--bg-white);
+  border: 2px solid var(--border-gray);
+  border-radius: var(--radius-md);
+  padding: 2rem 1.5rem;
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.role-card:hover {
+  border-color: var(--primary-blue);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-4px);
+}
+
+.role-card:focus {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+.role-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+  filter: grayscale(0.3);
+  transition: var(--transition);
+}
+
+.role-card:hover .role-icon {
+  filter: grayscale(0);
+  transform: scale(1.1);
+}
+
+.role-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.role-description {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ================================================
+   ФОРМА
+   ================================================ */
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  background: #ffffff;
+  color: var(--text-primary);
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-md);
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  outline: none;
+}
+
+.form-group label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.password-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0;
+  transition: var(--transition);
+  z-index: 2;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.toggle-password:hover {
+  color: var(--primary-blue);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.toggle-password:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+.toggle-password svg {
+  width: 22px;
+  height: 22px;
+}
+
+.form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -0.5rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  cursor: pointer;
+  accent-color: var(--primary-blue);
+}
+
+.link-button {
+  background: transparent;
+  border: none;
+  color: var(--primary-blue);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  transition: var(--transition);
+  text-decoration: none;
+}
+
+.link-button:hover {
+  color: var(--primary-blue-dark);
+  text-decoration: underline;
+}
+
+.link-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Honeypot (скрытое поле для защиты от ботов) */
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ================================================
+   CAPTCHA
+   ================================================ */
+
+.captcha-container {
+  padding: 1.5rem;
+  background: var(--bg-gray);
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-md);
+}
+
+.captcha-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: var(--bg-white);
+  border: 2px solid var(--primary-blue);
+  border-radius: var(--radius-sm);
+}
+
+.captcha-note {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0.75rem 0 0 0;
+}
+
+/* ================================================
+   СООБЩЕНИЯ
+   ================================================ */
+
+.error-message {
+  padding: 1rem;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-sm);
+  color: var(--error-red);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+  animation: slideDown 0.3s ease-out;
+}
+
+.success-message {
+  padding: 1rem;
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  border-radius: var(--radius-sm);
+  color: var(--success-green);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ================================================
+   КНОПКИ
+   ================================================ */
+
+.submit-button {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  background: var(--primary-blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: var(--shadow-md);
+}
+
+.submit-button:hover:not(:disabled) {
+  background: var(--primary-blue-dark);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.submit-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ================================================
+   ПЕРЕКЛЮЧЕНИЕ РЕЖИМА
+   ================================================ */
+
+.auth-switch {
+  text-align: center;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-gray);
+}
+
+.auth-switch p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+/* ================================================
+   ИНФОРМАЦИЯ О БЕЗОПАСНОСТИ
+   ================================================ */
+
+/* ================================================
+   ПлейсхолдерЫ
+   ================================================ */
+
+.auth-content input::placeholder,
+.auth-content textarea::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.75;
+}
+
+/* ================================================
+   SMS ПОДТВЕРЖДЕНИЕ
+   ================================================ */
+
+.sms-verification {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sms-input {
+  text-align: center;
+  font-size: 2rem;
+  letter-spacing: 0.5rem;
+  font-weight: 700;
+}
+
+.sms-resend {
+  text-align: center;
+}
+
+.sms-resend p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.sms-note {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  text-align: center;
+  margin: 0;
+  padding: 1rem;
+  background: var(--bg-gray);
+  border-radius: var(--radius-sm);
+}
+
+/* ================================================
+   МОДАЛЬНОЕ ОКНО
+   ================================================ */
+
+.reset-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.reset-modal h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.reset-modal p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.modal-actions button {
+  flex: 1;
+}
+
+/* ================================================
+   АДАПТИВНОСТЬ
+   ================================================ */
+
+@media (max-width: 640px) {
+  .auth-content {
+    padding: 2rem 1.5rem;
+  }
+  
+  .auth-title {
+    font-size: 1.75rem;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-options {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .role-card {
+    padding: 1.5rem 1rem;
+  }
+  
+  .role-icon {
+    font-size: 3rem;
+  }
+  
+  .role-title {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-container {
+    padding: 1rem 0.5rem;
+  }
+  
+  .auth-content {
+    padding: 1.5rem 1.25rem;
+    border-radius: var(--radius-md);
+  }
+  
+  .auth-title {
+    font-size: 1.5rem;
+  }
+  
+  .auth-subtitle {
+    font-size: 0.9rem;
+  }
+}

@@ -1,0 +1,333 @@
+.profile-page {
+  min-height: calc(100vh - 120px);
+  background: linear-gradient(135deg, #f5f9ff 0%, #eef3ff 100%);
+  padding: 40px 24px 80px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.profile-card {
+  width: 100%;
+  max-width: 960px;
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 30px 60px -38px rgba(17, 56, 133, 0.35);
+  padding: 32px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.profile-card.loading {
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #0d2f81;
+}
+
+.profile-header h1 {
+  margin: 0;
+  font-size: 32px;
+  color: #0d2f81;
+  font-weight: 700;
+}
+
+.profile-subtitle {
+  margin: 4px 0 0;
+  color: #5174c2;
+  font-size: 16px;
+}
+
+.profile-content {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 40px;
+}
+
+.profile-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: linear-gradient(180deg, #f0f6ff 0%, #ffffff 100%);
+  border-radius: 20px;
+  border: 1px solid rgba(33, 84, 187, 0.12);
+}
+
+.avatar-preview {
+  width: 160px;
+  height: 160px;
+  border-radius: 24px;
+  background: rgba(33, 84, 187, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2154bb;
+  font-weight: 600;
+  text-align: center;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.avatar-preview.with-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  font-size: 16px;
+}
+
+.avatar-upload {
+  position: relative;
+  overflow: hidden;
+  padding: 10px 18px;
+  border-radius: 18px;
+  background: #2154bb;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.avatar-upload:hover {
+  background: #1a47a0;
+}
+
+.avatar-upload input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.avatar-remove {
+  background: transparent;
+  border: none;
+  color: #1a47a0;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.avatar-remove:hover {
+  text-decoration: underline;
+}
+
+.avatar-hint {
+  margin: 0;
+  color: #6c85c5;
+  font-size: 13px;
+}
+
+.profile-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 32px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-group label {
+  font-weight: 600;
+  color: #193b8c;
+}
+
+.field-group input {
+  border: 1px solid rgba(25, 59, 140, 0.2);
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-size: 16px;
+  color: #0d2f81;
+  background: #f9fbff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field-group input:focus {
+  outline: none;
+  border-color: #2154bb;
+  box-shadow: 0 0 0 3px rgba(33, 84, 187, 0.2);
+}
+
+.field-group.read-only {
+  grid-column: span 2;
+}
+
+.stroked-field {
+  border-radius: 14px;
+  border: 1px dashed rgba(25, 59, 140, 0.3);
+  padding: 12px 16px;
+  background: #f4f8ff;
+  color: #0d2f81;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+}
+
+.field-hint {
+  font-size: 13px;
+  color: #6c85c5;
+}
+
+.profile-divider {
+  grid-column: span 2;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(25, 59, 140, 0.0), rgba(25, 59, 140, 0.24), rgba(25, 59, 140, 0.0));
+}
+
+.form-actions {
+  grid-column: span 2;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.form-actions .primary {
+  border: none;
+  border-radius: 18px;
+  padding: 12px 28px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #2154bb 0%, #1c3f9d 100%);
+  color: #ffffff;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-actions .primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px -12px rgba(17, 56, 133, 0.55);
+}
+
+.form-actions .primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.form-message {
+  grid-column: span 2;
+  margin: 0;
+  font-size: 15px;
+}
+
+.form-message.success {
+  color: #1c7c3c;
+}
+
+.form-message.error {
+  color: #d1424a;
+}
+
+.form-message.error {
+  color: #d1424a;
+}
+
+/* Секция смены пароля */
+.profile-password {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.password-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+.password-header h3 {
+  margin: 0;
+  font-size: 24px;
+  color: #0d2f81;
+  font-weight: 700;
+}
+
+.password-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 32px;
+  padding: 24px;
+  background: #f9fbff;
+  border-radius: 16px;
+  border: 1px solid rgba(33, 84, 187, 0.12);
+}
+
+.password-form .field-group:first-child {
+  grid-column: span 2;
+}
+
+.form-actions button.secondary {
+  border: 1px solid rgba(25, 59, 140, 0.3);
+  border-radius: 18px;
+  padding: 12px 28px;
+  font-weight: 600;
+  background: #ffffff;
+  color: #2154bb;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  margin-left: 12px;
+}
+
+.form-actions button.secondary:hover:not(:disabled) {
+  background: #f4f8ff;
+  border-color: #2154bb;
+}
+
+.form-actions button.secondary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.password-header button.secondary {
+  border: 1px solid rgba(25, 59, 140, 0.3);
+  border-radius: 18px;
+  padding: 10px 20px;
+  font-weight: 600;
+  background: #ffffff;
+  color: #2154bb;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.password-header button.secondary:hover {
+  background: #f4f8ff;
+  border-color: #2154bb;
+}
+
+@media (max-width: 900px) {
+  .profile-content {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-avatar {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+
+  .profile-form {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-form .field-group,
+  .profile-form .form-actions,
+  .profile-form .profile-divider,
+  .profile-form .form-message {
+    grid-column: span 1;
+  }
+
+  .stroked-field {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

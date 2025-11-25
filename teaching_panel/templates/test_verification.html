@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Email Verification & reCAPTCHA</title>
+    <script src="https://www.google.com/recaptcha/api.js?render=6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        h2 {
+            color: #667eea;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+            font-size: 12px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .badge-success { background: #6ee7b7; color: #065f46; }
+        .badge-warning { background: #fcd34d; color: #92400e; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Email Verification & reCAPTCHA</h1>
+
+        <!-- Test 1: Send Verification Email -->
+        <div class="test-section">
+            <h2>1️⃣ Отправка Email верификации</h2>
+            <input type="email" id="email1" placeholder="Email" value="testuser@example.com">
+            <button onclick="sendVerification()">Отправить код</button>
+            <div id="result1"></div>
+        </div>
+
+        <!-- Test 2: Verify Code -->
+        <div class="test-section">
+            <h2>2️⃣ Проверка 6-значного кода</h2>
+            <input type="email" id="email2" placeholder="Email" value="testuser@example.com">
+            <input type="text" id="code" placeholder="Код (6 цифр)" maxlength="6">
+            <button onclick="verifyCode()">Проверить код</button>
+            <div id="result2"></div>
+        </div>
+
+        <!-- Test 3: Verify Token -->
+        <div class="test-section">
+            <h2>3️⃣ Проверка по токену (UUID)</h2>
+            <input type="text" id="token" placeholder="UUID токен">
+            <button onclick="verifyToken()">Проверить токен</button>
+            <div id="result3"></div>
+        </div>
+
+        <!-- Test 4: Register with reCAPTCHA -->
+        <div class="test-section">
+            <h2>4️⃣ Регистрация с reCAPTCHA</h2>
+            <input type="email" id="emailReg" placeholder="Email" value="newuser@example.com">
+            <input type="password" id="password" placeholder="Пароль" value="Password123">
+            <input type="text" id="firstName" placeholder="Имя" value="Test">
+            <input type="text" id="lastName" placeholder="Фамилия" value="User">
+            <button onclick="registerWithRecaptcha()">Зарегистрироваться</button>
+            <div class="info" style="margin-top: 10px;">
+                🤖 reCAPTCHA v3 работает невидимо. Токен получается автоматически.
+            </div>
+            <div id="result4"></div>
+        </div>
+
+        <!-- Status -->
+        <div class="test-section">
+            <h2>ℹ️ Статус</h2>
+            <div class="info">
+                <strong>Backend:</strong> http://localhost:8000<br>
+                <strong>reCAPTCHA:</strong> <span class="badge badge-warning">Test Keys</span><br>
+                <strong>Email Backend:</strong> <span class="badge badge-success">Console</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        const RECAPTCHA_SITE_KEY = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
+
+        function showResult(elementId, data, isError = false) {
+            const el = document.getElementById(elementId);
+            el.className = 'result ' + (isError ? 'error' : 'success');
+            el.textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function sendVerification() {
+            const email = document.getElementById('email1').value;
+            try {
+                const response = await fetch(`${API_URL}/accounts/api/email/send-verification/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await response.json();
+                showResult('result1', data, !response.ok);
+            } catch (error) {
+                showResult('result1', { error: error.message }, true);
+            }
+        }
+
+        async function verifyCode() {
+            const email = document.getElementById('email2').value;
+            const code = document.getElementById('code').value;
+            try {
+                const response = await fetch(`${API_URL}/accounts/api/email/verify-code/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, code })
+                });
+                const data = await response.json();
+                showResult('result2', data, !response.ok);
+            } catch (error) {
+                showResult('result2', { error: error.message }, true);
+            }
+        }
+
+        async function verifyToken() {
+            const token = document.getElementById('token').value;
+            try {
+                const response = await fetch(`${API_URL}/accounts/api/email/verify-token/${token}/`, {
+                    method: 'GET'
+                });
+                const data = await response.json();
+                showResult('result3', data, !response.ok);
+            } catch (error) {
+                showResult('result3', { error: error.message }, true);
+            }
+        }
+
+        async function registerWithRecaptcha() {
+            const email = document.getElementById('emailReg').value;
+            const password = document.getElementById('password').value;
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+
+            try {
+                // Получаем reCAPTCHA токен
+                showResult('result4', { status: 'Получение reCAPTCHA токена...' }, false);
+                
+                const recaptchaToken = await new Promise((resolve, reject) => {
+                    grecaptcha.ready(() => {
+                        grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'register' })
+                            .then(token => resolve(token))
+                            .catch(error => reject(error));
+                    });
+                });
+
+                showResult('result4', { 
+                    status: 'Токен получен, отправка регистрации...',
+                    token_preview: recaptchaToken.substring(0, 20) + '...'
+                }, false);
+
+                // Отправляем регистрацию
+                const response = await fetch(`${API_URL}/accounts/jwt/register/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        first_name: firstName,
+                        last_name: lastName,
+                        role: 'student',
+                        recaptcha_token: recaptchaToken
+                    })
+                });
+                const data = await response.json();
+                showResult('result4', data, !response.ok);
+            } catch (error) {
+                showResult('result4', { error: error.message }, true);
+            }
+        }
+    </script>
+</body>
+</html>

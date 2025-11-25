@@ -1,0 +1,21 @@
+[Unit]
+Description=Teaching Panel Celery Worker
+After=network.target redis.service
+
+[Service]
+Type=forking
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+EnvironmentFile=/var/www/teaching_panel/teaching_panel/.env
+ExecStart=/var/www/teaching_panel/venv/bin/celery -A teaching_panel worker \
+    --loglevel=info \
+    --logfile=/var/log/teaching_panel/celery.log \
+    --pidfile=/var/run/teaching_panel/celery.pid
+
+ExecStop=/bin/kill -s TERM $MAINPID
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

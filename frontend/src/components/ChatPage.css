@@ -1,0 +1,62 @@
+/* ==================== CHAT PAGE ==================== */
+
+.chat-page {
+  height: calc(100vh - 60px); /* Вычитаем высоту навбара */
+  background: white;
+}
+
+/* Desktop Layout */
+.chat-page.desktop {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  height: calc(100vh - 60px);
+}
+
+.chat-page-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-right: 1px solid var(--gray-200);
+  background: white;
+}
+
+.chat-page-header {
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--gray-200);
+  background: white;
+}
+
+.chat-page-main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--gray-50);
+}
+
+/* Mobile Layout */
+.chat-page.mobile {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px);
+}
+
+.chat-page.mobile .chat-page-header {
+  flex-shrink: 0;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .chat-page.desktop {
+    grid-template-columns: 320px 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .chat-page {
+    height: calc(100vh - 56px); /* Мобильная высота навбара */
+  }
+  
+  .chat-page.mobile {
+    height: calc(100vh - 56px);
+  }
+}

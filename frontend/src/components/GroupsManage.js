@@ -1,0 +1,553 @@
+import React, { useEffect, useState } from 'react';
+import {
+  getGroups,
+  createGroup,
+  updateGroup,
+  deleteGroup,
+  addStudentsToGroup,
+  removeStudentsFromGroup,
+  apiClient,
+} from '../apiService';
+import { getAccessToken } from '../apiService';
+import './GroupsManage.css';
+
+const initialGroupForm = { name: '', description: '' };
+const initialStudentForm = {
+  email: '',
+  first_name: '',
+  last_name: '',
+  password: 'password123',
+};
+
+// Utility to read user_id from JWT payload (handle base64url)
+const getCurrentUserId = () => {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    const part = token.split('.')[1];
+    if (!part) return null;
+    const base64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+    const payload = JSON.parse(atob(padded));
+    return payload.user_id || null;
+  } catch (_) {
+    return null;
+  }
+};
+
+const GroupsManage = () => {
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [activePanel, setActivePanel] = useState('group');
+  const [groupForm, setGroupForm] = useState(initialGroupForm);
+  const [studentForm, setStudentForm] = useState(initialStudentForm);
+  const [editingId, setEditingId] = useState(null);
+  const [studentOpsGroup, setStudentOpsGroup] = useState(null);
+  const [addIds, setAddIds] = useState('');
+  const [removeIds, setRemoveIds] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterActive, setFilterActive] = useState('all'); // 'all' | 'with_students' | 'empty'
+
+  const resetGroupForm = () => {
+    setGroupForm(initialGroupForm);
+    setEditingId(null);
+  };
+
+  const resetStudentForm = () => {
+    setStudentForm(initialStudentForm);
+  };
+
+  const parseIds = (value) =>
+    value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => Number(item))
+      .filter((item) => Number.isFinite(item));
+
+  const load = async () => {
+    try {
+      const res = await getGroups();
+      const data = Array.isArray(res.data) ? res.data : res.data.results || [];
+      setGroups(data);
+      setStudentOpsGroup((current) => {
+        if (!current) return null;
+        return data.find((item) => item.id === current.id) || null;
+      });
+      setError(null);
+    } catch (e) {
+      console.error('[GroupsManage] Load error:', e);
+      setError('Ошибка загрузки групп: ' + (e.message || 'Неизвестная ошибка'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const handleTabSelect = (panel) => {
+    if (panel === 'group') {
+      resetGroupForm();
+    } else {
+      resetStudentForm();
+    }
+    setActivePanel(panel);
+  };
+
+  const handleCreateGroup = async (event) => {
+    event.preventDefault();
+    const teacherId = getCurrentUserId();
+    if (!teacherId) {
+      alert('Не удалось определить преподавателя из токена');
+      return;
+    }
+
+    const trimmedName = groupForm.name.trim();
+    if (!trimmedName) {
+      alert('Введите название группы');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      if (editingId) {
+        await updateGroup(editingId, {
+          name: trimmedName,
+          description: groupForm.description.trim(),
+        });
+      } else {
+        await createGroup({
+          name: trimmedName,
+          description: groupForm.description.trim(),
+          teacher_id: teacherId,
+        });
+      }
+
+      await load();
+      resetGroupForm();
+      setActivePanel('group');
+    } catch (e) {
+      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка сохранения группы');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCreateStudent = async (event) => {
+    event.preventDefault();
+
+    const email = studentForm.email.trim();
+    if (!email) {
+      alert('Введите email ученика');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      await apiClient.post('jwt/register/', {
+        email,
+        password: studentForm.password,
+        first_name: studentForm.first_name.trim(),
+        last_name: studentForm.last_name.trim(),
+        role: 'student',
+      });
+
+      alert(
+        `Ученик ${studentForm.first_name} ${studentForm.last_name} создан! Email: ${email}, Пароль: ${studentForm.password}`
+      );
+      resetStudentForm();
+      setActivePanel('student');
+    } catch (e) {
+      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка создания ученика');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const startEdit = (group) => {
+    setGroupForm({
+      name: group.name,
+      description: group.description || '',
+    });
+    setEditingId(group.id);
+    setActivePanel('group');
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Удалить группу?')) return;
+    try {
+      await deleteGroup(id);
+      await load();
+    } catch (e) {
+      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка удаления');
+    }
+  };
+
+  const openStudentOps = (group) => {
+    setStudentOpsGroup(group);
+    setAddIds('');
+    setRemoveIds('');
+  };
+
+  const closeStudentOps = () => setStudentOpsGroup(null);
+
+  const commitAddStudents = async () => {
+    if (!studentOpsGroup) return;
+    const ids = parseIds(addIds);
+    if (!ids.length) return;
+
+    try {
+      await addStudentsToGroup(studentOpsGroup.id, ids);
+      await load();
+      setAddIds('');
+    } catch (e) {
+      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка добавления');
+    }
+  };
+
+  const commitRemoveStudents = async () => {
+    if (!studentOpsGroup) return;
+    const ids = parseIds(removeIds);
+    if (!ids.length) return;
+
+    try {
+      await removeStudentsFromGroup(studentOpsGroup.id, ids);
+      await load();
+      setRemoveIds('');
+    } catch (e) {
+      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка удаления');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="groups-manage-page">
+        <div className="gm-state gm-state-loading">Загрузка...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="groups-manage-page">
+        <div className="gm-state gm-state-error">
+          <span>{error}</span>
+          <button
+            type="button"
+            className="gm-btn-primary"
+            onClick={() => {
+              setLoading(true);
+              load();
+            }}
+          >
+            Повторить
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="groups-manage-page">
+      <div className="groups-manage-header">
+        <div>
+          <h1 className="groups-manage-title">👥 Группы и ученики</h1>
+          <p className="groups-manage-subtitle">Управление группами и создание учеников</p>
+        </div>
+        <div style={{fontSize:'0.9rem', color:'#64748b', display:'flex', gap:'1rem', alignItems:'center'}}>
+          <span>📊 Всего групп: {groups.length}</span>
+          <span>👨‍🎓 Всего учеников: {groups.reduce((sum, g) => sum + (g.students?.length || 0), 0)}</span>
+        </div>
+      </div>
+
+      <div className="groups-manage-content">
+        <div className="groups-manage-column">
+          <div className="gm-tab-switch">
+            <button
+              type="button"
+              className={`gm-tab-button ${activePanel === 'group' ? 'active' : ''}`}
+              onClick={() => handleTabSelect('group')}
+            >
+              👥 Группа
+            </button>
+            <button
+              type="button"
+              className={`gm-tab-button ${activePanel === 'student' ? 'active' : ''}`}
+              onClick={() => handleTabSelect('student')}
+            >
+              🎓 Ученик
+            </button>
+          </div>
+
+          {activePanel === 'group' ? (
+            <div className="gm-card">
+              <div className="gm-card-heading">
+                <div>
+                  <h3 className="gm-card-title">
+                    {editingId ? '✏️ Редактировать группу' : '➕ Новая группа'}
+                  </h3>
+                  <p className="gm-card-subtitle">
+                    {editingId
+                      ? 'Обновите название и описание, затем сохраните изменения.'
+                      : 'Создайте новое пространство для обучения и совместной работы.'}
+                  </p>
+                </div>
+              </div>
+
+              <form className="gm-form" onSubmit={handleCreateGroup}>
+                <div className="form-group">
+                  <label className="form-label">Название группы</label>
+                  <input
+                    className="form-input"
+                    required
+                    value={groupForm.name}
+                    onChange={(event) => setGroupForm({ ...groupForm, name: event.target.value })}
+                    placeholder="Например: Математика 9 класс"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Описание</label>
+                  <textarea
+                    className="form-textarea"
+                    rows={3}
+                    value={groupForm.description}
+                    onChange={(event) =>
+                      setGroupForm({ ...groupForm, description: event.target.value })
+                    }
+                    placeholder="Дополнительная информация о группе"
+                  />
+                </div>
+                <div className="gm-actions">
+                  <button className="gm-btn-primary" type="submit" disabled={creating}>
+                    {creating ? '⏳ Сохранение...' : editingId ? '💾 Сохранить' : '➕ Создать группу'}
+                  </button>
+                  {editingId && (
+                    <button
+                      type="button"
+                      className="gm-btn-surface"
+                      onClick={resetGroupForm}
+                      disabled={creating}
+                    >
+                      ✕ Отмена
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+          ) : (
+            <div className="gm-card">
+              <div className="gm-card-heading">
+                <div>
+                  <h3 className="gm-card-title">👤 Новый ученик</h3>
+                  <p className="gm-card-subtitle">
+                    Создайте аккаунт и поделитесь данными для входа с учеником.
+                  </p>
+                </div>
+              </div>
+
+              <form className="gm-form" onSubmit={handleCreateStudent}>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Имя</label>
+                    <input
+                      className="form-input"
+                      required
+                      value={studentForm.first_name}
+                      onChange={(event) =>
+                        setStudentForm({ ...studentForm, first_name: event.target.value })
+                      }
+                      placeholder="Иван"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Фамилия</label>
+                    <input
+                      className="form-input"
+                      required
+                      value={studentForm.last_name}
+                      onChange={(event) =>
+                        setStudentForm({ ...studentForm, last_name: event.target.value })
+                      }
+                      placeholder="Иванов"
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input
+                    className="form-input"
+                    type="email"
+                    required
+                    value={studentForm.email}
+                    onChange={(event) =>
+                      setStudentForm({ ...studentForm, email: event.target.value })
+                    }
+                    placeholder="student@example.com"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Пароль</label>
+                  <input
+                    className="form-input"
+                    type="text"
+                    required
+                    value={studentForm.password}
+                    onChange={(event) =>
+                      setStudentForm({ ...studentForm, password: event.target.value })
+                    }
+                  />
+                  <small className="gm-hint">По умолчанию используется пароль password123</small>
+                </div>
+                <div className="gm-actions">
+                  <button className="gm-btn-primary" type="submit" disabled={creating}>
+                    {creating ? '⏳ Создание...' : '👤 Создать ученика'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+
+        <div className="groups-manage-column">
+          <div className="gm-card">
+            <div className="gm-card-heading">
+              <div>
+                <h3 className="gm-card-title">📋 Мои группы</h3>
+                <p className="gm-card-subtitle">
+                  {groups.length
+                    ? 'Выберите группу, чтобы отредактировать данные или управлять учениками.'
+                    : 'Пока нет групп — создайте первую, чтобы начать обучение.'}
+                </p>
+              </div>
+              <span className="gm-badge gm-badge-blue">{groups.length}</span>
+            </div>
+
+            <div className="gm-groups-list">
+              {groups.map((group) => {
+                const studentCount = Array.isArray(group.students)
+                  ? group.students.length
+                  : group.students_count || 0;
+
+                return (
+                  <article
+                    key={group.id}
+                    className={`gm-group-card ${editingId === group.id ? 'is-active' : ''}`}
+                  >
+                    <div className="gm-group-card-header">
+                      <div>
+                        <button
+                          type="button"
+                          className="gm-group-name"
+                          onClick={() => startEdit(group)}
+                        >
+                          {group.name}
+                        </button>
+                        <p className="gm-group-description">{group.description || 'Без описания'}</p>
+                      </div>
+                      <span className="gm-badge">{studentCount} уч.</span>
+                    </div>
+                    <div className="gm-group-card-actions">
+                      <button
+                        type="button"
+                        className="gm-btn-surface"
+                        onClick={() => startEdit(group)}
+                      >
+                        ✏️ Изменить
+                      </button>
+                      <button
+                        type="button"
+                        className="gm-btn-surface"
+                        onClick={() => openStudentOps(group)}
+                      >
+                        👥 Ученики
+                      </button>
+                      <button
+                        type="button"
+                        className="gm-btn-danger"
+                        onClick={() => handleDelete(group.id)}
+                      >
+                        🗑️ Удалить
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+
+              {groups.length === 0 && (
+                <div className="gm-empty-state">
+                  <div className="gm-empty-icon">📂</div>
+                  <p>Нет групп. Создайте первую!</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {studentOpsGroup && (
+        <div className="gm-modal-backdrop" onClick={closeStudentOps}>
+          <div className="gm-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="gm-modal-header">
+              <h3 className="gm-modal-title">👥 Ученики группы: {studentOpsGroup.name}</h3>
+              <button type="button" className="gm-modal-close" onClick={closeStudentOps}>
+                ✕
+              </button>
+            </div>
+            <div className="gm-modal-body">
+              <div className="gm-modal-section">
+                <span className="gm-modal-label">Текущие ученики</span>
+                <div className="gm-modal-student-list">
+                  {Array.isArray(studentOpsGroup.students) && studentOpsGroup.students.length ? (
+                    studentOpsGroup.students.map((student) => (
+                      <div key={student.id} className="gm-modal-student">
+                        <span>
+                          {student.first_name || ''} {student.last_name || ''}
+                        </span>
+                        <span className="gm-badge gm-badge-muted">#{student.id}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="gm-modal-empty">Нет учеников</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="gm-modal-controls">
+                <div className="gm-modal-column">
+                  <label className="gm-modal-label">➕ Добавить (ID через запятую)</label>
+                  <input
+                    className="gm-modal-input"
+                    value={addIds}
+                    onChange={(event) => setAddIds(event.target.value)}
+                    placeholder="1, 2, 3"
+                  />
+                  <button type="button" className="gm-btn-primary gm-btn-block" onClick={commitAddStudents}>
+                    ✅ Добавить
+                  </button>
+                </div>
+                <div className="gm-modal-column">
+                  <label className="gm-modal-label">➖ Удалить (ID через запятую)</label>
+                  <input
+                    className="gm-modal-input"
+                    value={removeIds}
+                    onChange={(event) => setRemoveIds(event.target.value)}
+                    placeholder="4, 5, 6"
+                  />
+                  <button type="button" className="gm-btn-danger gm-btn-block" onClick={commitRemoveStudents}>
+                    ❌ Удалить
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default GroupsManage;

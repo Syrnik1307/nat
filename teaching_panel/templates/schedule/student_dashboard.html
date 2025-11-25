@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Мои занятия{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12 mb-4">
+            <h1><i class="fas fa-book-reader"></i> Мои занятия</h1>
+            <p class="text-muted">Просматривайте расписание и посещайте занятия</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- My Groups -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-users"></i> Мои группы</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for group in groups %}
+                    <div class="list-group-item">
+                        <h6 class="mb-1">{{ group.name }}</h6>
+                        <small class="text-muted">Преподаватель: {{ group.teacher.get_full_name }}</small>
+                    </div>
+                    {% empty %}
+                    <div class="list-group-item">
+                        <p class="text-muted mb-0">Вы не записаны ни в одну группу</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Upcoming Lessons -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-clock"></i> Ближайшие занятия</h5>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_lessons %}
+                        {% for lesson in upcoming_lessons %}
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ lesson.title }}</h5>
+                                <p class="card-text">
+                                    <i class="fas fa-calendar"></i> {{ lesson.start_time|date:"d.m.Y H:i" }}<br>
+                                    <i class="fas fa-users"></i> {{ lesson.group.name }}<br>
+                                    {% if lesson.location %}
+                                    <i class="fas fa-map-marker-alt"></i> {{ lesson.location }}
+                                    {% endif %}
+                                </p>
+                                {% if lesson.zoom_join_url %}
+                                <a href="{{ lesson.zoom_join_url }}" target="_blank" class="btn btn-primary">
+                                    <i class="fab fa-zoom"></i> Присоединиться
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Нет предстоящих занятий
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,99 @@
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
+from .models import CustomUser, Chat, Message, MessageReadStatus, StatusBarMessage, PhoneVerification, EmailVerification
+
+
+@admin.register(CustomUser)
+class CustomUserAdmin(UserAdmin):
+    """Админ-панель для кастомной модели пользователя"""
+    
+    model = CustomUser
+    list_display = ('email', 'username_handle', 'role', 'first_name', 'last_name', 'is_staff', 'is_active', 'created_at')
+    list_filter = ('role', 'is_staff', 'is_active', 'agreed_to_marketing')
+    
+    fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        ('Личная информация', {'fields': ('first_name', 'last_name', 'middle_name', 'username_handle', 'phone_number', 'date_of_birth', 'avatar')}),
+        ('Роль и права', {'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Zoom', {'fields': ('zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_user_id')}),
+        ('Маркетинг', {'fields': ('agreed_to_marketing',)}),
+        ('Важные даты', {'fields': ('last_login', 'date_joined')}),
+    )
+    
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('email', 'username_handle', 'role', 'password1', 'password2', 'is_staff', 'is_active')
+        }),
+    )
+    
+    search_fields = ('email', 'username_handle', 'first_name', 'last_name', 'phone_number')
+    ordering = ('-created_at',)
+
+
+@admin.register(Chat)
+class ChatAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'chat_type', 'created_by', 'created_at')
+    list_filter = ('chat_type', 'created_at')
+    search_fields = ('name',)
+    filter_horizontal = ('participants',)
+    raw_id_fields = ('created_by', 'group')
+
+
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
+    list_display = ('id', 'chat', 'sender', 'text_preview', 'is_read', 'created_at')
+    list_filter = ('is_read', 'created_at')
+    search_fields = ('text', 'sender__email')
+    raw_id_fields = ('chat', 'sender')
+    
+    def text_preview(self, obj):
+        return obj.text[:50]
+    text_preview.short_description = 'Текст'
+
+
+@admin.register(MessageReadStatus)
+class MessageReadStatusAdmin(admin.ModelAdmin):
+    list_display = ('id', 'message', 'user', 'is_read', 'read_at')
+    list_filter = ('is_read', 'read_at')
+    raw_id_fields = ('message', 'user')
+
+
+@admin.register(StatusBarMessage)
+class StatusBarMessageAdmin(admin.ModelAdmin):
+    list_display = ('id', 'message_preview', 'target', 'is_active', 'created_by', 'created_at')
+    list_filter = ('target', 'is_active', 'created_at')
+    search_fields = ('message',)
+    raw_id_fields = ('created_by',)
+    
+    def message_preview(self, obj):
+        return obj.message[:50]
+    message_preview.short_description = 'Сообщение'
+
+
+@admin.register(PhoneVerification)
+class PhoneVerificationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'phone_number', 'code', 'is_verified', 'attempts', 'created_at', 'expires_at')
+    list_filter = ('is_verified', 'created_at')
+    search_fields = ('phone_number',)
+    readonly_fields = ('code', 'created_at', 'expires_at')
+    
+    def has_add_permission(self, request):
+        # Отключаем ручное создание через админку
+        return False
+
+
+@admin.register(EmailVerification)
+class EmailVerificationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'email', 'code', 'token_preview', 'is_verified', 'attempts', 'created_at', 'expires_at')
+    list_filter = ('is_verified', 'created_at')
+    search_fields = ('email',)
+    readonly_fields = ('token', 'code', 'created_at', 'expires_at')
+    
+    def token_preview(self, obj):
+        return str(obj.token)[:8] + '...'
+    token_preview.short_description = 'Токен'
+    
+    def has_add_permission(self, request):
+        # Отключаем ручное создание через админку
+        return False

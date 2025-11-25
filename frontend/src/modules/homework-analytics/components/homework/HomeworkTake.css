@@ -1,0 +1,377 @@
+.ht-container {
+  min-height: 100vh;
+  background: var(--bg-gray);
+  padding: 2rem clamp(1rem, 2vw, 3rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.ht-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 1.75rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.ht-header-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ht-title {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.ht-subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.ht-header-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.ht-progress-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ht-progress-track {
+  height: 8px;
+  background: rgba(37, 99, 235, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+  width: min(320px, 100%);
+}
+
+.ht-progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  border-radius: inherit;
+  transition: width 0.25s ease;
+}
+
+.ht-progress-label {
+  font-size: 0.85rem;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.ht-saving-indicator {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: rgba(148, 163, 184, 0.2);
+  color: #475569;
+}
+
+.ht-saving-indicator.saving {
+  background: rgba(245, 158, 11, 0.2);
+  color: #b45309;
+}
+
+.ht-saving-indicator.saved {
+  background: rgba(16, 185, 129, 0.2);
+  color: #047857;
+}
+
+.ht-saving-indicator.error {
+  background: rgba(239, 68, 68, 0.2);
+  color: #b91c1c;
+}
+
+.ht-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+  gap: 1.75rem;
+  align-items: flex-start;
+}
+
+@media (max-width: 1024px) {
+  .ht-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ht-sidebar {
+  position: sticky;
+  top: 2rem;
+  align-self: flex-start;
+  background: #ffffff;
+  padding: 1.25rem;
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.ht-question-nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 0.75rem;
+}
+
+.ht-question-nav-item {
+  border: none;
+  border-radius: 12px;
+  height: 48px;
+  background: rgba(148, 163, 184, 0.15);
+  color: #334155;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ht-question-nav-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.ht-question-nav-item.answered {
+  background: rgba(16, 185, 129, 0.2);
+  color: #047857;
+}
+
+.ht-question-nav-item.current {
+  background: rgba(37, 99, 235, 0.2);
+  color: #1d4ed8;
+  box-shadow: var(--shadow-sm);
+}
+
+.ht-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.ht-question-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.ht-question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.ht-question-index {
+  font-weight: 600;
+}
+
+.ht-question-type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  background: rgba(148, 163, 184, 0.18);
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+}
+
+.ht-question-text {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.6;
+}
+
+.ht-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ht-option {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.ht-option input {
+  width: 18px;
+  height: 18px;
+}
+
+.ht-listening {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ht-audio-player {
+  width: 100%;
+}
+
+.ht-prompt {
+  margin: 0;
+  background: rgba(37, 99, 235, 0.08);
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  color: #1d4ed8;
+}
+
+.ht-sub-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ht-sub-question {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 14px;
+  padding: 1rem;
+  background: rgba(248, 250, 252, 0.95);
+}
+
+.ht-matching {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ht-matching-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 220px);
+  gap: 1rem;
+  align-items: center;
+}
+
+.ht-matching-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.ht-dragdrop {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ht-dragdrop-item {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px dashed rgba(59, 130, 246, 0.4);
+  border-radius: 12px;
+  padding: 0.75rem;
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.ht-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ht-fill-blanks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  line-height: 1.8;
+  color: #1f2937;
+}
+
+.ht-inline-input {
+  width: 140px;
+}
+
+.ht-hotspot {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ht-hotspot-image {
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.ht-hotspot-image img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.ht-hotspot-options {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ht-option-hotspot {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.ht-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ht-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  padding: 1.5rem 2rem;
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+.ht-footer-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.ht-submit-message {
+  color: #047857;
+  font-weight: 600;
+}
+
+.ht-state {
+  background: #ffffff;
+  padding: 2rem;
+  border-radius: 16px;
+  text-align: center;
+  color: #475569;
+}
+
+.ht-state.ht-loading {
+  color: #2563eb;
+}
+
+.ht-state.ht-error {
+  color: #b91c1c;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}

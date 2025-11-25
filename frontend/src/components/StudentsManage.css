@@ -1,0 +1,325 @@
+/* Компонент управления учениками - аналогичен TeachersManage */
+
+.students-manage-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.students-manage-modal {
+  background: white;
+  border-radius: var(--radius-lg);
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: var(--shadow-2xl);
+  display: flex;
+  flex-direction: column;
+}
+
+.sm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-gray);
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-dark) 100%);
+  color: white;
+}
+
+.sm-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sm-refresh {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  color: white;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: var(--transition);
+}
+
+.sm-refresh:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.sm-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  color: white;
+  cursor: pointer;
+  font-size: 1.5rem;
+  transition: var(--transition);
+}
+
+.sm-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.sm-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.sm-loading {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+}
+
+/* Список учеников */
+.sm-students-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sm-list-header {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1.5fr 100px;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-light);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+}
+
+.sm-student-item {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1.5fr 100px;
+  gap: 1rem;
+  padding: 1rem;
+  background: white;
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+  align-items: center;
+}
+
+.sm-student-item:hover {
+  border-color: var(--primary-blue);
+  box-shadow: var(--shadow-sm);
+}
+
+.sm-student-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.sm-student-name:hover {
+  color: var(--primary-blue);
+}
+
+.sm-student-email {
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.sm-student-date {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.sm-student-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.sm-edit-btn,
+.sm-delete-btn {
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: var(--transition);
+  border-radius: var(--radius-sm);
+}
+
+.sm-edit-btn:hover {
+  background: var(--bg-light);
+}
+
+.sm-delete-btn:hover {
+  background: #fee;
+}
+
+.sm-empty {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+}
+
+/* Форма редактирования */
+.sm-edit-form {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.sm-back {
+  background: var(--bg-light);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+  transition: var(--transition);
+}
+
+.sm-back:hover {
+  background: var(--border-gray);
+}
+
+.sm-selected-student {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-dark) 100%);
+  border-radius: var(--radius-md);
+  color: white;
+}
+
+.sm-selected-student h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+}
+
+.sm-student-email-small {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.875rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-gray);
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  transition: var(--transition);
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-group small {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.form-error {
+  padding: 0.75rem;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: var(--radius-sm);
+  color: #c00;
+  margin-bottom: 1rem;
+}
+
+.form-success {
+  padding: 0.75rem;
+  background: #efe;
+  border: 1px solid #cfc;
+  border-radius: var(--radius-sm);
+  color: #060;
+  margin-bottom: 1rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+}
+
+.btn-cancel,
+.btn-submit {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-cancel {
+  background: var(--bg-light);
+  color: var(--text-primary);
+}
+
+.btn-cancel:hover {
+  background: var(--border-gray);
+}
+
+.btn-submit {
+  background: var(--primary-blue);
+  color: white;
+}
+
+.btn-submit:hover {
+  background: var(--primary-blue-dark);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .sm-list-header,
+  .sm-student-item {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .sm-list-header {
+    display: none;
+  }
+
+  .sm-student-item {
+    padding: 1rem;
+  }
+
+  .sm-student-actions {
+    justify-content: flex-start;
+  }
+}

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выберите роль - Teaching Panel</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .role-container {
+            max-width: 900px;
+            width: 100%;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .role-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+        }
+        
+        @media (max-width: 768px) {
+            .role-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .role-card {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 3px solid transparent;
+        }
+        
+        .role-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        
+        .role-card.student {
+            border-color: #3b82f6;
+        }
+        
+        .role-card.teacher {
+            border-color: #f59e0b;
+        }
+        
+        .role-card .icon {
+            font-size: 5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .role-card.student .icon {
+            color: #3b82f6;
+        }
+        
+        .role-card.teacher .icon {
+            color: #f59e0b;
+        }
+        
+        .role-card h2 {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        
+        .role-card p {
+            color: #6b7280;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .role-card .btn {
+            padding: 1rem 3rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            border: none;
+            transition: all 0.3s;
+        }
+        
+        .role-card.student .btn {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .role-card.student .btn:hover {
+            background: #2563eb;
+            transform: scale(1.05);
+        }
+        
+        .role-card.teacher .btn {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .role-card.teacher .btn:hover {
+            background: #d97706;
+            transform: scale(1.05);
+        }
+        
+        .footer-text {
+            text-align: center;
+            color: white;
+            margin-top: 2rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="role-container">
+        <div class="header">
+            <h1><i class="fas fa-graduation-cap"></i> Teaching Panel</h1>
+            <p>Выберите вашу роль для входа в систему</p>
+        </div>
+        
+        <form method="POST" id="roleForm">
+            {% csrf_token %}
+            
+            <div class="role-cards">
+                <!-- Ученик -->
+                <div class="role-card student" onclick="selectRole('student')">
+                    <div class="icon">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <h2>Я Ученик</h2>
+                    <p>Просматривайте расписание, посещайте занятия и отслеживайте свой прогресс</p>
+                    <button type="button" class="btn" onclick="selectRole('student')">
+                        Войти как ученик
+                    </button>
+                </div>
+                
+                <!-- Преподаватель -->
+                <div class="role-card teacher" onclick="selectRole('teacher')">
+                    <div class="icon">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <h2>Я Преподаватель</h2>
+                    <p>Управляйте группами, создавайте занятия и отмечайте посещаемость</p>
+                    <button type="button" class="btn" onclick="selectRole('teacher')">
+                        Войти как преподаватель
+                    </button>
+                </div>
+            </div>
+            
+            <input type="hidden" name="role" id="roleInput">
+        </form>
+        
+        <p class="footer-text">
+            Нет аккаунта? Не волнуйтесь! Мы создадим его автоматически при первом входе.
+        </p>
+    </div>
+    
+    <script>
+        function selectRole(role) {
+            document.getElementById('roleInput').value = role;
+            document.getElementById('roleForm').submit();
+        }
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

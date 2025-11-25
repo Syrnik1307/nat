@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - Teaching Panel</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .login-container {
+            max-width: 500px;
+            width: 100%;
+            padding: 2rem;
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem 2.5rem;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .login-header h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+        
+        .role-badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .role-badge.student {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .role-badge.teacher {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6b7280;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+        
+        .tab.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-control {
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            border: 2px solid #e5e7eb;
+            transition: all 0.3s;
+        }
+        
+        .form-control:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .form-check {
+            margin: 1.5rem 0;
+        }
+        
+        .form-check-input:checked {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+        }
+        
+        .btn-primary {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 10px;
+            background: #3b82f6;
+            border: none;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+        }
+        
+        .social-login {
+            margin-top: 2rem;
+        }
+        
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 1.5rem 0;
+            color: #6b7280;
+        }
+        
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .divider span {
+            padding: 0 1rem;
+        }
+        
+        .social-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+        
+        .social-btn {
+            padding: 0.75rem;
+            border-radius: 10px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .social-btn:hover {
+            border-color: #3b82f6;
+            background: #f0f9ff;
+        }
+        
+        .social-btn i {
+            font-size: 1.5rem;
+        }
+        
+        .social-btn.vk i {
+            color: #0077ff;
+        }
+        
+        .social-btn.yandex i {
+            color: #fc3f1d;
+        }
+        
+        .social-btn.university i {
+            color: #8b5cf6;
+        }
+        
+        .back-link {
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+        
+        .back-link a {
+            color: #6b7280;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .back-link a:hover {
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1><i class="fas fa-sign-in-alt"></i> Вход в систему</h1>
+                <span class="role-badge {{ selected_role }}">
+                    {% if selected_role == 'student' %}
+                        <i class="fas fa-user-graduate"></i> Ученик
+                    {% else %}
+                        <i class="fas fa-chalkboard-teacher"></i> Преподаватель
+                    {% endif %}
+                </span>
+            </div>
+            
+            <!-- Tabs -->
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('email')">
+                    <i class="fas fa-envelope"></i> Email
+                </div>
+                <div class="tab" onclick="switchTab('phone')">
+                    <i class="fas fa-phone"></i> Телефон
+                </div>
+            </div>
+            
+            <form method="POST">
+                {% csrf_token %}
+                
+                <!-- Email Tab -->
+                <div class="tab-content active" id="email-tab">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email адрес</label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               placeholder="example@email.com" required>
+                    </div>
+                </div>
+                
+                <!-- Phone Tab -->
+                <div class="tab-content" id="phone-tab">
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Номер телефона</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" 
+                               placeholder="+7 (999) 123-45-67">
+                    </div>
+                </div>
+                
+                <!-- Password -->
+                <div class="mb-3">
+                    <label for="password" class="form-label">Пароль</label>
+                    <input type="password" class="form-control" id="password" name="password" 
+                           placeholder="Введите пароль" required>
+                </div>
+                
+                <!-- Marketing Consent -->
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="marketing" 
+                           name="agreed_to_marketing">
+                    <label class="form-check-label" for="marketing">
+                        Я согласен получать новости и специальные предложения
+                    </label>
+                </div>
+                
+                <input type="hidden" name="login_type" id="login_type" value="email">
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt me-2"></i>Войти
+                </button>
+            </form>
+            
+            <!-- Social Login -->
+            <div class="social-login">
+                <div class="divider">
+                    <span>или войти через</span>
+                </div>
+                
+                <div class="social-buttons">
+                    <a href="{% url 'accounts:oauth_vk' %}" class="social-btn vk">
+                        <i class="fab fa-vk"></i>
+                        <div style="font-size: 0.8rem; margin-top: 0.25rem;">VK</div>
+                    </a>
+                    <a href="{% url 'accounts:oauth_yandex' %}" class="social-btn yandex">
+                        <i class="fab fa-yandex"></i>
+                        <div style="font-size: 0.8rem; margin-top: 0.25rem;">Yandex</div>
+                    </a>
+                    <a href="{% url 'accounts:oauth_university' %}" class="social-btn university">
+                        <i class="fas fa-university"></i>
+                        <div style="font-size: 0.8rem; margin-top: 0.25rem;">20.35</div>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Back Link -->
+            <div class="back-link">
+                <a href="{% url 'accounts:role_selection' %}">
+                    <i class="fas fa-arrow-left me-1"></i>Изменить роль
+                </a>
+            </div>
+        </div>
+        
+        <p style="text-align: center; color: white; margin-top: 1rem; opacity: 0.8;">
+            Нет аккаунта? Он будет создан автоматически при первом входе!
+        </p>
+    </div>
+    
+    <script>
+        function switchTab(tabName) {
+            // Update tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.closest('.tab').classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Update login type
+            document.getElementById('login_type').value = tabName;
+            
+            // Update required fields
+            if (tabName === 'email') {
+                document.getElementById('email').required = true;
+                document.getElementById('phone').required = false;
+            } else {
+                document.getElementById('email').required = false;
+                document.getElementById('phone').required = true;
+            }
+        }
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

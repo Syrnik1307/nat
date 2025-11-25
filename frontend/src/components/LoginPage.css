@@ -1,0 +1,36 @@
+.login-password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-toggle-password {
+  position: absolute;
+  top: 32px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: rgba(228, 228, 231, 0.9);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.login-toggle-password:hover {
+  color: #60a5fa;
+  transform: scale(1.05);
+}
+
+.login-toggle-password:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.login-toggle-password svg {
+  width: 22px;
+  height: 22px;
+}
