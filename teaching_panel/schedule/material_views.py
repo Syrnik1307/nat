@@ -11,7 +11,8 @@ from django.utils import timezone
 from django.db.models import Count, Q, F
 import json
 
-from .models import Lesson, LessonMaterial, MaterialView, CustomUser
+from .models import Lesson, LessonMaterial, MaterialView
+from accounts.models import CustomUser
 
 
 @csrf_exempt
