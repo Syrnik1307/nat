@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 from . import views
 from . import celery_metrics
 from . import webhooks
+from . import storage_views
 
 app_name = 'schedule'
 
@@ -38,6 +39,15 @@ urlpatterns = [
     path('api/recordings/<int:recording_id>/', views.recording_detail, name='recording_detail'),
     path('api/recordings/<int:recording_id>/view/', views.recording_track_view, name='recording_track_view'),
     path('api/lessons/<int:lesson_id>/recording/', views.lesson_recording, name='lesson_recording'),
+    
+    # API endpoints для управления квотами хранилища (только для админа)
+    path('api/storage/quotas/', storage_views.storage_quotas_list, name='storage_quotas_list'),
+    path('api/storage/quotas/<int:quota_id>/', storage_views.storage_quota_detail, name='storage_quota_detail'),
+    path('api/storage/quotas/<int:quota_id>/increase/', storage_views.increase_quota, name='increase_quota'),
+    path('api/storage/quotas/<int:quota_id>/reset-warnings/', storage_views.reset_quota_warnings, name='reset_quota_warnings'),
+    path('api/storage/statistics/', storage_views.storage_statistics, name='storage_statistics'),
+    path('api/storage/teachers/<int:teacher_id>/recordings/', storage_views.teacher_recordings_list, name='admin_teacher_recordings'),
+    path('api/storage/quotas/create/', storage_views.create_teacher_quota, name='create_teacher_quota'),
     
     # API endpoints
     path('', include(router.urls)),

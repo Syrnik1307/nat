@@ -248,7 +248,7 @@ def process_zoom_recording(recording_id):
     import os
     import requests
     import logging
-    from .models import LessonRecording
+    from .models import LessonRecording, TeacherStorageQuota
     from .gdrive_utils import get_gdrive_manager
     from django.conf import settings
     
@@ -256,7 +256,7 @@ def process_zoom_recording(recording_id):
     
     try:
         # Получаем объект записи
-        recording = LessonRecording.objects.get(id=recording_id)
+        recording = LessonRecording.objects.select_related('lesson__group__teacher').get(id=recording_id)
         
         logger.info(f"Processing recording {recording_id} for lesson {recording.lesson.id}")
         
@@ -267,6 +267,30 @@ def process_zoom_recording(recording_id):
             recording.save()
             return
         
+        # Получаем преподавателя
+        teacher = recording.lesson.group.teacher
+        
+        # Проверяем квоту хранилища преподавателя
+        try:
+            quota = teacher.storage_quota
+        except TeacherStorageQuota.DoesNotExist:
+            # Создаем квоту с базовыми параметрами (5 ГБ)
+            quota = TeacherStorageQuota.objects.create(
+                teacher=teacher,
+                total_quota_bytes=5 * 1024 ** 3  # 5 GB
+            )
+            logger.info(f"Created storage quota for teacher {teacher.id}")
+        
+        # Проверяем превышение квоты
+        if quota.quota_exceeded:
+            logger.warning(f"Teacher {teacher.id} quota exceeded. Skipping recording {recording_id}")
+            recording.status = 'failed'
+            recording.save()
+            
+            # Отправляем уведомление преподавателю о превышении квоты
+            _notify_teacher_quota_exceeded(teacher, quota)
+            return
+        
         # 1. Скачиваем файл с Zoom
         temp_file_path = _download_from_zoom(recording)
         
@@ -274,6 +298,20 @@ def process_zoom_recording(recording_id):
             logger.error(f"Failed to download recording {recording_id} from Zoom")
             recording.status = 'failed'
             recording.save()
+            return
+        
+        # Проверяем размер файла перед загрузкой
+        file_size = os.path.getsize(temp_file_path)
+        recording.file_size = file_size
+        recording.save()
+        
+        # Проверяем доступное место
+        if not quota.can_upload(file_size):
+            logger.warning(f"Teacher {teacher.id} insufficient space. Need {file_size} bytes, available {quota.available_bytes}")
+            recording.status = 'failed'
+            recording.save()
+            _cleanup_temp_file(temp_file_path)
+            _notify_teacher_quota_exceeded(teacher, quota)
             return
         
         # 2. Загружаем в Google Drive
@@ -301,15 +339,23 @@ def process_zoom_recording(recording_id):
         
         recording.save()
         
+        # 4. Обновляем квоту преподавателя
+        quota.add_recording(file_size)
+        logger.info(f"Updated quota for teacher {teacher.id}: {quota.used_gb:.2f}/{quota.total_gb:.2f} GB")
+        
+        # Проверяем порог предупреждения
+        if quota.usage_percent >= 80 and quota.warning_sent:
+            _notify_teacher_quota_warning(teacher, quota)
+        
         logger.info(f"Successfully processed recording {recording_id}")
         
-        # 4. Удаляем временный файл
+        # 5. Удаляем временный файл
         _cleanup_temp_file(temp_file_path)
         
-        # 5. Удаляем запись с Zoom (освобождаем место)
+        # 6. Удаляем запись с Zoom (освобождаем место)
         _delete_from_zoom(recording)
         
-        # 6. Отправляем уведомление ученикам (опционально)
+        # 7. Отправляем уведомление ученикам (опционально)
         _notify_students_about_recording(recording)
         
     except LessonRecording.DoesNotExist:
@@ -571,14 +617,16 @@ def cleanup_old_recordings():
     Запускается по расписанию (например, раз в день)
     """
     import logging
-    from .models import LessonRecording
+    from .models import LessonRecording, TeacherStorageQuota
     from .gdrive_utils import get_gdrive_manager
     
     logger = logging.getLogger(__name__)
     
     try:
         # Находим записи с истекшим сроком
-        expired_recordings = LessonRecording.objects.filter(
+        expired_recordings = LessonRecording.objects.select_related(
+            'lesson__group__teacher'
+        ).filter(
             status='ready',
             available_until__lte=timezone.now()
         )
@@ -601,6 +649,15 @@ def cleanup_old_recordings():
                     gdrive.delete_file(recording.gdrive_file_id)
                     logger.info(f"Deleted file {recording.gdrive_file_id} from Google Drive")
                 
+                # Обновляем квоту преподавателя
+                teacher = recording.lesson.group.teacher
+                try:
+                    quota = teacher.storage_quota
+                    quota.remove_recording(recording.file_size or 0)
+                    logger.info(f"Updated quota for teacher {teacher.id}: {quota.used_gb:.2f}/{quota.total_gb:.2f} GB")
+                except TeacherStorageQuota.DoesNotExist:
+                    logger.warning(f"No quota found for teacher {teacher.id}")
+                
                 # Обновляем статус в БД
                 recording.status = 'deleted'
                 recording.save()
@@ -622,3 +679,36 @@ def cleanup_old_recordings():
         logger.exception(f"Error during cleanup: {e}")
         return {'error': str(e), 'timestamp': timezone.now().isoformat()}
 
+
+def _notify_teacher_quota_exceeded(teacher, quota):
+    """Уведомление преподавателя о превышении квоты"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.warning(f"Teacher {teacher.id} ({teacher.email}) quota exceeded: {quota.used_gb:.2f}/{quota.total_gb:.2f} GB")
+    
+    # TODO: Отправить email/уведомление преподавателю
+    # Пример:
+    # send_email(
+    #     to=teacher.email,
+    #     subject='Превышен лимит хранилища',
+    #     template='quota_exceeded',
+    #     context={'teacher': teacher, 'quota': quota}
+    # )
+
+
+def _notify_teacher_quota_warning(teacher, quota):
+    """Предупреждение преподавателя о приближении к лимиту (80%)"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Teacher {teacher.id} ({teacher.email}) quota warning: {quota.used_gb:.2f}/{quota.total_gb:.2f} GB ({quota.usage_percent:.1f}%)")
+    
+    # TODO: Отправить email/уведомление преподавателю
+    # Пример:
+    # send_email(
+    #     to=teacher.email,
+    #     subject='Внимание: заканчивается место для записей',
+    #     template='quota_warning',
+    #     context={'teacher': teacher, 'quota': quota}
+    # )

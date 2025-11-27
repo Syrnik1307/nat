@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ZoomAccount, Group, Lesson, Attendance, RecurringLesson, AuditLog
+from .models import ZoomAccount, Group, Lesson, Attendance, RecurringLesson, AuditLog, TeacherStorageQuota
 
 
 @admin.register(ZoomAccount)
@@ -158,3 +158,119 @@ class AuditLogAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Разрешить удаление только суперпользователям"""
         return request.user.is_superuser
+
+
+@admin.register(TeacherStorageQuota)
+class TeacherStorageQuotaAdmin(admin.ModelAdmin):
+    list_display = (
+        'teacher_name',
+        'used_gb_display',
+        'total_gb_display',
+        'usage_percent_display',
+        'recordings_count',
+        'quota_exceeded',
+        'warning_sent'
+    )
+    list_filter = ('quota_exceeded', 'warning_sent', 'created_at')
+    search_fields = ('teacher__email', 'teacher__first_name', 'teacher__last_name')
+    readonly_fields = (
+        'used_bytes',
+        'recordings_count',
+        'created_at',
+        'updated_at',
+        'last_warning_at',
+        'usage_percent_display',
+        'available_gb_display'
+    )
+    
+    fieldsets = (
+        ('Преподаватель', {
+            'fields': ('teacher',)
+        }),
+        ('Квота хранилища', {
+            'fields': (
+                'total_quota_bytes',
+                'used_bytes',
+                'usage_percent_display',
+                'available_gb_display',
+                'recordings_count'
+            )
+        }),
+        ('История покупок', {
+            'fields': ('purchased_gb',)
+        }),
+        ('Статус и уведомления', {
+            'fields': (
+                'quota_exceeded',
+                'warning_sent',
+                'last_warning_at'
+            )
+        }),
+        ('Системная информация', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def teacher_name(self, obj):
+        """Имя преподавателя"""
+        return obj.teacher.get_full_name() or obj.teacher.email
+    teacher_name.short_description = 'Преподаватель'
+    teacher_name.admin_order_field = 'teacher__email'
+    
+    def used_gb_display(self, obj):
+        """Использовано ГБ"""
+        return f"{obj.used_gb:.2f} GB"
+    used_gb_display.short_description = 'Использовано'
+    used_gb_display.admin_order_field = 'used_bytes'
+    
+    def total_gb_display(self, obj):
+        """Общая квота ГБ"""
+        return f"{obj.total_gb:.2f} GB"
+    total_gb_display.short_description = 'Квота'
+    
+    def usage_percent_display(self, obj):
+        """Процент использования"""
+        percent = obj.usage_percent
+        if percent >= 90:
+            color = 'red'
+        elif percent >= 80:
+            color = 'orange'
+        else:
+            color = 'green'
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{:.1f}%</span>',
+            color,
+            percent
+        )
+    usage_percent_display.short_description = 'Использование'
+    
+    def available_gb_display(self, obj):
+        """Доступно ГБ"""
+        return f"{obj.available_gb:.2f} GB"
+    available_gb_display.short_description = 'Доступно'
+    
+    actions = ['reset_warnings', 'add_5gb_quota', 'add_10gb_quota']
+    
+    def reset_warnings(self, request, queryset):
+        """Сбросить предупреждения"""
+        queryset.update(warning_sent=False, last_warning_at=None)
+        self.message_user(request, f"Предупреждения сброшены для {queryset.count()} записей")
+    reset_warnings.short_description = "Сбросить предупреждения"
+    
+    def add_5gb_quota(self, request, queryset):
+        """Добавить 5 ГБ к квоте"""
+        for quota in queryset:
+            quota.increase_quota(5)
+        self.message_user(request, f"Добавлено 5 ГБ к {queryset.count()} записям")
+    add_5gb_quota.short_description = "Добавить 5 ГБ"
+    
+    def add_10gb_quota(self, request, queryset):
+        """Добавить 10 ГБ к квоте"""
+        for quota in queryset:
+            quota.increase_quota(10)
+        self.message_user(request, f"Добавлено 10 ГБ к {queryset.count()} записям")
+    add_10gb_quota.short_description = "Добавить 10 ГБ"
+
+
+from django.utils.html import format_html

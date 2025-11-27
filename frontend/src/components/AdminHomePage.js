@@ -256,6 +256,13 @@ const AdminHomePage = () => {
           />
           
           <QuickAction
+            icon="💾"
+            label="Управление хранилищем"
+            onClick={() => window.location.href = '/admin/storage'}
+            color="#ef4444"
+          />
+          
+          <QuickAction
             icon="📚"
             label="Управление группами"
             onClick={() => console.log('Manage groups')}

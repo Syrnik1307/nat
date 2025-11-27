@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Group, Lesson, Attendance, ZoomAccount, RecurringLesson, LessonRecording
+from .models import Group, Lesson, Attendance, ZoomAccount, RecurringLesson, LessonRecording, TeacherStorageQuota
 from accounts.models import CustomUser
 
 
@@ -430,3 +430,56 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
             'created_at', 'processed_at'
         ]
 
+
+class TeacherStorageQuotaSerializer(serializers.ModelSerializer):
+    """Сериализатор для квот хранилища преподавателей"""
+    
+    teacher_info = serializers.SerializerMethodField()
+    total_gb = serializers.SerializerMethodField()
+    used_gb = serializers.SerializerMethodField()
+    available_gb = serializers.SerializerMethodField()
+    usage_percent = serializers.SerializerMethodField()
+    
+    def get_teacher_info(self, obj):
+        """Информация о преподавателе"""
+        return {
+            'id': obj.teacher.id,
+            'email': obj.teacher.email,
+            'name': obj.teacher.get_full_name() or obj.teacher.email,
+            'first_name': obj.teacher.first_name,
+            'last_name': obj.teacher.last_name
+        }
+    
+    def get_total_gb(self, obj):
+        """Общая квота в ГБ"""
+        return round(obj.total_gb, 2)
+    
+    def get_used_gb(self, obj):
+        """Использовано ГБ"""
+        return round(obj.used_gb, 2)
+    
+    def get_available_gb(self, obj):
+        """Доступно ГБ"""
+        return round(obj.available_gb, 2)
+    
+    def get_usage_percent(self, obj):
+        """Процент использования"""
+        return round(obj.usage_percent, 1)
+    
+    class Meta:
+        model = TeacherStorageQuota
+        fields = [
+            'id', 'teacher', 'teacher_info',
+            'total_quota_bytes', 'total_gb',
+            'used_bytes', 'used_gb',
+            'available_gb', 'usage_percent',
+            'recordings_count', 'purchased_gb',
+            'warning_sent', 'quota_exceeded',
+            'last_warning_at',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'id', 'used_bytes', 'recordings_count',
+            'warning_sent', 'quota_exceeded', 'last_warning_at',
+            'created_at', 'updated_at'
+        ]
