@@ -37,9 +37,9 @@ function AdminStorageManagementPage() {
         params.warning = filterWarning;
       }
 
-      const [quotasResponse, statsResponse] = await Promise.all([
-        api.get('/schedule/api/storage/quotas/', { params }),
-        api.get('/schedule/api/storage/statistics/')
+      const [quotasRes, statsRes] = await Promise.all([
+        api.get('/storage/quotas/', { params }),
+        api.get('/storage/statistics/')
       ]);
 
       setQuotas(quotasResponse.data.results || quotasResponse.data);
@@ -56,7 +56,7 @@ function AdminStorageManagementPage() {
     if (!selectedTeacher) return;
 
     try {
-      await api.post(`/schedule/api/storage/quotas/${selectedTeacher.id}/increase/`, {
+      await api.post(`/storage/quotas/${selectedTeacher.id}/increase/`, {
         additional_gb: increaseAmount
       });
 
@@ -78,7 +78,7 @@ function AdminStorageManagementPage() {
     }
 
     try {
-      await api.post(`/schedule/api/storage/quotas/${quotaId}/reset-warnings/`);
+      await api.post(`/storage/quotas/${quotaId}/reset-warnings/`);
       loadData();
       alert('Предупреждения сброшены');
     } catch (err) {

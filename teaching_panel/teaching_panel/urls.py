@@ -21,6 +21,7 @@ from django.views.generic import TemplateView
 from rest_framework.routers import DefaultRouter
 from core import views as core_views
 from schedule import views as schedule_views
+from schedule import storage_views
 from homework.views import HomeworkViewSet, StudentSubmissionViewSet
 from analytics.views import GradebookViewSet
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
@@ -62,6 +63,15 @@ urlpatterns = [
     
     # Zoom Pool API
     path('api/zoom-pool/', include('zoom_pool.urls')),
+    
+    # Storage API (Admin only)
+    path('api/storage/quotas/', storage_views.storage_quotas_list, name='storage_quotas_list'),
+    path('api/storage/quotas/<int:quota_id>/', storage_views.storage_quota_detail, name='storage_quota_detail'),
+    path('api/storage/quotas/<int:quota_id>/increase/', storage_views.increase_quota, name='increase_quota'),
+    path('api/storage/quotas/<int:quota_id>/reset-warnings/', storage_views.reset_quota_warnings, name='reset_quota_warnings'),
+    path('api/storage/statistics/', storage_views.storage_statistics, name='storage_statistics'),
+    path('api/storage/teachers/<int:teacher_id>/recordings/', storage_views.teacher_recordings_list, name='admin_teacher_recordings'),
+    path('api/storage/quotas/create/', storage_views.create_teacher_quota, name='create_teacher_quota'),
     
     # Analytics API
     path('api/', include('analytics.urls')),
