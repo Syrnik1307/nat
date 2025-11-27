@@ -161,6 +161,19 @@ class Lesson(models.Model):
     )
     
     notes = models.TextField(_('заметки'), blank=True)
+    
+    # Настройка записи урока
+    record_lesson = models.BooleanField(
+        _('записывать урок'),
+        default=False,
+        help_text=_('Автоматически записывать урок в Zoom и сохранять в Google Drive')
+    )
+    recording_available_for_days = models.IntegerField(
+        _('доступность записи (дней)'),
+        default=90,
+        help_text=_('Сколько дней запись будет доступна ученикам (0 = бессрочно)')
+    )
+    
     created_at = models.DateTimeField(_('дата создания'), auto_now_add=True)
     updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
     
@@ -210,17 +223,45 @@ class LessonRecording(models.Model):
     download_url = models.URLField(_('ссылка для скачивания'), blank=True)
     play_url = models.URLField(_('ссылка для просмотра'), blank=True)
     
-    # Архивирование в S3/Azure Blob
+    # Архивирование в Google Drive / S3 / Azure Blob
+    storage_provider = models.CharField(
+        _('провайдер хранилища'),
+        max_length=20,
+        choices=[
+            ('gdrive', 'Google Drive'),
+            ('s3', 'AWS S3'),
+            ('azure', 'Azure Blob'),
+            ('local', 'Локальное хранилище')
+        ],
+        default='gdrive'
+    )
     archive_url = models.URLField(
         _('архивная ссылка'),
         blank=True,
-        help_text='Постоянная ссылка на запись в облачном хранилище (S3/Azure Blob)'
+        help_text='Постоянная ссылка на запись в облачном хранилище'
     )
     archive_key = models.CharField(
         _('ключ в хранилище'),
         max_length=500,
         blank=True,
-        help_text='Путь к файлу в S3/Azure: recordings/{lesson_id}/{recording_id}.mp4'
+        help_text='ID файла в Google Drive или путь в S3/Azure'
+    )
+    gdrive_file_id = models.CharField(
+        _('Google Drive File ID'),
+        max_length=100,
+        blank=True,
+        help_text='Уникальный ID файла в Google Drive для прямого доступа'
+    )
+    gdrive_folder_id = models.CharField(
+        _('Google Drive Folder ID'),
+        max_length=100,
+        blank=True,
+        help_text='ID папки в Google Drive где хранится запись'
+    )
+    thumbnail_url = models.URLField(
+        _('превью записи'),
+        blank=True,
+        help_text='Ссылка на миниатюру/обложку видео'
     )
     archived_at = models.DateTimeField(
         _('дата архивирования'),
@@ -243,11 +284,25 @@ class LessonRecording(models.Model):
         max_length=20,
         choices=[
             ('processing', _('Обрабатывается')),
-            ('completed', _('Готова')),
+            ('ready', _('Готова')),
             ('archived', _('Архивирована')),
             ('failed', _('Ошибка')),
+            ('deleted', _('Удалена')),
         ],
         default='processing'
+    )
+    
+    # Доступность
+    available_until = models.DateTimeField(
+        _('доступна до'),
+        null=True,
+        blank=True,
+        help_text=_('Дата автоматического удаления записи')
+    )
+    views_count = models.IntegerField(
+        _('количество просмотров'),
+        default=0,
+        help_text=_('Сколько раз запись была просмотрена')
     )
     
     created_at = models.DateTimeField(auto_now_add=True)

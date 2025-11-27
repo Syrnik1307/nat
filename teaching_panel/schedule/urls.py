@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from . import celery_metrics
+from . import webhooks
 
 app_name = 'schedule'
 
@@ -20,8 +21,11 @@ urlpatterns = [
     
     # Запуск урока теперь через DRF action: /api/lessons/<id>/start/
     
-    # Webhook для событий Zoom
+    # Webhook для событий Zoom (старый)
     path('webhook/zoom/', views.zoom_webhook_receiver, name='zoom_webhook'),
+    
+    # Новый webhook для записей уроков Zoom
+    path('api/zoom/webhook/', webhooks.zoom_webhook, name='zoom_recording_webhook'),
     
     # Celery metrics endpoints
     path('api/celery/metrics/', celery_metrics.celery_metrics, name='celery_metrics'),
@@ -31,3 +35,4 @@ urlpatterns = [
     # API endpoints
     path('', include(router.urls)),
 ]
+

@@ -232,3 +232,393 @@ def archive_zoom_recordings():
     
     return result
 
+
+# ============================================================================
+# НОВЫЕ ЗАДАЧИ ДЛЯ ОБРАБОТКИ ЗАПИСЕЙ УРОКОВ С GOOGLE DRIVE
+# ============================================================================
+
+@shared_task
+def process_zoom_recording(recording_id):
+    """
+    Главная задача: скачать запись с Zoom и загрузить в Google Drive
+    
+    Args:
+        recording_id: ID объекта LessonRecording
+    """
+    import os
+    import requests
+    import logging
+    from .models import LessonRecording
+    from .gdrive_utils import get_gdrive_manager
+    from django.conf import settings
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Получаем объект записи
+        recording = LessonRecording.objects.get(id=recording_id)
+        
+        logger.info(f"Processing recording {recording_id} for lesson {recording.lesson.id}")
+        
+        # Проверяем что урок существует
+        if not recording.lesson:
+            logger.error(f"Recording {recording_id} has no associated lesson")
+            recording.status = 'failed'
+            recording.save()
+            return
+        
+        # 1. Скачиваем файл с Zoom
+        temp_file_path = _download_from_zoom(recording)
+        
+        if not temp_file_path:
+            logger.error(f"Failed to download recording {recording_id} from Zoom")
+            recording.status = 'failed'
+            recording.save()
+            return
+        
+        # 2. Загружаем в Google Drive
+        gdrive_file = _upload_to_gdrive(recording, temp_file_path)
+        
+        if not gdrive_file:
+            logger.error(f"Failed to upload recording {recording_id} to Google Drive")
+            recording.status = 'failed'
+            recording.save()
+            # Удаляем временный файл
+            _cleanup_temp_file(temp_file_path)
+            return
+        
+        # 3. Обновляем запись в БД
+        recording.gdrive_file_id = gdrive_file['file_id']
+        recording.gdrive_folder_id = gdrive_file['folder_id']
+        recording.play_url = gdrive_file.get('embed_link', '')
+        recording.download_url = gdrive_file.get('download_link', '')
+        recording.thumbnail_url = gdrive_file.get('thumbnail_link', '')
+        recording.status = 'ready'
+        
+        # Устанавливаем дату удаления
+        days_available = recording.lesson.recording_available_for_days or 90
+        recording.available_until = timezone.now() + timedelta(days=days_available)
+        
+        recording.save()
+        
+        logger.info(f"Successfully processed recording {recording_id}")
+        
+        # 4. Удаляем временный файл
+        _cleanup_temp_file(temp_file_path)
+        
+        # 5. Удаляем запись с Zoom (освобождаем место)
+        _delete_from_zoom(recording)
+        
+        # 6. Отправляем уведомление ученикам (опционально)
+        _notify_students_about_recording(recording)
+        
+    except LessonRecording.DoesNotExist:
+        logger.error(f"Recording {recording_id} not found")
+    except Exception as e:
+        logger.exception(f"Error processing recording {recording_id}: {e}")
+        try:
+            recording = LessonRecording.objects.get(id=recording_id)
+            recording.status = 'failed'
+            recording.save()
+        except:
+            pass
+
+
+def _download_from_zoom(recording):
+    """Скачивает файл записи с Zoom"""
+    import os
+    import requests
+    import logging
+    from django.conf import settings
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        download_url = recording.download_url
+        
+        if not download_url:
+            logger.error(f"No download URL for recording {recording.id}")
+            return None
+        
+        # Получаем Zoom access token
+        zoom_token = _get_zoom_access_token()
+        
+        if not zoom_token:
+            logger.error("Failed to get Zoom access token")
+            return None
+        
+        # Формируем заголовки для авторизации
+        headers = {
+            'Authorization': f'Bearer {zoom_token}',
+            'User-Agent': 'TeachingPanel/1.0'
+        }
+        
+        # Создаем временную директорию если не существует
+        temp_dir = os.path.join(settings.BASE_DIR, 'temp_recordings')
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # Формируем имя файла
+        lesson = recording.lesson
+        file_extension = 'mp4'  # По умолчанию
+        
+        if recording.recording_type == 'audio_only':
+            file_extension = 'm4a'
+        
+        filename = f"lesson_{lesson.id}_{recording.zoom_recording_id}.{file_extension}"
+        temp_file_path = os.path.join(temp_dir, filename)
+        
+        logger.info(f"Downloading recording from Zoom to {temp_file_path}")
+        
+        # Скачиваем файл с прогресс-баром
+        response = requests.get(download_url, headers=headers, stream=True, timeout=300)
+        response.raise_for_status()
+        
+        total_size = int(response.headers.get('content-length', 0))
+        downloaded = 0
+        
+        with open(temp_file_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    
+                    # Логируем прогресс каждые 10MB
+                    if downloaded % (10 * 1024 * 1024) == 0:
+                        progress = (downloaded / total_size * 100) if total_size > 0 else 0
+                        logger.info(f"Download progress: {progress:.1f}% ({downloaded}/{total_size} bytes)")
+        
+        logger.info(f"Successfully downloaded {downloaded} bytes to {temp_file_path}")
+        
+        return temp_file_path
+    
+    except requests.RequestException as e:
+        logger.exception(f"Error downloading from Zoom: {e}")
+        return None
+    except Exception as e:
+        logger.exception(f"Unexpected error during download: {e}")
+        return None
+
+
+def _upload_to_gdrive(recording, file_path):
+    """Загружает файл в Google Drive"""
+    import logging
+    from .gdrive_utils import get_gdrive_manager
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        gdrive = get_gdrive_manager()
+        
+        lesson = recording.lesson
+        
+        # Формируем имя файла для Drive
+        file_name = f"{lesson.subject.name} - {lesson.start_time.strftime('%Y-%m-%d %H:%M')}"
+        
+        if lesson.group:
+            file_name = f"{lesson.group.name} - {file_name}"
+        
+        # Определяем MIME type
+        mime_type = 'video/mp4'
+        if file_path.endswith('.m4a'):
+            mime_type = 'audio/mp4'
+        
+        logger.info(f"Uploading to Google Drive: {file_name}")
+        
+        # Загружаем файл
+        result = gdrive.upload_file(
+            file_path=file_path,
+            file_name=file_name,
+            mime_type=mime_type
+        )
+        
+        if result:
+            logger.info(f"Successfully uploaded to Google Drive: {result['file_id']}")
+            
+            # Получаем ссылки для воспроизведения
+            result['embed_link'] = gdrive.get_embed_link(result['file_id'])
+            result['download_link'] = gdrive.get_direct_download_link(result['file_id'])
+            
+            return result
+        else:
+            return None
+    
+    except Exception as e:
+        logger.exception(f"Error uploading to Google Drive: {e}")
+        return None
+
+
+def _delete_from_zoom(recording):
+    """Удаляет запись с Zoom после успешной загрузки в Drive"""
+    import requests
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        zoom_recording_id = recording.zoom_recording_id
+        
+        if not zoom_recording_id:
+            logger.warning(f"No Zoom recording ID for recording {recording.id}")
+            return
+        
+        # Получаем Zoom access token
+        zoom_token = _get_zoom_access_token()
+        
+        if not zoom_token:
+            logger.error("Failed to get Zoom access token for deletion")
+            return
+        
+        # DELETE запрос к Zoom API
+        url = f"https://api.zoom.us/v2/recordings/{zoom_recording_id}"
+        
+        headers = {
+            'Authorization': f'Bearer {zoom_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        response = requests.delete(url, headers=headers, timeout=30)
+        
+        if response.status_code == 204:
+            logger.info(f"Successfully deleted recording {zoom_recording_id} from Zoom")
+        elif response.status_code == 404:
+            logger.info(f"Recording {zoom_recording_id} already deleted from Zoom")
+        else:
+            logger.warning(f"Failed to delete from Zoom (status {response.status_code}): {response.text}")
+    
+    except Exception as e:
+        logger.exception(f"Error deleting from Zoom: {e}")
+
+
+def _get_zoom_access_token():
+    """Получает Zoom access token для API запросов"""
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Используем существующую систему zoom_pool
+        from zoom_pool.models import ZoomAccount
+        
+        # Получаем активный аккаунт с токеном
+        zoom_account = ZoomAccount.objects.filter(
+            is_active=True,
+            access_token__isnull=False
+        ).first()
+        
+        if zoom_account:
+            # Проверяем что токен не истек
+            if zoom_account.token_expires_at and zoom_account.token_expires_at > timezone.now():
+                return zoom_account.access_token
+            else:
+                # Токен истек — обновляем
+                zoom_account.refresh_access_token()
+                return zoom_account.access_token
+        
+        logger.error("No active Zoom account found")
+        return None
+    
+    except Exception as e:
+        logger.exception(f"Error getting Zoom access token: {e}")
+        return None
+
+
+def _cleanup_temp_file(file_path):
+    """Удаляет временный файл"""
+    import os
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+            logger.info(f"Deleted temporary file: {file_path}")
+    except Exception as e:
+        logger.warning(f"Failed to delete temp file {file_path}: {e}")
+
+
+def _notify_students_about_recording(recording):
+    """Отправляет уведомления ученикам о доступности записи урока"""
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        lesson = recording.lesson
+        
+        # Получаем учеников группы
+        if not lesson.group:
+            logger.info(f"Lesson {lesson.id} has no group, skipping notifications")
+            return
+        
+        students = lesson.group.students.filter(is_active=True)
+        
+        logger.info(f"Notifying {students.count()} students about recording for lesson {lesson.id}")
+        
+        # TODO: Интегрировать с системой уведомлений
+        # Можно использовать email, Telegram, push-уведомления и т.д.
+        
+        logger.info(f"Would send {students.count()} notifications for recording {recording.id}")
+    
+    except Exception as e:
+        logger.exception(f"Error notifying students: {e}")
+
+
+@shared_task
+def cleanup_old_recordings():
+    """
+    Периодическая задача: удаляет старые записи из Google Drive
+    Запускается по расписанию (например, раз в день)
+    """
+    import logging
+    from .models import LessonRecording
+    from .gdrive_utils import get_gdrive_manager
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Находим записи с истекшим сроком
+        expired_recordings = LessonRecording.objects.filter(
+            status='ready',
+            available_until__lte=timezone.now()
+        )
+        
+        count = expired_recordings.count()
+        
+        if count == 0:
+            logger.info("No expired recordings to clean up")
+            return {'deleted': 0, 'timestamp': timezone.now().isoformat()}
+        
+        logger.info(f"Cleaning up {count} expired recordings")
+        
+        gdrive = get_gdrive_manager()
+        deleted_count = 0
+        
+        for recording in expired_recordings:
+            try:
+                # Удаляем из Google Drive
+                if recording.gdrive_file_id:
+                    gdrive.delete_file(recording.gdrive_file_id)
+                    logger.info(f"Deleted file {recording.gdrive_file_id} from Google Drive")
+                
+                # Обновляем статус в БД
+                recording.status = 'deleted'
+                recording.save()
+                
+                deleted_count += 1
+            
+            except Exception as e:
+                logger.warning(f"Failed to delete recording {recording.id}: {e}")
+        
+        logger.info(f"Successfully cleaned up {deleted_count}/{count} recordings")
+        
+        return {
+            'deleted': deleted_count,
+            'failed': count - deleted_count,
+            'timestamp': timezone.now().isoformat()
+        }
+    
+    except Exception as e:
+        logger.exception(f"Error during cleanup: {e}")
+        return {'error': str(e), 'timestamp': timezone.now().isoformat()}
+

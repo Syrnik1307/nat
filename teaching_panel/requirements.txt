@@ -12,3 +12,10 @@ redis>=5.0.0
 azure-cosmos>=4.7.0
 django-celery-beat>=2.8.0
 django-recaptcha>=4.1.0
+
+# Google Drive API для хранения записей уроков
+google-auth==2.25.2
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+google-api-python-client==2.110.0
+
