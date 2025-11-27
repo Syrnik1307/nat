@@ -97,11 +97,19 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => { check(); }, [check]);
 
-  const login = useCallback(async ({ email, password, roleSelection }) => {
+  const login = useCallback(async ({ email, password, roleSelection, rememberMe }) => {
     await apiLogin(email, password);
     // Удалим устаревшие ключи если остались
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    
+    // Если пользователь выбрал "Запомнить меня", сохраняем флаг
+    if (rememberMe) {
+      localStorage.setItem('tp_remember_session', 'true');
+    } else {
+      localStorage.removeItem('tp_remember_session');
+    }
+    
     const userRole = getRoleFromToken();
     const resolvedRole = userRole || roleSelection || null;
     setRole(resolvedRole);
@@ -158,7 +166,16 @@ export const AuthProvider = ({ children }) => {
   }, [loadUser]);
 
   const logout = useCallback(async () => {
-    await apiLogout();
+    const rememberSession = localStorage.getItem('tp_remember_session') === 'true';
+    
+    if (!rememberSession) {
+      // Если НЕ включено "Запомнить меня", удаляем токены полностью
+      await apiLogout();
+    } else {
+      // Если включено "Запомнить меня", просто сбрасываем состояние без удаления токенов
+      // Токены останутся в localStorage для автоматического входа
+    }
+    
     setAccessTokenValid(false);
     setRole(null);
     setUser(null);

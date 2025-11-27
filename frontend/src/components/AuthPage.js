@@ -241,7 +241,8 @@ const AuthPage = () => {
       const resolvedRole = await login({ 
         email: formData.email?.trim().toLowerCase(), 
         password: formData.password, 
-        roleSelection: role 
+        roleSelection: role,
+        rememberMe: rememberMe // передаем в функцию login
       });
       // Используем только роль из JWT токена (resolvedRole)
       const nextRole = resolvedRole || 'teacher';
@@ -253,9 +254,11 @@ const AuthPage = () => {
       // Сохраняем настройку "Запомнить меня"
       if (rememberMe) {
         localStorage.setItem('remember_me', 'true');
-        // Можно установить более длительный срок для refresh токена
+        // Устанавливаем флаг для долгосрочного хранения токенов
+        localStorage.setItem('tp_remember_session', 'true');
       } else {
         localStorage.removeItem('remember_me');
+        localStorage.removeItem('tp_remember_session');
       }
       
       // Показываем успешное уведомление

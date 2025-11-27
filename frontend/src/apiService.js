@@ -15,8 +15,15 @@ export const setTokens = ({ access, refresh }) => {
 };
 
 export const clearTokens = () => {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    // Проверяем флаг "Запомнить меня"
+    const rememberSession = localStorage.getItem('tp_remember_session') === 'true';
+    
+    if (!rememberSession) {
+        // Если НЕ включено "Запомнить меня", удаляем токены полностью
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+    }
+    // Если включено "Запомнить меня", токены остаются для автоматического входа
 };
 
 // Use relative path for API calls
