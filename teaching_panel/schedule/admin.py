@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import ZoomAccount, Group, Lesson, Attendance, RecurringLesson, AuditLog, TeacherStorageQuota
+from .models import (
+    ZoomAccount, Group, Lesson, Attendance, RecurringLesson, AuditLog, 
+    TeacherStorageQuota, LessonMaterial, MaterialView
+)
 
 
 @admin.register(ZoomAccount)
@@ -271,6 +274,55 @@ class TeacherStorageQuotaAdmin(admin.ModelAdmin):
             quota.increase_quota(10)
         self.message_user(request, f"Добавлено 10 ГБ к {queryset.count()} записям")
     add_10gb_quota.short_description = "Добавить 10 ГБ"
+
+
+@admin.register(LessonMaterial)
+class LessonMaterialAdmin(admin.ModelAdmin):
+    list_display = ('title', 'lesson', 'material_type', 'uploaded_by', 'views_count', 'file_size_display', 'uploaded_at')
+    list_filter = ('material_type', 'uploaded_at')
+    search_fields = ('title', 'lesson__title', 'uploaded_by__email')
+    readonly_fields = ('uploaded_at', 'views_count', 'file_size_mb')
+    
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('lesson', 'material_type', 'title', 'description')
+        }),
+        ('Файл', {
+            'fields': ('file_url', 'file_name', 'file_size_bytes', 'file_size_mb')
+        }),
+        ('Метаданные', {
+            'fields': ('uploaded_by', 'uploaded_at', 'views_count')
+        }),
+    )
+    
+    def file_size_display(self, obj):
+        """Отображение размера файла в MB"""
+        return f"{obj.file_size_mb:.2f} MB"
+    file_size_display.short_description = 'Размер'
+
+
+@admin.register(MaterialView)
+class MaterialViewAdmin(admin.ModelAdmin):
+    list_display = ('student', 'material', 'viewed_at', 'duration_display', 'completed')
+    list_filter = ('completed', 'viewed_at', 'material__material_type')
+    search_fields = ('student__email', 'student__first_name', 'student__last_name', 'material__title')
+    readonly_fields = ('viewed_at',)
+    
+    fieldsets = (
+        ('Информация о просмотре', {
+            'fields': ('material', 'student', 'viewed_at')
+        }),
+        ('Метрики', {
+            'fields': ('duration_seconds', 'completed')
+        }),
+    )
+    
+    def duration_display(self, obj):
+        """Отображение длительности в минутах"""
+        minutes = obj.duration_seconds // 60
+        seconds = obj.duration_seconds % 60
+        return f"{minutes}м {seconds}с" if minutes > 0 else f"{seconds}с"
+    duration_display.short_description = 'Длительность'
 
 
 from django.utils.html import format_html

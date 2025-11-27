@@ -489,6 +489,226 @@ class TeacherStorageQuota(models.Model):
         default=False,
         help_text=_('Флаг отправки предупреждения о превышении 80%')
     )
+    
+    quota_exceeded = models.BooleanField(
+        _('квота превышена'),
+        default=False,
+        help_text=_('Флаг превышения квоты')
+    )
+    
+    created_at = models.DateTimeField(_('дата создания'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
+    
+    class Meta:
+        verbose_name = _('квота хранилища')
+        verbose_name_plural = _('квоты хранилища')
+        ordering = ['-used_bytes']
+    
+    def __str__(self):
+        return f"{self.teacher.get_full_name()} - {self.used_gb:.2f}/{self.total_gb:.2f} GB"
+    
+    @property
+    def total_gb(self):
+        """Общая квота в GB"""
+        return self.total_quota_bytes / (1024 ** 3)
+    
+    @property
+    def used_gb(self):
+        """Использовано в GB"""
+        return self.used_bytes / (1024 ** 3)
+    
+    @property
+    def available_gb(self):
+        """Доступно в GB"""
+        return max(0, (self.total_quota_bytes - self.used_bytes) / (1024 ** 3))
+    
+    @property
+    def usage_percent(self):
+        """Процент использования"""
+        if self.total_quota_bytes == 0:
+            return 0
+        return (self.used_bytes / self.total_quota_bytes) * 100
+    
+    def can_upload(self, file_size_bytes):
+        """Проверить возможность загрузки файла"""
+        return (self.used_bytes + file_size_bytes) <= self.total_quota_bytes
+    
+    def add_recording(self, file_size_bytes):
+        """Добавить запись и обновить использование"""
+        self.used_bytes += file_size_bytes
+        self.recordings_count += 1
+        
+        # Проверить превышение
+        if self.used_bytes >= self.total_quota_bytes:
+            self.quota_exceeded = True
+        
+        # Проверить предупреждение (80%)
+        if self.usage_percent >= 80 and not self.warning_sent:
+            self.warning_sent = True
+        
+        self.save()
+    
+    def remove_recording(self, file_size_bytes):
+        """Удалить запись и освободить место"""
+        self.used_bytes = max(0, self.used_bytes - file_size_bytes)
+        self.recordings_count = max(0, self.recordings_count - 1)
+        
+        # Сбросить флаги если место освободилось
+        if self.used_bytes < self.total_quota_bytes:
+            self.quota_exceeded = False
+        
+        if self.usage_percent < 80:
+            self.warning_sent = False
+        
+        self.save()
+    
+    def increase_quota(self, additional_gb):
+        """Увеличить квоту"""
+        additional_bytes = int(additional_gb * (1024 ** 3))
+        self.total_quota_bytes += additional_bytes
+        self.purchased_gb += additional_gb
+        
+        # Сбросить флаги
+        if self.used_bytes < self.total_quota_bytes:
+            self.quota_exceeded = False
+        
+        self.save()
+
+
+class LessonMaterial(models.Model):
+    """Учебные материалы к уроку (теория, конспект)"""
+    
+    MATERIAL_TYPE_CHOICES = [
+        ('theory', _('Теория (перед уроком)')),
+        ('notes', _('Конспект (после урока)')),
+    ]
+    
+    lesson = models.ForeignKey(
+        'Lesson',
+        on_delete=models.CASCADE,
+        related_name='materials',
+        verbose_name=_('урок')
+    )
+    
+    material_type = models.CharField(
+        _('тип материала'),
+        max_length=10,
+        choices=MATERIAL_TYPE_CHOICES,
+        help_text=_('Теория (для чтения перед уроком) или конспект (после урока)')
+    )
+    
+    title = models.CharField(
+        _('название'),
+        max_length=200,
+        help_text=_('Название материала')
+    )
+    
+    description = models.TextField(
+        _('описание'),
+        blank=True,
+        help_text=_('Краткое описание содержания')
+    )
+    
+    file_url = models.URLField(
+        _('ссылка на файл'),
+        max_length=500,
+        help_text=_('URL файла в Google Drive или другом хранилище')
+    )
+    
+    file_name = models.CharField(
+        _('имя файла'),
+        max_length=200,
+        blank=True
+    )
+    
+    file_size_bytes = models.BigIntegerField(
+        _('размер файла (байты)'),
+        default=0
+    )
+    
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='uploaded_materials',
+        verbose_name=_('загрузил')
+    )
+    
+    uploaded_at = models.DateTimeField(_('дата загрузки'), auto_now_add=True)
+    
+    # Счетчик просмотров
+    views_count = models.IntegerField(
+        _('количество просмотров'),
+        default=0
+    )
+    
+    class Meta:
+        verbose_name = _('учебный материал')
+        verbose_name_plural = _('учебные материалы')
+        ordering = ['material_type', '-uploaded_at']
+        indexes = [
+            models.Index(fields=['lesson', 'material_type']),
+            models.Index(fields=['uploaded_by', 'uploaded_at'])
+        ]
+    
+    def __str__(self):
+        type_label = dict(self.MATERIAL_TYPE_CHOICES)[self.material_type]
+        return f"{self.lesson.title} - {type_label}: {self.title}"
+    
+    @property
+    def file_size_mb(self):
+        """Размер файла в MB"""
+        return self.file_size_bytes / (1024 ** 2)
+
+
+class MaterialView(models.Model):
+    """Отслеживание просмотров материалов учениками"""
+    
+    material = models.ForeignKey(
+        'LessonMaterial',
+        on_delete=models.CASCADE,
+        related_name='views',
+        verbose_name=_('материал')
+    )
+    
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='material_views',
+        limit_choices_to={'role': 'student'},
+        verbose_name=_('ученик')
+    )
+    
+    viewed_at = models.DateTimeField(
+        _('дата просмотра'),
+        auto_now_add=True
+    )
+    
+    # Опциональные метрики
+    duration_seconds = models.IntegerField(
+        _('длительность просмотра (секунды)'),
+        default=0,
+        help_text=_('Сколько времени ученик провел с материалом')
+    )
+    
+    completed = models.BooleanField(
+        _('завершен'),
+        default=False,
+        help_text=_('Ученик полностью изучил материал')
+    )
+    
+    class Meta:
+        verbose_name = _('просмотр материала')
+        verbose_name_plural = _('просмотры материалов')
+        ordering = ['-viewed_at']
+        unique_together = [['material', 'student']]  # Один просмотр на ученика
+        indexes = [
+            models.Index(fields=['material', 'student']),
+            models.Index(fields=['student', 'viewed_at'])
+        ]
+    
+    def __str__(self):
+        return f"{self.student.get_full_name()} - {self.material.title} ({self.viewed_at.strftime('%d.%m.%Y %H:%M')})"
     quota_exceeded = models.BooleanField(
         _('квота превышена'),
         default=False,

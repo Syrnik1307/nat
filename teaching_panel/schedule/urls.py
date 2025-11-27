@@ -4,6 +4,7 @@ from . import views
 from . import celery_metrics
 from . import webhooks
 from . import storage_views
+from . import material_views
 
 app_name = 'schedule'
 
@@ -48,6 +49,15 @@ urlpatterns = [
     path('api/storage/statistics/', storage_views.storage_statistics, name='storage_statistics'),
     path('api/storage/teachers/<int:teacher_id>/recordings/', storage_views.teacher_recordings_list, name='admin_teacher_recordings'),
     path('api/storage/quotas/create/', storage_views.create_teacher_quota, name='create_teacher_quota'),
+    
+    # API endpoints для учебных материалов
+    path('api/lessons/<int:lesson_id>/materials/upload/', material_views.upload_material, name='upload_material'),
+    path('api/lessons/<int:lesson_id>/materials/', material_views.list_materials, name='list_materials'),
+    path('api/lessons/<int:lesson_id>/materials/statistics/', material_views.get_lesson_materials_statistics, name='lesson_materials_statistics'),
+    path('api/materials/<int:material_id>/', material_views.get_material_detail, name='material_detail'),
+    path('api/materials/<int:material_id>/view/', material_views.track_material_view, name='track_material_view'),
+    path('api/materials/<int:material_id>/views/', material_views.get_material_views, name='material_views'),
+    path('api/materials/<int:material_id>/delete/', material_views.delete_material, name='delete_material'),
     
     # API endpoints
     path('', include(router.urls)),
