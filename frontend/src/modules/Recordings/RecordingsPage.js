@@ -1,0 +1,164 @@
+import React, { useState, useEffect } from 'react';
+import api from '../../apiService';
+import RecordingCard from './RecordingCard';
+import RecordingPlayer from './RecordingPlayer';
+import './RecordingsPage.css';
+
+function RecordingsPage() {
+  const [recordings, setRecordings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedRecording, setSelectedRecording] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [groupFilter, setGroupFilter] = useState('all');
+  const [groups, setGroups] = useState([]);
+
+  useEffect(() => {
+    loadRecordings();
+    loadGroups();
+  }, []);
+
+  const loadRecordings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get('/schedule/api/recordings/');
+      setRecordings(response.data.results || response.data);
+    } catch (err) {
+      console.error('Failed to load recordings:', err);
+      setError('Не удалось загрузить записи. Попробуйте обновить страницу.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadGroups = async () => {
+    try {
+      const response = await api.get('/schedule/api/groups/');
+      setGroups(response.data.results || response.data);
+    } catch (err) {
+      console.error('Failed to load groups:', err);
+    }
+  };
+
+  const openPlayer = (recording) => {
+    setSelectedRecording(recording);
+    // Отслеживаем просмотр
+    api.post(`/schedule/api/recordings/${recording.id}/view/`)
+      .catch(err => console.error('Failed to track view:', err));
+  };
+
+  const closePlayer = () => {
+    setSelectedRecording(null);
+  };
+
+  // Фильтрация записей
+  const filteredRecordings = recordings.filter(rec => {
+    const matchesSearch = !searchTerm || 
+      rec.lesson_info?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      rec.lesson_info?.subject?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesGroup = groupFilter === 'all' || 
+      rec.lesson_info?.group === groupFilter;
+    
+    return matchesSearch && matchesGroup;
+  });
+
+  if (loading) {
+    return (
+      <div className="recordings-page">
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Загрузка записей...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="recordings-page">
+      <div className="recordings-header">
+        <h1>📹 Записи уроков</h1>
+        <p className="subtitle">Все записи ваших занятий в одном месте</p>
+      </div>
+
+      {error && (
+        <div className="error-message">
+          <span className="error-icon">⚠️</span>
+          {error}
+        </div>
+      )}
+
+      {/* Фильтры и поиск */}
+      <div className="recordings-filters">
+        <div className="search-box">
+          <input
+            type="text"
+            placeholder="🔍 Поиск по названию или предмету..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
+
+        <div className="filter-group">
+          <label>Группа:</label>
+          <select
+            value={groupFilter}
+            onChange={(e) => setGroupFilter(e.target.value)}
+            className="filter-select"
+          >
+            <option value="all">Все группы</option>
+            {groups.map(group => (
+              <option key={group.id} value={group.name}>
+                {group.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Список записей */}
+      {filteredRecordings.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">🎥</div>
+          <h3>Пока нет доступных записей</h3>
+          <p>Записи появятся здесь после проведения уроков с включенной записью</p>
+        </div>
+      ) : (
+        <>
+          <div className="recordings-stats">
+            <span className="stat-item">
+              <strong>{filteredRecordings.length}</strong> записей
+            </span>
+            {searchTerm && (
+              <span className="stat-item">
+                (найдено по запросу: "{searchTerm}")
+              </span>
+            )}
+          </div>
+
+          <div className="recordings-grid">
+            {filteredRecordings.map(recording => (
+              <RecordingCard
+                key={recording.id}
+                recording={recording}
+                onPlay={openPlayer}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Модальное окно с плеером */}
+      {selectedRecording && (
+        <RecordingPlayer
+          recording={selectedRecording}
+          onClose={closePlayer}
+        />
+      )}
+    </div>
+  );
+}
+
+export default RecordingsPage;

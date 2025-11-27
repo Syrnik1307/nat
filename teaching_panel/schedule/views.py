@@ -926,3 +926,314 @@ def zoom_webhook_receiver(request):
             'message': str(e)
         }, status=500)
 
+
+# ============================================================================
+# API ENDPOINTS ДЛЯ ЗАПИСЕЙ УРОКОВ
+# ============================================================================
+
+from rest_framework.decorators import api_view, permission_classes
+from .serializers import LessonRecordingSerializer
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def student_recordings_list(request):
+    """
+    Список всех записей уроков доступных студенту
+    GET /schedule/api/recordings/
+    """
+    user = request.user
+    
+    # Только для студентов
+    if getattr(user, 'role', None) != 'student':
+        return Response({
+            'error': 'Доступ только для студентов'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        # Получаем все группы студента
+        from accounts.models import Student
+        student = Student.objects.get(user=user)
+        
+        # Находим все записи уроков из групп студента
+        recordings = LessonRecording.objects.filter(
+            lesson__group__students=student,
+            status='ready'
+        ).select_related(
+            'lesson',
+            'lesson__subject',
+            'lesson__group',
+            'lesson__teacher'
+        ).order_by('-lesson__start_time')
+        
+        # Фильтры
+        group_id = request.query_params.get('group_id')
+        if group_id:
+            recordings = recordings.filter(lesson__group_id=group_id)
+        
+        subject_id = request.query_params.get('subject_id')
+        if subject_id:
+            recordings = recordings.filter(lesson__subject_id=subject_id)
+        
+        # Поиск по названию
+        search = request.query_params.get('search')
+        if search:
+            recordings = recordings.filter(lesson__title__icontains=search)
+        
+        # Пагинация
+        from rest_framework.pagination import PageNumberPagination
+        paginator = PageNumberPagination()
+        paginator.page_size = 20
+        paginated_recordings = paginator.paginate_queryset(recordings, request)
+        
+        serializer = LessonRecordingSerializer(paginated_recordings, many=True)
+        return paginator.get_paginated_response(serializer.data)
+    
+    except Student.DoesNotExist:
+        return Response({
+            'error': 'Профиль студента не найден'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.exception(f"Error loading recordings: {e}")
+        return Response({
+            'error': 'Ошибка загрузки записей'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def teacher_recordings_list(request):
+    """
+    Список всех записей уроков преподавателя
+    GET /schedule/api/recordings/teacher/
+    """
+    user = request.user
+    
+    # Только для преподавателей
+    if getattr(user, 'role', None) != 'teacher':
+        return Response({
+            'error': 'Доступ только для преподавателей'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        # Все записи уроков преподавателя
+        recordings = LessonRecording.objects.filter(
+            lesson__teacher=user
+        ).select_related(
+            'lesson',
+            'lesson__subject',
+            'lesson__group'
+        ).order_by('-lesson__start_time')
+        
+        # Фильтры
+        group_id = request.query_params.get('group_id')
+        if group_id:
+            recordings = recordings.filter(lesson__group_id=group_id)
+        
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            recordings = recordings.filter(status=status_filter)
+        
+        # Поиск
+        search = request.query_params.get('search')
+        if search:
+            recordings = recordings.filter(lesson__title__icontains=search)
+        
+        # Пагинация
+        from rest_framework.pagination import PageNumberPagination
+        paginator = PageNumberPagination()
+        paginator.page_size = 20
+        paginated_recordings = paginator.paginate_queryset(recordings, request)
+        
+        serializer = LessonRecordingSerializer(paginated_recordings, many=True)
+        return paginator.get_paginated_response(serializer.data)
+    
+    except Exception as e:
+        logger.exception(f"Error loading teacher recordings: {e}")
+        return Response({
+            'error': 'Ошибка загрузки записей'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def recording_detail(request, recording_id):
+    """
+    Детальная информация о записи урока
+    GET /schedule/api/recordings/<id>/
+    """
+    user = request.user
+    
+    try:
+        recording = LessonRecording.objects.select_related(
+            'lesson',
+            'lesson__subject',
+            'lesson__group',
+            'lesson__teacher'
+        ).get(id=recording_id)
+        
+        # Проверка прав доступа
+        has_access = False
+        
+        if getattr(user, 'role', None) == 'teacher':
+            # Преподаватель видит свои записи
+            has_access = recording.lesson.teacher_id == user.id
+        elif getattr(user, 'role', None) == 'student':
+            # Студент видит записи своих групп
+            from accounts.models import Student
+            try:
+                student = Student.objects.get(user=user)
+                has_access = recording.lesson.group and recording.lesson.group.students.filter(id=student.id).exists()
+            except Student.DoesNotExist:
+                pass
+        elif getattr(user, 'role', None) == 'admin':
+            # Админ видит все
+            has_access = True
+        
+        if not has_access:
+            return Response({
+                'error': 'У вас нет доступа к этой записи'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = LessonRecordingSerializer(recording)
+        return Response(serializer.data)
+    
+    except LessonRecording.DoesNotExist:
+        return Response({
+            'error': 'Запись не найдена'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.exception(f"Error loading recording detail: {e}")
+        return Response({
+            'error': 'Ошибка загрузки записи'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def recording_track_view(request, recording_id):
+    """
+    Отслеживание просмотра записи (увеличить счетчик)
+    POST /schedule/api/recordings/<id>/view/
+    """
+    user = request.user
+    
+    try:
+        recording = LessonRecording.objects.select_related('lesson', 'lesson__group').get(id=recording_id)
+        
+        # Проверка прав доступа (аналогично recording_detail)
+        has_access = False
+        
+        if getattr(user, 'role', None) == 'teacher':
+            has_access = recording.lesson.teacher_id == user.id
+        elif getattr(user, 'role', None) == 'student':
+            from accounts.models import Student
+            try:
+                student = Student.objects.get(user=user)
+                has_access = recording.lesson.group and recording.lesson.group.students.filter(id=student.id).exists()
+            except Student.DoesNotExist:
+                pass
+        elif getattr(user, 'role', None) == 'admin':
+            has_access = True
+        
+        if not has_access:
+            return Response({
+                'error': 'У вас нет доступа к этой записи'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Увеличиваем счетчик просмотров
+        recording.views_count = F('views_count') + 1
+        recording.save(update_fields=['views_count'])
+        recording.refresh_from_db()
+        
+        logger.info(f"Recording {recording_id} viewed by user {user.id}, total views: {recording.views_count}")
+        
+        return Response({
+            'success': True,
+            'views_count': recording.views_count
+        })
+    
+    except LessonRecording.DoesNotExist:
+        return Response({
+            'error': 'Запись не найдена'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.exception(f"Error tracking recording view: {e}")
+        return Response({
+            'error': 'Ошибка отслеживания просмотра'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def lesson_recording(request, lesson_id):
+    """
+    Получить запись конкретного урока
+    GET /schedule/api/lessons/<id>/recording/
+    """
+    user = request.user
+    
+    try:
+        lesson = Lesson.objects.select_related('group', 'teacher').get(id=lesson_id)
+        
+        # Проверка прав доступа к уроку
+        has_access = False
+        
+        if getattr(user, 'role', None) == 'teacher':
+            has_access = lesson.teacher_id == user.id
+        elif getattr(user, 'role', None) == 'student':
+            from accounts.models import Student
+            try:
+                student = Student.objects.get(user=user)
+                has_access = lesson.group and lesson.group.students.filter(id=student.id).exists()
+            except Student.DoesNotExist:
+                pass
+        elif getattr(user, 'role', None) == 'admin':
+            has_access = True
+        
+        if not has_access:
+            return Response({
+                'error': 'У вас нет доступа к этому уроку'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Ищем запись урока
+        try:
+            recording = LessonRecording.objects.select_related(
+                'lesson',
+                'lesson__subject',
+                'lesson__group',
+                'lesson__teacher'
+            ).get(lesson_id=lesson_id, status='ready')
+            
+            serializer = LessonRecordingSerializer(recording)
+            return Response(serializer.data)
+        
+        except LessonRecording.DoesNotExist:
+            # Проверяем есть ли запись в обработке
+            processing = LessonRecording.objects.filter(
+                lesson_id=lesson_id,
+                status='processing'
+            ).exists()
+            
+            if processing:
+                return Response({
+                    'status': 'processing',
+                    'message': 'Запись обрабатывается, попробуйте позже'
+                }, status=status.HTTP_202_ACCEPTED)
+            else:
+                return Response({
+                    'status': 'not_found',
+                    'message': 'Запись урока не найдена'
+                }, status=status.HTTP_404_NOT_FOUND)
+    
+    except Lesson.DoesNotExist:
+        return Response({
+            'error': 'Урок не найден'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.exception(f"Error loading lesson recording: {e}")
+        return Response({
+            'error': 'Ошибка загрузки записи'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+

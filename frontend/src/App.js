@@ -27,6 +27,8 @@ import NavBarNew from './components/NavBarNew';
 import ProfilePage from './components/ProfilePage';
 // Chat система
 import ChatPage from './components/ChatPage';
+// Записи уроков
+import RecordingsPage from './modules/Recordings/RecordingsPage';
 
 const RoleRouter = () => {
   const { accessTokenValid, role, loading } = useAuth();
@@ -86,6 +88,7 @@ const AppRoutes = () => {
         <Route path="/student" element={<Protected allowRoles={['student']}><StudentHomePage /></Protected>} />
         <Route path="/student/courses" element={<Protected allowRoles={['student']}><StudentHomePage /></Protected>} />
         <Route path="/student/stats" element={<Protected allowRoles={['student']}><StudentDashboard /></Protected>} />
+        <Route path="/student/recordings" element={<Protected allowRoles={['student']}><RecordingsPage /></Protected>} />
         <Route path="/homework" element={<Protected allowRoles={['student']}><HomeworkList /></Protected>} />
         <Route path="/student/homework/:id" element={<Protected allowRoles={['student']}><HomeworkTake /></Protected>} />
         

@@ -358,3 +358,75 @@ class RecurringLessonSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError('Нельзя установить группу: вы не её преподаватель')
         return super().update(instance, validated_data)
 
+
+class LessonRecordingSerializer(serializers.ModelSerializer):
+    """Сериализатор для записей уроков"""
+    lesson_info = serializers.SerializerMethodField()
+    file_size_mb = serializers.SerializerMethodField()
+    duration_display = serializers.SerializerMethodField()
+    available_days_left = serializers.SerializerMethodField()
+    
+    def get_lesson_info(self, obj):
+        """Информация о уроке"""
+        if not obj.lesson:
+            return None
+        
+        lesson = obj.lesson
+        return {
+            'id': lesson.id,
+            'title': lesson.title,
+            'subject': lesson.subject.name if lesson.subject else None,
+            'group': lesson.group.name if lesson.group else None,
+            'teacher': {
+                'id': lesson.teacher.id,
+                'name': f"{lesson.teacher.first_name} {lesson.teacher.last_name}".strip() or lesson.teacher.email
+            } if lesson.teacher else None,
+            'start_time': lesson.start_time,
+            'end_time': lesson.end_time,
+            'date': lesson.start_time.strftime('%Y-%m-%d') if lesson.start_time else None,
+        }
+    
+    def get_file_size_mb(self, obj):
+        """Размер файла в MB"""
+        if obj.file_size:
+            return round(obj.file_size / (1024 * 1024), 2)
+        return None
+    
+    def get_duration_display(self, obj):
+        """Длительность урока в минутах"""
+        if obj.lesson and obj.lesson.start_time and obj.lesson.end_time:
+            duration = obj.lesson.end_time - obj.lesson.start_time
+            return int(duration.total_seconds() / 60)
+        return None
+    
+    def get_available_days_left(self, obj):
+        """Сколько дней осталось до удаления"""
+        if obj.available_until:
+            now = timezone.now()
+            if obj.available_until > now:
+                days_left = (obj.available_until - now).days
+                return days_left
+            return 0
+        return None
+    
+    class Meta:
+        model = LessonRecording
+        fields = [
+            'id', 'lesson', 'lesson_info',
+            'zoom_recording_id', 'recording_type',
+            'file_size', 'file_size_mb',
+            'duration_display',
+            'play_url', 'download_url', 'thumbnail_url',
+            'storage_provider', 'gdrive_file_id',
+            'status', 'views_count',
+            'available_until', 'available_days_left',
+            'created_at', 'processed_at'
+        ]
+        read_only_fields = [
+            'id', 'zoom_recording_id', 'file_size',
+            'play_url', 'download_url', 'thumbnail_url',
+            'storage_provider', 'gdrive_file_id',
+            'status', 'views_count',
+            'created_at', 'processed_at'
+        ]
+

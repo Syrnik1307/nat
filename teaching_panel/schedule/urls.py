@@ -32,6 +32,13 @@ urlpatterns = [
     path('api/celery/trigger/<str:task_name>/', celery_metrics.trigger_task, name='trigger_task'),
     path('api/celery/status/<str:task_id>/', celery_metrics.task_status, name='task_status'),
     
+    # API endpoints для записей уроков
+    path('api/recordings/', views.student_recordings_list, name='student_recordings_list'),
+    path('api/recordings/teacher/', views.teacher_recordings_list, name='teacher_recordings_list'),
+    path('api/recordings/<int:recording_id>/', views.recording_detail, name='recording_detail'),
+    path('api/recordings/<int:recording_id>/view/', views.recording_track_view, name='recording_track_view'),
+    path('api/lessons/<int:lesson_id>/recording/', views.lesson_recording, name='lesson_recording'),
+    
     # API endpoints
     path('', include(router.urls)),
 ]

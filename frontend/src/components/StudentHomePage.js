@@ -111,6 +111,9 @@ const StudentHomePage = () => {
             <Link to="/homework" className="student-nav-link">
               Домашнее задание
             </Link>
+            <Link to="/student/recordings" className="student-nav-link">
+              📹 Записи уроков
+            </Link>
             <Link to="/student/stats" className="student-nav-link">
               Моя статистика
             </Link>
