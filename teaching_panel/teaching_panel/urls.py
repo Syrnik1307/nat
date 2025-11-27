@@ -22,7 +22,7 @@ from rest_framework.routers import DefaultRouter
 from core import views as core_views
 from schedule import views as schedule_views
 from homework.views import HomeworkViewSet, StudentSubmissionViewSet
-from analytics.views import ControlPointViewSet, ControlPointResultViewSet, GradebookViewSet, TeacherStatsViewSet
+from analytics.views import GradebookViewSet
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from accounts.jwt_views import LogoutView, RegisterView, CaseInsensitiveTokenObtainPairView
 from accounts.api_views import MeView
@@ -39,9 +39,6 @@ router.register(r'attendance', schedule_views.AttendanceViewSet)
 router.register(r'recurring-lessons', schedule_views.RecurringLessonViewSet, basename='recurring-lessons')
 router.register(r'homework', HomeworkViewSet, basename='homework')
 router.register(r'submissions', StudentSubmissionViewSet, basename='homework-submission')
-router.register(r'control-points', ControlPointViewSet, basename='control-point')
-router.register(r'control-point-results', ControlPointResultViewSet, basename='control-point-result')
-router.register(r'teacher-stats', TeacherStatsViewSet, basename='teacher-stats')
 
 def health(request):
     return JsonResponse({
@@ -66,8 +63,8 @@ urlpatterns = [
     # Zoom Pool API
     path('api/zoom-pool/', include('zoom_pool.urls')),
     
-    # Support API
-    path('api/support/', include('support.urls')),
+    # Analytics API
+    path('api/', include('analytics.urls')),
     
     # API (DRF router)
     path('api/', include(router.urls)),
