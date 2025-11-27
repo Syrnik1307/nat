@@ -489,6 +489,11 @@ class TeacherStorageQuota(models.Model):
         default=False,
         help_text=_('Флаг отправки предупреждения о превышении 80%')
     )
+    last_warning_at = models.DateTimeField(
+        _('дата последнего предупреждения'),
+        null=True,
+        blank=True
+    )
     
     quota_exceeded = models.BooleanField(
         _('квота превышена'),
@@ -503,6 +508,11 @@ class TeacherStorageQuota(models.Model):
         verbose_name = _('квота хранилища')
         verbose_name_plural = _('квоты хранилища')
         ordering = ['-used_bytes']
+        indexes = [
+            models.Index(fields=['teacher']),
+            models.Index(fields=['quota_exceeded']),
+            models.Index(fields=['-used_bytes']),
+        ]
     
     def __str__(self):
         return f"{self.teacher.get_full_name()} - {self.used_gb:.2f}/{self.total_gb:.2f} GB"
@@ -518,9 +528,14 @@ class TeacherStorageQuota(models.Model):
         return self.used_bytes / (1024 ** 3)
     
     @property
+    def available_bytes(self):
+        """Доступно байт"""
+        return max(0, self.total_quota_bytes - self.used_bytes)
+    
+    @property
     def available_gb(self):
         """Доступно в GB"""
-        return max(0, (self.total_quota_bytes - self.used_bytes) / (1024 ** 3))
+        return self.available_bytes / (1024 ** 3)
     
     @property
     def usage_percent(self):
@@ -545,6 +560,7 @@ class TeacherStorageQuota(models.Model):
         # Проверить предупреждение (80%)
         if self.usage_percent >= 80 and not self.warning_sent:
             self.warning_sent = True
+            self.last_warning_at = timezone.now()
         
         self.save()
     
@@ -571,6 +587,9 @@ class TeacherStorageQuota(models.Model):
         # Сбросить флаги
         if self.used_bytes < self.total_quota_bytes:
             self.quota_exceeded = False
+        
+        if self.usage_percent < 80:
+            self.warning_sent = False
         
         self.save()
 
@@ -709,110 +728,7 @@ class MaterialView(models.Model):
     
     def __str__(self):
         return f"{self.student.get_full_name()} - {self.material.title} ({self.viewed_at.strftime('%d.%m.%Y %H:%M')})"
-    quota_exceeded = models.BooleanField(
-        _('квота превышена'),
-        default=False,
-        help_text=_('Флаг превышения квоты (блокировка новых записей)')
-    )
     
-    # Временные метки
-    created_at = models.DateTimeField(_('дата создания'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
-    last_warning_at = models.DateTimeField(
-        _('дата последнего предупреждения'),
-        null=True,
-        blank=True
-    )
-    
-    class Meta:
-        verbose_name = _('квота хранилища')
-        verbose_name_plural = _('квоты хранилища')
-        ordering = ['-used_bytes']
-        indexes = [
-            models.Index(fields=['teacher']),
-            models.Index(fields=['quota_exceeded']),
-            models.Index(fields=['-used_bytes']),
-        ]
-    
-    def __str__(self):
-        teacher_name = self.teacher.get_full_name() or self.teacher.email
-        return f"{teacher_name} - {self.used_gb:.2f}/{self.total_gb:.2f} GB"
-    
-    @property
-    def total_gb(self):
-        """Общая квота в ГБ"""
-        return self.total_quota_bytes / (1024 ** 3)
-    
-    @property
-    def used_gb(self):
-        """Использовано ГБ"""
-        return self.used_bytes / (1024 ** 3)
-    
-    @property
-    def available_bytes(self):
-        """Доступно байт"""
-        return max(0, self.total_quota_bytes - self.used_bytes)
-    
-    @property
-    def available_gb(self):
-        """Доступно ГБ"""
-        return self.available_bytes / (1024 ** 3)
-    
-    @property
-    def usage_percent(self):
-        """Процент использования"""
-        if self.total_quota_bytes == 0:
-            return 0
-        return (self.used_bytes / self.total_quota_bytes) * 100
-    
-    def can_upload(self, file_size_bytes):
-        """Проверка возможности загрузки файла"""
-        return self.available_bytes >= file_size_bytes
-    
-    def add_recording(self, file_size_bytes):
-        """Добавление записи (увеличение использования)"""
-        self.used_bytes += file_size_bytes
-        self.recordings_count += 1
-        
-        # Проверка превышения квоты
-        if self.used_bytes >= self.total_quota_bytes:
-            self.quota_exceeded = True
-        
-        # Проверка порога предупреждения (80%)
-        if self.usage_percent >= 80 and not self.warning_sent:
-            self.warning_sent = True
-            self.last_warning_at = timezone.now()
-        
-        self.save()
-    
-    def remove_recording(self, file_size_bytes):
-        """Удаление записи (уменьшение использования)"""
-        self.used_bytes = max(0, self.used_bytes - file_size_bytes)
-        self.recordings_count = max(0, self.recordings_count - 1)
-        
-        # Сброс флагов если освободилось место
-        if self.used_bytes < self.total_quota_bytes:
-            self.quota_exceeded = False
-        
-        if self.usage_percent < 80:
-            self.warning_sent = False
-        
-        self.save()
-    
-    def increase_quota(self, additional_gb):
-        """Увеличение квоты (покупка дополнительного места)"""
-        additional_bytes = int(additional_gb * (1024 ** 3))
-        self.total_quota_bytes += additional_bytes
-        self.purchased_gb += additional_gb
-        
-        # Сброс флагов
-        if self.used_bytes < self.total_quota_bytes:
-            self.quota_exceeded = False
-        
-        if self.usage_percent < 80:
-            self.warning_sent = False
-        
-        self.save()
 
 
 class AuditLog(models.Model):
