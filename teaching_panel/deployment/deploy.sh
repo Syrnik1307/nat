@@ -52,8 +52,8 @@ print_status "Starting deployment..."
 print_status "Installing system dependencies..."
 apt-get update
 apt-get install -y \
-    python3.11 \
-    python3.11-venv \
+    python3.8 \
+    python3.8-venv \
     python3-pip \
     nginx \
     redis-server \
@@ -77,7 +77,7 @@ mkdir -p ${BACKEND_DIR}/media
 # Step 3: Set up Python virtual environment
 print_status "Setting up Python virtual environment..."
 if [ ! -d "${VENV_DIR}" ]; then
-    python3.11 -m venv ${VENV_DIR}
+    python3.8 -m venv ${VENV_DIR}
 fi
 
 # Activate virtual environment
