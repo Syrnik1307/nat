@@ -258,6 +258,9 @@ export const createControlPoint = (data) => apiClient.post('control-points/', da
 export const getControlPointResults = (params = {}) => apiClient.get('control-point-results/', { params });
 export const createControlPointResult = (data) => apiClient.post('control-point-results/', data);
 
+// Zoom Pool Stats (Admin only)
+export const getZoomPoolStats = () => apiClient.get('zoom-pool/zoom-accounts/stats/');
+
 // =============== SUBMISSIONS ===============
 
 export const gradeSubmission = (submissionId, grade, feedback = '') => apiClient.post(`submissions/${submissionId}/grade/`, { grade, feedback });

@@ -5,6 +5,7 @@ import TeachersManage from './TeachersManage';
 import StudentsManage from './StudentsManage';
 import StatusMessages from './StatusMessages';
 import ZoomPoolManager from '../modules/core/zoom/ZoomPoolManager';
+import ZoomPoolStats from './ZoomPoolStats';
 import SystemSettings from './SystemSettings';
 import './AdminHomePage.css';
 
@@ -26,6 +27,7 @@ const AdminHomePage = () => {
   const [showStudentsManage, setShowStudentsManage] = useState(false);
   const [showStatusMessages, setShowStatusMessages] = useState(false);
   const [showZoomManager, setShowZoomManager] = useState(false);
+  const [showZoomStats, setShowZoomStats] = useState(false);
   const [showGrowthStats, setShowGrowthStats] = useState(false);
   const [showSystemSettings, setShowSystemSettings] = useState(false);
   const [userRole, setUserRole] = useState('teacher');
@@ -265,6 +267,12 @@ const AdminHomePage = () => {
             onClick={() => setShowZoomManager(true)}
             color="#10b981"
           />
+          <QuickAction
+            icon="📊"
+            label="Аналитика Zoom Pool"
+            onClick={() => setShowZoomStats(true)}
+            color="#6366f1"
+          />
         </div>
       </div>
 
@@ -484,6 +492,20 @@ const AdminHomePage = () => {
       
       {showSystemSettings && (
         <SystemSettings onClose={() => setShowSystemSettings(false)} />
+      )}
+      
+      {showZoomStats && (
+        <div className="admin-modal-overlay" onClick={() => setShowZoomStats(false)}>
+          <div className="admin-modal zoom-stats-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>📊 Аналитика Zoom Pool</h2>
+              <button className="modal-close" onClick={() => setShowZoomStats(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <ZoomPoolStats />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
