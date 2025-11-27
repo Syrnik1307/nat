@@ -169,9 +169,6 @@ const ZoomPoolStats = () => {
         <div className="info-section">
           <h4>📅 Статистика</h4>
           <p>Данные обновляются автоматически каждые 30 секунд</p>
-          <p className="last-update">
-            Последнее обновление: {new Date(stats.updated_at).toLocaleString('ru-RU')}
-          </p>
         </div>
       </div>
 
