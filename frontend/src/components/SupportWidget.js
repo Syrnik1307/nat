@@ -41,9 +41,13 @@ const SupportWidget = () => {
       if (response.ok) {
         const data = await response.json();
         setTickets(data.results || data);
+      } else if (response.status === 404) {
+        // Support module not available - silently disable widget
+        return null;
       }
     } catch (err) {
-      console.error('Error loading tickets:', err);
+      // Silently fail if support module not available
+      return null;
     }
   };
 
@@ -58,9 +62,13 @@ const SupportWidget = () => {
       if (response.ok) {
         const data = await response.json();
         setUnreadCount(data.unread || data.total || 0);
+      } else if (response.status === 404) {
+        // Support module not available
+        return null;
       }
     } catch (err) {
-      console.error('Error loading unread count:', err);
+      // Silently fail if support module not available
+      return null;
     }
   };
 
