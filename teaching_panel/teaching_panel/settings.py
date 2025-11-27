@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'homework',
     'analytics',
     'zoom_pool',
+    'support',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'django_celery_beat',
@@ -66,7 +67,6 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files in production
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -74,6 +74,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.RequestMetricsMiddleware',  # Метрики запросов
 ]
 
 ROOT_URLCONF = 'teaching_panel.urls'
@@ -104,9 +105,13 @@ AUTH_USER_MODEL = 'accounts.CustomUser'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 # Support for DATABASE_URL (production) or default SQLite (development)
-import dj_database_url
+try:
+    import dj_database_url
+    HAS_DJ_DATABASE_URL = True
+except ImportError:
+    HAS_DJ_DATABASE_URL = False
 
-if os.environ.get('DATABASE_URL'):
+if os.environ.get('DATABASE_URL') and HAS_DJ_DATABASE_URL:
     # Production: Use PostgreSQL/MySQL via DATABASE_URL
     DATABASES = {
         'default': dj_database_url.config(
@@ -121,6 +126,36 @@ else:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
+# Cache Configuration
+# Production: Use Redis for caching
+# Development: Use local memory cache
+if os.environ.get('REDIS_URL'):
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'CONNECTION_POOL_KWARGS': {
+                    'max_connections': 50,
+                    'retry_on_timeout': True,
+                },
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+            },
+            'KEY_PREFIX': 'teaching_panel',
+            'TIMEOUT': 300,  # 5 minutes default
+        }
+    }
+else:
+    # Development fallback: local memory
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'teaching-panel-cache',
         }
     }
 
@@ -162,9 +197,6 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# WhiteNoise configuration for serving static files in production
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
 # Media files (user uploads)
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -200,15 +232,29 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'PAGE_SIZE': 20,  # Increased from 10 for better UX
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.UserRateThrottle',
-        'rest_framework.throttling.AnonRateThrottle'
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '2000/hour',
-        'anon': '100/hour'
-    }
+        'user': '3000/hour',  # Increased for 1000 teachers + 3000 students
+        'anon': '50/hour',     # Stricter for anonymous users
+        'submissions': '100/hour',  # Specific rate for homework submissions
+        'grading': '500/hour',      # Higher rate for teacher grading
+    },
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
+    ],
+    # Connection pooling for better performance
+    'NUM_PROXIES': 1,
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
 }
 
 from datetime import timedelta
@@ -415,3 +461,114 @@ if not DEBUG:
     if not SESSION_COOKIE_SECURE:
         import warnings
         warnings.warn("WARNING: Running in production without secure cookies! Set SESSION_COOKIE_SECURE=True", RuntimeWarning)
+
+# =============================================================================
+# SENTRY CONFIGURATION (Error Monitoring)
+# =============================================================================
+# Sentry для мониторинга ошибок в production
+# Регистрация: https://sentry.io/
+SENTRY_DSN = os.environ.get('SENTRY_DSN', '')
+
+if SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.django import DjangoIntegration
+        from sentry_sdk.integrations.celery import CeleryIntegration
+        from sentry_sdk.integrations.redis import RedisIntegration
+        
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[
+                DjangoIntegration(),
+                CeleryIntegration(),
+                RedisIntegration(),
+            ],
+            # Процент трассировки производительности
+            traces_sample_rate=0.1 if not DEBUG else 0.0,
+            # Процент отправки ошибок (1.0 = все)
+            sample_rate=1.0,
+            # Окружение
+            environment='development' if DEBUG else 'production',
+            # Release version (можно брать из git или CI/CD)
+            release=os.environ.get('GIT_COMMIT', 'unknown'),
+            # Отправлять PII (личные данные)?
+            send_default_pii=False,
+            # Максимум breadcrumbs (цепочка событий перед ошибкой)
+            max_breadcrumbs=50,
+        )
+    except ImportError:
+        import warnings
+        warnings.warn(
+            "Sentry SDK not installed. Install with: pip install sentry-sdk",
+            RuntimeWarning
+        )
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'level': 'WARNING',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'django.log',
+            'maxBytes': 1024 * 1024 * 15,  # 15MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
+        'request_metrics': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'requests.log',
+            'maxBytes': 1024 * 1024 * 50,  # 50MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'request_metrics': {
+            'handlers': ['request_metrics'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if os.environ.get('SQL_DEBUG') == '1' else 'INFO',
+            'propagate': False,
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
+
+# Создаём директорию для логов, если её нет
+os.makedirs(BASE_DIR / 'logs', exist_ok=True)

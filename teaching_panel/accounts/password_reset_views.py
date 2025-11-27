@@ -163,3 +163,174 @@ def password_reset_validate_token(request, uid, token):
             'valid': False,
             'error': 'Недействительная ссылка'
         })
+
+
+# ============ НОВЫЕ API ДЛЯ ВОССТАНОВЛЕНИЯ ПАРОЛЯ ЧЕРЕЗ TELEGRAM/WHATSAPP ============
+
+from .password_reset_sender import send_password_reset_code, verify_reset_code
+from .models import PasswordResetToken
+from django.utils import timezone
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def request_reset_code(request):
+    """
+    Запрос кода для восстановления пароля через Telegram/WhatsApp
+    
+    POST /accounts/api/password-reset/request-code/
+    {
+        "email": "user@example.com",
+        "phone": "+79991234567",
+        "method": "telegram"  // или "whatsapp"
+    }
+    """
+    email = request.data.get('email', '').strip().lower()
+    phone = request.data.get('phone', '').strip()
+    method = request.data.get('method', 'telegram')
+    
+    if not email or not phone:
+        return Response({
+            'success': False,
+            'error': 'Email и телефон обязательны'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if method not in ['telegram', 'whatsapp']:
+        return Response({
+            'success': False,
+            'error': 'Метод должен быть telegram или whatsapp'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Отправляем код
+    result = send_password_reset_code(email, phone, method)
+    
+    if result['success']:
+        return Response({
+            'success': True,
+            'method': result['method'],
+            'message': f'Код отправлен через {result["method"]}',
+            'code': result.get('code')  # Только для тестирования
+        })
+    else:
+        return Response({
+            'success': False,
+            'error': result.get('error', 'Не удалось отправить код')
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_code(request):
+    """
+    Проверка кода восстановления пароля
+    
+    POST /accounts/api/password-reset/verify-code/
+    {
+        "email": "user@example.com",
+        "code": "123456"
+    }
+    """
+    email = request.data.get('email', '').strip().lower()
+    code = request.data.get('code', '').strip()
+    
+    if not email or not code:
+        return Response({
+            'success': False,
+            'error': 'Email и код обязательны'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Проверяем код
+    result = verify_reset_code(email, code)
+    
+    if result['success']:
+        return Response({
+            'success': True,
+            'token': result['token'],
+            'message': result['message']
+        })
+    else:
+        return Response({
+            'success': False,
+            'error': result.get('error')
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def set_new_password(request):
+    """
+    Установка нового пароля по токену
+    
+    POST /accounts/api/password-reset/set-password/
+    {
+        "token": "abc123...",
+        "new_password": "NewPassword123"
+    }
+    """
+    token_value = request.data.get('token', '').strip()
+    new_password = request.data.get('new_password', '').strip()
+    
+    if not token_value or not new_password:
+        return Response({
+            'success': False,
+            'error': 'Токен и новый пароль обязательны'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Проверяем длину пароля
+    if len(new_password) < 6:
+        return Response({
+            'success': False,
+            'error': 'Пароль должен содержать минимум 6 символов'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Проверяем наличие заглавной буквы
+    if not any(c.isupper() for c in new_password):
+        return Response({
+            'success': False,
+            'error': 'Пароль должен содержать хотя бы одну заглавную букву'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Проверяем наличие строчной буквы
+    if not any(c.islower() for c in new_password):
+        return Response({
+            'success': False,
+            'error': 'Пароль должен содержать хотя бы одну строчную букву'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Проверяем наличие цифры
+    if not any(c.isdigit() for c in new_password):
+        return Response({
+            'success': False,
+            'error': 'Пароль должен содержать хотя бы одну цифру'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Находим токен
+    try:
+        token = PasswordResetToken.objects.get(token=token_value)
+    except PasswordResetToken.DoesNotExist:
+        return Response({
+            'success': False,
+            'error': 'Неверный токен'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Проверяем валидность токена
+    if not token.is_valid():
+        return Response({
+            'success': False,
+            'error': 'Токен истёк или уже использован'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Устанавливаем новый пароль
+    user = token.user
+    user.set_password(new_password)
+    user.save()
+    
+    # Отмечаем токен как использованный
+    token.used = True
+    token.used_at = timezone.now()
+    token.save()
+    
+    return Response({
+        'success': True,
+        'message': 'Пароль успешно изменён'
+    })

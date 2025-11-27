@@ -15,7 +15,6 @@ from .admin_views import (
     SystemSettingsView
 )
 from .chat_views import ChatViewSet, MessageViewSet, UserSearchViewSet
-from .sms_views import send_verification_code, verify_code, resend_verification_code
 from .email_views import (
     send_verification_email,
     resend_verification_email,
@@ -26,9 +25,21 @@ from .email_views import (
 from .password_reset_views import (
     password_reset_request,
     password_reset_confirm,
-    password_reset_validate_token
+    password_reset_validate_token,
+    request_reset_code,
+    verify_code,
+    set_new_password
 )
-from .api_views import MeView, users_list, change_password
+from .api_views import (
+    MeView, 
+    users_list, 
+    change_password,
+    link_telegram,
+    unlink_telegram,
+    request_password_reset,
+    reset_password_with_token,
+    check_telegram_status
+)
 
 app_name = 'accounts'
 
@@ -72,11 +83,6 @@ urlpatterns = [
     # API для получения сообщений (для всех пользователей)
     path('api/status-messages/', AdminStatusMessagesView.as_view(), name='status_messages'),
     
-    # API для SMS верификации
-    path('api/sms/send-code/', send_verification_code, name='sms_send_code'),
-    path('api/sms/verify-code/', verify_code, name='sms_verify_code'),
-    path('api/sms/resend-code/', resend_verification_code, name='sms_resend_code'),
-    
     # API для Email верификации
     path('api/email/send-verification/', send_verification_email, name='email_send_verification'),
     path('api/email/resend-verification/', resend_verification_email, name='email_resend_verification'),
@@ -89,10 +95,22 @@ urlpatterns = [
     path('api/password-reset/confirm/', password_reset_confirm, name='password_reset_confirm'),
     path('api/password-reset/validate/<str:uid>/<str:token>/', password_reset_validate_token, name='password_reset_validate'),
     
+    # API для восстановления пароля через Telegram/WhatsApp
+    path('api/password-reset/request-code/', request_reset_code, name='request_reset_code'),
+    path('api/password-reset/verify-code/', verify_code, name='verify_reset_code'),
+    path('api/password-reset/set-password/', set_new_password, name='set_new_password'),
+    
     # API для пользователей
     path('api/users/', users_list, name='users_list'),
     path('api/me/', MeView.as_view(), name='me'),
     path('api/change-password/', change_password, name='change_password'),
+    
+    # API для Telegram и восстановления пароля
+    path('api/telegram/link/', link_telegram, name='link_telegram'),
+    path('api/telegram/unlink/', unlink_telegram, name='unlink_telegram'),
+    path('api/telegram/status/', check_telegram_status, name='check_telegram_status'),
+    path('api/password-reset-telegram/request/', request_password_reset, name='request_password_reset_telegram'),
+    path('api/password-reset-telegram/confirm/', reset_password_with_token, name='reset_password_with_token'),
     
     # API для чатов
     path('api/', include(router.urls)),

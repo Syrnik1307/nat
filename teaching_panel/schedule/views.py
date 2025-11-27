@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -123,6 +123,57 @@ class GroupViewSet(viewsets.ModelViewSet):
         group.save()
         serializer = self.get_serializer(group)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def regenerate_code(self, request, pk=None):
+        """Перегенерировать код приглашения для группы"""
+        group = self.get_object()
+        new_code = group.generate_invite_code()
+        return Response({
+            'invite_code': new_code,
+            'message': 'Новый код приглашения создан'
+        })
+    
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def join_by_code(self, request):
+        """Присоединиться к группе по коду приглашения"""
+        from accounts.models import CustomUser
+        
+        invite_code = request.data.get('invite_code', '').strip().upper()
+        if not invite_code:
+            return Response(
+                {'error': 'Код приглашения не указан'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            group = Group.objects.get(invite_code=invite_code)
+        except Group.DoesNotExist:
+            return Response(
+                {'error': 'Группа с таким кодом не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        user = request.user
+        if user.role != 'student':
+            return Response(
+                {'error': 'Только ученики могут присоединяться к группам'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if group.students.filter(id=user.id).exists():
+            return Response(
+                {'message': 'Вы уже состоите в этой группе'},
+                status=status.HTTP_200_OK
+            )
+        
+        group.students.add(user)
+        serializer = self.get_serializer(group)
+        
+        return Response({
+            'message': f'Вы успешно присоединились к группе "{group.name}"',
+            'group': serializer.data
+        }, status=status.HTTP_200_OK)
 
 
 class LessonViewSet(viewsets.ModelViewSet):

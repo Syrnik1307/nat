@@ -28,7 +28,7 @@ const TeachersManage = ({ onClose }) => {
   const loadTeachers = async () => {
     try {
       const token = localStorage.getItem('tp_access_token');
-      const response = await fetch('http://72.56.81.163:8001/accounts/api/admin/teachers/', {
+      const response = await fetch('/accounts/api/admin/teachers/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -72,7 +72,7 @@ const TeachersManage = ({ onClose }) => {
 
     try {
       const token = localStorage.getItem('tp_access_token');
-      const response = await fetch(`http://72.56.81.163:8001/accounts/api/admin/teachers/${selectedTeacher.id}/zoom/`, {
+      const response = await fetch(`/accounts/api/admin/teachers/${selectedTeacher.id}/zoom/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ const TeachersManage = ({ onClose }) => {
 
     try {
       const token = localStorage.getItem('tp_access_token');
-      const response = await fetch(`http://72.56.81.163:8001/accounts/api/admin/teachers/${teacherId}/delete/`, {
+      const response = await fetch(`/accounts/api/admin/teachers/${teacherId}/delete/`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

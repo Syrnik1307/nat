@@ -54,6 +54,14 @@ class Group(models.Model):
         verbose_name=_('студенты')
     )
     description = models.TextField(_('описание'), blank=True)
+    invite_code = models.CharField(
+        _('код приглашения'),
+        max_length=8,
+        unique=True,
+        blank=True,
+        null=True,
+        help_text=_('Уникальный код для присоединения учеников к группе')
+    )
     created_at = models.DateTimeField(_('дата создания'), auto_now_add=True)
     updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
     
@@ -68,6 +76,29 @@ class Group(models.Model):
     def student_count(self):
         """Количество студентов в группе"""
         return self.students.count()
+    
+    def generate_invite_code(self):
+        """Генерирует уникальный код приглашения"""
+        import random
+        import string
+        while True:
+            code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            if not Group.objects.filter(invite_code=code).exists():
+                self.invite_code = code
+                self.save(update_fields=['invite_code'])
+                return code
+    
+    def save(self, *args, **kwargs):
+        # Генерация invite_code если он отсутствует (как для новых, так и для старых записей)
+        if not self.invite_code:
+            import random
+            import string
+            while True:
+                code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+                if not Group.objects.filter(invite_code=code).exists():
+                    self.invite_code = code
+                    break
+        super().save(*args, **kwargs)
 
 
 class Lesson(models.Model):

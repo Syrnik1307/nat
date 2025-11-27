@@ -1,0 +1,375 @@
+/* ===================== ТЕМА (Минималистичная) ===================== */
+:root {
+  --bg-base: #ffffff;
+  --bg-soft: #f8f9fb;
+  --border-soft: #e5e7eb;
+  --text-primary: #374151;
+  --text-secondary: #6b7280;
+  --accent: #2563eb;
+  --accent-soft: #eff6ff;
+  --hover-bg: #f1f5f9;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px -2px rgba(0,0,0,0.08);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --transition: 0.18s ease;
+  --font-main: system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+}
+
+/* Навигационная панель (минимализм) */
+.navbar-new {
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--border-soft);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.navbar-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+}
+
+.navbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+.navbar-profile-button {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  background: var(--bg-base);
+  border: 1px solid var(--border-soft);
+  color: var(--text-primary);
+  padding: .45rem .75rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: .83rem;
+  line-height: 1.2;
+  transition: background var(--transition), border-color var(--transition);
+}
+.navbar-profile-button:hover { background: var(--hover-bg); border-color:#d1d5db; }
+  justify-content: center;
+}
+
+.navbar-link {
+  color: var(--text-primary);
+  text-decoration: none;
+  padding: .55rem .85rem;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+  font-weight: 500;
+  font-size: .92rem;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  position: relative;
+}
+
+.navbar-link:hover { background: var(--hover-bg); }
+
+.navbar-link.active { background: var(--accent-soft); color: var(--accent); }
+
+.navbar-right { display: flex; align-items: center; gap: .9rem; }
+
+.navbar-profile {
+  position: relative;
+}
+
+.navbar-profile-button {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  color: var(--text-primary);
+  padding: .5rem .8rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: .85rem;
+  transition: var(--transition);
+}
+
+.navbar-profile-button:hover { background: var(--hover-bg); }
+
+.navbar-dropdown {
+  position: absolute;
+  top: calc(100% + .5rem);
+  right: 0;
+  background: var(--bg-base);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.navbar-dropdown-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: #333;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.navbar-dropdown-link:hover { background: var(--hover-bg); }
+
+.navbar-dropdown-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: #e53e3e;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-weight: 500;
+}
+
+.navbar-dropdown-button:hover { background: #fff1f1; }
+
+/* Баннер сообщений (минималистичный) */
+.status-banner {
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--border-soft);
+  padding: .6rem 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.status-banner-content { display:flex; align-items:center; gap:.6rem; color: var(--text-secondary); }
+
+.status-banner-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1.05rem;
+  padding: .25rem;
+  line-height: 1;
+  transition: var(--transition);
+}
+
+.status-banner-close:hover { color: var(--accent); }
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .navbar-container {
+    padding: 0 1rem;
+  }
+  
+  .navbar-links {
+    gap: 0.25rem;
+  }
+  
+  .navbar-link {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+  
+  .navbar-logo {
+    font-size: 1.1rem;
+  }
+}
+
+/* ================= ДОБАВЛЕНЫ СТИЛИ ПОД СУЩЕСТВУЮЩУЮ РАЗМЕТКУ ================= */
+/* Основная навигационная панель */
+.navbar { background: var(--bg-base); box-shadow: var(--shadow-sm); font-family: var(--font-main); }
+
+.navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+}
+
+.logo-icon {display:none;} /* эмодзи скрыт, заменён SVG */
+.logo-text {letter-spacing:.5px; font-weight:600; font-size:1.02rem; color:var(--text-primary);} 
+.tp-logo {display:flex; align-items:center; justify-content:center; height:34px; margin-right:.4rem;}
+.tp-logo svg {display:block; height:100%; width:auto;}
+.navbar-logo {display:flex; align-items:center; gap:.4rem;}
+.navbar-logo:hover .tp-logo svg rect[stroke] {stroke:#1d4ed8;}
+
+/* Меню */
+.navbar-menu {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  flex-wrap: nowrap;
+}
+
+
+/* Базовый стиль кнопок навигации */
+.nav-link,
+.nav-dropdown-trigger {
+  background: var(--bg-soft);
+  color: var(--text-primary);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: .5rem .9rem;
+  font-weight: 500;
+  font-size: .9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  text-decoration: none;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+
+.nav-link:hover,
+.nav-dropdown-trigger:hover { background: var(--hover-bg); border-color: #d1d5db; text-decoration: none; }
+
+/* Активная кнопка */
+.nav-link.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+.nav-link-highlight { background: var(--accent); color:#fff; border-color: var(--accent); }
+.nav-link-highlight:hover { background: #1d4ed8; border-color: #1d4ed8; }
+
+.nav-icon {font-size: 1.05rem; line-height: 1;}
+
+/* Dropdown занятий */
+.nav-dropdown {position: relative;}
+
+.caret {transition: transform .2s ease; font-size: .7rem;}
+.caret.open {transform: rotate(180deg);}
+
+.nav-dropdown-menu {
+  position: absolute;
+  top: calc(100% + .4rem);
+  left: 0;
+  min-width: 170px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px -4px rgba(0,0,0,0.25);
+  padding: .35rem .4rem;
+  display: flex;
+  flex-direction: column;
+  animation: dropdownFade .18s ease;
+  z-index: 1100;
+}
+
+@keyframes dropdownFade {from {opacity:0; transform: translateY(-4px);} to {opacity:1; transform: translateY(0);} }
+
+.nav-dropdown-item {
+  text-decoration: none;
+  color: #2d3748;
+  padding: .6rem .65rem;
+  border-radius: 8px;
+  font-size: .9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  transition: background .15s ease, color .15s ease;
+}
+.nav-dropdown-item:hover {background: #edf2f7;}
+
+.item-icon {font-size: 1rem;}
+
+/* Правая часть */
+.navbar-actions {display: flex; align-items: center; gap: .75rem;}
+
+.btn-login {
+  color: #fff;
+  text-decoration: none;
+  padding: .55rem 1rem;
+  background: rgba(255,255,255,0.18);
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: .95rem;
+  transition: background .18s ease;
+}
+.btn-login:hover {background: rgba(255,255,255,0.28);}
+
+/* Профиль */
+.profile-menu-container {position: relative;}
+
+.profile-button { background: var(--bg-soft); border:1px solid var(--border-soft); color: var(--text-primary); }
+.profile-button:hover { background: var(--hover-bg); }
+
+.avatar {width:32px; height:32px; border-radius:50%; overflow:hidden; background:linear-gradient(135deg,#2563eb,#1d4ed8); border:1px solid #1d4ed8; display:flex; align-items:center; justify-content:center; color:#fff; font-size:.9rem; font-weight:600; box-shadow:0 2px 4px rgba(0,0,0,0.08);} 
+.avatar img {width:100%; height:100%; object-fit:cover;}
+.avatar-initial {font-size:.9rem; letter-spacing:.5px;}
+
+.chevron {font-size: .65rem; opacity: .8; transition: transform .2s ease;}
+.chevron.open {transform: rotate(180deg); opacity:1;}
+
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + .5rem);
+  right: 0;
+  background: var(--bg-base);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px -4px rgba(0,0,0,0.16);
+  min-width: 220px;
+  padding: .5rem .55rem .65rem;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  animation: dropdownFade .16s ease;
+  z-index: 1200;
+}
+
+.dropdown-header {padding: .25rem .5rem .4rem; display:flex; align-items:center;}
+.user-info {display:flex; flex-direction:column; gap:2px;}
+.user-name {font-weight:600; font-size:.95rem; color:#2d3748; margin:0;}
+.user-role {font-size:.75rem; text-transform:uppercase; letter-spacing:.5px; color:#718096; margin:0;}
+.dropdown-divider {height:1px; background:#e2e8f0; margin:.25rem .2rem .35rem;}
+
+.dropdown-item {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  text-decoration: none;
+  padding: .5rem .55rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: .85rem;
+  font-weight: 500;
+  transition: background var(--transition), color var(--transition);
+}
+.dropdown-item:hover {background: var(--hover-bg);}
+.dropdown-item span:first-child {font-size:1rem;}
+
+.dropdown-item:last-child {color:#dc2626;}
+.dropdown-item:last-child:hover {background:#fef2f2;}
+
+/* Статус баннер */
+.navbar-status { background: var(--accent-soft); border-bottom:1px solid var(--border-soft); font-size:.85rem; }
+.status-inner {max-width:1400px; margin:0 auto; padding:.4rem 1.8rem; display:flex; align-items:center; justify-content:space-between; gap:.7rem;}
+.status-message {color: var(--text-secondary); font-weight:500;}
+.status-action {background:none; border:none; color: var(--text-secondary); cursor:pointer; font-size:.7rem; padding:.25rem .4rem; border-radius:5px; transition:color var(--transition), background var(--transition);} 
+.status-action:hover { background: var(--hover-bg); color: var(--accent); }
+
+/* Админ двойной */
+.admin-status .status-split {max-width:1400px; margin:0 auto; display:flex; align-items:stretch; justify-content:space-between; gap:1.4rem; padding:.4rem 1.8rem;}
+.status-half {flex:1; background:#fff; border:1px solid var(--border-soft); border-radius:10px; padding:.5rem .8rem; display:flex; flex-direction:column; gap:.35rem; position:relative;}
+.status-label {font-size:.65rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color: var(--text-secondary);}
+.status-empty {color:#a0aec0; font-size:.8rem;}
+
+/* Мобильные коррекции */
+@media (max-width: 880px){
+  .navbar-menu {flex-wrap:wrap; gap:.35rem;}
+  .nav-link, .nav-dropdown-trigger {padding:.5rem .75rem; font-size:.85rem;}
+  .profile-button {padding:.4rem .6rem;}
+  .navbar-status .status-inner, .admin-status .status-split {padding:.35rem 1rem;}
+}
+

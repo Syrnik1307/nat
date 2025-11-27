@@ -70,6 +70,11 @@ class StudentSubmission(models.Model):
 
     class Meta:
         unique_together = ['homework', 'student']
+        indexes = [
+            models.Index(fields=['homework', 'status'], name='hw_status_idx'),
+            models.Index(fields=['student', 'status'], name='student_status_idx'),
+            models.Index(fields=['created_at'], name='submission_created_idx'),
+        ]
         ordering = ['-created_at']
         verbose_name = 'попытка ученика'
         verbose_name_plural = 'попытки учеников'
@@ -80,10 +85,11 @@ class StudentSubmission(models.Model):
     def compute_auto_score(self):
         total = 0
         for answer in self.answers.select_related('question').all():
-            q = answer.question
-            if q.question_type == 'TEXT':
-                continue  # текст проверяет преподаватель
-            total += (answer.auto_score or 0)
+            # Приоритет: teacher_score > auto_score
+            if answer.teacher_score is not None:
+                total += answer.teacher_score
+            elif answer.auto_score is not None:
+                total += answer.auto_score
         self.total_score = total
         self.save(update_fields=['total_score'])
         return total
@@ -95,6 +101,8 @@ class Answer(models.Model):
     text_answer = models.TextField(blank=True)
     selected_choices = models.ManyToManyField(Choice, blank=True, related_name='selected_in_answers')
     auto_score = models.IntegerField(null=True, blank=True)
+    teacher_score = models.IntegerField(null=True, blank=True, help_text='Оценка учителя (переопределяет auto_score)')
+    teacher_feedback = models.TextField(blank=True, help_text='Комментарий учителя')
     needs_manual_review = models.BooleanField(default=False)
 
     class Meta:

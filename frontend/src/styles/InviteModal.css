@@ -1,0 +1,234 @@
+/* Invite Modal Styles */
+
+.invite-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.invite-modal-content {
+  background: white;
+  border-radius: 16px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 2rem;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.invite-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #64748b;
+  line-height: 1;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.invite-modal-close:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.invite-modal-content h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  color: #1e293b;
+}
+
+.invite-modal-subtitle {
+  color: #64748b;
+  margin: 0 0 2rem 0;
+  font-size: 0.9375rem;
+}
+
+.invite-section {
+  margin-bottom: 2rem;
+}
+
+.invite-section h3 {
+  font-size: 1rem;
+  color: #334155;
+  margin: 0 0 0.75rem 0;
+  font-weight: 600;
+}
+
+.invite-code-display {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.invite-code-text {
+  flex: 1;
+  padding: 1rem 1.5rem;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-align: center;
+  color: #0284c7;
+  font-family: 'Courier New', monospace;
+}
+
+.invite-copy-btn {
+  padding: 0.75rem 1.25rem;
+  background: #0284c7;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.invite-copy-btn:hover {
+  background: #0369a1;
+  transform: translateY(-1px);
+}
+
+.invite-copy-btn:active {
+  transform: translateY(0);
+}
+
+.invite-hint {
+  margin: 0.75rem 0 0 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.invite-link-display {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.invite-link-input {
+  flex: 1;
+  padding: 0.875rem 1rem;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  color: #334155;
+  font-family: 'Courier New', monospace;
+}
+
+.invite-link-input:focus {
+  outline: none;
+  border-color: #0284c7;
+}
+
+.invite-qr-placeholder {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 2px dashed #e2e8f0;
+}
+
+.invite-qr-image {
+  width: 200px;
+  height: 200px;
+  border-radius: 8px;
+}
+
+.invite-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.invite-regenerate-btn {
+  flex: 1;
+  padding: 0.875rem 1.25rem;
+  background: #f8fafc;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.invite-regenerate-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.invite-regenerate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.invite-done-btn {
+  padding: 0.875rem 2rem;
+  background: #0284c7;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.invite-done-btn:hover {
+  background: #0369a1;
+  transform: translateY(-1px);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .invite-modal-content {
+    padding: 1.5rem;
+  }
+
+  .invite-code-display,
+  .invite-link-display {
+    flex-direction: column;
+  }
+
+  .invite-copy-btn {
+    width: 100%;
+  }
+
+  .invite-actions {
+    flex-direction: column;
+  }
+
+  .invite-regenerate-btn,
+  .invite-done-btn {
+    width: 100%;
+  }
+}

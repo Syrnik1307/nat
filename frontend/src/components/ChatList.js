@@ -32,7 +32,7 @@ const ChatList = ({ onChatSelect, currentUserId, currentUserRole }) => {
   const loadChats = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await axios.get('http://localhost:8000/accounts/api/chats/', {
+      const response = await axios.get('/api/chats/', {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Убеждаемся, что данные - это массив
@@ -48,7 +48,7 @@ const ChatList = ({ onChatSelect, currentUserId, currentUserRole }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      const response = await axios.get(`http://localhost:8000/accounts/api/users/search/?q=${searchQuery}`, {
+      const response = await axios.get(`/api/users/search/?q=${searchQuery}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSearchResults(response.data);
@@ -63,7 +63,7 @@ const ChatList = ({ onChatSelect, currentUserId, currentUserRole }) => {
     try {
       const token = localStorage.getItem('access_token');
       const response = await axios.post(
-        'http://localhost:8000/accounts/api/chats/create_private/',
+        '/api/chats/create_private/',
         { user_id: userId },
         { headers: { Authorization: `Bearer ${token}` } }
       );

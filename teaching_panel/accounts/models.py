@@ -95,6 +95,32 @@ class CustomUser(AbstractUser):
         null=True
     )
     
+    # Telegram для восстановления пароля и уведомлений
+    telegram_id = models.CharField(
+        _('Telegram ID'),
+        max_length=50,
+        blank=True,
+        null=True,
+        unique=True,
+        help_text=_('ID пользователя в Telegram для восстановления пароля и уведомлений')
+    )
+    
+    telegram_username = models.CharField(
+        _('Telegram Username'),
+        max_length=50,
+        blank=True,
+        default='',
+        help_text=_('Username в Telegram (опционально)')
+    )
+    
+    telegram_chat_id = models.CharField(
+        _('Telegram Chat ID'),
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text=_('Chat ID для отправки сообщений через бота')
+    )
+    
     # Zoom credentials для учителей
     zoom_account_id = models.CharField(
         _('Zoom Account ID'),
@@ -457,3 +483,53 @@ class SystemSettings(models.Model):
         """Получить единственный экземпляр настроек (или создать с дефолтами)"""
         settings, created = cls.objects.get_or_create(pk=1)
         return settings
+
+
+class PasswordResetToken(models.Model):
+    """
+    Токены для восстановления пароля через Telegram
+    """
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='password_reset_tokens',
+        verbose_name=_('пользователь')
+    )
+    token = models.CharField(
+        _('токен'),
+        max_length=64,
+        unique=True,
+        help_text=_('Уникальный токен для восстановления пароля')
+    )
+    created_at = models.DateTimeField(_('создан'), auto_now_add=True)
+    expires_at = models.DateTimeField(_('истекает'))
+    used = models.BooleanField(_('использован'), default=False)
+    used_at = models.DateTimeField(_('использован в'), blank=True, null=True)
+    
+    class Meta:
+        verbose_name = _('токен восстановления пароля')
+        verbose_name_plural = _('токены восстановления пароля')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Token for {self.user.email} (expires: {self.expires_at})"
+    
+    def is_valid(self):
+        """Проверка валидности токена"""
+        return not self.used and timezone.now() < self.expires_at
+    
+    @classmethod
+    def generate_token(cls, user, expires_in_minutes=30):
+        """Генерация нового токена для пользователя"""
+        # Удаляем старые неиспользованные токены этого пользователя
+        cls.objects.filter(user=user, used=False).delete()
+        
+        # Генерируем уникальный токен
+        token = get_random_string(64)
+        expires_at = timezone.now() + timezone.timedelta(minutes=expires_in_minutes)
+        
+        return cls.objects.create(
+            user=user,
+            token=token,
+            expires_at=expires_at
+        )

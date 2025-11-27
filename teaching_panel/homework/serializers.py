@@ -59,20 +59,32 @@ class HomeworkSerializer(serializers.ModelSerializer):
 
 class AnswerSerializer(serializers.ModelSerializer):
     selected_choices = serializers.PrimaryKeyRelatedField(queryset=Choice.objects.all(), many=True, required=False)
+    question_text = serializers.CharField(source='question.prompt', read_only=True)
+    question_type = serializers.CharField(source='question.question_type', read_only=True)
+    question_points = serializers.IntegerField(source='question.points', read_only=True)
+    
     class Meta:
         model = Answer
-        fields = ['id', 'question', 'text_answer', 'selected_choices', 'auto_score', 'needs_manual_review']
+        fields = ['id', 'question', 'question_text', 'question_type', 'question_points', 
+                  'text_answer', 'selected_choices', 'auto_score', 'teacher_score', 
+                  'teacher_feedback', 'needs_manual_review']
         read_only_fields = ['auto_score', 'needs_manual_review']
 
 
 class StudentSubmissionSerializer(serializers.ModelSerializer):
-    answers = AnswerSerializer(many=True, write_only=True)
+    answers = AnswerSerializer(many=True, required=False)
     student_email = serializers.EmailField(source='student.email', read_only=True)
+    student_name = serializers.SerializerMethodField()
+    homework_title = serializers.CharField(source='homework.title', read_only=True)
 
     class Meta:
         model = StudentSubmission
-        fields = ['id', 'homework', 'student', 'student_email', 'status', 'total_score', 'answers', 'created_at', 'submitted_at', 'graded_at']
+        fields = ['id', 'homework', 'homework_title', 'student', 'student_email', 'student_name',
+                  'status', 'total_score', 'answers', 'created_at', 'submitted_at', 'graded_at']
         read_only_fields = ['student', 'total_score']
+    
+    def get_student_name(self, obj):
+        return f"{obj.student.first_name} {obj.student.last_name}".strip() or obj.student.email
 
     def create(self, validated_data):
         answers_data = validated_data.pop('answers', [])

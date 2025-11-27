@@ -5,9 +5,12 @@ import { AuthProvider, useAuth, Protected } from './auth';
 import RegisterPage from './components/RegisterPage';
 import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboard';
+import StudentHomePage from './components/StudentHomePage';
 import HomeworkList from './components/HomeworkList';
 import HomeworkSubmission from './components/HomeworkSubmission';
 import HomeworkTake from './modules/homework-analytics/components/homework/HomeworkTake';
+import SubmissionReview from './modules/homework-analytics/components/teacher/SubmissionReview';
+import SubmissionsList from './modules/homework-analytics/components/teacher/SubmissionsList';
 import HomeworkManage from './components/HomeworkManage';
 import RecurringLessonsManage from './components/RecurringLessonsManage';
 import GroupsManage from './components/GroupsManage';
@@ -68,11 +71,21 @@ const AppRoutes = () => {
           path="/homework/constructor"
           element={<Protected allowRoles={['teacher']}><HomeworkConstructor /></Protected>}
         />
+        <Route
+          path="/submissions"
+          element={<Protected allowRoles={['teacher']}><SubmissionsList /></Protected>}
+        />
+        <Route
+          path="/submissions/:submissionId/review"
+          element={<Protected allowRoles={['teacher']}><SubmissionReview /></Protected>}
+        />
         <Route path="/recurring-lessons/manage" element={<Protected allowRoles={['teacher']}><RecurringLessonsManage /></Protected>} />
         <Route path="/groups/manage" element={<Protected allowRoles={['teacher']}><GroupsManage /></Protected>} />
         
         {/* Student */}
-        <Route path="/student" element={<Protected allowRoles={['student']}><StudentDashboard /></Protected>} />
+        <Route path="/student" element={<Protected allowRoles={['student']}><StudentHomePage /></Protected>} />
+        <Route path="/student/courses" element={<Protected allowRoles={['student']}><StudentHomePage /></Protected>} />
+        <Route path="/student/stats" element={<Protected allowRoles={['student']}><StudentDashboard /></Protected>} />
         <Route path="/homework" element={<Protected allowRoles={['student']}><HomeworkList /></Protected>} />
         <Route path="/student/homework/:id" element={<Protected allowRoles={['student']}><HomeworkTake /></Protected>} />
         

@@ -129,3 +129,83 @@ class TeacherStatsViewSet(viewsets.ViewSet):
             'total_students': total_students,
             'upcoming_lessons': upcoming_serialized
         })
+
+    @action(detail=False, methods=['get'])
+    def breakdown(self, request):
+        """Детализированная статистика по группам и отдельным ученикам.
+
+        Формат ответа:
+        {
+          groups: [
+            {id, name, students_count, attendance_percent, homework_percent}
+          ],
+          students: [
+            {id, name, email, group_id, group_name, attendance_percent, homework_percent}
+          ]
+        }
+        """
+        user = request.user
+        if getattr(user, 'role', None) != 'teacher':
+            return Response({'detail': 'Только для преподавателей'}, status=403)
+        from schedule.models import Group, Lesson, Attendance
+        from homework.models import Homework, StudentSubmission
+
+        groups = Group.objects.filter(teacher=user).prefetch_related('students')
+        group_data = []
+        student_rows = []
+        for g in groups:
+            students = list(g.students.all())
+            student_count = len(students)
+            # Attendance aggregated
+            att_qs = Attendance.objects.filter(lesson__group=g)
+            present_count = att_qs.filter(status='present').count()
+            total_marked = att_qs.exclude(status__isnull=True).count()
+            attendance_percent = round((present_count / total_marked) * 100, 2) if total_marked else None
+
+            # Homework aggregated
+            hw_qs = Homework.objects.filter(lesson__group=g)
+            total_homeworks = hw_qs.count()
+            submissions_completed = StudentSubmission.objects.filter(
+                homework__in=hw_qs.values_list('id', flat=True),
+                total_score__isnull=False
+            ).count()
+            # Если каждое ДЗ -> одна попытка на ученика: процент выполненных = завершенные / (доступные * студентов)
+            denominator = total_homeworks * student_count if total_homeworks and student_count else 0
+            homework_percent = round((submissions_completed / denominator) * 100, 2) if denominator else None
+
+            group_data.append({
+                'id': g.id,
+                'name': g.name,
+                'students_count': student_count,
+                'attendance_percent': attendance_percent,
+                'homework_percent': homework_percent
+            })
+
+            # Individual students breakdown
+            for st in students:
+                st_att_qs = att_qs.filter(student=st)
+                st_present = st_att_qs.filter(status='present').count()
+                st_total_marked = st_att_qs.exclude(status__isnull=True).count()
+                st_att_pct = round((st_present / st_total_marked) * 100, 2) if st_total_marked else None
+
+                if total_homeworks:
+                    st_submissions_completed = StudentSubmission.objects.filter(
+                        student=st,
+                        homework__in=hw_qs.values_list('id', flat=True),
+                        total_score__isnull=False
+                    ).count()
+                    st_hw_pct = round((st_submissions_completed / total_homeworks) * 100, 2) if total_homeworks else None
+                else:
+                    st_hw_pct = None
+
+                student_rows.append({
+                    'id': st.id,
+                    'name': st.get_full_name(),
+                    'email': st.email,
+                    'group_id': g.id,
+                    'group_name': g.name,
+                    'attendance_percent': st_att_pct,
+                    'homework_percent': st_hw_pct
+                })
+
+        return Response({'groups': group_data, 'students': student_rows})

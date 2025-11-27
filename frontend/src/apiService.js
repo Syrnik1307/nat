@@ -19,9 +19,10 @@ export const clearTokens = () => {
     localStorage.removeItem(REFRESH_TOKEN_KEY);
 };
 
-// TEMP HARD-CODED base URL to fix incorrect 127.0.0.1 usage in deployed build.
-// Replace with env-based dynamic resolution after confirming deployment proxy.
-const FIXED_API_BASE_URL = 'http://72.56.81.163:8001/api/';
+// Use relative path for API calls
+// In development: proxied to http://127.0.0.1:8000 via package.json proxy
+// In production: handled by nginx proxy_pass
+const FIXED_API_BASE_URL = '/api/';
 
 const apiClient = axios.create({
     baseURL: FIXED_API_BASE_URL,
@@ -216,6 +217,8 @@ export const updateGroup = (id, data) => apiClient.put(`groups/${id}/`, data);
 export const deleteGroup = (id) => apiClient.delete(`groups/${id}/`);
 export const addStudentsToGroup = (groupId, studentIds) => apiClient.post(`groups/${groupId}/add_students/`, { student_ids: studentIds });
 export const removeStudentsFromGroup = (groupId, studentIds) => apiClient.post(`groups/${groupId}/remove_students/`, { student_ids: studentIds });
+export const regenerateGroupInviteCode = (groupId) => apiClient.post(`groups/${groupId}/regenerate_code/`);
+export const joinGroupByCode = (inviteCode) => apiClient.post('groups/join_by_code/', { invite_code: inviteCode });
 
 // Attendance
 export const getAttendance = (params = {}) => apiClient.get('attendance/', { params });
@@ -247,6 +250,7 @@ export const deleteSubmission = (id) => apiClient.delete(`submissions/${id}/`);
 // Gradebook & Teacher stats
 export const getGradebookForGroup = (groupId) => apiClient.get('gradebook/', { params: { group: groupId } });
 export const getTeacherStatsSummary = () => apiClient.get('teacher-stats/summary/');
+export const getTeacherStatsBreakdown = () => apiClient.get('teacher-stats/breakdown/');
 
 // Control points
 export const getControlPoints = (params = {}) => apiClient.get('control-points/', { params });

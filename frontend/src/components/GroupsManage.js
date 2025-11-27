@@ -9,6 +9,7 @@ import {
   apiClient,
 } from '../apiService';
 import { getAccessToken } from '../apiService';
+import GroupInviteModal from './GroupInviteModal';
 import './GroupsManage.css';
 
 const initialGroupForm = { name: '', description: '' };
@@ -45,6 +46,7 @@ const GroupsManage = () => {
   const [studentForm, setStudentForm] = useState(initialStudentForm);
   const [editingId, setEditingId] = useState(null);
   const [studentOpsGroup, setStudentOpsGroup] = useState(null);
+  const [inviteModalGroup, setInviteModalGroup] = useState(null);
   const [addIds, setAddIds] = useState('');
   const [removeIds, setRemoveIds] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -460,6 +462,13 @@ const GroupsManage = () => {
                       </button>
                       <button
                         type="button"
+                        className="gm-btn-primary"
+                        onClick={() => setInviteModalGroup(group)}
+                      >
+                        📨 Пригласить
+                      </button>
+                      <button
+                        type="button"
                         className="gm-btn-surface"
                         onClick={() => openStudentOps(group)}
                       >
@@ -487,6 +496,13 @@ const GroupsManage = () => {
           </div>
         </div>
       </div>
+
+      {inviteModalGroup && (
+        <GroupInviteModal
+          group={inviteModalGroup}
+          onClose={() => setInviteModalGroup(null)}
+        />
+      )}
 
       {studentOpsGroup && (
         <div className="gm-modal-backdrop" onClick={closeStudentOps}>
@@ -516,29 +532,23 @@ const GroupsManage = () => {
                 </div>
               </div>
 
+              <div className="gm-modal-section">
+                <p style={{padding: '1rem', background: '#f0f9ff', borderRadius: '8px', color: '#0369a1', fontSize: '0.9rem'}}>
+                  💡 <strong>Как добавить учеников:</strong> Нажмите кнопку "📨 Пригласить" в карточке группы и поделитесь кодом приглашения с учениками.
+                </p>
+              </div>
+
               <div className="gm-modal-controls">
-                <div className="gm-modal-column">
-                  <label className="gm-modal-label">➕ Добавить (ID через запятую)</label>
-                  <input
-                    className="gm-modal-input"
-                    value={addIds}
-                    onChange={(event) => setAddIds(event.target.value)}
-                    placeholder="1, 2, 3"
-                  />
-                  <button type="button" className="gm-btn-primary gm-btn-block" onClick={commitAddStudents}>
-                    ✅ Добавить
-                  </button>
-                </div>
-                <div className="gm-modal-column">
-                  <label className="gm-modal-label">➖ Удалить (ID через запятую)</label>
+                <div className="gm-modal-column" style={{width: '100%'}}>
+                  <label className="gm-modal-label">➖ Удалить учеников (ID через запятую)</label>
                   <input
                     className="gm-modal-input"
                     value={removeIds}
                     onChange={(event) => setRemoveIds(event.target.value)}
-                    placeholder="4, 5, 6"
+                    placeholder="1, 2, 3"
                   />
                   <button type="button" className="gm-btn-danger gm-btn-block" onClick={commitRemoveStudents}>
-                    ❌ Удалить
+                    ❌ Удалить из группы
                   </button>
                 </div>
               </div>

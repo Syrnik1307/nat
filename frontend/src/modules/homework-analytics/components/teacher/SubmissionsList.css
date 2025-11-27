@@ -1,0 +1,317 @@
+/* SubmissionsList.css */
+
+.sl-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.sl-loading,
+.sl-error,
+.sl-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  font-size: 1rem;
+  color: #64748b;
+}
+
+.sl-error {
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.sl-btn-retry {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.625rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.sl-btn-retry:hover {
+  background: #1d4ed8;
+}
+
+/* Header */
+.sl-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  gap: 1rem;
+}
+
+.sl-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.75rem 0;
+}
+
+.sl-stats {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.sl-stat {
+  font-size: 0.9rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.sl-stat-warning {
+  color: #f59e0b;
+}
+
+.sl-stat-success {
+  color: #059669;
+}
+
+.sl-btn-refresh {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  padding: 0.625rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sl-btn-refresh:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+/* Controls */
+.sl-controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.sl-search {
+  flex: 1;
+  min-width: 250px;
+}
+
+.sl-search-input {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.sl-search-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.sl-filters {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sl-filter-btn {
+  padding: 0.625rem 1rem;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #475569;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sl-filter-btn:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.sl-filter-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+/* Table */
+.sl-table-container {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.sl-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sl-table thead {
+  background: #f8fafc;
+}
+
+.sl-table th {
+  padding: 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sl-table-row {
+  transition: background 0.15s;
+}
+
+.sl-table-row:hover {
+  background: #f8fafc;
+}
+
+.sl-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.9rem;
+  color: #0f172a;
+}
+
+.sl-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Student Info */
+.sl-student-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sl-student-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.sl-student-email {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.sl-homework-title {
+  font-weight: 500;
+  color: #1e40af;
+}
+
+.sl-date {
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* Status Badge */
+.sl-status {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sl-status-in_progress {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.sl-status-submitted {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.sl-status-graded {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.sl-score {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #059669;
+}
+
+/* Review Button */
+.sl-btn-review {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.sl-btn-review:hover {
+  background: #1d4ed8;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .sl-table-container {
+    overflow-x: auto;
+  }
+
+  .sl-table {
+    min-width: 800px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sl-container {
+    padding: 1rem 0.5rem;
+  }
+
+  .sl-header {
+    flex-direction: column;
+  }
+
+  .sl-title {
+    font-size: 1.5rem;
+  }
+
+  .sl-controls {
+    flex-direction: column;
+  }
+
+  .sl-search {
+    min-width: 100%;
+  }
+
+  .sl-filters {
+    justify-content: stretch;
+  }
+
+  .sl-filter-btn {
+    flex: 1;
+  }
+}

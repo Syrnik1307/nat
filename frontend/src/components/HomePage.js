@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../auth';
 import { getTeacherStatsSummary, getLessons, getGroups, getHomeworkList } from '../apiService';
 import { Link } from 'react-router-dom';
+import SupportWidget from './SupportWidget';
 
 const HomePage = () => {
   const { accessTokenValid, role } = useAuth();
@@ -210,6 +211,7 @@ const HomePage = () => {
           </div>
         </aside>
       </div>
+      <SupportWidget />
     </div>
   );
 };

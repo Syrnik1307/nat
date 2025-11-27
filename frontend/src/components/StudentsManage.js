@@ -26,7 +26,7 @@ const StudentsManage = ({ onClose }) => {
   const loadStudents = async () => {
     try {
       const token = localStorage.getItem('tp_access_token');
-      const response = await fetch('http://72.56.81.163:8001/accounts/api/admin/students/', {
+      const response = await fetch('/accounts/api/admin/students/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -58,7 +58,7 @@ const StudentsManage = ({ onClose }) => {
 
     try {
       const token = localStorage.getItem('tp_access_token');
-      const response = await fetch(`http://72.56.81.163:8001/accounts/api/admin/students/${selectedStudent.id}/update/`, {
+      const response = await fetch(`/accounts/api/admin/students/${selectedStudent.id}/update/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -89,7 +89,7 @@ const StudentsManage = ({ onClose }) => {
 
     try {
       const token = localStorage.getItem('tp_access_token');
-      const response = await fetch(`http://72.56.81.163:8001/accounts/api/admin/students/${studentId}/delete/`, {
+      const response = await fetch(`/accounts/api/admin/students/${studentId}/delete/`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

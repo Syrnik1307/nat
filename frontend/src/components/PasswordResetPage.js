@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import './PasswordReset.css';
 
 const PasswordResetPage = () => {
-  const { uid, token } = useParams();
+  const { uid, token: urlToken } = useParams();
+  const [searchParams] = useSearchParams();
+  const telegramToken = searchParams.get('token'); // Токен из Telegram
   const navigate = useNavigate();
   
   const [step, setStep] = useState('validate'); // 'validate' | 'reset' | 'success' | 'error'
@@ -13,17 +15,26 @@ const PasswordResetPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [isTelegramReset, setIsTelegramReset] = useState(false);
 
   useEffect(() => {
-    if (uid && token) {
+    if (telegramToken) {
+      // Сброс через Telegram
+      setIsTelegramReset(true);
+      setStep('reset');
+    } else if (uid && urlToken) {
+      // Старый метод (email)
       validateToken();
+    } else {
+      setError('Неверная ссылка для сброса пароля');
+      setStep('error');
     }
-  }, [uid, token]);
+  }, [uid, urlToken, telegramToken]);
 
   const validateToken = async () => {
     try {
       const response = await fetch(
-        `http://72.56.81.163:8001/accounts/api/password-reset/validate/${uid}/${token}/`
+        `/accounts/api/password-reset/validate/${uid}/${urlToken}/`
       );
       const data = await response.json();
       
@@ -44,8 +55,8 @@ const PasswordResetPage = () => {
     e.preventDefault();
     setError('');
     
-    if (password.length < 6) {
-      setError('Пароль должен содержать минимум 6 символов');
+    if (password.length < 8) {
+      setError('Пароль должен содержать минимум 8 символов');
       return;
     }
     
@@ -57,17 +68,34 @@ const PasswordResetPage = () => {
     setLoading(true);
     
     try {
-      const response = await fetch('http://72.56.81.163:8001/accounts/api/password-reset/confirm/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          uid,
-          token,
-          password,
-        }),
-      });
+      let response;
+      
+      if (isTelegramReset) {
+        // Сброс через Telegram токен
+        response = await fetch('/accounts/api/password-reset-telegram/confirm/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            token: telegramToken,
+            new_password: password,
+          }),
+        });
+      } else {
+        // Старый метод (email)
+        response = await fetch('/accounts/api/password-reset/confirm/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            uid,
+            token: urlToken,
+            password,
+          }),
+        });
+      }
       
       const data = await response.json();
       
@@ -77,7 +105,7 @@ const PasswordResetPage = () => {
           navigate('/auth');
         }, 3000);
       } else {
-        setError(data.error || 'Не удалось сбросить пароль');
+        setError(data.detail || data.error || 'Не удалось сбросить пароль');
       }
     } catch (err) {
       setError('Ошибка сети. Попробуйте позже.');

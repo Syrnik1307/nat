@@ -66,6 +66,9 @@ urlpatterns = [
     # Zoom Pool API
     path('api/zoom-pool/', include('zoom_pool.urls')),
     
+    # Support API
+    path('api/support/', include('support.urls')),
+    
     # API (DRF router)
     path('api/', include(router.urls)),
     path('api/gradebook/', GradebookViewSet.as_view({'get': 'group'}), name='gradebook-group'),

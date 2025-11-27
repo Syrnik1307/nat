@@ -27,7 +27,7 @@ const StatusBar = () => {
   const loadMessages = async () => {
     try {
       const token = localStorage.getItem('tp_access_token');
-      const response = await fetch('http://72.56.81.163:8001/accounts/api/status-messages/', {
+      const response = await fetch('/accounts/api/status-messages/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();

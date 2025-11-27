@@ -35,6 +35,7 @@ class GroupSerializer(serializers.ModelSerializer):
         required=False
     )
     student_count = serializers.IntegerField(read_only=True)
+    invite_code = serializers.CharField(read_only=True)
     
     class Meta:
         model = Group
@@ -42,6 +43,7 @@ class GroupSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 
             'teacher', 'teacher_id',
             'students', 'student_ids', 'student_count',
+            'invite_code',
             'created_at', 'updated_at'
         ]
 

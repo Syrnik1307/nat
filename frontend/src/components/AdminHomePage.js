@@ -7,7 +7,6 @@ import StatusMessages from './StatusMessages';
 import ZoomPoolManager from '../modules/core/zoom/ZoomPoolManager';
 import SystemSettings from './SystemSettings';
 import './AdminHomePage.css';
-const base = process.env.REACT_APP_API_BASE_URL || 'http://72.56.81.163:8001/api/';
 
 const AdminHomePage = () => {
   const { user } = useAuth();
@@ -47,8 +46,7 @@ const AdminHomePage = () => {
   const loadStats = async () => {
     try {
       const token = localStorage.getItem('tp_access_token');
-      const base = process.env.REACT_APP_API_BASE_URL || 'http://72.56.81.163:8001/api/';
-      const response = await fetch(base + 'accounts/api/admin/stats/', {
+      const response = await fetch('/accounts/api/admin/stats/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -75,8 +73,8 @@ const AdminHomePage = () => {
 
     try {
       const endpoint = userRole === 'teacher' 
-        ? `${base}accounts/api/admin/create-teacher/`
-        : `${base}accounts/api/admin/create-student/`;
+        ? '/accounts/api/admin/create-teacher/'
+        : '/accounts/api/admin/create-student/';
       
       console.log(`Отправка данных ${userTypeLabel}:`, { ...teacherForm, password: '***' });
       const token = localStorage.getItem('tp_access_token');

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="48" viewBox="0 0 160 48" fill="none" role="img" aria-label="Teaching Panel Logo">
+  <style>
+    .i{stroke:#1d4ed8;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+    .f{fill:#1d4ed8;}
+    @media (prefers-color-scheme: dark){ .i{stroke:#3b82f6;} .f{fill:#3b82f6;} }
+  </style>
+  <!-- Book left -->
+  <path class="i" d="M6 14h18v20c-6-3-12-3-18 0V14Z" fill="#eef3ff"/>
+  <path class="i" d="M24 14h18v20c-6-3-12-3-18 0V14Z" fill="#ffffff"/>
+  <!-- Center tablet overlapping -->
+  <rect class="i" x="36" y="8" width="22" height="28" rx="4" fill="white"/>
+  <rect class="i" x="41" y="14" width="12" height="16" rx="2"/>
+  <path class="i" d="M47 34h4"/>
+  <!-- Graduation cap -->
+  <path class="f" d="M30 8 20 12l10 4 10-4-10-4Z"/>
+  <path class="f" d="M25.5 13.2v4.2c0 .9 1.2 1.6 2.5 1.6s2.5-.7 2.5-1.6v-4.2" fill="none" stroke="#1d4ed8" stroke-width="1.6" stroke-linecap="round"/>
+  <path class="f" d="M34 12v6" stroke="#1d4ed8" stroke-width="1.6" stroke-linecap="round"/>
+  <!-- Text "Teaching Panel" minimal rounded sans approximation -->
+  <g fill="#1d4ed8" font-family="system-ui,Segoe UI,Roboto,Arial" font-size="18" font-weight="600">
+    <text x="64" y="24" letter-spacing="0.5">Teaching</text>
+    <text x="64" y="42" letter-spacing="0.5">Panel</text>
+  </g>
+</svg>

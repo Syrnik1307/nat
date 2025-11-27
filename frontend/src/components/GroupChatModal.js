@@ -40,7 +40,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      const response = await axios.get('http://localhost:8000/schedule/api/groups/', {
+      const response = await axios.get('/api/groups/', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setGroups(response.data);
@@ -55,7 +55,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      const response = await axios.get('http://localhost:8000/accounts/api/users/', {
+      const response = await axios.get('/api/users/', {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Фильтруем текущего пользователя
@@ -76,7 +76,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
     try {
       const token = localStorage.getItem('access_token');
       const response = await axios.get(
-        `http://localhost:8000/schedule/api/groups/${selectedGroup.id}/students/`,
+        `/api/groups/${selectedGroup.id}/students/`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setGroupStudents(response.data);
@@ -120,7 +120,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
     try {
       const token = localStorage.getItem('access_token');
       const response = await axios.post(
-        'http://localhost:8000/accounts/api/chats/create_group/',
+        '/api/chats/create_group/',
         {
           name: chatName,
           participant_ids: selectedStudents,

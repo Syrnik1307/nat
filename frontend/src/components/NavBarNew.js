@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
+import Logo from './Logo';
 import './NavBar.css';
 
 /**
@@ -50,8 +51,7 @@ const NavBar = () => {
   const loadMessages = async () => {
     try {
       const token = localStorage.getItem('tp_access_token');
-      const base = process.env.REACT_APP_API_BASE_URL || 'http://72.56.81.163:8001/api/';
-      const response = await fetch(base + 'accounts/api/status-messages/', {
+      const response = await fetch('/accounts/api/status-messages/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -139,8 +139,8 @@ const NavBar = () => {
       <nav className="navbar">
         <div className="navbar-container">
         {/* Логотип */}
-        <Link to={homePath} className="navbar-logo">
-          <span className="logo-icon">📚</span>
+        <Link to={homePath} className="navbar-logo" aria-label="Teaching Panel">
+          <Logo size={34} />
           <span className="logo-text">Teaching Panel</span>
         </Link>
 
@@ -256,11 +256,13 @@ const NavBar = () => {
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
                 aria-label="Меню профиля"
               >
-                <div className="avatar">
+                <div className="avatar" aria-hidden="true">
                   {user?.avatar ? (
                     <img src={user.avatar} alt="Аватар" />
                   ) : (
-                    <span className="avatar-icon">👤</span>
+                    <span className="avatar-initial">
+                      {(user?.first_name || user?.email || 'U').charAt(0).toUpperCase()}
+                    </span>
                   )}
                 </div>
                 <span className="profile-name">

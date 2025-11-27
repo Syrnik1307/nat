@@ -16,7 +16,7 @@ const StatusMessages = ({ onClose }) => {
   const loadMessages = async () => {
     try {
       const token = localStorage.getItem('tp_access_token');
-      const response = await fetch('http://72.56.81.163:8001/accounts/api/admin/status-messages/', {
+      const response = await fetch('/accounts/api/admin/status-messages/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -48,7 +48,7 @@ const StatusMessages = ({ onClose }) => {
 
     try {
       const token = localStorage.getItem('tp_access_token');
-      const response = await fetch('http://72.56.81.163:8001/accounts/api/admin/status-messages/', {
+      const response = await fetch('/accounts/api/admin/status-messages/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,7 +83,7 @@ const StatusMessages = ({ onClose }) => {
 
     try {
       const token = localStorage.getItem('tp_access_token');
-      const response = await fetch(`http://72.56.81.163:8001/accounts/api/admin/status-messages/${messageId}/`, {
+      const response = await fetch(`/accounts/api/admin/status-messages/${messageId}/`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

@@ -37,7 +37,7 @@ const ChatThread = ({ chat, currentUserId, onBack }) => {
     try {
       const token = localStorage.getItem('access_token');
       const response = await axios.get(
-        `http://localhost:8000/accounts/api/messages/?chat_id=${chat.id}`,
+        `/api/messages/?chat_id=${chat.id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMessages(response.data);
@@ -54,7 +54,7 @@ const ChatThread = ({ chat, currentUserId, onBack }) => {
     try {
       const token = localStorage.getItem('access_token');
       await axios.post(
-        'http://localhost:8000/accounts/api/messages/mark_chat_as_read/',
+        '/api/messages/mark_chat_as_read/',
         { chat_id: chat.id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -75,7 +75,7 @@ const ChatThread = ({ chat, currentUserId, onBack }) => {
     try {
       const token = localStorage.getItem('access_token');
       await axios.post(
-        'http://localhost:8000/accounts/api/messages/',
+        '/api/messages/',
         {
           chat: chat.id,
           text: messageText

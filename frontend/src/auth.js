@@ -67,7 +67,7 @@ export const AuthProvider = ({ children }) => {
     const refreshToken = localStorage.getItem('tp_refresh_token');
     if (refreshToken) {
       try {
-        const res = await fetch(`${process.env.REACT_APP_API_BASE_URL||'http://72.56.81.163:8001/api/'}jwt/refresh/`, {
+        const res = await fetch(`/api/jwt/refresh/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refresh: refreshToken })
@@ -110,13 +110,14 @@ export const AuthProvider = ({ children }) => {
     return resolvedRole;
   }, [loadUser]);
 
-  const register = useCallback(async ({ email, password, firstName, lastName, role: initialRole, birthDate }) => {
+  const register = useCallback(async ({ email, password, firstName, lastName, phone, role: initialRole, birthDate }) => {
     // 1. Регистрация пользователя
-    const regRes = await apiClient.post('accounts/jwt/register/', {
+    const regRes = await apiClient.post('jwt/register/', {
       email,
       password,
       first_name: firstName,
       last_name: lastName,
+      phone: phone || '',
       role: initialRole,
       birth_date: birthDate || null,
       recaptcha_token: null,
@@ -161,6 +162,8 @@ export const AuthProvider = ({ children }) => {
     setAccessTokenValid(false);
     setRole(null);
     setUser(null);
+    // Редирект на страницу авторизации после выхода
+    window.location.href = '/auth-new';
   }, []);
 
   const refreshUser = useCallback(async () => loadUser(), [loadUser]);

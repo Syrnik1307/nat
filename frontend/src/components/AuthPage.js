@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { Input, Button, Modal, Notification } from '../shared/components';
+import SupportWidget from './SupportWidget';
+import PasswordResetModal from './PasswordResetModal';
 import './AuthPage.css';
 import EyeIcon from './icons/EyeIcon';
 // import { useRecaptcha } from '../hooks/useRecaptcha'; // отключено
@@ -13,20 +15,18 @@ import EyeIcon from './icons/EyeIcon';
  * 1. Выбор роли: Ученик или Преподаватель (Админ входит как преподаватель)
  * 2. Форма входа с email/телефон + пароль
  * 3. Переключение на регистрацию
- * 4. SMS-подтверждение (опционально)
- * 5. Восстановление пароля
+ * 4. Восстановление пароля через Telegram
  * 
  * Защита от ботов:
  * - Rate limiting (макс. 5 попыток в минуту)
  * - CAPTCHA после 3 неудачных попыток
- * - SMS OTP для дополнительной безопасности
  * - Блокировка IP при подозрительной активности
  * - Honeypot поле (скрытое для людей, видимое для ботов)
  */
 
 const AuthPage = () => {
   const navigate = useNavigate();
-  const { login, register } = useAuth();
+  const { login, register, accessTokenValid, role: userRole } = useAuth();
   // const { executeRecaptcha } = useRecaptcha(); // отключено
   
   useEffect(() => {
@@ -51,7 +51,6 @@ const AuthPage = () => {
   // === ШАГИ АУТЕНТИФИКАЦИИ ===
   // 0 = Выбор роли
   // 1 = Форма входа/регистрации
-  // 2 = SMS подтверждение
   const [step, setStep] = useState(0);
   const [role, setRole] = useState(null); // 'student' | 'teacher'
   const [mode, setMode] = useState('login'); // 'login' | 'register'
@@ -64,6 +63,7 @@ const AuthPage = () => {
     confirmPassword: '',
     firstName: '',
     lastName: '',
+    telegramUsername: '', // Telegram для восстановления пароля
     honeypot: '', // Защита от ботов
   });
   
@@ -83,11 +83,6 @@ const AuthPage = () => {
     title: '',
     message: '',
   });
-  
-  // === SMS АУТЕНТИФИКАЦИЯ ===
-  const [smsCode, setSmsCode] = useState('');
-  const [smsTimer, setSmsTimer] = useState(0);
-  const [smsAttempts, setSmsAttempts] = useState(0);
   
   // === ВОССТАНОВЛЕНИЕ ПАРОЛЯ ===
   const [showResetModal, setShowResetModal] = useState(false);
@@ -121,17 +116,6 @@ const AuthPage = () => {
       isOpen: false,
     });
   };
-
-  // === ТАЙМЕР ДЛЯ SMS ===
-  useEffect(() => {
-    let interval;
-    if (smsTimer > 0) {
-      interval = setInterval(() => {
-        setSmsTimer(prev => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [smsTimer]);
 
   // === ТАЙМЕР БЛОКИРОВКИ ===
   useEffect(() => {
@@ -245,48 +229,6 @@ const AuthPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // === ОТПРАВКА SMS ===
-  const sendSMS = async () => {
-    if (smsTimer > 0) return;
-    
-    try {
-      // TODO: Интеграция с SMS провайдером
-      console.log('Отправка SMS на:', formData.phone);
-      setSmsTimer(60); // 60 секунд до повторной отправки
-      setSmsAttempts(prev => prev + 1);
-      
-      // Ограничение попыток
-      if (smsAttempts >= 3) {
-        setError('Превышено количество попыток. Попробуйте позже.');
-        setBlocked(true);
-        setBlockTimer(300);
-      }
-    } catch (err) {
-      setError('Ошибка отправки SMS. Попробуйте позже.');
-    }
-  };
-
-  // === ПОДТВЕРЖДЕНИЕ SMS ===
-  const verifySMS = async () => {
-    if (!smsCode || smsCode.length !== 6) {
-      setError('Введите 6-значный код');
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      // TODO: Проверка SMS кода на backend
-      console.log('Проверка SMS кода:', smsCode);
-      
-      // После успешной проверки - выполняем вход
-      await handleLogin();
-    } catch (err) {
-      setError('Неверный код. Попробуйте еще раз.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // === ВХОД ===
   const handleLogin = async () => {
     setError(null);
@@ -391,6 +333,7 @@ const AuthPage = () => {
         email: formData.email,
         firstName: formData.firstName,
         lastName: formData.lastName,
+        phone: formData.phone,
         role
       });
       const resolvedRole = await register({
@@ -398,6 +341,7 @@ const AuthPage = () => {
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
+        phone: formData.phone.trim(),
         role,
         birthDate: null,
       });
@@ -407,8 +351,7 @@ const AuthPage = () => {
       // Асинхронно отправим письмо верификации (не блокируем редирект)
       (async () => {
         try {
-          const base = process.env.REACT_APP_API_BASE_URL || 'http://72.56.81.163:8001/api/';
-          const resp = await fetch(base + 'accounts/api/email/send-verification/', {
+          const resp = await fetch('/accounts/api/email/send-verification/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: formData.email.trim().toLowerCase() })
@@ -424,15 +367,9 @@ const AuthPage = () => {
         }
       })();
 
-      const target = resolvedRole === 'teacher' ? '/teacher' : resolvedRole === 'student' ? '/student' : '/redirect';
-      console.log('🔄 Редирект в кабинет:', target);
-      navigate(target, { replace: true });
-      // Фолбэк: если через 400мс still не там
-      setTimeout(() => {
-        if (window.location.pathname !== target) {
-          window.location.href = target;
-        }
-      }, 400);
+      // После регистрации перенаправляем на /home-new
+      console.log('✅ Регистрация успешна, перенаправление на /home-new');
+      navigate('/home-new', { replace: true });
     } catch (err) {
       console.error('❌ Ошибка регистрации:', err);
       showNotification('error', 'Ошибка регистрации', err.message || 'Не удалось зарегистрироваться');
@@ -498,8 +435,8 @@ const AuthPage = () => {
     setError('');
     
     try {
-      const base = process.env.REACT_APP_API_BASE_URL || 'http://72.56.81.163:8001/api/';
-      const response = await fetch(base + 'accounts/api/password-reset/request/', {
+      // Пробуем новый метод через Telegram
+      const response = await fetch('/accounts/api/password-reset-telegram/request/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -510,14 +447,30 @@ const AuthPage = () => {
       const data = await response.json();
       
       if (response.ok) {
+        if (data.telegram_linked) {
+          // Telegram привязан - показываем инструкцию
+          setError('');
+          showNotification(
+            'info',
+            'Откройте Telegram',
+            'Отправьте команду /reset нашему боту @YourBotName для получения ссылки'
+          );
+        } else {
+          // Telegram не привязан
+          showNotification(
+            'warning',
+            'Telegram не привязан',
+            'Обратитесь к администратору для восстановления пароля'
+          );
+        }
         setResetSuccess(true);
         setTimeout(() => {
           setShowResetModal(false);
           setResetSuccess(false);
           setResetEmail('');
-        }, 4000);
+        }, 5000);
       } else {
-        setError(data.error || 'Ошибка отправки письма');
+        setError(data.detail || 'Ошибка при запросе восстановления');
       }
     } catch (err) {
       setError('Ошибка сети. Попробуйте позже.');
@@ -528,6 +481,8 @@ const AuthPage = () => {
 
   // === ВЫБОР РОЛИ ===
   const selectRole = (selectedRole) => {
+    // Всегда начинаем со входа после выбора роли
+    setMode('login');
     setRole(selectedRole);
     setStep(1);
   };
@@ -542,44 +497,47 @@ const AuthPage = () => {
   // === РЕНДЕР: ШАГ 0 - ВЫБОР РОЛИ ===
   if (step === 0) {
     return (
-      <div className="auth-container">
-        <div className="auth-content">
-          <div className="auth-header">
-            <h1 className="auth-title">Добро пожаловать</h1>
-            <p className="auth-subtitle">Выберите вашу роль для продолжения</p>
-          </div>
-
-          <div className="role-selection">
-            <div 
-              className="role-card"
-              onClick={() => selectRole('student')}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && selectRole('student')}
-            >
-              <div className="role-icon">🎓</div>
-              <h3 className="role-title">Я Ученик</h3>
-              <p className="role-description">
-                Доступ к расписанию, заданиям и материалам
-              </p>
+      <>
+        <div className="auth-container">
+          <div className="auth-content">
+            <div className="auth-header">
+              <h1 className="auth-title">Добро пожаловать</h1>
+              <p className="auth-subtitle">Выберите вашу роль для продолжения</p>
             </div>
 
-            <div 
-              className="role-card"
-              onClick={() => selectRole('teacher')}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && selectRole('teacher')}
-            >
-              <div className="role-icon">👨‍🏫</div>
-              <h3 className="role-title">Я Учитель</h3>
-              <p className="role-description">
-                Управление группами, уроками и домашними заданиями
-              </p>
+            <div className="role-selection">
+              <div 
+                className="role-card"
+                onClick={() => selectRole('student')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && selectRole('student')}
+              >
+                <div className="role-icon">🎓</div>
+                <h3 className="role-title">Я Ученик</h3>
+                <p className="role-description">
+                  Доступ к расписанию, заданиям и материалам
+                </p>
+              </div>
+
+              <div 
+                className="role-card"
+                onClick={() => selectRole('teacher')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && selectRole('teacher')}
+              >
+                <div className="role-icon">👨‍🏫</div>
+                <h3 className="role-title">Я Учитель</h3>
+                <p className="role-description">
+                  Управление группами, уроками и домашними заданиями
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+        <SupportWidget />
+      </>
     );
   }
 
@@ -603,7 +561,7 @@ const AuthPage = () => {
           <div className="auth-backlink">
             <button 
               className="back-button"
-              onClick={() => setStep(0)}
+              onClick={() => { setStep(0); setMode('login'); }}
               aria-label="Вернуться к выбору роли"
               type="button"
             >
@@ -668,6 +626,21 @@ const AuthPage = () => {
                 autoComplete="email"
               />
             </div>
+
+            {mode === 'register' && (
+              <div className="form-group">
+                <label htmlFor="phone">Номер телефона *</label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => handleChange('phone', e.target.value)}
+                  error={errors.phone}
+                  placeholder="+7 (999) 123-45-67"
+                  disabled={loading || blocked}
+                />
+              </div>
+            )}
 
             <div className="form-group">
               <label htmlFor="password">Пароль *</label>
@@ -782,129 +755,20 @@ const AuthPage = () => {
                 </button>
               </p>
             </div>
+
+            {/* Кнопка убрана - редирект происходит автоматически */}
           </form>
 
           
         </div>
 
-        {/* Модальное окно восстановления пароля */}
-        {showResetModal && (
-          <Modal
-            isOpen={showResetModal}
-            onClose={() => setShowResetModal(false)}
-          >
-            <div className="reset-modal">
-              <h2>Восстановление пароля</h2>
-              {resetSuccess ? (
-                <div className="success-message">
-                  ✅ Новый пароль отправлен на {resetEmail}
-                  <p style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280' }}>
-                    Войдите с временным паролем из письма и сразу смените его в профиле
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <p>Введите ваш email, и мы отправим инструкции по восстановлению пароля</p>
-                  <Input
-                    type="email"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    placeholder="example@mail.com"
-                    disabled={resetLoading}
-                  />
-                  {error && <div className="error-message">{error}</div>}
-                  <div className="modal-actions">
-                    <Button
-                      onClick={handleResetPassword}
-                      disabled={resetLoading || !resetEmail}
-                    >
-                      {resetLoading ? 'Отправка...' : 'Отправить'}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => setShowResetModal(false)}
-                      disabled={resetLoading}
-                    >
-                      Отмена
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          </Modal>
-        )}
-      </div>
-    );
-  }
-
-  // === РЕНДЕР: ШАГ 2 - SMS ПОДТВЕРЖДЕНИЕ ===
-  if (step === 2) {
-    return (
-      <div className="auth-container">
-        <div className="auth-content">
-          <div className="auth-header">
-            <button 
-              className="back-button"
-              onClick={() => setStep(1)}
-              aria-label="Вернуться к форме"
-            >
-              ← Назад
-            </button>
-            <h1 className="auth-title">Подтверждение телефона</h1>
-            <p className="auth-subtitle">
-              Мы отправили код на {formData.phone}
-            </p>
-          </div>
-
-          <div className="sms-verification">
-            <div className="form-group">
-              <label htmlFor="smsCode">Введите 6-значный код</label>
-              <Input
-                id="smsCode"
-                type="text"
-                value={smsCode}
-                onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
-                disabled={loading}
-                maxLength={6}
-                className="sms-input"
-              />
-            </div>
-
-            {error && (
-              <div className="error-message" role="alert">
-                {error}
-              </div>
-            )}
-
-            <Button
-              onClick={verifySMS}
-              disabled={loading || smsCode.length !== 6}
-              className="submit-button"
-            >
-              {loading ? 'Проверка...' : 'Подтвердить'}
-            </Button>
-
-            <div className="sms-resend">
-              {smsTimer > 0 ? (
-                <p>Отправить код повторно через {smsTimer} сек</p>
-              ) : (
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={sendSMS}
-                  disabled={loading}
-                >
-                  Отправить код повторно
-                </button>
-              )}
-            </div>
-
-            <p className="sms-note">
-              Не получили код? Проверьте правильность номера телефона или попробуйте войти без SMS
-            </p>
-          </div>
-        </div>
+        {/* Новое модальное окно восстановления пароля через Telegram/WhatsApp */}
+        <PasswordResetModal
+          isOpen={showResetModal}
+          onClose={() => setShowResetModal(false)}
+        />
+        
+        <SupportWidget />
       </div>
     );
   }
@@ -918,6 +782,7 @@ const AuthPage = () => {
         title={notification.title}
         message={notification.message}
       />
+      <SupportWidget />
     </>
   );
 };

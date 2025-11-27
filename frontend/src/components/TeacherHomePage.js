@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../auth';
-import { getTeacherStatsSummary, getLessons, getGroups } from '../apiService';
+import { getTeacherStatsSummary, getTeacherStatsBreakdown, getLessons, getGroups } from '../apiService';
 import { Link, useNavigate } from 'react-router-dom';
 import StartLessonButton from '../modules/core/zoom/StartLessonButton';
+import SupportWidget from './SupportWidget';
 import './TeacherHomePage.css';
 
 const TreeGrowth = ({ stage, progress }) => {
@@ -43,6 +44,16 @@ const TreeGrowth = ({ stage, progress }) => {
  * 2. Прогресс преподавателя и накопленные показатели
  */
 
+// Прогресс-бар вынесен вверх чтобы использовать внутри компонента
+const ProgressBar = ({ value, variant='default' }) => {
+  const safe = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+  return (
+    <div className={`progress-bar pb-${variant}`}> 
+      <div className="progress-fill" style={{ width: `${safe}%` }} />
+    </div>
+  );
+};
+
 const TeacherHomePage = () => {
   const { accessTokenValid } = useAuth();
   const navigate = useNavigate();
@@ -51,6 +62,7 @@ const TeacherHomePage = () => {
   const [todayLessons, setTodayLessons] = useState([]);
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
+  const [breakdown, setBreakdown] = useState({ groups: [], students: [] });
 
   const loadData = useCallback(async () => {
     if (!accessTokenValid) return;
@@ -60,10 +72,11 @@ const TeacherHomePage = () => {
     
     try {
       const todayDate = new Date().toISOString().split('T')[0];
-      const [groupsRes, lessonsRes, statsRes] = await Promise.all([
+      const [groupsRes, lessonsRes, statsRes, breakdownRes] = await Promise.all([
         getGroups(),
         getLessons({ date: todayDate }),
         getTeacherStatsSummary(),
+        getTeacherStatsBreakdown(),
       ]);
 
       const groupsList = Array.isArray(groupsRes.data) 
@@ -77,6 +90,7 @@ const TeacherHomePage = () => {
       setGroups(groupsList);
       setTodayLessons(lessonsList);
       setStats(statsRes.data);
+      setBreakdown(breakdownRes.data || { groups: [], students: [] });
     } catch (err) {
       console.error('Ошибка загрузки данных:', err);
       setError('Не удалось загрузить данные. Попробуйте обновить страницу.');
@@ -335,35 +349,59 @@ const TeacherHomePage = () => {
           {/* Сводная статистика */}
           <section className="summary-stats">
             <h2 className="summary-title">Статистика</h2>
-            <div className="summary-grid">
-              <div className="summary-card">
-                <div className="summary-icon students">🧑‍🏫</div>
-                <div className="summary-copy">
-                  <span className="summary-label">УЧЕНИКОВ</span>
-                  <span className="summary-value">{derivedStats.totalStudents}</span>
+            <div className="group-breakdown">
+              <h3 className="gb-title">Группы</h3>
+              {breakdown.groups.length === 0 && (
+                <div className="gb-empty">Нет данных по группам</div>
+              )}
+              {breakdown.groups.map(g => (
+                <div key={g.id} className="group-row">
+                  <div className="group-meta">
+                    <div className="group-avatar" aria-hidden="true">👥</div>
+                    <div className="group-info">
+                      <div className="group-name">{g.name}</div>
+                      <div className="group-sub">Учеников: {g.students_count}</div>
+                    </div>
+                  </div>
+                  <div className="metric-block">
+                    <div className="metric-label">Посещаемость</div>
+                    <ProgressBar value={g.attendance_percent} />
+                    <div className="metric-value">{g.attendance_percent != null ? g.attendance_percent + '%' : '—'}</div>
+                  </div>
+                  <div className="metric-block">
+                    <div className="metric-label">Домашнее</div>
+                    <ProgressBar value={g.homework_percent} variant="homework" />
+                    <div className="metric-value">{g.homework_percent != null ? g.homework_percent + '%' : '—'}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-icon lessons">📚</div>
-                <div className="summary-copy">
-                  <span className="summary-label">УРОКОВ</span>
-                  <span className="summary-value">{derivedStats.lessonsCount}</span>
+              ))}
+            </div>
+            <div className="students-breakdown">
+              <h3 className="gb-title">Ученики</h3>
+              {breakdown.students.length === 0 && (
+                <div className="gb-empty">Нет данных по ученикам</div>
+              )}
+              {breakdown.students.map(st => (
+                <div key={st.id} className="student-row">
+                  <div className="student-meta">
+                    <div className="student-avatar" aria-hidden="true">🎓</div>
+                    <div className="student-info">
+                      <div className="student-name">{st.name}</div>
+                      <div className="student-sub">{st.group_name}</div>
+                    </div>
+                  </div>
+                  <div className="metric-block">
+                    <div className="metric-label">Посещаемость</div>
+                    <ProgressBar value={st.attendance_percent} />
+                    <div className="metric-value">{st.attendance_percent != null ? st.attendance_percent + '%' : '—'}</div>
+                  </div>
+                  <div className="metric-block">
+                    <div className="metric-label">Домашнее</div>
+                    <ProgressBar value={st.homework_percent} variant="homework" />
+                    <div className="metric-value">{st.homework_percent != null ? st.homework_percent + '%' : '—'}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-icon attendance">✅</div>
-                <div className="summary-copy">
-                  <span className="summary-label">ПОСЕЩАЕМОСТЬ</span>
-                  <span className="summary-value">{derivedStats.attendanceRate}%</span>
-                </div>
-              </div>
-              <div className="summary-card">
-                <div className="summary-icon homework">📝</div>
-                <div className="summary-copy">
-                  <span className="summary-label">НОВЫХ ДЗ</span>
-                  <span className="summary-value">{derivedStats.newHomeworkCount}</span>
-                </div>
-              </div>
+              ))}
             </div>
           </section>
         </div>
@@ -432,8 +470,11 @@ const TeacherHomePage = () => {
 
         </aside>
       </div>
+      <SupportWidget />
     </div>
   );
 };
+
+// ProgressBar уже объявлен выше
 
 export default TeacherHomePage;

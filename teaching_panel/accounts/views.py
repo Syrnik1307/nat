@@ -58,6 +58,7 @@ def register_user(request):
     first_name = data.get('first_name', '')
     last_name = data.get('last_name', '')
     middle_name = data.get('middle_name', '')
+    phone = data.get('phone', '')  # Телефон для связи через мессенджеры
     birth_date_raw = data.get('birth_date')
 
     if not email or not password:
@@ -84,6 +85,12 @@ def register_user(request):
             last_name=last_name,
             middle_name=middle_name
         )
+        
+        # Сохраняем телефон для связи через мессенджеры
+        if phone:
+            user.phone = phone
+            user.save()
+        
         if birth_date_raw:
             bd = parse_date(birth_date_raw)
             if bd:
