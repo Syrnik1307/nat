@@ -1,0 +1,364 @@
+.teacher-recordings-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+}
+
+.teacher-recordings-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: white;
+}
+
+.teacher-recordings-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.teacher-recordings-subtitle {
+  font-size: 1.1rem;
+  opacity: 0.95;
+  font-weight: 400;
+}
+
+/* Статистика */
+.teacher-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.teacher-stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.teacher-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.teacher-stat-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.teacher-stat-info {
+  flex: 1;
+}
+
+.teacher-stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.teacher-stat-label {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.teacher-stat-success .teacher-stat-value {
+  color: #10b981;
+}
+
+.teacher-stat-warning .teacher-stat-value {
+  color: #f59e0b;
+}
+
+.teacher-stat-danger .teacher-stat-value {
+  color: #ef4444;
+}
+
+/* Фильтры */
+.teacher-recordings-filters {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.teacher-search-box {
+  flex: 1;
+  min-width: 250px;
+}
+
+.teacher-search-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.teacher-search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.teacher-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.teacher-filter-group label {
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.teacher-filter-select {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 150px;
+}
+
+.teacher-filter-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.teacher-refresh-btn {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.teacher-refresh-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.teacher-refresh-btn:active {
+  transform: translateY(0);
+}
+
+/* Загрузка */
+.teacher-recordings-loading {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.teacher-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f4f6;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: teacher-spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes teacher-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.teacher-recordings-loading p {
+  color: #6b7280;
+  font-size: 1.1rem;
+}
+
+/* Ошибка */
+.teacher-recordings-error {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.teacher-recordings-error p {
+  color: #ef4444;
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+.teacher-retry-btn {
+  padding: 0.75rem 2rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.teacher-retry-btn:hover {
+  background: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+/* Пустое состояние */
+.teacher-recordings-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.teacher-empty-icon {
+  font-size: 5rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.teacher-recordings-empty h3 {
+  font-size: 1.5rem;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.teacher-recordings-empty p {
+  color: #6b7280;
+  font-size: 1.1rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Счетчик записей */
+.teacher-recordings-count {
+  background: white;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+  color: #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.teacher-recordings-count strong {
+  color: #667eea;
+  font-weight: 700;
+}
+
+/* Сетка записей */
+.teacher-recordings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Адаптивность */
+@media (max-width: 1200px) {
+  .teacher-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .teacher-recordings-page {
+    padding: 1rem;
+  }
+
+  .teacher-recordings-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .teacher-recordings-subtitle {
+    font-size: 1rem;
+  }
+
+  .teacher-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .teacher-stat-card {
+    padding: 1rem;
+  }
+
+  .teacher-stat-icon {
+    font-size: 2rem;
+  }
+
+  .teacher-stat-value {
+    font-size: 1.5rem;
+  }
+
+  .teacher-recordings-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .teacher-search-box {
+    min-width: 100%;
+  }
+
+  .teacher-filter-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .teacher-filter-select {
+    width: 100%;
+  }
+
+  .teacher-refresh-btn {
+    width: 100%;
+  }
+
+  .teacher-recordings-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .teacher-recordings-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .teacher-empty-icon {
+    font-size: 3rem;
+  }
+
+  .teacher-recordings-empty h3 {
+    font-size: 1.2rem;
+  }
+
+  .teacher-recordings-empty p {
+    font-size: 0.95rem;
+  }
+}

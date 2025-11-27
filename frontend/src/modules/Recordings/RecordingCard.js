@@ -1,7 +1,7 @@
 import React from 'react';
 import './RecordingCard.css';
 
-function RecordingCard({ recording, onPlay }) {
+function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('ru-RU', {
@@ -141,6 +141,21 @@ function RecordingCard({ recording, onPlay }) {
             </>
           )}
         </button>
+
+        {/* Кнопка удаления для преподавателей */}
+        {showDelete && (
+          <button 
+            className="delete-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(recording.id);
+            }}
+            title="Удалить запись"
+          >
+            <span className="button-icon">🗑️</span>
+            Удалить
+          </button>
+        )}
 
         {getStatusBadge()}
       </div>

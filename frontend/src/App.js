@@ -29,6 +29,7 @@ import ProfilePage from './components/ProfilePage';
 import ChatPage from './components/ChatPage';
 // Записи уроков
 import RecordingsPage from './modules/Recordings/RecordingsPage';
+import TeacherRecordingsPage from './modules/Recordings/TeacherRecordingsPage';
 
 const RoleRouter = () => {
   const { accessTokenValid, role, loading } = useAuth();
@@ -68,6 +69,7 @@ const AppRoutes = () => {
         {/* Teacher */}
         <Route path="/home-new" element={<Protected allowRoles={['teacher', 'admin']}><TeacherHomePage /></Protected>} />
         <Route path="/teacher" element={<Protected allowRoles={['teacher', 'admin']}><TeacherDashboard /></Protected>} />
+        <Route path="/teacher/recordings" element={<Protected allowRoles={['teacher']}><TeacherRecordingsPage /></Protected>} />
         <Route path="/homework/manage" element={<Protected allowRoles={['teacher']}><HomeworkManage /></Protected>} />
         <Route
           path="/homework/constructor"

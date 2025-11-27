@@ -235,6 +235,27 @@ const TeacherHomePage = () => {
           <button 
             type="button" 
             className="header-message-button" 
+            aria-label="Записи уроков"
+            onClick={() => navigate('/teacher/recordings')}
+            style={{ marginRight: '1rem' }}
+          >
+            <span className="header-message-icon" aria-hidden="true">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.6" fill="none"/>
+                <polygon points="10,8 16,12 10,16" fill="currentColor"/>
+              </svg>
+            </span>
+            <span className="header-message-label">Записи</span>
+          </button>
+          <button 
+            type="button" 
+            className="header-message-button" 
             aria-label="Сообщения"
             onClick={() => navigate('/chat')}
           >
