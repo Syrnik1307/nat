@@ -37,13 +37,13 @@ function AdminStorageManagementPage() {
         params.warning = filterWarning;
       }
 
-      const [quotasRes, statsRes] = await Promise.all([
-        api.get('/storage/quotas/', { params }),
-        api.get('/storage/statistics/')
+      const responses = await Promise.all([
+        api.get('/schedule/api/storage/quotas/', { params }),
+        api.get('/schedule/api/storage/statistics/')
       ]);
 
-      setQuotas(quotasResponse.data.results || quotasResponse.data);
-      setStatistics(statsResponse.data);
+      setQuotas(responses[0].data.results || responses[0].data);
+      setStatistics(responses[1].data);
     } catch (err) {
       console.error('Error loading data:', err);
       setError('Не удалось загрузить данные');
@@ -56,7 +56,7 @@ function AdminStorageManagementPage() {
     if (!selectedTeacher) return;
 
     try {
-      await api.post(`/storage/quotas/${selectedTeacher.id}/increase/`, {
+      await api.post(`/schedule/api/storage/quotas/${selectedTeacher.id}/increase/`, {
         additional_gb: increaseAmount
       });
 
@@ -78,7 +78,7 @@ function AdminStorageManagementPage() {
     }
 
     try {
-      await api.post(`/storage/quotas/${quotaId}/reset-warnings/`);
+      await api.post(`/schedule/api/storage/quotas/${quotaId}/reset-warnings/`);
       loadData();
       alert('Предупреждения сброшены');
     } catch (err) {
