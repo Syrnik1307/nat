@@ -159,10 +159,33 @@ const NavBar = () => {
           <span className="logo-text">Teaching Panel</span>
         </Link>
 
+        {/* Burger button для мобильных */}
+        <button 
+          className={`burger-button ${showMobileMenu ? 'open' : ''}`}
+          onClick={() => setShowMobileMenu(!showMobileMenu)}
+          aria-label="Toggle menu"
+        >
+          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
+          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
+          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
+        </button>
+
+        {/* Overlay для закрытия меню */}
+        {showMobileMenu && (
+          <div 
+            className="mobile-menu-overlay"
+            onClick={() => setShowMobileMenu(false)}
+          />
+        )}
+
         {/* Навигационное меню */}
-        <div className="navbar-menu">
+        <div className={`navbar-menu ${showMobileMenu ? 'mobile-open' : ''}`}>
           {/* Общие пункты */}
-          <Link to={homePath} className="nav-link">
+          <Link 
+            to={homePath} 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
             <span className="nav-icon">🏠</span>
             <span>Главная</span>
           </Link>
@@ -191,7 +214,7 @@ const NavBar = () => {
                     <Link
                       to="/calendar"
                       className="nav-dropdown-item"
-                      onClick={() => setShowLessonsMenu(false)}
+                      onClick={() => { setShowLessonsMenu(false); setShowMobileMenu(false); }}
                       role="menuitem"
                     >
                       <span className="item-icon">📆</span>
@@ -200,7 +223,7 @@ const NavBar = () => {
                     <Link
                       to="/recurring-lessons/manage"
                       className="nav-dropdown-item"
-                      onClick={() => setShowLessonsMenu(false)}
+                      onClick={() => { setShowLessonsMenu(false); setShowMobileMenu(false); }}
                       role="menuitem"
                     >
                       <span className="item-icon">➕</span>
@@ -210,17 +233,29 @@ const NavBar = () => {
                 )}
               </div>
               
-              <Link to="/homework/manage" className="nav-link">
+              <Link 
+                to="/homework/manage" 
+                className="nav-link"
+                onClick={() => setShowMobileMenu(false)}
+              >
                 <span className="nav-icon">📝</span>
                 <span>Конструктор ДЗ</span>
               </Link>
               
-              <Link to="/groups/manage" className="nav-link">
+              <Link 
+                to="/groups/manage" 
+                className="nav-link"
+                onClick={() => setShowMobileMenu(false)}
+              >
                 <span className="nav-icon">👥</span>
                 <span>Управление учениками</span>
               </Link>
               
-              <Link to="/materials" className="nav-link">
+              <Link 
+                to="/materials" 
+                className="nav-link"
+                onClick={() => setShowMobileMenu(false)}
+              >
                 <span className="nav-icon">📚</span>
                 <span>Материалы</span>
               </Link>
@@ -230,17 +265,29 @@ const NavBar = () => {
           {/* Меню для ученика */}
           {accessTokenValid && role === 'student' && (
             <>
-              <Link to="/student" className="nav-link">
+              <Link 
+                to="/student" 
+                className="nav-link"
+                onClick={() => setShowMobileMenu(false)}
+              >
                 <span className="nav-icon">📚</span>
                 <span>Мои курсы</span>
               </Link>
               
-              <Link to="/homework" className="nav-link">
+              <Link 
+                to="/homework" 
+                className="nav-link"
+                onClick={() => setShowMobileMenu(false)}
+              >
                 <span className="nav-icon">📝</span>
                 <span>Домашние задания</span>
               </Link>
               
-              <Link to="/calendar" className="nav-link">
+              <Link 
+                to="/calendar" 
+                className="nav-link"
+                onClick={() => setShowMobileMenu(false)}
+              >
                 <span className="nav-icon">📆</span>
                 <span>Календарь</span>
               </Link>
@@ -249,7 +296,11 @@ const NavBar = () => {
 
           {/* Меню для админа */}
           {accessTokenValid && role === 'admin' && (
-            <Link to="/admin" className="nav-link nav-link-highlight">
+            <Link 
+              to="/admin" 
+              className="nav-link nav-link-highlight"
+              onClick={() => setShowMobileMenu(false)}
+            >
               <span className="nav-icon">🔧</span>
               <span>Админ-панель</span>
             </Link>
