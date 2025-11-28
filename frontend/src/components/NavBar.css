@@ -323,7 +323,7 @@
 }
 
 .burger-button {
-  display: none;
+  display: flex;
   flex-direction: column;
   justify-content: space-between;
   width: 44px;
@@ -345,6 +345,12 @@
   border-color: #cbd5e1;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
   outline: none;
+}
+
+@media (min-width: 769px) {
+  .burger-button {
+    display: none;
+  }
 }
 
 .burger-line {
