@@ -28,7 +28,6 @@ const NavBar = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLessonsMenu, setShowLessonsMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [bannerVisible, setBannerVisible] = useState(true);
   const [messages, setMessages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
