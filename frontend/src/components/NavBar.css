@@ -39,22 +39,6 @@
   display: flex;
   align-items: center;
   gap: 0.65rem;
-.navbar-profile-button {
-  display: flex;
-  align-items: center;
-  gap: .55rem;
-  background: var(--bg-base);
-  border: 1px solid var(--border-soft);
-  color: var(--text-primary);
-  padding: .45rem .75rem;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-weight: 500;
-  font-size: .83rem;
-  line-height: 1.2;
-  transition: background var(--transition), border-color var(--transition);
-}
-.navbar-profile-button:hover { background: var(--hover-bg); border-color:#d1d5db; }
   justify-content: center;
 }
 
@@ -665,18 +649,6 @@
   font-size: 1.1rem;
   width: 24px;
   text-align: center;
-
-  .profile-button {
-    padding: 0;
-    border: none;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .profile-button .profile-name,
-  .profile-button .chevron {
-    display: none;
-  }
 }
 
 .dropdown-item:last-child {
