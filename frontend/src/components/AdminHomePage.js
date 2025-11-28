@@ -8,6 +8,7 @@ import ZoomPoolManager from '../modules/core/zoom/ZoomPoolManager';
 import ZoomPoolStats from './ZoomPoolStats';
 import SystemSettings from './SystemSettings';
 import './AdminHomePage.css';
+import StorageQuotaModal from '../modules/Admin/StorageQuotaModal';
 
 const AdminHomePage = () => {
   const { user } = useAuth();
@@ -30,6 +31,7 @@ const AdminHomePage = () => {
   const [showZoomStats, setShowZoomStats] = useState(false);
   const [showGrowthStats, setShowGrowthStats] = useState(false);
   const [showSystemSettings, setShowSystemSettings] = useState(false);
+  const [showStorageModal, setShowStorageModal] = useState(false);
   const [userRole, setUserRole] = useState('teacher');
   const [teacherForm, setTeacherForm] = useState({
     email: '',
@@ -258,7 +260,7 @@ const AdminHomePage = () => {
           <QuickAction
             icon="💾"
             label="Управление хранилищем"
-            onClick={() => window.location.href = '/admin/storage'}
+            onClick={() => setShowStorageModal(true)}
             color="#ef4444"
           />
           
@@ -513,6 +515,10 @@ const AdminHomePage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showStorageModal && (
+        <StorageQuotaModal onClose={() => setShowStorageModal(false)} />
       )}
     </div>
   );

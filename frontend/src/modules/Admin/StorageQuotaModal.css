@@ -1,0 +1,290 @@
+.storage-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.storage-modal {
+  background: #fff;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 1100px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.2);
+  padding: 24px;
+}
+
+.storage-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.storage-modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.storage-modal-subtitle {
+  margin: 4px 0 16px;
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+.modal-close {
+  border: none;
+  background: transparent;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.storage-error {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+}
+
+.storage-link-button {
+  border: none;
+  background: none;
+  color: #2563eb;
+  cursor: pointer;
+  margin-left: 6px;
+  font-weight: 600;
+}
+
+.storage-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+  align-items: center;
+}
+
+.storage-controls input[type="text"] {
+  flex: 1;
+  min-width: 220px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+}
+
+.storage-filters-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.storage-filters-inline select,
+.storage-controls button {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+}
+
+.storage-content {
+  display: flex;
+  gap: 18px;
+  flex: 1;
+  min-height: 320px;
+}
+
+.storage-panel {
+  background: #f9fafb;
+  border-radius: 14px;
+  padding: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.storage-panel.left {
+  flex: 1.6;
+}
+
+.storage-panel.right {
+  flex: 1;
+}
+
+.storage-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.storage-table th,
+.storage-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.storage-table th {
+  background: #f3f4f6;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.storage-table tbody tr {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.storage-table tbody tr:hover {
+  background: #eef2ff;
+}
+
+.storage-row-selected {
+  background: #dbeafe;
+}
+
+.storage-loading,
+.storage-empty,
+.storage-right-placeholder {
+  text-align: center;
+  color: #6b7280;
+  padding: 20px;
+}
+
+.storage-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.storage-tag.ok {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.storage-tag.warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.storage-tag.exceeded {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.storage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.storage-small-button {
+  border: none;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: #e5e7eb;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.storage-small-button.primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.storage-small-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.storage-increase-block {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.storage-increase-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.storage-increase-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.storage-increase-row input {
+  width: 90px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 0.9rem;
+}
+
+.storage-primary-button {
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.storage-materials-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.storage-materials-list li {
+  padding: 8px 4px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.material-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.material-meta {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.teacher-name {
+  font-weight: 600;
+}
+
+.teacher-email {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+@media (max-width: 1024px) {
+  .storage-modal {
+    max-height: 100vh;
+  }
+
+  .storage-content {
+    flex-direction: column;
+  }
+}

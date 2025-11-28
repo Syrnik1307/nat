@@ -31,7 +31,6 @@ import ChatPage from './components/ChatPage';
 import RecordingsPage from './modules/Recordings/RecordingsPage';
 import TeacherRecordingsPage from './modules/Recordings/TeacherRecordingsPage';
 // Админ - управление хранилищем
-import AdminStorageManagementPage from './modules/Admin/AdminStorageManagementPage';
 
 const RoleRouter = () => {
   const { accessTokenValid, role, loading } = useAuth();
@@ -98,7 +97,6 @@ const AppRoutes = () => {
         
         {/* Admin */}
         <Route path="/admin" element={<Protected allowRoles={['admin']}><AdminHomePage /></Protected>} />
-        <Route path="/admin/storage" element={<Protected allowRoles={['admin']}><AdminStorageManagementPage /></Protected>} />
         
         {/* Common */}
         <Route path="/calendar" element={<Protected allowRoles={['teacher', 'student']}><Calendar /></Protected>} />
