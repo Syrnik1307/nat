@@ -27,6 +27,8 @@ const NavBar = () => {
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLessonsMenu, setShowLessonsMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [bannerVisible, setBannerVisible] = useState(true);
   const [messages, setMessages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -47,6 +49,54 @@ const NavBar = () => {
       return () => clearInterval(interval);
     }
   }, [messages.length]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768 && showMobileMenu) {
+        setShowMobileMenu(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [showMobileMenu]);
+
+  useEffect(() => {
+    if (showMobileMenu) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      setShowLessonsMenu(false);
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showMobileMenu]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768 && showMobileMenu) {
+        setShowMobileMenu(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [showMobileMenu]);
+
+  useEffect(() => {
+    if (showMobileMenu) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      setShowLessonsMenu(false);
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showMobileMenu]);
 
   const loadMessages = async () => {
     try {
