@@ -10,9 +10,70 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='group',
-            name='invite_code',
-            field=models.CharField(blank=True, help_text='Уникальный код для присоединения учеников к группе', max_length=8, null=True, unique=True, verbose_name='код приглашения'),
-        ),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql=(
+                        """
+                        DO $$
+                        BEGIN
+                            IF NOT EXISTS (
+                                SELECT 1 FROM information_schema.columns
+                                WHERE table_name = 'schedule_group'
+                                  AND column_name = 'invite_code'
+                            ) THEN
+                                ALTER TABLE schedule_group
+                                ADD COLUMN invite_code varchar(8);
+                            END IF;
+
+                            BEGIN
+                                ALTER TABLE schedule_group
+                                ADD CONSTRAINT schedule_group_invite_code_key UNIQUE (invite_code);
+                            EXCEPTION
+                                WHEN duplicate_object THEN NULL;
+                            END;
+                        END $$;
+                        """
+                    ),
+                    reverse_sql=(
+                        """
+                        DO $$
+                        BEGIN
+                            IF EXISTS (
+                                SELECT 1 FROM information_schema.table_constraints
+                                WHERE table_name = 'schedule_group'
+                                  AND constraint_name = 'schedule_group_invite_code_key'
+                            ) THEN
+                                ALTER TABLE schedule_group
+                                DROP CONSTRAINT schedule_group_invite_code_key;
+                            END IF;
+
+                            IF EXISTS (
+                                SELECT 1 FROM information_schema.columns
+                                WHERE table_name = 'schedule_group'
+                                  AND column_name = 'invite_code'
+                            ) THEN
+                                ALTER TABLE schedule_group
+                                DROP COLUMN invite_code;
+                            END IF;
+                        END $$;
+                        """
+                    ),
+                ),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='group',
+                    name='invite_code',
+                    field=models.CharField(
+                        blank=True,
+                        help_text='Уникальный код для присоединения учеников к группе',
+                        max_length=8,
+                        null=True,
+                        unique=True,
+                        verbose_name='код приглашения',
+                    ),
+                ),
+            ],
+        )
     ]
