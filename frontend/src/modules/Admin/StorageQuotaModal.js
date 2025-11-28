@@ -35,7 +35,7 @@ const StorageQuotaModal = ({ onClose }) => {
         warning: filters.warning !== 'all' ? filters.warning : undefined,
         sort: filters.sort
       };
-      const response = await api.get('/schedule/api/storage/quotas/', { params });
+      const response = await api.get('/storage/quotas/', { params });
       const items = response.data.results || response.data;
       setQuotas(items);
       if (selectedQuota) {
@@ -60,7 +60,7 @@ const StorageQuotaModal = ({ onClose }) => {
     setMaterials([]);
     setMaterialsLoading(true);
     try {
-      const response = await api.get(`/schedule/api/storage/teachers/${quota.teacher_id}/materials/`);
+      const response = await api.get(`/storage/teachers/${quota.teacher_id}/materials/`);
       setMaterials(response.data.results || response.data);
     } catch (err) {
       console.error('Failed to load materials', err);
@@ -73,7 +73,7 @@ const StorageQuotaModal = ({ onClose }) => {
     if (!selectedQuota || !increaseAmount) return;
     setBusy(true);
     try {
-      await api.post(`/schedule/api/storage/quotas/${selectedQuota.id}/increase/`, {
+      await api.post(`/storage/quotas/${selectedQuota.id}/increase/`, {
         additional_gb: Number(increaseAmount)
       });
       await loadQuotas();
@@ -90,7 +90,7 @@ const StorageQuotaModal = ({ onClose }) => {
     if (!window.confirm('Сбросить предупреждения?')) return;
     setBusy(true);
     try {
-      await api.post(`/schedule/api/storage/quotas/${quotaId}/reset-warnings/`);
+      await api.post(`/storage/quotas/${quotaId}/reset-warnings/`);
       await loadQuotas();
     } catch (err) {
       console.error('Failed to reset warnings', err);
