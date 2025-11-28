@@ -326,25 +326,32 @@
   display: none;
   flex-direction: column;
   justify-content: space-between;
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   margin-left: .75rem;
-  padding: 10px;
-  border-radius: 14px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  padding: 11px;
+  border-radius: 16px;
+  border: 1px solid #d2b7ff;
+  background: radial-gradient(circle at 30% 20%, #fff8ff 0%, #f5e9ff 55%, #ead9ff 100%);
+  box-shadow: 0 8px 18px rgba(91, 33, 182, 0.18);
   cursor: pointer;
   z-index: 950;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
 }
 
 .burger-button:hover,
 .burger-button:focus-visible {
-  transform: translateY(-1px);
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+  transform: translateY(-1px) scale(1.02);
+  border-color: #c099ff;
+  box-shadow: 0 12px 26px rgba(91, 33, 182, 0.25);
   outline: none;
+}
+
+.burger-button.open {
+  border-color: #a855f7;
+  box-shadow: 0 12px 26px rgba(107, 33, 168, 0.28);
+  background: radial-gradient(circle at 30% 20%, #fff5ff 0%, #f0dbff 55%, #e3c4ff 100%);
 }
 
 @media (min-width: 769px) {
@@ -362,14 +369,16 @@
 .burger-line {
   width: 100%;
   height: 3px;
-  background: #1f2937;
+  background: #6b21a8;
   border-radius: 999px;
-  transition: transform 0.25s ease, opacity 0.25s ease;
+  transition: transform 0.25s ease, opacity 0.25s ease, background 0.25s ease;
+  box-shadow: 0 0 6px rgba(91, 33, 182, 0.35);
 }
 
 .burger-line.open:nth-child(1) { transform: translateY(9px) rotate(45deg); }
 .burger-line.open:nth-child(2) { opacity: 0; }
 .burger-line.open:nth-child(3) { transform: translateY(-9px) rotate(-45deg); }
+.burger-button.open .burger-line { background: #8b5cf6; box-shadow: 0 0 8px rgba(139, 92, 246, 0.45); }
 
 .mobile-menu-overlay {
   display: none;
@@ -697,5 +706,61 @@
   .nav-link, .nav-dropdown-trigger {padding:.5rem .75rem; font-size:.85rem;}
   .profile-button {padding:.4rem .6rem;}
   .navbar-status .status-inner, .admin-status .status-split {padding:.35rem 1rem;}
+}
+
+/* Мобильный верхний бар и профиль */
+@media (max-width: 768px) {
+  .navbar {
+    border-radius: 0;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+  }
+
+  .navbar-container {
+    max-width: none;
+    width: 100%;
+    padding: 0 0.85rem;
+    gap: 0.75rem;
+  }
+
+  .navbar-logo {
+    flex: 1 1 auto;
+    padding: 0.35rem 0;
+  }
+
+  .navbar-actions {
+    order: 2;
+    margin-left: 0;
+  }
+
+  .profile-button {
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .profile-button .profile-name,
+  .profile-button .chevron {
+    display: none;
+  }
+
+  .profile-button .avatar {
+    width: 42px;
+    height: 42px;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  }
+
+  .burger-button {
+    order: 3;
+    margin-left: auto;
+  }
+
+  .navbar-menu {
+    width: min(320px, 90vw);
+    max-width: 90vw;
+    border-radius: 20px 0 0 20px;
+    border-left: 1px solid #e2e8f0;
+    right: -100%;
+  }
 }
 
