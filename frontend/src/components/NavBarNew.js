@@ -229,6 +229,44 @@ const NavBar = () => {
 
         {/* Навигационное меню */}
         <div className={`navbar-menu ${showMobileMenu ? 'mobile-open' : ''}`}>
+          <div className="mobile-menu-header mobile-only">
+            {accessTokenValid ? (
+              <>
+                <div className="mobile-user-info">
+                  <div className="mobile-user-avatar" aria-hidden="true">
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt="" />
+                    ) : (
+                      <span>{(user?.first_name || user?.email || 'U').charAt(0).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="mobile-user-name">{user?.first_name || 'Пользователь'}</p>
+                    <p className="mobile-user-role">
+                      {role === 'teacher' ? 'Учитель' : role === 'student' ? 'Ученик' : 'Администратор'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  className="mobile-logout-button"
+                  onClick={() => {
+                    setShowMobileMenu(false);
+                    handleLogout();
+                  }}
+                >
+                  Выйти
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                className="mobile-login-link"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                Войти
+              </Link>
+            )}
+          </div>
           {/* Общие пункты */}
           <Link 
             to={homePath} 
