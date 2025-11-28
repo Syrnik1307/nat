@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { Navigate } from 'react-router-dom';
 import {
   login as apiLogin,
   logout as apiLogout,
@@ -197,7 +198,7 @@ export const useAuth = () => useContext(AuthContext);
 export const Protected = ({ allowRoles, children }) => {
   const { accessTokenValid, role, loading } = useAuth();
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Проверка авторизации...</div>;
-  if (!accessTokenValid) return <div style={{ padding: '2rem', textAlign: 'center' }}>Требуется вход.</div>;
+  if (!accessTokenValid) return <Navigate to="/login" replace />;
   if (allowRoles && !allowRoles.includes(role)) return <div style={{ padding: '2rem', textAlign: 'center' }}>Недостаточно прав.</div>;
   return children;
 };
