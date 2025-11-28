@@ -1338,28 +1338,204 @@
 
 @media (max-width: 480px) {
   .teacher-home-page {
+    padding: 0.75rem;
+  }
+  
+  .page-header {
     padding: 1rem;
+    margin-bottom: 1.5rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .header-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  
+  .header-message-button {
+    flex: 1;
+    padding: 0.65rem 1rem;
+    gap: 0.5rem;
+  }
+  
+  .header-message-icon {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .header-message-label {
+    font-size: 0.85rem;
   }
   
   .schedule-section,
   .impact-dashboard,
   .groups-section,
-  .stats-section {
-    padding: 1.25rem;
+  .stats-section,
+  .summary-stats {
+    padding: 1rem;
+    border-radius: 12px;
   }
   
   .page-title {
     font-size: 1.5rem;
   }
   
+  .page-subtitle {
+    font-size: 0.9rem;
+  }
+  
+  .section-title {
+    font-size: 1.25rem;
+  }
+  
   .lesson-card {
     grid-template-columns: 1fr;
     gap: 0.75rem;
+    padding: 1rem;
   }
   
   .lesson-time {
     flex-direction: row;
     justify-content: flex-start;
     gap: 1rem;
+    min-width: auto;
+  }
+  
+  .lesson-time .time {
+    font-size: 1.1rem;
+  }
+  
+  .lesson-title {
+    font-size: 1rem;
+  }
+  
+  .lesson-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  /* Tree Growth - уменьшаем для мобильных */
+  .tree-growth {
+    height: 140px;
+  }
+  
+  /* Impact dashboard */
+  .impact-dashboard {
+    gap: 1rem;
+  }
+  
+  .badge-card {
+    padding: 0.85rem 1rem;
+    gap: 0.75rem;
+  }
+  
+  .badge-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+  }
+  
+  .badge-title {
+    font-size: 0.9rem;
+  }
+  
+  .badge-subtitle {
+    font-size: 0.8rem;
+  }
+  
+  .impact-grid {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+  
+  .impact-card {
+    padding: 0.85rem 1rem;
+  }
+  
+  .impact-value {
+    font-size: 1.35rem;
+  }
+  
+  .impact-label {
+    font-size: 0.7rem;
+  }
+  
+  /* Groups/Students breakdown */
+  .group-row, .student-row {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+    padding: 0.85rem 1rem;
+  }
+  
+  .group-avatar, .student-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+  
+  .metric-block {
+    padding-left: 52px;
+  }
+  
+  .summary-title {
+    font-size: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  
+  .gb-title {
+    font-size: 0.9rem;
+    margin: 1rem 0 0.5rem;
+  }
+  
+  /* Empty state */
+  .empty-state {
+    padding: 2rem 1rem;
+  }
+  
+  .empty-icon {
+    font-size: 3rem;
+  }
+  
+  .empty-state h3 {
+    font-size: 1.1rem;
+  }
+  
+  .empty-state p {
+    font-size: 0.9rem;
+  }
+  
+  /* Buttons */
+  .btn {
+    padding: 0.65rem 1.25rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 360px) {
+  .header-actions {
+    flex-direction: column;
+  }
+  
+  .header-message-button {
+    width: 100%;
+  }
+  
+  .impact-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .lesson-card {
+    padding: 0.85rem;
+  }
+  
+  .group-row, .student-row {
+    padding: 0.75rem 0.85rem;
+  }
+  
+  .metric-block {
+    padding-left: 48px;
   }
 }
