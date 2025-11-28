@@ -208,25 +208,6 @@ const NavBar = () => {
           <span className="logo-text">Teaching Panel</span>
         </Link>
 
-        {/* Burger button для мобильных */}
-        <button 
-          className={`burger-button ${showMobileMenu ? 'open' : ''}`}
-          onClick={() => setShowMobileMenu(!showMobileMenu)}
-          aria-label="Toggle menu"
-        >
-          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
-          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
-          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
-        </button>
-
-        {/* Overlay для закрытия меню */}
-        {showMobileMenu && (
-          <div 
-            className="mobile-menu-overlay"
-            onClick={() => setShowMobileMenu(false)}
-          />
-        )}
-
         {/* Навигационное меню */}
         <div className={`navbar-menu ${showMobileMenu ? 'mobile-open' : ''}`}>
           {/* Общие пункты */}
@@ -425,6 +406,25 @@ const NavBar = () => {
             </div>
           )}
         </div>
+
+        {/* Burger button для мобильных */}
+        <button 
+          className={`burger-button ${showMobileMenu ? 'open' : ''}`}
+          onClick={() => setShowMobileMenu(!showMobileMenu)}
+          aria-label="Toggle menu"
+        >
+          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
+          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
+          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
+        </button>
+
+        {/* Overlay для закрытия меню */}
+        {showMobileMenu && (
+          <div 
+            className="mobile-menu-overlay"
+            onClick={() => setShowMobileMenu(false)}
+          />
+        )}
       </div>
       </nav>
     </>
