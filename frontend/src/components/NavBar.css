@@ -178,8 +178,8 @@
     order: 1;
   }
 
-  .navbar-menu {
-    order: 3;
+  .navbar-actions {
+    order: 2;
   }
 
   .burger-button {
@@ -187,11 +187,8 @@
     order: 4;
   }
 
-  .navbar-actions {
-    order: 2;
-  }
-
   .navbar-menu {
+    order: 3;
     position: fixed;
     top: 0;
     right: -100%;
