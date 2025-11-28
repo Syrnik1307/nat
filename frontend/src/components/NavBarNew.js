@@ -54,11 +54,26 @@ const NavBar = () => {
       const response = await fetch('/accounts/api/status-messages/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
+      // Проверяем статус ответа
+      if (!response.ok) {
+        console.warn('Статус-сообщения недоступны:', response.status);
+        return;
+      }
+      
+      // Проверяем, что ответ действительно JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.warn('Получен не-JSON ответ от /accounts/api/status-messages/');
+        return;
+      }
+      
       const data = await response.json();
-      const activeMessages = data.filter(msg => msg.is_active);
+      const activeMessages = Array.isArray(data) ? data.filter(msg => msg.is_active) : [];
       setMessages(activeMessages);
     } catch (error) {
       console.error('Ошибка загрузки сообщений:', error);
+      setMessages([]); // Устанавливаем пустой массив при ошибке
     }
   };
 

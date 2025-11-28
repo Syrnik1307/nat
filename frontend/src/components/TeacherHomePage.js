@@ -402,10 +402,10 @@ const TeacherHomePage = () => {
             <h2 className="summary-title">Статистика</h2>
             <div className="group-breakdown">
               <h3 className="gb-title">Группы</h3>
-              {breakdown.groups.length === 0 && (
+              {(!breakdown?.groups || breakdown.groups.length === 0) && (
                 <div className="gb-empty">Нет данных по группам</div>
               )}
-              {breakdown.groups.map(g => (
+              {breakdown?.groups && breakdown.groups.map(g => (
                 <div key={g.id} className="group-row">
                   <div className="group-meta">
                     <div className="group-avatar" aria-hidden="true">👥</div>
@@ -429,10 +429,10 @@ const TeacherHomePage = () => {
             </div>
             <div className="students-breakdown">
               <h3 className="gb-title">Ученики</h3>
-              {breakdown.students.length === 0 && (
+              {(!breakdown?.students || breakdown.students.length === 0) && (
                 <div className="gb-empty">Нет данных по ученикам</div>
               )}
-              {breakdown.students.map(st => (
+              {breakdown?.students && breakdown.students.map(st => (
                 <div key={st.id} className="student-row">
                   <div className="student-meta">
                     <div className="student-avatar" aria-hidden="true">🎓</div>
