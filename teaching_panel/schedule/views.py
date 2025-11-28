@@ -340,6 +340,78 @@ class LessonViewSet(viewsets.ModelViewSet):
 
         cache.set(cache_key, events, timeout=60)  # 1 минута кэширования
         return Response(events)
+
+    def _start_zoom_via_pool(self, lesson, user, request):
+        """Создать Zoom встречу через пул аккаунтов и сохранить в урок."""
+        pool_account = None
+        try:
+            with transaction.atomic():
+                pool_account = (
+                    PoolZoomAccount.objects.select_for_update()
+                    .filter(
+                        is_active=True,
+                        current_meetings__lt=F('max_concurrent_meetings')
+                    )
+                    .order_by('current_meetings', 'last_used_at')
+                    .first()
+                )
+
+                if not pool_account:
+                    return None, Response(
+                        {'detail': 'Все Zoom аккаунты заняты. Попробуйте позже.'},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE
+                    )
+
+                pool_account.acquire()
+
+                meeting_data = my_zoom_api_client.create_meeting(
+                    user_id=pool_account.zoom_user_id or None,
+                    topic=f"{lesson.group.name} - {lesson.title}",
+                    start_time=lesson.start_time,
+                    duration=lesson.duration()
+                )
+
+                lesson.zoom_meeting_id = meeting_data['id']
+                lesson.zoom_join_url = meeting_data['join_url']
+                lesson.zoom_start_url = meeting_data['start_url']
+                lesson.zoom_password = meeting_data.get('password', '')
+                lesson.zoom_account = pool_account
+                lesson.save()
+
+                log_audit(
+                    user=user,
+                    action='lesson_start',
+                    resource_type='Lesson',
+                    resource_id=lesson.id,
+                    request=request,
+                    details={
+                        'lesson_title': lesson.title,
+                        'group_name': lesson.group.name,
+                        'zoom_account_email': pool_account.email,
+                        'zoom_meeting_id': meeting_data['id'],
+                        'start_time': lesson.start_time.isoformat(),
+                    }
+                )
+
+            payload = {
+                'zoom_join_url': lesson.zoom_join_url,
+                'zoom_start_url': lesson.zoom_start_url,
+                'zoom_meeting_id': lesson.zoom_meeting_id,
+                'zoom_password': lesson.zoom_password,
+                'account_email': pool_account.email,
+            }
+            return payload, None
+        except Exception as e:
+            logger.exception(f"Failed to create Zoom meeting for lesson {lesson.id}: {e}")
+            if pool_account:
+                try:
+                    pool_account.release()
+                except Exception:
+                    logger.exception('Failed to release Zoom account after error')
+            return None, Response(
+                {'detail': f'Ошибка при создании встречи: {e}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @action(detail=True, methods=['post'])
     def mark_attendance(self, request, pk=None):
@@ -513,67 +585,72 @@ class LessonViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Урок можно начать за 15 минут до начала'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Поиск свободного аккаунта
-        pool_account = None
+        payload, error_response = self._start_zoom_via_pool(lesson, user, request)
+        if error_response:
+            return error_response
+        return Response(payload, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='quick-start')
+    def quick_start(self, request):
+        """Создать урок без расписания и сразу запустить Zoom встречу."""
+        user = request.user
+        if getattr(user, 'role', None) != 'teacher':
+            return Response(
+                {'detail': 'Только преподаватели могут создавать экспресс-уроки'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        duration_raw = request.data.get('duration')
         try:
-            with transaction.atomic():
-                pool_account = (PoolZoomAccount.objects.select_for_update()
-                                 .filter(is_active=True, current_meetings__lt=F('max_concurrent_meetings'))
-                                 .order_by('current_meetings', 'last_used_at')
-                                 .first())
+            duration = int(duration_raw)
+        except (TypeError, ValueError):
+            duration = 60
+        duration = max(15, min(180, duration))
 
-                if not pool_account:
-                    return Response({'detail': 'Все Zoom аккаунты заняты. Попробуйте позже.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        title = (request.data.get('title') or '').strip()
+        if not title:
+            local_time = timezone.localtime()
+            title = f"Экспресс урок {local_time.strftime('%H:%M')}"
 
-                # Захват аккаунта
-                pool_account.acquire()
-
-                # Создание встречи (mock клиент – заменить на реальный в проде)
-                meeting_data = my_zoom_api_client.create_meeting(
-                    user_id=pool_account.zoom_user_id or None,
-                    topic=f"{lesson.group.name} - {lesson.title}",
-                    start_time=lesson.start_time,
-                    duration=lesson.duration()
+        group_id = request.data.get('group_id')
+        group = None
+        if group_id:
+            try:
+                group = Group.objects.get(id=group_id, teacher=user)
+            except Group.DoesNotExist:
+                return Response({'detail': 'Группа не найдена'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            group = Group.objects.filter(teacher=user).order_by('created_at').first()
+            if not group:
+                group = Group.objects.create(
+                    name=f"Без расписания • {user.get_full_name() or user.email}",
+                    teacher=user,
+                    description='Автогенерированная группа для уроков без расписания'
                 )
 
-                # Сохранение результата в урок
-                lesson.zoom_meeting_id = meeting_data['id']
-                lesson.zoom_join_url = meeting_data['join_url']
-                lesson.zoom_start_url = meeting_data['start_url']
-                lesson.zoom_password = meeting_data.get('password', '')
-                lesson.zoom_account = pool_account
-                lesson.save()
-                
-                # Логирование аудита
-                log_audit(
-                    user=user,
-                    action='lesson_start',
-                    resource_type='Lesson',
-                    resource_id=lesson.id,
-                    request=request,
-                    details={
-                        'lesson_title': lesson.title,
-                        'group_name': lesson.group.name,
-                        'zoom_account_email': pool_account.email,
-                        'zoom_meeting_id': meeting_data['id'],
-                        'start_time': lesson.start_time.isoformat()
-                    }
-                )
+        start_time = timezone.now()
+        end_time = start_time + timezone.timedelta(minutes=duration)
 
-            return Response({
-                'zoom_join_url': lesson.zoom_join_url,
-                'zoom_start_url': lesson.zoom_start_url,
-                'zoom_meeting_id': lesson.zoom_meeting_id,
-                'zoom_password': lesson.zoom_password,
-                'account_email': pool_account.email
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            # Откат счётчика, если что-то пошло не так
-            if pool_account:
-                try:
-                    pool_account.release()
-                except Exception:
-                    pass
-            return Response({'detail': f'Ошибка при создании встречи: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        lesson = Lesson.objects.create(
+            title=title,
+            group=group,
+            teacher=user,
+            start_time=start_time,
+            end_time=end_time,
+            notes='Создано кнопкой "Создать урок без расписания"'
+        )
+
+        payload, error_response = self._start_zoom_via_pool(lesson, user, request)
+        if error_response:
+            lesson.delete()
+            return error_response
+
+        payload.update({
+            'lesson_id': lesson.id,
+            'title': lesson.title,
+            'group_name': group.name,
+        })
+        return Response(payload, status=status.HTTP_201_CREATED)
 
 
 class AttendanceViewSet(viewsets.ModelViewSet):

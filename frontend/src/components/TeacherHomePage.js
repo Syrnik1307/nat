@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../auth';
-import { getTeacherStatsSummary, getTeacherStatsBreakdown, getLessons, getGroups } from '../apiService';
+import { getTeacherStatsSummary, getTeacherStatsBreakdown, getLessons, getGroups, startQuickLesson } from '../apiService';
 import { Link, useNavigate } from 'react-router-dom';
 import StartLessonButton from '../modules/core/zoom/StartLessonButton';
 import SupportWidget from './SupportWidget';
@@ -63,6 +63,8 @@ const TeacherHomePage = () => {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
   const [breakdown, setBreakdown] = useState({ groups: [], students: [] });
+  const [quickLessonLoading, setQuickLessonLoading] = useState(false);
+  const [quickLessonError, setQuickLessonError] = useState(null);
 
   const loadData = useCallback(async () => {
     if (!accessTokenValid) return;
@@ -101,6 +103,24 @@ const TeacherHomePage = () => {
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
+
+  const handleQuickLessonCreate = useCallback(async () => {
+    setQuickLessonLoading(true);
+    setQuickLessonError(null);
+    try {
+      const response = await startQuickLesson();
+      if (response?.data?.zoom_start_url) {
+        window.open(response.data.zoom_start_url, '_blank', 'noopener,noreferrer');
+      }
+      await loadData();
+    } catch (err) {
+      console.error('Не удалось создать экспресс-урок:', err);
+      const detail = err.response?.data?.detail || err.message || 'Не удалось создать урок.';
+      setQuickLessonError(detail);
+    } finally {
+      setQuickLessonLoading(false);
+    }
   }, [loadData]);
 
   const formatTime = (dateString) => {
@@ -319,9 +339,19 @@ const TeacherHomePage = () => {
                 <div className="empty-icon">📭</div>
                 <h3>Сегодня нет занятий</h3>
                 <p>Вы можете запланировать новые уроки в календаре</p>
-                <Link to="/recurring-lessons/manage" className="btn btn-secondary">
-                  Добавить урок
-                </Link>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleQuickLessonCreate}
+                  disabled={quickLessonLoading}
+                >
+                  {quickLessonLoading ? 'Создаем Zoom...' : 'Создать урок без расписания'}
+                </button>
+                {quickLessonError && (
+                  <div className="error-inline" role="status">
+                    ⚠️ {quickLessonError}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="lessons-list">

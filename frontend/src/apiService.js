@@ -214,6 +214,7 @@ export const updateLesson = (id, data) => apiClient.put(`schedule/lessons/${id}/
 export const deleteLesson = (id) => apiClient.delete(`schedule/lessons/${id}/`);
 export const startLesson = (id) => apiClient.post(`schedule/lessons/${id}/start/`);
 export const startLessonNew = (id) => apiClient.post(`schedule/lessons/${id}/start-new/`);
+export const startQuickLesson = (payload = {}) => apiClient.post('schedule/lessons/quick-start/', payload);
 export const addLessonRecording = (id, url) => apiClient.post(`schedule/lessons/${id}/add_recording/`, { url });
 
 // Groups
