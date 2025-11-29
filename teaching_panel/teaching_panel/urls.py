@@ -63,6 +63,9 @@ urlpatterns = [
     # Zoom Pool API
     path('api/zoom-pool/', include('zoom_pool.urls')),
     
+    # Support API
+    path('api/support/', include('support.urls')),
+    
     # Analytics API
     path('api/', include('analytics.urls')),
     
