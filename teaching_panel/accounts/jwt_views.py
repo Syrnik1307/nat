@@ -13,21 +13,42 @@ User = get_user_model()
 
 
 class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
-    """Token serializer that allows case-insensitive email lookup."""
+    """Сериализатор выдачи JWT с строгой проверкой пароля и case-insensitive email."""
 
     def validate(self, attrs):
-        # attrs will contain the username field (email because USERNAME_FIELD = 'email')
-        username_field = self.username_field
-        identifier = attrs.get(username_field)
-        if identifier:
-            # Try to find a user by case-insensitive match and replace the identifier
-            try:
-                found = User.objects.filter(**{f"{username_field}__iexact": identifier}).first()
-                if found:
-                    attrs[username_field] = getattr(found, username_field)
-            except Exception:
-                pass
-        return super().validate(attrs)
+        # Явная ручная проверка: исключаем любые сторонние сбои authenticate()
+        email_field = self.username_field  # 'email'
+        raw_email = (attrs.get(email_field) or '').strip()
+        password = attrs.get('password') or ''
+
+        if not raw_email or not password:
+            from rest_framework import exceptions
+            raise exceptions.AuthenticationFailed('Некорректные учетные данные')
+
+        # Case-insensitive поиск пользователя
+        try:
+            user = User.objects.get(**{f'{email_field}__iexact': raw_email})
+        except User.DoesNotExist:
+            from rest_framework import exceptions
+            raise exceptions.AuthenticationFailed('Неверный email или пароль')
+
+        # Проверка активности
+        if not user.is_active:
+            from rest_framework import exceptions
+            raise exceptions.AuthenticationFailed('Аккаунт деактивирован')
+
+        # Строгая проверка пароля
+        if not user.check_password(password):
+            from rest_framework import exceptions
+            raise exceptions.AuthenticationFailed('Неверный email или пароль')
+
+        # Генерация токенов (используем кастомные claims в get_token)
+        refresh = self.get_token(user)
+        data = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
+        return data
 
 
 class CaseInsensitiveTokenObtainPairView(TokenObtainPairView):
