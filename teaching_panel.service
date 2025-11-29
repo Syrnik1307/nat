@@ -1,0 +1,52 @@
+[Unit]
+Description=Teaching Panel Gunicorn Service (flatten-ready)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+# Текущая вложенная структура: manage.py находится в /var/www/teaching_panel/teaching_panel/teaching_panel
+# Если позже распакуете структуру (уберёте один уровень), обновите WorkingDirectory.
+WorkingDirectory=/var/www/teaching_panel/teaching_panel/teaching_panel
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+EnvironmentFile=-/var/www/teaching_panel/teaching_panel/teaching_panel/.env
+# Рекомендуемые продакшн переменные (раскомментируйте и заполните):
+# Environment="DJANGO_SETTINGS_MODULE=teaching_panel.settings"
+# Environment="SECRET_KEY=__CHANGE_ME__"
+# Environment="DEBUG=False"
+# Environment="ALLOWED_HOSTS=72.56.81.163,localhost"
+
+# Убрали лишний --chdir: WorkingDirectory уже задаёт нужный путь
+ExecStart=/var/www/teaching_panel/venv/bin/gunicorn teaching_panel.wsgi:application \
+  --bind 0.0.0.0:8000 \
+  --workers 3 \
+  --timeout 120 \
+  --graceful-timeout 120 \
+  --max-requests 1000 \
+  --max-requests-jitter 100 \
+  --log-level info \
+  --access-logfile - \
+  --error-logfile -
+
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=10
+PrivateTmp=true
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+# DEPLOY СТЕПЫ:
+# 1) scp teaching_panel.service root@SERVER:/etc/systemd/system/teaching_panel.service
+# 2) systemctl daemon-reload
+# 3) systemctl enable teaching_panel --now
+# 4) journalctl -u teaching_panel -n 50 --no-pager
+# 5) curl -X POST http://127.0.0.1:8000/api/jwt/token/ -H 'Content-Type: application/json' -d '{"email":"user@example.com","password":"Pass123"}'
+
+# FLATTEN (опционально позже):
+# mv /var/www/teaching_panel/teaching_panel/teaching_panel/* /var/www/teaching_panel/teaching_panel/
+# mv /var/www/teaching_panel/teaching_panel/teaching_panel/.* /var/www/teaching_panel/teaching_panel/ 2>/dev/null || true
+# rmdir /var/www/teaching_panel/teaching_panel/teaching_panel
+# Обновить WorkingDirectory и ExecStart при необходимости.
