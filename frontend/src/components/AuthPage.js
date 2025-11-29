@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { clearTokens } from '../apiService';
 import { Input, Button, Modal, Notification } from '../shared/components';
 import SupportWidget from './SupportWidget';
 import PasswordResetModal from './PasswordResetModal';
@@ -235,9 +236,8 @@ const AuthPage = () => {
     setLoading(true);
     
     try {
-      // Перед стартом логина принудительно очищаем старые токены,
-      // чтобы исключить «успешный вход» за счёт сохранённой сессии
-      try { const { clearTokens } = await import('../apiService'); clearTokens(true); } catch (_) {}
+      // Перед стартом логина принудительно очищаем старые токены
+      clearTokens(true);
       // Логирование для диагностики мобильных проблем
       console.log('🔐 Попытка логина:', {
         email: formData.email?.trim().toLowerCase(),
@@ -250,10 +250,12 @@ const AuthPage = () => {
       // reCAPTCHA отключена
       const recaptchaToken = null;
 
-      const resolvedRole = await login(
-        formData.email?.trim().toLowerCase(), 
-        formData.password?.trim()
-      );
+      const resolvedRole = await login({
+        email: formData.email?.trim().toLowerCase(),
+        password: formData.password?.trim(),
+        roleSelection: role,
+        rememberMe: rememberMe,
+      });
       // Используем только роль из JWT токена (resolvedRole)
       const nextRole = resolvedRole || 'teacher';
       const roleRedirects = {
