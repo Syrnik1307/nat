@@ -12,7 +12,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         
         # Добавляем кастомные claims
-        token['role'] = user.role
+        # Если пользователь суперюзер, форсируем роль 'admin' для фронтенда
+        effective_role = 'admin' if getattr(user, 'is_superuser', False) else user.role
+        token['role'] = effective_role
         token['email'] = user.email
         
         return token
