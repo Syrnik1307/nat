@@ -520,43 +520,17 @@ LOGGING = {
             'style': '{',
         },
     },
-    'filters': {
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
-        },
-    },
     'handlers': {
         'console': {
-            'level': 'INFO',
+            'level': os.environ.get('DJANGO_CONSOLE_LOG_LEVEL', 'INFO'),
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-        'file': {
-            'level': 'WARNING',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
-            'maxBytes': 1024 * 1024 * 15,  # 15MB
-            'backupCount': 10,
-            'formatter': 'verbose',
-        },
-        'request_metrics': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': BASE_DIR / 'logs' / 'requests.log',
-            'maxBytes': 1024 * 1024 * 50,  # 50MB
-            'backupCount': 5,
             'formatter': 'verbose',
         },
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'request_metrics': {
-            'handlers': ['request_metrics'],
-            'level': 'INFO',
+            'handlers': ['console'],
+            'level': os.environ.get('DJANGO_LOG_LEVEL', 'INFO'),
             'propagate': False,
         },
         'django.db.backends': {
@@ -567,9 +541,6 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console'],
-        'level': 'INFO',
+        'level': os.environ.get('DJANGO_ROOT_LOG_LEVEL', 'INFO'),
     },
 }
-
-# Создаём директорию для логов, если её нет
-os.makedirs(BASE_DIR / 'logs', exist_ok=True)
