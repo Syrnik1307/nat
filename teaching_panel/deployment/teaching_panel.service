@@ -6,12 +6,12 @@ After=network.target
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/teaching_panel
+WorkingDirectory=/var/www/teaching_panel/teaching_panel/teaching_panel
 Environment="PATH=/var/www/teaching_panel/venv/bin"
-EnvironmentFile=-/var/www/teaching_panel/.env
-# (Optional) '-' before EnvironmentFile: missing .env non-fatal. settings.py loads /var/www/teaching_panel/.env if present.
-# IMPORTANT: Keep ExecStart on a single line (avoid CRLF + line continuation issues under systemd).
-ExecStart=/var/www/teaching_panel/venv/bin/gunicorn --bind 0.0.0.0:8000 --workers 3 --worker-class sync --timeout 120 --graceful-timeout 120 --max-requests 1000 --max-requests-jitter 100 --log-level info --access-logfile - --error-logfile - teaching_panel.wsgi:application
+EnvironmentFile=-/var/www/teaching_panel/teaching_panel/teaching_panel/.env
+# NOTE: Temporary adaptation to nested deployment (manage.py lives here).
+# After cleanup (flatten to /var/www/teaching_panel), revert WorkingDirectory and remove --chdir below.
+ExecStart=/var/www/teaching_panel/venv/bin/gunicorn --chdir /var/www/teaching_panel/teaching_panel/teaching_panel --bind 0.0.0.0:8000 --workers 3 --worker-class sync --timeout 120 --graceful-timeout 120 --max-requests 1000 --max-requests-jitter 100 --log-level info --access-logfile - --error-logfile - teaching_panel.wsgi:application
 
 ExecReload=/bin/kill -s HUP $MAINPID
 KillMode=mixed
