@@ -123,9 +123,19 @@ apiClient.interceptors.response.use(
 // Auth endpoints
 // =====================
 export const login = async (email, password) => {
-    const res = await apiClient.post('jwt/token/', { email, password });
-    setTokens({ access: res.data.access, refresh: res.data.refresh });
-    return res.data;
+    try {
+        const res = await apiClient.post('jwt/token/', { email, password });
+        if (!res.data.access || !res.data.refresh) {
+            throw new Error('Invalid response: missing tokens');
+        }
+        setTokens({ access: res.data.access, refresh: res.data.refresh });
+        return res.data;
+    } catch (error) {
+        // Очищаем токены при ошибке логина
+        clearTokens();
+        // Пробрасываем ошибку дальше для обработки в UI
+        throw error;
+    }
 };
 
 export const logout = async () => {
