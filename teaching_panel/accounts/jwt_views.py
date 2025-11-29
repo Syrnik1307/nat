@@ -8,6 +8,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import authenticate
 from rest_framework.throttling import ScopedRateThrottle
 from .serializers import CustomTokenObtainPairSerializer
+from .security import register_failure, reset_failures, is_locked, lockout_remaining_seconds
+import logging
 
 User = get_user_model()
 
@@ -26,9 +28,14 @@ class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
             raise exceptions.AuthenticationFailed('Некорректные учетные данные')
 
         # Case-insensitive поиск пользователя
+        if is_locked(raw_email):
+            from rest_framework import exceptions
+            raise exceptions.AuthenticationFailed('Слишком много попыток. Аккаунт временно заблокирован')
+
         try:
             user = User.objects.get(**{f'{email_field}__iexact': raw_email})
         except User.DoesNotExist:
+            register_failure(raw_email)
             from rest_framework import exceptions
             raise exceptions.AuthenticationFailed('Неверный email или пароль')
 
@@ -39,10 +46,13 @@ class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
 
         # Строгая проверка пароля
         if not user.check_password(password):
+            register_failure(raw_email)
             from rest_framework import exceptions
             raise exceptions.AuthenticationFailed('Неверный email или пароль')
 
         # Генерация токенов (используем кастомные claims в get_token)
+        # Успешная авторизация: сбрасываем счётчик
+        reset_failures(raw_email)
         refresh = self.get_token(user)
         data = {
             'refresh': str(refresh),
