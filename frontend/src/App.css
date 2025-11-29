@@ -873,4 +873,17 @@ code {
   .calendar-grid {
     grid-template-columns: repeat(4, 1fr);
   }
+  
+  /* Скрыть все плавающие кнопки кроме Support Widget на мобильных */
+  button[style*="position: fixed"]:not(.support-fab),
+  div[style*="position: fixed"]:not(.support-widget):not(.support-fab) {
+    display: none !important;
+  }
+  
+  /* Убрать лишние FAB кнопки если они есть */
+  .MuiFab-root:not(.support-fab),
+  .fab-button:not(.support-fab),
+  .floating-action:not(.support-fab) {
+    display: none !important;
+  }
 }

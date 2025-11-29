@@ -1,6 +1,19 @@
 # ========================================
 # Скрипт деплоя Teaching Panel на сервер
 # ========================================
+# ⚠️ DEPRECATED: Используйте auto_deploy.ps1
+# ========================================
+
+Write-Host ""
+Write-Host "⚠️ ВНИМАНИЕ: Этот скрипт устарел!" -ForegroundColor Yellow
+Write-Host "Используйте новый улучшенный скрипт: auto_deploy.ps1" -ForegroundColor Green
+Write-Host ""
+Write-Host "Продолжить с этим скриптом? (y/n)" -ForegroundColor Yellow
+$continue = Read-Host
+if ($continue -ne 'y') {
+    Write-Host "Запустите: .\auto_deploy.ps1" -ForegroundColor Cyan
+    exit 0
+}
 
 Write-Host ""
 Write-Host "🚀 Teaching Panel - Deploy to Production Server" -ForegroundColor Cyan

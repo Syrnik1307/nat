@@ -306,17 +306,63 @@
 }
 
 @media (max-width: 900px) {
+  .profile-page {
+    padding: 0;
+    background: #f8f9fa;
+  }
+
+  .profile-card {
+    max-width: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 20px 16px;
+    gap: 24px;
+  }
+
+  .profile-header h1 {
+    font-size: 24px;
+  }
+
+  .profile-subtitle {
+    font-size: 14px;
+  }
+
   .profile-content {
     grid-template-columns: 1fr;
+    gap: 24px;
   }
 
   .profile-avatar {
-    flex-direction: row;
-    justify-content: flex-start;
+    flex-direction: column;
+    padding: 20px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .avatar-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: 20px;
+  }
+
+  .avatar-upload,
+  .avatar-remove {
+    font-size: 14px;
+    padding: 8px 16px;
+  }
+
+  .avatar-hint {
+    font-size: 12px;
   }
 
   .profile-form {
     grid-template-columns: 1fr;
+    gap: 20px;
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
 
   .profile-form .field-group,
@@ -326,8 +372,81 @@
     grid-column: span 1;
   }
 
+  .field-group label {
+    font-size: 14px;
+  }
+
+  .field-group input {
+    padding: 10px 14px;
+    font-size: 15px;
+    border-radius: 12px;
+  }
+
   .stroked-field {
     flex-direction: column;
     align-items: flex-start;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+
+  .form-actions {
+    justify-content: stretch;
+  }
+
+  .form-actions .primary,
+  .form-actions button.secondary {
+    width: 100%;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 15px;
+  }
+
+  .form-actions button.secondary {
+    margin-left: 0;
+    margin-top: 8px;
+  }
+
+  .profile-password {
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    gap: 20px;
+  }
+
+  .password-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .password-header h3 {
+    font-size: 20px;
+  }
+
+  .password-header button.secondary {
+    width: 100%;
+    padding: 10px 18px;
+    border-radius: 12px;
+  }
+
+  .password-form {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 20px;
+    border-radius: 12px;
+  }
+
+  .password-form .field-group:first-child {
+    grid-column: span 1;
+  }
+
+  .field-hint {
+    font-size: 12px;
+  }
+
+  .form-message {
+    font-size: 14px;
   }
 }

@@ -6,6 +6,9 @@ After=network.target
 Type=simple
 User=www-data
 Group=www-data
+# Дополнительные каталоги и PID (runtime isolation)
+RuntimeDirectory=teaching_panel
+PIDFile=/run/teaching_panel/teaching_panel.pid
 # Текущая вложенная структура: manage.py находится в /var/www/teaching_panel/teaching_panel/teaching_panel
 # Если позже распакуете структуру (уберёте один уровень), обновите WorkingDirectory.
 WorkingDirectory=/var/www/teaching_panel/teaching_panel/teaching_panel
@@ -16,15 +19,22 @@ EnvironmentFile=-/var/www/teaching_panel/teaching_panel/teaching_panel/.env
 # Environment="SECRET_KEY=__CHANGE_ME__"
 # Environment="DEBUG=False"
 # Environment="ALLOWED_HOSTS=72.56.81.163,localhost"
+Environment="GUNICORN_WORKERS=5"
+Environment="GUNICORN_BIND=0.0.0.0:8000"
+Environment="GUNICORN_TIMEOUT=120"
+
+# Простой pre-hook для логирования старта (можно убрать)
+ExecStartPre=/usr/bin/env bash -c 'echo [teaching_panel] starting gunicorn with $GUNICORN_WORKERS workers'
 
 # Убрали лишний --chdir: WorkingDirectory уже задаёт нужный путь
 ExecStart=/var/www/teaching_panel/venv/bin/gunicorn teaching_panel.wsgi:application \
-  --bind 0.0.0.0:8000 \
-  --workers 3 \
-  --timeout 120 \
-  --graceful-timeout 120 \
+  --bind ${GUNICORN_BIND} \
+  --workers ${GUNICORN_WORKERS} \
+  --timeout ${GUNICORN_TIMEOUT} \
+  --graceful-timeout ${GUNICORN_TIMEOUT} \
   --max-requests 1000 \
   --max-requests-jitter 100 \
+  --keep-alive 5 \
   --log-level info \
   --access-logfile - \
   --error-logfile -
@@ -34,6 +44,9 @@ KillMode=mixed
 TimeoutStopSec=10
 PrivateTmp=true
 Restart=always
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target

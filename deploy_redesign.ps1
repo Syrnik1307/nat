@@ -1,21 +1,32 @@
+# ========================================
 # Deploy UI Redesign to Production Server
-Write-Host "🚀 Deploying UI Redesign to Production..." -ForegroundColor Cyan
+# ========================================
+# ⚠️ DEPRECATED: Используйте auto_deploy.ps1
+# ========================================
 
-# SSH connection details
-$server = "root@72.56.81.163"
+Write-Host ""
+Write-Host "⚠️ ВНИМАНИЕ: Этот скрипт устарел!" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Используйте новый улучшенный скрипт для деплоя:" -ForegroundColor Green
+Write-Host "  .\auto_deploy.ps1" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Он предоставляет:" -ForegroundColor Yellow
+Write-Host "  ✅ Интерактивное меню" -ForegroundColor White
+Write-Host "  ✅ Полный деплой" -ForegroundColor White
+Write-Host "  ✅ Частичные обновления (только фронтенд/бэкенд)" -ForegroundColor White
+Write-Host "  ✅ Мониторинг и логи" -ForegroundColor White
+Write-Host "  ✅ Обслуживание системы" -ForegroundColor White
+Write-Host ""
+Write-Host "Запустить новый скрипт? (y/n)" -ForegroundColor Yellow
+$launch = Read-Host
 
-# Commands to execute on server
-$commands = @"
-cd ~/nat && 
-git pull && 
-sudo cp -r ~/nat/frontend/src/components/NavBar.css /var/www/teaching_panel/frontend/src/components/ && 
-cd /var/www/teaching_panel/frontend && 
-npm run build
-"@
-
-Write-Host "📦 Updating code and rebuilding frontend..." -ForegroundColor Yellow
-
-# Execute deployment
-& ssh $server $commands
-
-Write-Host "✅ Deployment complete! Check http://72.56.81.163" -ForegroundColor Green
+if ($launch -eq 'y') {
+    $scriptPath = Join-Path $PSScriptRoot "auto_deploy.ps1"
+    if (Test-Path $scriptPath) {
+        & $scriptPath
+    } else {
+        Write-Host "❌ Файл auto_deploy.ps1 не найден в $PSScriptRoot" -ForegroundColor Red
+    }
+} else {
+    Write-Host "👋 Выход" -ForegroundColor Gray
+}

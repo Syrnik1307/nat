@@ -306,3 +306,18 @@
     padding: 1rem 0.85rem;
   }
 }
+
+/* Скрыть все fixed элементы кроме Support Widget на мобильных */
+@media (max-width: 768px) {
+  /* Скрыть все fixed элементы */
+  *[style*="position: fixed"],
+  *[style*="position:fixed"] {
+    display: none !important;
+  }
+  
+  /* Но оставить Support Widget */
+  .support-fab,
+  .support-widget {
+    display: flex !important;
+  }
+}
