@@ -3,24 +3,29 @@ Description=Teaching Panel Gunicorn Service
 After=network.target
 
 [Service]
-Type=notify
+Type=simple
 User=www-data
 Group=www-data
 WorkingDirectory=/var/www/teaching_panel/teaching_panel
 Environment="PATH=/var/www/teaching_panel/venv/bin"
 EnvironmentFile=/var/www/teaching_panel/teaching_panel/.env
+# Stdout/stderr логирование в journald (Gunicorn access/error -> '-')
 ExecStart=/var/www/teaching_panel/venv/bin/gunicorn \
     --bind 0.0.0.0:8000 \
-    --workers 4 \
-    --worker-class gevent \
+    --workers 3 \
+    --worker-class sync \
     --timeout 120 \
-    --access-logfile /var/log/teaching_panel/access.log \
-    --error-logfile /var/log/teaching_panel/error.log \
+    --graceful-timeout 120 \
+    --max-requests 1000 \
+    --max-requests-jitter 100 \
+    --log-level info \
+    --access-logfile - \
+    --error-logfile - \
     teaching_panel.wsgi:application
 
 ExecReload=/bin/kill -s HUP $MAINPID
 KillMode=mixed
-TimeoutStopSec=5
+TimeoutStopSec=10
 PrivateTmp=true
 Restart=always
 

@@ -294,24 +294,32 @@ sudo systemctl status celery-beat
 
 ## 📊 Monitoring & Maintenance
 
+### Updated Logging Strategy (stdout)
+Приложение (Django + Gunicorn) теперь пишет логи напрямую в stdout/stderr, собираемые **systemd journald**. Это устраняет проблемы прав при создании файлов логов.
+
+Основные изменения:
+- Файловые хэндлеры Django удалены (только `StreamHandler`).
+- Gunicorn конфиг (systemd unit) перенастроен на вывод access/error логов в `-` (stdout).
+- Используйте `journalctl` для просмотра последних событий.
+
 ### View Logs
 
 ```bash
-# Django/Gunicorn logs
-sudo tail -f /var/log/teaching_panel/gunicorn.log
-sudo tail -f /var/log/teaching_panel/error.log
+# Django / Gunicorn (combined stdout/stderr)
+sudo journalctl -u teaching_panel -n 100 --no-pager
+sudo journalctl -u teaching_panel -f
 
-# Celery logs
-sudo tail -f /var/log/teaching_panel/celery.log
-sudo tail -f /var/log/teaching_panel/celery_beat.log
+# Celery workers
+sudo journalctl -u celery -n 100 --no-pager
+sudo journalctl -u celery -f
 
-# Nginx logs
+# Celery beat
+sudo journalctl -u celery-beat -n 100 --no-pager
+sudo journalctl -u celery-beat -f
+
+# Nginx logs (остаются файловыми)
 sudo tail -f /var/log/nginx/teaching_panel_access.log
 sudo tail -f /var/log/nginx/teaching_panel_error.log
-
-# Systemd logs
-sudo journalctl -u teaching_panel -f
-sudo journalctl -u celery -f
 ```
 
 ### Service Management
@@ -369,6 +377,10 @@ npm run build
 sudo systemctl restart teaching_panel
 sudo systemctl restart celery
 sudo systemctl restart celery-beat
+
+# Быстрая проверка порта и логов
+sudo ss -tlnp | grep ':8000'
+sudo journalctl -u teaching_panel -n 50 --no-pager
 ```
 
 ---
