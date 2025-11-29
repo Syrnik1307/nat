@@ -247,12 +247,10 @@ const AuthPage = () => {
       // reCAPTCHA отключена
       const recaptchaToken = null;
 
-      const resolvedRole = await login({ 
-        email: formData.email?.trim().toLowerCase(), 
-        password: formData.password?.trim(), 
-        roleSelection: role,
-        rememberMe: rememberMe // передаем в функцию login
-      });
+      const resolvedRole = await login(
+        formData.email?.trim().toLowerCase(), 
+        formData.password?.trim()
+      );
       // Используем только роль из JWT токена (resolvedRole)
       const nextRole = resolvedRole || 'teacher';
       const roleRedirects = {
