@@ -300,7 +300,13 @@ const AuthPage = () => {
       let errorMessage = 'Проверьте правильность введённых данных';
       
       // Проверяем различные типы ошибок
-      if (err.response?.status === 401 || errorDetail.includes('credentials') || errorDetail.includes('account')) {
+      if (err.response?.status === 502) {
+        errorTitle = 'Сбой сервера (502)';
+        errorMessage = 'Временная ошибка шлюза. Попробуйте ещё раз через минуту.';
+      } else if (err.response?.status === 500) {
+        errorTitle = 'Внутренняя ошибка (500)';
+        errorMessage = 'На сервере произошла ошибка. Сообщите поддержке, если повторяется.';
+      } else if (err.response?.status === 401 || errorDetail.includes('credentials') || errorDetail.includes('account')) {
         errorTitle = 'Неверный логин или пароль';
         errorMessage = 'Пожалуйста, проверьте правильность написания email и пароля. Убедитесь, что Caps Lock выключен.';
       } else if (errorDetail.includes('inactive') || errorDetail.includes('disabled')) {
