@@ -8,7 +8,8 @@ User=www-data
 Group=www-data
 WorkingDirectory=/var/www/teaching_panel/teaching_panel
 Environment="PATH=/var/www/teaching_panel/venv/bin"
-EnvironmentFile=/var/www/teaching_panel/teaching_panel/.env
+EnvironmentFile=-/var/www/teaching_panel/teaching_panel/.env
+# (Optional) Leading '-' makes missing .env non-fatal; settings.py loads .env if present.
 # Stdout/stderr логирование в journald (Gunicorn access/error -> '-')
 ExecStart=/var/www/teaching_panel/venv/bin/gunicorn \
     --bind 0.0.0.0:8000 \
