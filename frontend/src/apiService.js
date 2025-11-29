@@ -122,13 +122,23 @@ apiClient.interceptors.response.use(
 export const login = async (email, password) => {
     try {
         const res = await apiClient.post('jwt/token/', { email, password });
-        if (!res.data.access || !res.data.refresh) {
-            throw new Error('Invalid response: missing tokens');
+
+        // Дополнительная защита: если бэкенд вместо JSON вернул HTML/текст без токенов
+        const data = res && res.data ? res.data : {};
+        const hasAccess = typeof data.access === 'string' && data.access.length > 0;
+        const hasRefresh = typeof data.refresh === 'string' && data.refresh.length > 0;
+
+        if (!hasAccess || !hasRefresh) {
+            // Логируем для диагностики, но считаем это ошибкой авторизации
+            // eslint-disable-next-line no-console
+            console.warn('[apiService.login] Invalid auth response, expected tokens, got:', data);
+            throw new Error('Invalid auth response');
         }
-        setTokens({ access: res.data.access, refresh: res.data.refresh });
-        return res.data;
+
+        setTokens({ access: data.access, refresh: data.refresh });
+        return data;
     } catch (error) {
-        // Очищаем токены при ошибке логина безусловно
+        // Очищаем токены при любой ошибке логина безусловно
         clearTokens(true);
         // Пробрасываем ошибку дальше для обработки в UI
         throw error;
