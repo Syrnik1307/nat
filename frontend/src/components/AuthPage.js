@@ -35,18 +35,16 @@ const AuthPage = () => {
     console.log('  - step:', step);
     console.log('  - role:', role);
     console.log('  - mode:', mode);
+
+    // При заходе на страницу логина дополнительно очищаем токены/сессию в браузере
+    try {
+      clearTokens(true);
+      localStorage.removeItem('tp_remember_session');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+    } catch (_) {}
     
-    // Глобальный обработчик кликов для отладки
-    const handleClick = (e) => {
-      console.log('🖱️ КЛИК:', {
-        tag: e.target.tagName,
-        class: e.target.className,
-        type: e.target.type,
-        text: e.target.textContent?.substring(0, 30)
-      });
-    };
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
+    return undefined;
   }, []);
   
   // === ШАГИ АУТЕНТИФИКАЦИИ ===

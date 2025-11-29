@@ -7,6 +7,7 @@ import {
   getAccessToken,
   getCurrentUser,
   setTokens,
+  clearTokens,
   apiClient,
 } from './apiService';
 
@@ -54,6 +55,23 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const check = useCallback(async () => {
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+
+    // Если мы на странице авторизации, всегда считаем пользователя неавторизованным:
+    // - жёстко чистим токены
+    // - НЕ пытаемся авто-логиниться через refresh
+    if (path.startsWith('/auth')) {
+      try {
+        await apiLogout();
+      } catch (_) {}
+      clearTokens(true);
+      setAccessTokenValid(false);
+      setRole(null);
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
     const ok = await verifyToken();
     if (ok) {
       setAccessTokenValid(true);
@@ -90,6 +108,7 @@ export const AuthProvider = ({ children }) => {
     }
     
     // Если ничего не помогло - пользователь не авторизован
+    clearTokens(true);
     setAccessTokenValid(false);
     setRole(null);
     setUser(null);
@@ -99,18 +118,20 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => { check(); }, [check]);
 
   const login = useCallback(async ({ email, password, roleSelection, rememberMe }) => {
-    await apiLogin(email, password);
-    // Удалим устаревшие ключи если остались
+    // Перед логином жёстко очищаем токены и любые старые флаги
+    clearTokens(true);
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
-    
-    // Если пользователь выбрал "Запомнить меня", сохраняем флаг
+
+    await apiLogin(email, password);
+
+    // Если пользователь выбрал "Запомнить меня", сохраняем флаг для будущих сессий
     if (rememberMe) {
       localStorage.setItem('tp_remember_session', 'true');
     } else {
       localStorage.removeItem('tp_remember_session');
     }
-    
+
     const userRole = getRoleFromToken();
     const resolvedRole = userRole || roleSelection || null;
     setRole(resolvedRole);
@@ -167,20 +188,14 @@ export const AuthProvider = ({ children }) => {
   }, [loadUser]);
 
   const logout = useCallback(async () => {
-    const rememberSession = localStorage.getItem('tp_remember_session') === 'true';
-    
-    if (!rememberSession) {
-      // Если НЕ включено "Запомнить меня", удаляем токены полностью
+    try {
       await apiLogout();
-    } else {
-      // Если включено "Запомнить меня", просто сбрасываем состояние без удаления токенов
-      // Токены останутся в localStorage для автоматического входа
-    }
-    
+    } catch (_) {}
+    clearTokens(true);
+    localStorage.removeItem('tp_remember_session');
     setAccessTokenValid(false);
     setRole(null);
     setUser(null);
-    // Редирект на страницу авторизации после выхода
     window.location.href = '/auth-new';
   }, []);
 
