@@ -14,16 +14,13 @@ export const setTokens = ({ access, refresh }) => {
     if (refresh) localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
 };
 
-export const clearTokens = () => {
-    // Проверяем флаг "Запомнить меня"
+export const clearTokens = (force = false) => {
+    // Если force=true — всегда чистим токены независимо от remember
     const rememberSession = localStorage.getItem('tp_remember_session') === 'true';
-    
-    if (!rememberSession) {
-        // Если НЕ включено "Запомнить меня", удаляем токены полностью
+    if (force || !rememberSession) {
         localStorage.removeItem(ACCESS_TOKEN_KEY);
         localStorage.removeItem(REFRESH_TOKEN_KEY);
     }
-    // Если включено "Запомнить меня", токены остаются для автоматического входа
 };
 
 // Use relative path for API calls
@@ -131,8 +128,8 @@ export const login = async (email, password) => {
         setTokens({ access: res.data.access, refresh: res.data.refresh });
         return res.data;
     } catch (error) {
-        // Очищаем токены при ошибке логина
-        clearTokens();
+        // Очищаем токены при ошибке логина безусловно
+        clearTokens(true);
         // Пробрасываем ошибку дальше для обработки в UI
         throw error;
     }
