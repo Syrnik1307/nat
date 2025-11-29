@@ -235,12 +235,21 @@ const AuthPage = () => {
     setLoading(true);
     
     try {
+      // Логирование для диагностики мобильных проблем
+      console.log('🔐 Попытка логина:', {
+        email: formData.email?.trim().toLowerCase(),
+        passwordLength: formData.password?.length,
+        passwordHasSpaces: formData.password?.includes(' '),
+        role,
+        userAgent: navigator.userAgent
+      });
+      
       // reCAPTCHA отключена
       const recaptchaToken = null;
 
       const resolvedRole = await login({ 
         email: formData.email?.trim().toLowerCase(), 
-        password: formData.password, 
+        password: formData.password?.trim(), 
         roleSelection: role,
         rememberMe: rememberMe // передаем в функцию login
       });
@@ -273,6 +282,14 @@ const AuthPage = () => {
       setLoginAttempts(0);
       setShowCaptcha(false);
     } catch (err) {
+      // Логирование ошибки для диагностики
+      console.error('❌ Ошибка логина:', {
+        status: err.response?.status,
+        detail: err.response?.data?.detail,
+        message: err.message,
+        fullError: err
+      });
+      
       // Увеличиваем счетчик попыток
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
@@ -341,9 +358,9 @@ const AuthPage = () => {
       });
       const resolvedRole = await register({
         email: formData.email.trim().toLowerCase(),
-        password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        password: formData.password.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
         phone: formData.phone.trim(),
         role,
         birthDate: null,

@@ -24,6 +24,7 @@ import PasswordResetPage from './components/PasswordResetPage';
 import TeacherHomePage from './components/TeacherHomePage';
 import AdminHomePage from './components/AdminHomePage';
 import NavBarNew from './components/NavBarNew';
+import StudentNavBar from './components/StudentNavBar';
 import ProfilePage from './components/ProfilePage';
 // Chat система
 import ChatPage from './components/ChatPage';
@@ -44,8 +45,12 @@ const RoleRouter = () => {
 
 const AppRoutes = () => {
   const location = useLocation();
+  const { accessTokenValid, role } = useAuth();
   const hideNavPaths = ['/auth-new', '/register', '/verify-email'];
-  const shouldShowNav = !hideNavPaths.includes(location.pathname);
+  const baseNavVisible = !hideNavPaths.includes(location.pathname);
+  const isStudentView = accessTokenValid && role === 'student';
+  const shouldShowStudentNav = baseNavVisible && isStudentView;
+  const shouldShowNav = baseNavVisible && !isStudentView;
 
   const RootRedirect = () => {
     const { accessTokenValid, role, loading } = useAuth();
@@ -58,6 +63,7 @@ const AppRoutes = () => {
   };
   return (
     <>
+      {shouldShowStudentNav && <StudentNavBar />}
       {shouldShowNav && <NavBarNew />}
       <Routes>
         <Route path="/" element={<RootRedirect />} />

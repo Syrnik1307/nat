@@ -240,7 +240,8 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'user': '3000/hour',  # Increased for 1000 teachers + 3000 students
-        'anon': '50/hour',     # Stricter for anonymous users
+        'anon': '200/hour',     # Increased for mobile login attempts
+        'login': '50/hour',     # Specific rate for login endpoint (per IP)
         'submissions': '100/hour',  # Specific rate for homework submissions
         'grading': '500/hour',      # Higher rate for teacher grading
     },

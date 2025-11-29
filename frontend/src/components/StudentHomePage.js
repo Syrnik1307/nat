@@ -1,19 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth';
 import { getLessons, getHomeworkList, getSubmissions, getGroups } from '../apiService';
-import Logo from './Logo';
 import JoinGroupModal from './JoinGroupModal';
 import SupportWidget from './SupportWidget';
 import '../styles/StudentHome.css';
 
 const StudentHomePage = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
   const [homework, setHomework] = useState([]);
   const [submissions, setSubmissions] = useState([]);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [groups, setGroups] = useState([]);
 
@@ -51,25 +45,6 @@ const StudentHomePage = () => {
     return 'учеников';
   };
 
-  const getInitials = () => {
-    if (user?.first_name) {
-      const parts = user.first_name.split(' ');
-      if (parts.length > 1) {
-        return (parts[0][0] + parts[1][0]).toUpperCase();
-      }
-      return user.first_name.substring(0, 2).toUpperCase();
-    }
-    if (user?.email) {
-      return user.email.substring(0, 2).toUpperCase();
-    }
-    return 'UC';
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/auth');
-  };
-
   // Calculate stats
   const submissionIndex = submissions.reduce((acc, s) => { acc[s.homework] = s; return acc; }, {});
   const decoratedHomework = homework.map(hw => {
@@ -94,66 +69,6 @@ const StudentHomePage = () => {
 
   return (
     <div className="student-home">
-      {/* Navigation Bar */}
-      <nav className="student-navbar">
-        <div className="student-navbar-content">
-          <div className="student-navbar-left">
-            <Logo size={34} />
-          </div>
-          
-          <div className="student-navbar-center">
-            <Link to="/student/courses" className="student-nav-link">
-              Мои курсы
-            </Link>
-            <Link to="/calendar" className="student-nav-link">
-              Расписание
-            </Link>
-            <Link to="/homework" className="student-nav-link">
-              Домашнее задание
-            </Link>
-            <Link to="/student/recordings" className="student-nav-link">
-              📹 Записи уроков
-            </Link>
-            <Link to="/student/stats" className="student-nav-link">
-              Моя статистика
-            </Link>
-          </div>
-
-          <div className="student-navbar-right">
-            <div className="student-profile-section">
-              <button 
-                className="student-profile-button"
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-              >
-                <div className="student-avatar">
-                  {getInitials()}
-                </div>
-              </button>
-              
-              {showProfileMenu && (
-                <div className="student-profile-dropdown">
-                  <div className="student-profile-header">
-                    Вы: {user?.first_name || user?.email || 'Ученик'}
-                  </div>
-                  <Link to="/profile" className="student-dropdown-item" onClick={() => setShowProfileMenu(false)}>
-                    Профиль
-                  </Link>
-                  <Link to="/messages" className="student-dropdown-item" onClick={() => setShowProfileMenu(false)}>
-                    Сообщения
-                  </Link>
-                  <Link to="/help" className="student-dropdown-item" onClick={() => setShowProfileMenu(false)}>
-                    Вопросы и Ответы
-                  </Link>
-                  <button className="student-dropdown-item student-logout" onClick={handleLogout}>
-                    <span>🚪</span> Выйти
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* Main Content */}
       <main className="student-main-content">
         <div className="student-container">
@@ -218,27 +133,6 @@ const StudentHomePage = () => {
         />
       )}
 
-      {/* Floating action buttons (like in screenshots) */}
-      <div className="student-floating-buttons">
-        <button className="student-fab student-fab-chat" title="Чат">
-          💬
-        </button>
-        <button className="student-fab student-fab-whatsapp" title="WhatsApp">
-          📱
-        </button>
-        <button className="student-fab student-fab-telegram" title="Telegram">
-          ✈️
-        </button>
-        <button className="student-fab student-fab-email" title="Email">
-          ✉️
-        </button>
-        <button className="student-fab student-fab-support" title="Поддержка">
-          🎓
-        </button>
-        <button className="student-fab student-fab-audio" title="Аудио">
-          🎵
-        </button>
-      </div>
       <SupportWidget />
     </div>
   );

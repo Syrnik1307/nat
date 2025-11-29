@@ -6,6 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import authenticate
+from rest_framework.throttling import ScopedRateThrottle
 from .serializers import CustomTokenObtainPairSerializer
 
 User = get_user_model()
@@ -30,8 +31,10 @@ class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
 
 
 class CaseInsensitiveTokenObtainPairView(TokenObtainPairView):
-    """View that uses the case-insensitive serializer."""
+    """View that uses the case-insensitive serializer with login-specific throttling."""
     serializer_class = CaseInsensitiveTokenObtainPairSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
 
 User = get_user_model()
 
