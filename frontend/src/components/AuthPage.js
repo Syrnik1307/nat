@@ -295,7 +295,7 @@ const AuthPage = () => {
       // Определяем тип ошибки и формируем сообщение
       const errorDetail = err.response?.data?.detail || '';
       let errorTitle = 'Ошибка входа';
-      let errorMessage = 'Проверьте правильность введённых данных';
+      let errorMessage = errorDetail || 'Проверьте правильность введённых данных';
       
       // Проверяем различные типы ошибок
       if (err.response?.status === 502) {
@@ -304,15 +304,16 @@ const AuthPage = () => {
       } else if (err.response?.status === 500) {
         errorTitle = 'Внутренняя ошибка (500)';
         errorMessage = 'На сервере произошла ошибка. Сообщите поддержке, если повторяется.';
-      } else if (err.response?.status === 401 || errorDetail.includes('credentials') || errorDetail.includes('account')) {
-        errorTitle = 'Неверный логин или пароль';
-        errorMessage = 'Пожалуйста, проверьте правильность написания email и пароля. Убедитесь, что Caps Lock выключен.';
-      } else if (errorDetail.includes('inactive') || errorDetail.includes('disabled')) {
+      } else if (err.response?.status === 401) {
+        // Используем сообщение от бэкенда (например "Неверный email или пароль")
+        errorTitle = 'Ошибка авторизации';
+        errorMessage = errorDetail || 'Неверный email или пароль';
+      } else if (errorDetail.includes('inactive') || errorDetail.includes('деактивирован')) {
         errorTitle = 'Аккаунт неактивен';
-        errorMessage = 'Ваш аккаунт был деактивирован. Обратитесь к администратору.';
-      } else if (errorDetail.includes('verified') || errorDetail.includes('verification')) {
-        errorTitle = 'Email не подтверждён';
-        errorMessage = 'Пожалуйста, подтвердите ваш email перед входом.';
+        errorMessage = errorDetail;
+      } else if (errorDetail.includes('блокирован') || errorDetail.includes('попыток')) {
+        errorTitle = 'Доступ ограничен';
+        errorMessage = errorDetail;
       } else if (err.message === 'Network Error' || !err.response) {
         errorTitle = 'Ошибка подключения';
         errorMessage = 'Не удалось подключиться к серверу. Проверьте интернет-соединение.';
