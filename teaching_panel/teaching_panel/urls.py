@@ -31,7 +31,14 @@ from accounts.subscriptions_views import (
     SubscriptionMeView,
     SubscriptionCancelView,
     SubscriptionCreatePaymentView,
+    SubscriptionAddStorageView,
+    AdminSubscriptionsListView,
+    AdminSubscriptionExtendTrialView,
+    AdminSubscriptionCancelView,
+    AdminSubscriptionActivateView,
+    AdminSubscriptionConfirmStoragePaymentView,
 )
+from accounts.payments_views import yookassa_webhook
 
 # Create a router and register our viewsets with it.
 router = DefaultRouter()
@@ -93,4 +100,15 @@ urlpatterns = [
     path('api/subscription/', SubscriptionMeView.as_view(), name='subscription_me'),
     path('api/subscription/cancel/', SubscriptionCancelView.as_view(), name='subscription_cancel'),
     path('api/subscription/create-payment/', SubscriptionCreatePaymentView.as_view(), name='subscription_create_payment'),
+    path('api/subscription/add-storage/', SubscriptionAddStorageView.as_view(), name='subscription_add_storage'),
+
+    # Admin Subscriptions API
+    path('api/admin/subscriptions/', AdminSubscriptionsListView.as_view(), name='admin_subscriptions_list'),
+    path('api/admin/subscriptions/<int:sub_id>/extend-trial/', AdminSubscriptionExtendTrialView.as_view(), name='admin_subscription_extend_trial'),
+    path('api/admin/subscriptions/<int:sub_id>/cancel/', AdminSubscriptionCancelView.as_view(), name='admin_subscription_cancel'),
+    path('api/admin/subscriptions/<int:sub_id>/activate/', AdminSubscriptionActivateView.as_view(), name='admin_subscription_activate'),
+    path('api/admin/subscriptions/storage/confirm/<str:payment_id>/', AdminSubscriptionConfirmStoragePaymentView.as_view(), name='admin_subscription_confirm_storage'),
+    
+    # Payment webhooks
+    path('api/payments/yookassa/webhook/', yookassa_webhook, name='yookassa_webhook'),
 ]

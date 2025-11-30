@@ -28,6 +28,7 @@ from .serializers import (
     RecurringLessonSerializer
 )
 from .zoom_client import my_zoom_api_client
+from accounts.subscriptions_utils import require_active_subscription
 
 logger = logging.getLogger(__name__)
 
@@ -444,6 +445,11 @@ class LessonViewSet(viewsets.ModelViewSet):
         url = request.data.get('url')
         if not url:
             return Response({'detail': 'url обязателен'}, status=status.HTTP_400_BAD_REQUEST)
+        # Требуем активную подписку
+        try:
+            require_active_subscription(request.user)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
         recording = LessonRecording.objects.create(lesson=lesson, url=url)
         return Response({
             'status': 'created',
@@ -462,6 +468,11 @@ class LessonViewSet(viewsets.ModelViewSet):
         """
         lesson = self.get_object()
         user = request.user
+        # Требуем активную подписку
+        try:
+            require_active_subscription(user)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
         
         # Проверка прав доступа
         if lesson.teacher != user:
@@ -554,6 +565,11 @@ class LessonViewSet(viewsets.ModelViewSet):
         """
         lesson = self.get_object()
         user = request.user
+        # Требуем активную подписку
+        try:
+            require_active_subscription(user)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
 
         # Rate limiting - 3 попытки в минуту на пользователя
         rate_limit_key = f"start_lesson_rate_limit:{user.id}"
@@ -599,6 +615,11 @@ class LessonViewSet(viewsets.ModelViewSet):
                 {'detail': 'Только преподаватели могут создавать экспресс-уроки'},
                 status=status.HTTP_403_FORBIDDEN
             )
+        # Требуем активную подписку
+        try:
+            require_active_subscription(user)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
 
         duration_raw = request.data.get('duration')
         try:
@@ -1091,6 +1112,11 @@ def teacher_recordings_list(request):
         return Response({
             'error': 'Доступ только для преподавателей'
         }, status=status.HTTP_403_FORBIDDEN)
+    # Требуем активную подписку
+    try:
+        require_active_subscription(user)
+    except Exception as e:
+        return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
     
     try:
         # Все записи уроков преподавателя

@@ -579,6 +579,11 @@ class Subscription(models.Model):
     total_paid = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     last_payment_date = models.DateTimeField(null=True, blank=True)
 
+    # Хранилище (GB). Базовый объем и дополнительные покупки.
+    base_storage_gb = models.IntegerField(default=5)
+    extra_storage_gb = models.IntegerField(default=0)
+    used_storage_gb = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -597,6 +602,16 @@ class Subscription(models.Model):
             delta = self.expires_at - timezone.now()
             return max(0, delta.days)
         return 0
+
+    @property
+    def total_storage_gb(self):
+        return self.base_storage_gb + self.extra_storage_gb
+
+    def add_storage(self, gb: int):
+        if gb <= 0:
+            return
+        self.extra_storage_gb += gb
+        self.save(update_fields=['extra_storage_gb', 'updated_at'])
 
 
 class Payment(models.Model):

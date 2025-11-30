@@ -505,6 +505,16 @@ if SENTRY_DSN:
         )
 
 # =============================================================================
+# YOOKASSA PAYMENT SETTINGS
+# =============================================================================
+YOOKASSA_ACCOUNT_ID = os.environ.get('YOOKASSA_ACCOUNT_ID', '')
+YOOKASSA_SECRET_KEY = os.environ.get('YOOKASSA_SECRET_KEY', '')
+YOOKASSA_WEBHOOK_SECRET = os.environ.get('YOOKASSA_WEBHOOK_SECRET', '')
+
+# Frontend URL для return_url после оплаты
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
+# =============================================================================
 # LOGGING CONFIGURATION
 # =============================================================================
 LOGGING = {
