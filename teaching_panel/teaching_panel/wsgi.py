@@ -8,6 +8,7 @@ https://docs.djangoproject.com/en/4.2/howto/deployment/wsgi/
 """
 
 import os
+print("[WSGIDebug] teaching_panel.wsgi loaded")
 
 from django.core.wsgi import get_wsgi_application
 
