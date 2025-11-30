@@ -24,7 +24,7 @@ from schedule import views as schedule_views
 from homework.views import HomeworkViewSet, StudentSubmissionViewSet
 from analytics.views import GradebookViewSet
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
-from accounts.jwt_views import LogoutView, RegisterView, CaseInsensitiveTokenObtainPairView
+from accounts.jwt_views import LogoutView, RegisterView, CaseInsensitiveTokenObtainPairView, DirectTokenView
 from accounts.api_views import MeView
 
 # Create a router and register our viewsets with it.
@@ -76,6 +76,8 @@ urlpatterns = [
     path('api/jwt/token/', CaseInsensitiveTokenObtainPairView.as_view(), name='jwt-obtain-pair'),
     # Temporary CI endpoint to bypass potential routing conflicts
     path('api/jwt/token-ci/', CaseInsensitiveTokenObtainPairView.as_view(), name='jwt-obtain-pair-ci'),
+    # Direct diagnostic endpoint (manual password check)
+    path('api/jwt/token-direct/', DirectTokenView.as_view(), name='jwt-obtain-direct'),
     path('api/jwt/refresh/', TokenRefreshView.as_view(), name='jwt-refresh'),
     path('api/jwt/verify/', TokenVerifyView.as_view(), name='jwt-verify'),
     path('api/jwt/logout/', LogoutView.as_view(), name='jwt-logout'),

@@ -103,6 +103,45 @@ class CaseInsensitiveTokenObtainPairView(TokenObtainPairView):
             print(f"[AuthDebug] failed to log payload: {e}")
         return super().post(request, *args, **kwargs)
 
+
+class DirectTokenView(APIView):
+    """Прямой endpoint для диагностики: минует authenticate() и SimpleJWT view.
+    Принимает email+password, кейс-инсенситив email, строгая проверка пароля,
+    возвращает access/refresh с теми же кастомными claims.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip()
+        password = request.data.get('password') or ''
+        print(f"[AuthDebug] DirectTokenView payload: email={email} len={len(password)} ct={request.content_type}")
+        if not email or not password:
+            return Response({'detail': 'Некорректные учетные данные'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if is_locked(email):
+            return Response({'detail': 'Слишком много попыток. Аккаунт временно заблокирован'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            register_failure(email)
+            return Response({'detail': 'Неверный email или пароль'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        if not user.is_active:
+            return Response({'detail': 'Аккаунт деактивирован'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        if not user.check_password(password):
+            register_failure(email)
+            return Response({'detail': 'Неверный email или пароль'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        reset_failures(email)
+        refresh = CustomTokenObtainPairSerializer.get_token(CustomTokenObtainPairSerializer, user)
+        data = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
 User = get_user_model()
 
 
