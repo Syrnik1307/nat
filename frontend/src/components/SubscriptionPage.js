@@ -18,7 +18,8 @@ const SubscriptionPage = () => {
 
   const loadSubscription = async () => {
     try {
-      const response = await apiClient.get('/api/subscription/');
+      // Используем относительный путь без повторного /api/
+      const response = await apiClient.get('subscription/');
       setSubData(response.data);
     } catch (error) {
       console.error('Failed to load subscription:', error);
@@ -34,7 +35,7 @@ const SubscriptionPage = () => {
     setProcessing(true);
 
     try {
-      const response = await apiClient.post('/api/subscription/add-storage/', { gb: storageGb });
+      const response = await apiClient.post('subscription/add-storage/', { gb: storageGb });
       const paymentUrl = response.data.payment_url;
       
       window.location.href = paymentUrl;
@@ -56,16 +57,31 @@ const SubscriptionPage = () => {
     setProcessing(true);
     try {
       if (isCurrentlyEnabled) {
-        await apiClient.post('/api/subscription/cancel/');
+        await apiClient.post('subscription/cancel/');
       } else {
         // Включение автопродления (если есть такой endpoint, иначе оставляем только отключение)
-        await apiClient.post('/api/subscription/enable-auto-renew/');
+        await apiClient.post('subscription/enable-auto-renew/');
       }
       await loadSubscription();
     } catch (error) {
       console.error('Toggle auto-renew failed:', error);
       alert(`Не удалось ${action} автопродление`);
     } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handlePayCycle = async () => {
+    if (processing) return;
+    setProcessing(true);
+    try {
+      // Используем единый план 'monthly' для 28/30 дневного цикла
+      const response = await apiClient.post('subscription/create-payment/', { plan: 'monthly' });
+      const paymentUrl = response.data.payment_url;
+      window.location.href = paymentUrl;
+    } catch (error) {
+      console.error('Payment failed:', error);
+      alert('Не удалось создать платёж');
       setProcessing(false);
     }
   };
@@ -165,8 +181,14 @@ const SubscriptionPage = () => {
             </div>
           )}
 
-          {/* Кнопка переключения автопродления */}
-          {isActive && (
+          <div className="subscription-actions">
+            <button 
+              className={`pay-btn ${processing ? 'loading' : ''}`}
+              onClick={handlePayCycle}
+              disabled={processing}
+            >
+              Оплатить 28 дней
+            </button>
             <button 
               className={`toggle-renew-btn ${subData?.auto_renew ? 'renew-enabled' : 'renew-disabled'}`}
               onClick={handleToggleAutoRenew}
@@ -174,7 +196,7 @@ const SubscriptionPage = () => {
             >
               {subData?.auto_renew ? 'Отключить автопродление' : 'Подключить автопродление'}
             </button>
-          )}
+          </div>
         </div>
       </section>
 

@@ -99,6 +99,7 @@ urlpatterns = [
     # Subscription API
     path('api/subscription/', SubscriptionMeView.as_view(), name='subscription_me'),
     path('api/subscription/cancel/', SubscriptionCancelView.as_view(), name='subscription_cancel'),
+    path('api/subscription/enable-auto-renew/', SubscriptionEnableAutoRenewView.as_view(), name='subscription_enable_auto_renew'),
     path('api/subscription/create-payment/', SubscriptionCreatePaymentView.as_view(), name='subscription_create_payment'),
     path('api/subscription/add-storage/', SubscriptionAddStorageView.as_view(), name='subscription_add_storage'),
 

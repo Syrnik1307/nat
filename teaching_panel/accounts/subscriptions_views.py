@@ -53,6 +53,29 @@ class SubscriptionCancelView(APIView):
         return Response(SubscriptionSerializer(sub).data)
 
 
+class SubscriptionEnableAutoRenewView(APIView):
+    """Включает автопродление подписки (auto_renew=True).
+
+    Если подписка была отменена (STATUS_CANCELLED) но срок ещё не истёк — просто включаем флаг.
+    Если срок истёк или статус EXPIRED — активируем на 30 дней от текущего момента.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        sub = get_subscription(request.user)
+        if sub.auto_renew:
+            return Response(SubscriptionSerializer(sub).data)
+        now = timezone.now()
+        # Если истекла или отменена и истекла — активируем заново на 30 дней
+        if sub.expires_at and sub.expires_at < now:
+            sub.expires_at = now + timezone.timedelta(days=30)
+        if sub.status in (Subscription.STATUS_CANCELLED, Subscription.STATUS_EXPIRED):
+            sub.status = Subscription.STATUS_ACTIVE
+        sub.auto_renew = True
+        sub.save(update_fields=['auto_renew', 'expires_at', 'status', 'updated_at'])
+        return Response(SubscriptionSerializer(sub).data)
+
+
 class SubscriptionCreatePaymentView(APIView):
     permission_classes = [IsAuthenticated]
 
