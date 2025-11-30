@@ -23,6 +23,15 @@ class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
         raw_email = (attrs.get(email_field) or '').strip()
         password = attrs.get('password') or ''
 
+        # DEBUG LOGGING (temporary): helps diagnose prod login issues
+        try:
+            import logging
+            logging.getLogger(__name__).info(
+                "[AuthDebug] incoming login: email=%s len(password)=%s", raw_email, len(password)
+            )
+        except Exception:
+            pass
+
         if not raw_email or not password:
             from rest_framework import exceptions
             raise exceptions.AuthenticationFailed('Некорректные учетные данные')
@@ -35,17 +44,32 @@ class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
         try:
             user = User.objects.get(**{f'{email_field}__iexact': raw_email})
         except User.DoesNotExist:
+            try:
+                import logging
+                logging.getLogger(__name__).warning("[AuthDebug] user not found: %s", raw_email)
+            except Exception:
+                pass
             register_failure(raw_email)
             from rest_framework import exceptions
             raise exceptions.AuthenticationFailed('Неверный email или пароль')
 
         # Проверка активности
         if not user.is_active:
+            try:
+                import logging
+                logging.getLogger(__name__).warning("[AuthDebug] user inactive: %s", raw_email)
+            except Exception:
+                pass
             from rest_framework import exceptions
             raise exceptions.AuthenticationFailed('Аккаунт деактивирован')
 
         # Строгая проверка пароля
         if not user.check_password(password):
+            try:
+                import logging
+                logging.getLogger(__name__).warning("[AuthDebug] bad password for: %s", raw_email)
+            except Exception:
+                pass
             register_failure(raw_email)
             from rest_framework import exceptions
             raise exceptions.AuthenticationFailed('Неверный email или пароль')
