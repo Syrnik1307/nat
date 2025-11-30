@@ -1,0 +1,295 @@
+.subscription-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: #f9fafb;
+  min-height: 100vh;
+}
+
+.sub-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.back-btn {
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.sub-header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  color: #111827;
+}
+
+/* Текущая подписка */
+.current-subscription {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.current-subscription h2 {
+  margin-top: 0;
+  font-size: 1.25rem;
+  color: #374151;
+}
+
+.sub-card {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.sub-status {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.status-badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.status-badge.status-active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.status-cancelled,
+.status-badge.status-expired {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Убрали бейдж плана для минималистичного вида */
+
+.sub-details {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row .label {
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.detail-row .value {
+  color: #111827;
+  font-weight: 600;
+}
+
+.days-left {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.days-left.warning {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.storage-extra {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.cancel-btn {
+  margin-top: 1rem;
+  padding: 0.625rem 1.25rem;
+  background: #f87171;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.cancel-btn:hover {
+  background: #ef4444;
+}
+
+/* Тарифы */
+/* Блок тарифов удалён для минималистичного вида */
+
+/* Минималистичный прогресс-бар цикла оплаты */
+.cycle-progress {
+  margin-top: 1rem;
+}
+
+.progress-bar {
+  position: relative;
+  width: 100%;
+  height: 12px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1 0%, #10b981 100%);
+  transition: width 0.4s ease;
+}
+
+.progress-meta {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+/* Хранилище */
+.storage-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.storage-section h2 {
+  margin-top: 0;
+  font-size: 1.25rem;
+  color: #374151;
+}
+
+.storage-card {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.storage-card p {
+  margin-top: 0;
+  color: #6b7280;
+}
+
+.storage-input-group {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5rem;
+  margin: 1.5rem 0;
+  flex-wrap: wrap;
+}
+
+.storage-input-group label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.storage-input-group input {
+  padding: 0.625rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  width: 120px;
+}
+
+.storage-price {
+  padding: 0.625rem 1rem;
+  background: #e0e7ff;
+  color: #3730a3;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.buy-storage-btn {
+  padding: 0.75rem 1.5rem;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.buy-storage-btn:hover:not(:disabled) {
+  background: #059669;
+}
+
+.buy-storage-btn:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+/* История платежей */
+/* История платежей скрыта */
+
+/* Загрузка */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem;
+  font-size: 1.25rem;
+  color: #6b7280;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .subscription-page {
+    padding: 1rem;
+  }
+
+  .sub-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .plans-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .storage-input-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .storage-input-group input {
+    width: 100%;
+  }
+
+  .payment-info {
+    flex-wrap: wrap;
+  }
+}

@@ -1,100 +1,202 @@
-import React, { useEffect, useState } from 'react';
-import { useAuth, Protected } from '../auth';
-import { getSubscription, createSubscriptionPayment, cancelSubscription } from '../apiService';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../auth';
+import { useNavigate } from 'react-router-dom';
+import { apiClient } from '../apiService';
+import './SubscriptionPage.css';
 
-const fmtDate = (iso) => iso ? new Date(iso).toLocaleString() : '-';
-
-export default function SubscriptionPage() {
-  const { role } = useAuth();
+const SubscriptionPage = () => {
+  const { user, subscription } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [sub, setSub] = useState(null);
-  const [creating, setCreating] = useState(false);
+  const [subData, setSubData] = useState(null);
+  const [storageGb, setStorageGb] = useState(10);
+  const [processing, setProcessing] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
-    setError('');
+  useEffect(() => {
+    loadSubscription();
+  }, []);
+
+  const loadSubscription = async () => {
     try {
-      const { data } = await getSubscription();
-      setSub(data);
-    } catch (e) {
-      setError('Не удалось загрузить подписку');
+      const response = await apiClient.get('/api/subscription/');
+      setSubData(response.data);
+    } catch (error) {
+      console.error('Failed to load subscription:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  // Тариф один — убираем оплату планов и оставляем только прогресс подписки
 
-  const handleBuy = async (plan) => {
-    setCreating(true);
-    setError('');
+  const handleBuyStorage = async () => {
+    if (processing || storageGb < 1) return;
+    setProcessing(true);
+
     try {
-      const { data } = await createSubscriptionPayment(plan);
-      setSub(data.subscription);
-      const url = data.payment && data.payment.payment_url;
-      if (url) window.location.href = url;
-    } catch (e) {
-      setError('Не удалось создать оплату');
-    } finally {
-      setCreating(false);
+      const response = await apiClient.post('/api/subscription/add-storage/', { gb: storageGb });
+      const paymentUrl = response.data.payment_url;
+      
+      window.location.href = paymentUrl;
+    } catch (error) {
+      console.error('Storage payment failed:', error);
+      alert('Не удалось создать платёж. Попробуйте позже.');
+      setProcessing(false);
     }
   };
 
-  const handleCancel = async () => {
-    setCreating(true);
-    setError('');
+  const handleCancelSubscription = async () => {
+    if (!window.confirm('Отменить автопродление подписки? Доступ сохранится до окончания оплаченного периода.')) {
+      return;
+    }
+
     try {
-      const { data } = await cancelSubscription();
-      setSub(data);
-    } catch (e) {
-      setError('Не удалось отменить подписку');
-    } finally {
-      setCreating(false);
+      await apiClient.post('/api/subscription/cancel/');
+      alert('Подписка отменена');
+      loadSubscription();
+    } catch (error) {
+      console.error('Cancel failed:', error);
+      alert('Не удалось отменить подписку');
     }
   };
 
-  if (loading) return <div style={{ padding: '2rem' }}>Загрузка...</div>;
-  if (error) return <div style={{ padding: '2rem', color: 'crimson' }}>{error}</div>;
+  const formatDate = (dateString) => {
+    if (!dateString) return '—';
+    return new Date(dateString).toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
 
-  const isActive = sub?.status === 'active';
-  const isPending = sub?.status === 'pending';
+  const getDaysLeft = () => {
+    if (!subData?.expires_at) return null;
+    const days = Math.ceil((new Date(subData.expires_at) - new Date()) / (1000 * 60 * 60 * 24));
+    return Math.max(0, days);
+  };
+
+  const isActive = subData?.status === 'active' && getDaysLeft() > 0;
+
+  // Прогресс-бар: цикл 28 дней
+  const totalCycleDays = 28;
+  const daysLeft = getDaysLeft();
+  const progressPercent = daysLeft != null ? Math.max(0, Math.min(100, Math.round((daysLeft / totalCycleDays) * 100))) : 0;
+
+  if (loading) {
+    return (
+      <div className="subscription-page">
+        <div className="loading">Загрузка...</div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ maxWidth: 800, margin: '2rem auto', padding: '1.5rem', background: 'white', borderRadius: 12, boxShadow: '0 4px 14px rgba(0,0,0,0.08)' }}>
-      <h2 style={{ marginTop: 0 }}>Подписка</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div>
-          <div><strong>План:</strong> {sub?.plan}</div>
-          <div><strong>Статус:</strong> {sub?.status}</div>
-          <div><strong>Начало:</strong> {fmtDate(sub?.started_at)}</div>
-          <div><strong>Истекает:</strong> {fmtDate(sub?.expires_at)}</div>
-          <div><strong>Автопродление:</strong> {sub?.auto_renew ? 'вкл' : 'выкл'}</div>
-          <div><strong>Оплачено всего:</strong> {sub?.total_paid} {sub?.currency || 'RUB'}</div>
-        </div>
-      </div>
+    <div className="subscription-page">
+      <header className="sub-header">
+        <button className="back-btn" onClick={() => navigate('/teacher')}>
+          ← Назад
+        </button>
+        <h1>Подписка</h1>
+      </header>
 
-      <div style={{ marginTop: 24, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <button disabled={creating} onClick={() => handleBuy('monthly')} style={btnStyle('primary')}>Оплатить месяц · 990 ₽</button>
-        <button disabled={creating} onClick={() => handleBuy('yearly')} style={btnStyle('secondary')}>Оплатить год · 9 900 ₽</button>
-        {isActive && (
-          <button disabled={creating} onClick={handleCancel} style={btnStyle('danger')}>Отменить автопродление</button>
-        )}
-        {isPending && <span style={{ color: '#a16207' }}>Ожидание оплаты...</span>}
-      </div>
+      {/* Текущая подписка */}
+      <section className="current-subscription">
+        <h2>Статус</h2>
+        <div className="sub-card">
+          <div className="sub-status">
+            <span className={`status-badge status-${subData?.status}`}>
+              {subData?.status === 'active' && isActive && '✅ Активна'}
+              {subData?.status === 'active' && !isActive && '⏱️ Истекла'}
+              {subData?.status === 'pending' && '⏳ Ожидает оплаты'}
+              {subData?.status === 'cancelled' && '❌ Отменена'}
+              {subData?.status === 'expired' && '⏱️ Истекла'}
+            </span>
+          </div>
+
+          <div className="sub-details">
+            <div className="detail-row">
+              <span className="label">Начало:</span>
+              <span className="value">{formatDate(subData?.started_at)}</span>
+            </div>
+            <div className="detail-row">
+              <span className="label">Истекает:</span>
+              <span className="value">
+                {formatDate(subData?.expires_at)}
+                {getDaysLeft() !== null && (
+                  <span className={`days-left ${getDaysLeft() <= 7 ? 'warning' : ''}`}>
+                    {' '}({getDaysLeft()} дн.)
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="detail-row">
+              <span className="label">Хранилище:</span>
+              <span className="value">
+                {subData?.used_storage_gb?.toFixed(2)} / {subData?.total_storage_gb} GB
+                {subData?.extra_storage_gb > 0 && (
+                  <span className="storage-extra"> (+{subData.extra_storage_gb} GB)</span>
+                )}
+              </span>
+            </div>
+          </div>
+
+          {/* Минималистичный прогресс-бар оставшихся дней */}
+          {daysLeft != null && (
+            <div className="cycle-progress">
+              <div className="progress-bar">
+                <div
+                  className="progress-fill"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <div className="progress-meta">
+                Осталось {daysLeft} из {totalCycleDays} дней
+              </div>
+            </div>
+          )}
+
+          {subData?.auto_renew && isActive && (
+            <button className="cancel-btn" onClick={handleCancelSubscription}>
+              Отменить автопродление
+            </button>
+          )}
+        </div>
+      </section>
+
+      {/* Дополнительное хранилище */}
+      <section className="storage-section">
+        <h2>Дополнительное хранилище</h2>
+        <div className="storage-card">
+          <p>Нужно больше места для записей уроков? Докупите дополнительные гигабайты.</p>
+          <div className="storage-input-group">
+            <label>
+              Количество GB:
+              <input 
+                type="number" 
+                min="1" 
+                max="1000" 
+                value={storageGb}
+                onChange={(e) => setStorageGb(parseInt(e.target.value) || 1)}
+                disabled={processing}
+              />
+            </label>
+            <div className="storage-price">
+              Стоимость: {storageGb * 20} ₽
+            </div>
+          </div>
+          <button 
+            className="buy-storage-btn"
+            onClick={handleBuyStorage}
+            disabled={processing || storageGb < 1}
+          >
+            Купить {storageGb} GB
+          </button>
+        </div>
+      </section>
+
+      {/* История платежей скрыта для минималистичного вида */}
     </div>
   );
-}
+};
 
-function btnStyle(variant) {
-  const base = {
-    padding: '10px 14px',
-    borderRadius: 8,
-    border: '1px solid transparent',
-    cursor: 'pointer',
-  };
-  if (variant === 'primary') return { ...base, background: '#4F46E5', color: 'white' };
-  if (variant === 'secondary') return { ...base, background: '#0EA5E9', color: 'white' };
-  if (variant === 'danger') return { ...base, background: '#F43F5E', color: 'white' };
-  return base;
-}
+export default SubscriptionPage;
