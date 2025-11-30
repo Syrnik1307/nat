@@ -6,6 +6,7 @@ from django.utils.crypto import get_random_string
 import random
 import string
 import uuid
+from decimal import Decimal
 
 
 class CustomUserManager(BaseUserManager):
@@ -534,3 +535,100 @@ class PasswordResetToken(models.Model):
             token=token,
             expires_at=expires_at
         )
+
+
+# =========================
+# Subscriptions & Payments
+# =========================
+
+class Subscription(models.Model):
+    PLAN_TRIAL = 'trial'
+    PLAN_MONTHLY = 'monthly'
+    PLAN_YEARLY = 'yearly'
+
+    PLAN_CHOICES = (
+        (PLAN_TRIAL, 'Пробный (7 дней)'),
+        (PLAN_MONTHLY, 'Месячный'),
+        (PLAN_YEARLY, 'Годовой'),
+    )
+
+    STATUS_ACTIVE = 'active'
+    STATUS_CANCELLED = 'cancelled'
+    STATUS_EXPIRED = 'expired'
+    STATUS_PENDING = 'pending'
+
+    STATUS_CHOICES = (
+        (STATUS_ACTIVE, 'Активна'),
+        (STATUS_CANCELLED, 'Отменена'),
+        (STATUS_EXPIRED, 'Истекла'),
+        (STATUS_PENDING, 'Ожидает оплаты'),
+    )
+
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='subscription')
+    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default=PLAN_TRIAL)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+
+    started_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+
+    payment_method = models.CharField(max_length=50, blank=True)
+    auto_renew = models.BooleanField(default=True)
+    next_billing_date = models.DateField(null=True, blank=True)
+
+    total_paid = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    last_payment_date = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
+
+    def __str__(self):
+        return f"Подписка {self.user.email}: {self.plan} ({self.status})"
+
+    def is_active(self):
+        return self.status == self.STATUS_ACTIVE and self.expires_at > timezone.now()
+
+    def days_until_expiry(self):
+        if self.expires_at:
+            delta = self.expires_at - timezone.now()
+            return max(0, delta.days)
+        return 0
+
+
+class Payment(models.Model):
+    STATUS_PENDING = 'pending'
+    STATUS_SUCCEEDED = 'succeeded'
+    STATUS_FAILED = 'failed'
+    STATUS_REFUNDED = 'refunded'
+
+    STATUS_CHOICES = (
+        (STATUS_PENDING, 'Ожидает'),
+        (STATUS_SUCCEEDED, 'Успешно'),
+        (STATUS_FAILED, 'Ошибка'),
+        (STATUS_REFUNDED, 'Возврат'),
+    )
+
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='payments')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3, default='RUB')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+
+    payment_system = models.CharField(max_length=50, default='yookassa')
+    payment_id = models.CharField(max_length=255, unique=True)
+    payment_url = models.URLField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        verbose_name = 'Платеж'
+        verbose_name_plural = 'Платежи'
+
+    def __str__(self):
+        return f"Payment {self.payment_id} ({self.status})"

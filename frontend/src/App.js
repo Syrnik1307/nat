@@ -59,7 +59,7 @@ const AppRoutes = () => {
     if (!accessTokenValid) return <Navigate to="/auth-new" replace />;
     if (role === 'teacher') return <Navigate to="/home-new" replace />;
     if (role === 'student') return <Navigate to="/student" replace />;
-    if (role === 'admin') return <Navigate to="/admin" replace />;
+    if (role === 'admin') return <Navigate to="/admin-home" replace />;
     return <Navigate to="/auth-new" replace />;
   };
   return (
@@ -103,7 +103,7 @@ const AppRoutes = () => {
         <Route path="/student/homework/:id" element={<Protected allowRoles={['student']}><HomeworkTake /></Protected>} />
         
         {/* Admin */}
-        <Route path="/admin" element={<Protected allowRoles={['admin']}><AdminHomePage /></Protected>} />
+        <Route path="/admin-home" element={<Protected allowRoles={['admin']}><AdminHomePage /></Protected>} />
         
         {/* Common */}
         <Route path="/calendar" element={<Protected allowRoles={['teacher', 'student']}><Calendar /></Protected>} />

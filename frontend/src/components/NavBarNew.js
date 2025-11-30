@@ -136,7 +136,7 @@ const NavBar = () => {
     if (!accessTokenValid) return '/auth-new';
     if (role === 'teacher') return '/home-new';
     if (role === 'student') return '/student';
-    if (role === 'admin') return '/admin';
+    if (role === 'admin') return '/admin-home';
     return '/auth-new';
   })();
 
@@ -289,6 +289,15 @@ const NavBar = () => {
                 <span className="nav-icon">📚</span>
                 <span>Материалы</span>
               </Link>
+              
+              <Link 
+                to="/billing" 
+                className="nav-link"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                <span className="nav-icon">💳</span>
+                <span>Подписка</span>
+              </Link>
             </>
           )}
 
@@ -327,7 +336,7 @@ const NavBar = () => {
           {/* Меню для админа */}
           {accessTokenValid && role === 'admin' && (
             <Link 
-              to="/admin" 
+              to="/admin-home" 
               className="nav-link nav-link-highlight"
               onClick={() => setShowMobileMenu(false)}
             >

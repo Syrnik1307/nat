@@ -398,7 +398,7 @@ const AuthPage = () => {
       // После регистрации перенаправляем в зависимости от роли
       const roleRedirects = {
         teacher: '/home-new',
-        admin: '/admin',
+        admin: '/admin-home',
         student: '/student',
       };
       const nextPath = roleRedirects[resolvedRole] || '/';

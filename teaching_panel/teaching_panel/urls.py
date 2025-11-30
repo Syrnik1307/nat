@@ -27,6 +27,11 @@ from analytics.views import GradebookViewSet
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from accounts.jwt_views import LogoutView, RegisterView, CaseInsensitiveTokenObtainPairView, DirectTokenView
 from accounts.api_views import MeView
+from accounts.subscriptions_views import (
+    SubscriptionMeView,
+    SubscriptionCancelView,
+    SubscriptionCreatePaymentView,
+)
 
 # Create a router and register our viewsets with it.
 router = DefaultRouter()
@@ -50,7 +55,7 @@ def health(request):
 
 urlpatterns = [
     path('', health, name='root'),
-    path('admin/', admin.site.urls),
+    # path('admin/', admin.site.urls),  # Отключено: используем только SPA admin
     
     # Test page for email verification
     path('test-verification/', TemplateView.as_view(template_name='test_verification.html'), name='test-verification'),
@@ -83,4 +88,9 @@ urlpatterns = [
     path('api/jwt/verify/', TokenVerifyView.as_view(), name='jwt-verify'),
     path('api/jwt/logout/', LogoutView.as_view(), name='jwt-logout'),
     path('api/jwt/register/', RegisterView.as_view(), name='jwt-register'),
+    
+    # Subscription API
+    path('api/subscription/', SubscriptionMeView.as_view(), name='subscription_me'),
+    path('api/subscription/cancel/', SubscriptionCancelView.as_view(), name='subscription_cancel'),
+    path('api/subscription/create-payment/', SubscriptionCreatePaymentView.as_view(), name='subscription_create_payment'),
 ]

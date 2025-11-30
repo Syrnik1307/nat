@@ -278,7 +278,7 @@ ZOOM_API_KEY = os.environ.get('ZOOM_API_KEY', '')
 ZOOM_API_SECRET = os.environ.get('ZOOM_API_SECRET', '')
 
 # Authentication settings
-LOGIN_URL = 'accounts:role_selection'
+LOGIN_URL = '/api/jwt/login/'  # SPA login, не Django admin
 LOGIN_REDIRECT_URL = 'schedule:teacher_schedule'  # По умолчанию
 LOGOUT_REDIRECT_URL = 'accounts:role_selection'
 

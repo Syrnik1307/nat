@@ -63,7 +63,7 @@ const NavBar = () => {
             {accessTokenValid && role === 'student' && <Link style={styles.link} to="/student">📚 Ученик</Link>}
             {accessTokenValid && role === 'student' && <Link style={styles.link} to="/homework">📝 Мои ДЗ</Link>}
             {accessTokenValid && role === 'student' && <Link style={styles.link} to="/calendar">📆 Календарь</Link>}
-            {accessTokenValid && role === 'admin' && <Link style={styles.linkHighlight} to="/admin">🔧 Админ-панель</Link>}
+            {accessTokenValid && role === 'admin' && <Link style={styles.linkHighlight} to="/admin-home">🔧 Админ-панель</Link>}
           </div>
           <div style={styles.right}>
             {!accessTokenValid && <Link style={styles.loginBtn} to="/login">Войти</Link>}
