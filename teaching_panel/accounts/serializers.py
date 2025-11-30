@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import SystemSettings
+from .models import SystemSettings, Subscription, Payment
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -102,3 +102,31 @@ class SystemSettingsSerializer(serializers.ModelSerializer):
         if value < 15 or value > 480:
             raise serializers.ValidationError('Длительность от 15 минут до 8 часов')
         return value
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = [
+            'id', 'amount', 'currency', 'status',
+            'payment_system', 'payment_id', 'payment_url',
+            'created_at', 'paid_at', 'metadata'
+        ]
+        read_only_fields = ['id', 'status', 'payment_system', 'payment_id', 'payment_url', 'created_at', 'paid_at']
+
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+    payments = PaymentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Subscription
+        fields = [
+            'id', 'plan', 'status', 'started_at', 'expires_at',
+            'cancelled_at', 'payment_method', 'auto_renew',
+            'next_billing_date', 'total_paid', 'last_payment_date',
+            'created_at', 'updated_at', 'payments'
+        ]
+        read_only_fields = [
+            'id', 'status', 'started_at', 'cancelled_at', 'total_paid',
+            'last_payment_date', 'created_at', 'updated_at'
+        ]

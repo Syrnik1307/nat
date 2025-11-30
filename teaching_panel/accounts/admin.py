@@ -1,6 +1,16 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, Chat, Message, MessageReadStatus, StatusBarMessage, PhoneVerification, EmailVerification
+from .models import (
+    CustomUser,
+    Chat,
+    Message,
+    MessageReadStatus,
+    StatusBarMessage,
+    PhoneVerification,
+    EmailVerification,
+    Subscription,
+    Payment,
+)
 
 
 @admin.register(CustomUser)
@@ -97,3 +107,33 @@ class EmailVerificationAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         # Отключаем ручное создание через админку
         return False
+
+
+class PaymentInline(admin.TabularInline):
+    model = Payment
+    extra = 0
+    raw_id_fields = ('subscription',)
+    readonly_fields = ()
+
+
+@admin.register(Subscription)
+class SubscriptionAdmin(admin.ModelAdmin):
+    list_display = (
+        'user', 'plan', 'status', 'started_at', 'expires_at',
+        'auto_renew', 'next_billing_date', 'total_paid', 'last_payment_date',
+    )
+    list_filter = ('plan', 'status', 'auto_renew', 'expires_at', 'started_at')
+    search_fields = ('user__email',)
+    raw_id_fields = ('user',)
+    inlines = [PaymentInline]
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = (
+        'payment_id', 'subscription', 'amount', 'currency', 'status',
+        'payment_system', 'created_at', 'paid_at',
+    )
+    list_filter = ('status', 'payment_system', 'currency', 'created_at')
+    search_fields = ('payment_id', 'subscription__user__email')
+    raw_id_fields = ('subscription',)

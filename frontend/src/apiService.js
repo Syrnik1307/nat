@@ -290,4 +290,9 @@ export const getZoomPoolStats = () => apiClient.get('zoom-pool/zoom-accounts/sta
 
 export const gradeSubmission = (submissionId, grade, feedback = '') => apiClient.post(`submissions/${submissionId}/grade/`, { grade, feedback });
 
+// =============== BILLING / SUBSCRIPTIONS ===============
+export const getSubscription = () => apiClient.get('subscription/');
+export const cancelSubscription = () => apiClient.post('subscription/cancel/');
+export const createSubscriptionPayment = (plan) => apiClient.post('subscription/create-payment/', { plan });
+
 export default apiClient;

@@ -26,6 +26,7 @@ import AdminHomePage from './components/AdminHomePage';
 import NavBarNew from './components/NavBarNew';
 import StudentNavBar from './components/StudentNavBar';
 import ProfilePage from './components/ProfilePage';
+import SubscriptionPage from './components/SubscriptionPage';
 // Chat система
 import ChatPage from './components/ChatPage';
 // Записи уроков
@@ -107,6 +108,7 @@ const AppRoutes = () => {
         {/* Common */}
         <Route path="/calendar" element={<Protected allowRoles={['teacher', 'student']}><Calendar /></Protected>} />
         <Route path="/profile" element={<Protected allowRoles={['teacher', 'student', 'admin']}><ProfilePage /></Protected>} />
+        <Route path="/billing" element={<Protected allowRoles={['teacher', 'admin']}><SubscriptionPage /></Protected>} />
         <Route path="/chat" element={<Protected allowRoles={['teacher', 'student']}><ChatPage /></Protected>} />
         <Route path="/redirect" element={<RoleRouter />} />
         <Route path="*" element={<Navigate to="/" replace />} />

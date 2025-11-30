@@ -40,6 +40,11 @@ from .api_views import (
     reset_password_with_token,
     check_telegram_status
 )
+from .subscriptions_views import (
+    SubscriptionMeView,
+    SubscriptionCancelView,
+    SubscriptionCreatePaymentView,
+)
 
 app_name = 'accounts'
 
@@ -114,6 +119,11 @@ urlpatterns = [
     
     # API для чатов
     path('api/', include(router.urls)),
+
+    # API подписок
+    path('api/subscription/', SubscriptionMeView.as_view(), name='subscription_me'),
+    path('api/subscription/cancel/', SubscriptionCancelView.as_view(), name='subscription_cancel'),
+    path('api/subscription/create-payment/', SubscriptionCreatePaymentView.as_view(), name='subscription_create_payment'),
     
     # Password reset (стандартные Django views)
     path('password-reset/', 
