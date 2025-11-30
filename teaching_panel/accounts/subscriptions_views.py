@@ -12,6 +12,7 @@ from .models import Subscription, Payment
 from .subscriptions_utils import get_subscription, require_active_subscription
 from .serializers import SubscriptionSerializer, PaymentSerializer
 from .payments_service import PaymentService
+from .models import Payment
 
 
 def _get_or_create_subscription(user: "Subscription.user") -> Subscription:
@@ -74,6 +75,39 @@ class SubscriptionEnableAutoRenewView(APIView):
         sub.auto_renew = True
         sub.save(update_fields=['auto_renew', 'expires_at', 'status', 'updated_at'])
         return Response(SubscriptionSerializer(sub).data)
+
+
+class SubscriptionPaymentStatusView(APIView):
+    """Возвращает статус конкретного платежа и актуальные данные подписки.
+
+    GET /api/subscription/payment-status/<payment_id>/
+
+    Ответ:
+    {
+      "payment": {"payment_id": str, "status": str},
+      "subscription": {...}
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, payment_id: str):
+        try:
+            payment = Payment.objects.select_related('subscription').get(payment_id=payment_id)
+        except Payment.DoesNotExist:
+            return Response({'detail': 'Платёж не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Проверяем что платёж принадлежит текущему пользователю
+        if payment.subscription.user_id != request.user.id:
+            return Response({'detail': 'Недоступно'}, status=status.HTTP_403_FORBIDDEN)
+
+        return Response({
+            'payment': {
+                'payment_id': payment.payment_id,
+                'status': payment.status,
+                'paid_at': payment.paid_at,
+            },
+            'subscription': SubscriptionSerializer(payment.subscription).data,
+        })
 
 
 class SubscriptionCreatePaymentView(APIView):

@@ -37,6 +37,8 @@ from accounts.subscriptions_views import (
     AdminSubscriptionCancelView,
     AdminSubscriptionActivateView,
     AdminSubscriptionConfirmStoragePaymentView,
+    SubscriptionEnableAutoRenewView,
+    SubscriptionPaymentStatusView,
 )
 from accounts.payments_views import yookassa_webhook
 
@@ -100,6 +102,7 @@ urlpatterns = [
     path('api/subscription/', SubscriptionMeView.as_view(), name='subscription_me'),
     path('api/subscription/cancel/', SubscriptionCancelView.as_view(), name='subscription_cancel'),
     path('api/subscription/enable-auto-renew/', SubscriptionEnableAutoRenewView.as_view(), name='subscription_enable_auto_renew'),
+    path('api/subscription/payment-status/<str:payment_id>/', SubscriptionPaymentStatusView.as_view(), name='subscription_payment_status'),
     path('api/subscription/create-payment/', SubscriptionCreatePaymentView.as_view(), name='subscription_create_payment'),
     path('api/subscription/add-storage/', SubscriptionAddStorageView.as_view(), name='subscription_add_storage'),
 
