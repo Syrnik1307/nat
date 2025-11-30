@@ -395,9 +395,15 @@ const AuthPage = () => {
         }
       })();
 
-      // После регистрации перенаправляем на /home-new
-      console.log('✅ Регистрация успешна, перенаправление на /home-new');
-      navigate('/home-new', { replace: true });
+      // После регистрации перенаправляем в зависимости от роли
+      const roleRedirects = {
+        teacher: '/home-new',
+        admin: '/admin',
+        student: '/student',
+      };
+      const nextPath = roleRedirects[resolvedRole] || '/';
+      console.log('✅ Регистрация успешна, перенаправление на', nextPath);
+      navigate(nextPath, { replace: true });
     } catch (err) {
       console.error('❌ Ошибка регистрации:', err);
       showNotification('error', 'Ошибка регистрации', err.message || 'Не удалось зарегистрироваться');
