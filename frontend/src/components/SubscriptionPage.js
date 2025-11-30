@@ -45,18 +45,28 @@ const SubscriptionPage = () => {
     }
   };
 
-  const handleCancelSubscription = async () => {
-    if (!window.confirm('Отменить автопродление подписки? Доступ сохранится до окончания оплаченного периода.')) {
+  const handleToggleAutoRenew = async () => {
+    const isCurrentlyEnabled = subData?.auto_renew;
+    const action = isCurrentlyEnabled ? 'отключить' : 'включить';
+    
+    if (!window.confirm(`Вы уверены, что хотите ${action} автопродление?`)) {
       return;
     }
 
+    setProcessing(true);
     try {
-      await apiClient.post('/api/subscription/cancel/');
-      alert('Подписка отменена');
-      loadSubscription();
+      if (isCurrentlyEnabled) {
+        await apiClient.post('/api/subscription/cancel/');
+      } else {
+        // Включение автопродления (если есть такой endpoint, иначе оставляем только отключение)
+        await apiClient.post('/api/subscription/enable-auto-renew/');
+      }
+      await loadSubscription();
     } catch (error) {
-      console.error('Cancel failed:', error);
-      alert('Не удалось отменить подписку');
+      console.error('Toggle auto-renew failed:', error);
+      alert(`Не удалось ${action} автопродление`);
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -155,9 +165,14 @@ const SubscriptionPage = () => {
             </div>
           )}
 
-          {subData?.auto_renew && isActive && (
-            <button className="cancel-btn" onClick={handleCancelSubscription}>
-              Отменить автопродление
+          {/* Кнопка переключения автопродления */}
+          {isActive && (
+            <button 
+              className={`toggle-renew-btn ${subData?.auto_renew ? 'renew-enabled' : 'renew-disabled'}`}
+              onClick={handleToggleAutoRenew}
+              disabled={processing}
+            >
+              {subData?.auto_renew ? 'Отключить автопродление' : 'Подключить автопродление'}
             </button>
           )}
         </div>

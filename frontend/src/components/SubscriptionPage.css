@@ -128,20 +128,41 @@
   font-weight: 600;
 }
 
-.cancel-btn {
+.toggle-renew-btn {
   margin-top: 1rem;
-  padding: 0.625rem 1.25rem;
-  background: #f87171;
+  padding: 0.75rem 1.5rem;
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s;
+  width: 100%;
 }
 
-.cancel-btn:hover {
+.toggle-renew-btn.renew-enabled {
+  background: #f87171;
+}
+
+.toggle-renew-btn.renew-enabled:hover:not(:disabled) {
   background: #ef4444;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.toggle-renew-btn.renew-disabled {
+  background: #10b981;
+}
+
+.toggle-renew-btn.renew-disabled:hover:not(:disabled) {
+  background: #059669;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.toggle-renew-btn:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* Тарифы */
