@@ -29,6 +29,8 @@ class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
             logging.getLogger(__name__).info(
                 "[AuthDebug] incoming login: email=%s len(password)=%s", raw_email, len(password)
             )
+            # Also print to stdout to ensure visibility under gunicorn
+            print(f"[AuthDebug] serializer.validate email={raw_email} password_len={len(password)}")
         except Exception:
             pass
 
