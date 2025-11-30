@@ -158,7 +158,7 @@ const SubscriptionPage = () => {
             <div className="detail-row">
               <span className="label">Хранилище:</span>
               <span className="value">
-                {subData?.used_storage_gb?.toFixed(2)} / {subData?.total_storage_gb} GB
+                {formatGb(subData?.used_storage_gb)} / {formatGb(subData?.total_storage_gb)} GB
                 {subData?.extra_storage_gb > 0 && (
                   <span className="storage-extra"> (+{subData.extra_storage_gb} GB)</span>
                 )}
@@ -237,3 +237,11 @@ const SubscriptionPage = () => {
 };
 
 export default SubscriptionPage;
+
+// Helpers
+function formatGb(value) {
+  if (value === null || value === undefined) return '0.00';
+  const num = typeof value === 'number' ? value : parseFloat(value);
+  if (Number.isNaN(num)) return '0.00';
+  return num.toFixed(2);
+}
