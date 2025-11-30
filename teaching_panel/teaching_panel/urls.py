@@ -55,7 +55,7 @@ def health(request):
 
 urlpatterns = [
     path('', health, name='root'),
-    # path('admin/', admin.site.urls),  # Отключено: используем только SPA admin
+    path('admin/', admin.site.urls),  # Django admin для управления БД
     
     # Test page for email verification
     path('test-verification/', TemplateView.as_view(template_name='test_verification.html'), name='test-verification'),
