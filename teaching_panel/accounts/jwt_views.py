@@ -91,6 +91,16 @@ class CaseInsensitiveTokenObtainPairView(TokenObtainPairView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'login'
 
+    def post(self, request, *args, **kwargs):
+        try:
+            email = (request.data.get('email') or request.data.get('username') or '').strip()
+            pwd = request.data.get('password')
+            pwd_len = len(pwd) if isinstance(pwd, str) else 'N/A'
+            print(f"[AuthDebug] /api/jwt/token payload: email={email}, password_len={pwd_len}, content_type={request.content_type}")
+        except Exception as e:
+            print(f"[AuthDebug] failed to log payload: {e}")
+        return super().post(request, *args, **kwargs)
+
 User = get_user_model()
 
 
