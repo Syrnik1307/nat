@@ -74,6 +74,8 @@ urlpatterns = [
     path('api/gradebook/', GradebookViewSet.as_view({'get': 'group'}), name='gradebook-group'),
     path('api/me/', MeView.as_view(), name='api-me'),
     path('api/jwt/token/', CaseInsensitiveTokenObtainPairView.as_view(), name='jwt-obtain-pair'),
+    # Temporary CI endpoint to bypass potential routing conflicts
+    path('api/jwt/token-ci/', CaseInsensitiveTokenObtainPairView.as_view(), name='jwt-obtain-pair-ci'),
     path('api/jwt/refresh/', TokenRefreshView.as_view(), name='jwt-refresh'),
     path('api/jwt/verify/', TokenVerifyView.as_view(), name='jwt-verify'),
     path('api/jwt/logout/', LogoutView.as_view(), name='jwt-logout'),
