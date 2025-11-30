@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from core.models import AuditLog
 from .models import Homework, StudentSubmission, Answer
-from .serializers import HomeworkSerializer, StudentSubmissionSerializer
+from .serializers import HomeworkSerializer, HomeworkStudentSerializer, StudentSubmissionSerializer
 from .permissions import IsTeacherHomework, IsStudentSubmission
 from .tasks import notify_student_graded
 
@@ -25,11 +25,20 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                 return qs.filter(lesson__group__students=user) | qs.filter(teacher__teaching_groups__students=user)
         return qs.none()
 
+    def get_serializer_class(self):
+        """Для учеников возвращаем урезанный сериализатор без баллов и is_correct."""
+        user = getattr(self.request, 'user', None)
+        if user and user.is_authenticated and getattr(user, 'role', None) == 'student':
+            return HomeworkStudentSerializer
+        return super().get_serializer_class()
+
 
 class StudentSubmissionViewSet(viewsets.ModelViewSet):
     queryset = StudentSubmission.objects.all().select_related('homework', 'student')
     serializer_class = StudentSubmissionSerializer
     permission_classes = [IsStudentSubmission]
+    # Ограничиваем частоту сабмитов (см. DEFAULT_THROTTLE_RATES['submissions'])
+    throttle_scope = 'submissions'
 
     def get_queryset(self):
         qs = super().get_queryset()

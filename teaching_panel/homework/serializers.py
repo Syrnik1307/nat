@@ -7,7 +7,17 @@ class ChoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Choice
         fields = ['id', 'text', 'is_correct']
+        # Ученикам нельзя видеть правильность вариантов. write_only
+        # позволяет передавать is_correct при создании/редактировании (для учителей),
+        # но не возвращать в ответах API.
         extra_kwargs = {'is_correct': {'write_only': True}}
+
+
+class ChoiceStudentSerializer(serializers.ModelSerializer):
+    """Упрощенный сериализатор для учеников (без is_correct)."""
+    class Meta:
+        model = Choice
+        fields = ['id', 'text']
 
 
 class QuestionSerializer(serializers.ModelSerializer):
@@ -36,6 +46,15 @@ class QuestionSerializer(serializers.ModelSerializer):
         return instance
 
 
+class QuestionStudentSerializer(serializers.ModelSerializer):
+    """Ученический сериализатор вопроса: без баллов и, конечно, без is_correct."""
+    choices = ChoiceStudentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Question
+        fields = ['id', 'prompt', 'question_type', 'order', 'choices']
+
+
 class HomeworkSerializer(serializers.ModelSerializer):
     teacher_email = serializers.EmailField(source='teacher.email', read_only=True)
     questions = QuestionSerializer(many=True, required=False)
@@ -55,6 +74,17 @@ class HomeworkSerializer(serializers.ModelSerializer):
             for c in choices:
                 Choice.objects.create(question=question, **c)
         return homework
+
+
+class HomeworkStudentSerializer(serializers.ModelSerializer):
+    """Чтение ДЗ учениками: без баллов и без флагов правильности."""
+    teacher_email = serializers.EmailField(source='teacher.email', read_only=True)
+    questions = QuestionStudentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Homework
+        fields = ['id', 'title', 'description', 'teacher', 'teacher_email', 'lesson', 'questions', 'created_at']
+        read_only_fields = fields
 
 
 class AnswerSerializer(serializers.ModelSerializer):
