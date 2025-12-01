@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getTelegramStatus } from '../apiService';
+import { getTelegramStatus, generateTelegramCode } from '../apiService';
 import './TelegramWarningBanner.css';
 
 const TelegramWarningBanner = () => {
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [linking, setLinking] = useState(false);
+  const [linkMessage, setLinkMessage] = useState('');
+  const [linkError, setLinkError] = useState('');
 
   useEffect(() => {
     checkStatus();
@@ -14,21 +17,61 @@ const TelegramWarningBanner = () => {
   const checkStatus = async () => {
     try {
       const response = await getTelegramStatus();
+      console.log('[TelegramWarningBanner] API response:', response.data);
       if (!response.data.telegram_linked) {
+        console.log('[TelegramWarningBanner] Telegram not linked, showing banner');
         setShow(true);
+      } else {
+        console.log('[TelegramWarningBanner] Telegram already linked, hiding banner');
       }
     } catch (err) {
-      console.error('Failed to check telegram status:', err);
+      console.error('[TelegramWarningBanner] Failed to check telegram status:', err);
       // Не показываем баннер если не смогли проверить (избегаем ложных срабатываний)
     } finally {
       setLoading(false);
     }
   };
 
+  const handleConnectClick = async () => {
+    if (linking) {
+      return;
+    }
+    setLinkError('');
+    setLinkMessage('');
+    setLinking(true);
+
+    // Открываем вкладку заранее, чтобы браузер не заблокировал переход
+    const pendingWindow = window.open('', '_blank', 'noopener,noreferrer');
+
+    try {
+      const { data } = await generateTelegramCode();
+      const deepLink = data?.deep_link;
+      if (deepLink) {
+        if (pendingWindow) {
+          pendingWindow.location = deepLink;
+        } else {
+          window.open(deepLink, '_blank', 'noopener,noreferrer');
+        }
+        setLinkMessage('Telegram откроется в новой вкладке. Подтвердите подключение в боте.');
+      } else {
+        pendingWindow?.close();
+        setLinkMessage('Код создан. Завершите привязку на странице профиля, вкладка «Безопасность».');
+      }
+    } catch (err) {
+      console.error('[TelegramWarningBanner] Failed to generate telegram code:', err);
+      pendingWindow?.close();
+      setLinkError(err.response?.data?.detail || 'Не удалось открыть Telegram. Попробуйте ещё раз или настройте вручную.');
+    } finally {
+      setLinking(false);
+    }
+  };
+
   if (loading || !show) {
+    console.log('[TelegramWarningBanner] Not rendering:', { loading, show });
     return null;
   }
 
+  console.log('[TelegramWarningBanner] Rendering banner');
   return (
     <div className="telegram-warning-banner">
       <div className="banner-container">
@@ -42,14 +85,27 @@ const TelegramWarningBanner = () => {
             <strong> Это займёт всего 1 минуту!</strong>
           </p>
           <div className="banner-actions">
-            <Link to="/profile?tab=security" className="banner-button primary">
-              🔗 Привязать Telegram сейчас
-            </Link>
+            <button
+              type="button"
+              className="banner-button primary"
+              onClick={handleConnectClick}
+              disabled={linking}
+            >
+              {linking ? 'Создаём ссылку...' : '🔗 Привязать Telegram сейчас'}
+            </button>
             <div className="banner-benefits">
               <span className="benefit">✅ Восстановление пароля за 30 сек</span>
               <span className="benefit">✅ Уведомления в реальном времени</span>
               <span className="benefit">✅ Напоминания о занятиях</span>
             </div>
+            {(linkMessage || linkError) && (
+              <p className={`banner-message ${linkError ? 'error' : 'success'}`}>
+                {linkError || linkMessage}
+              </p>
+            )}
+            <Link to="/profile?tab=security" className="banner-secondary-link">
+              Настроить вручную в профиле
+            </Link>
           </div>
         </div>
         <button 
