@@ -196,7 +196,7 @@ function Deploy-Full {
         @{ Num=4; Total=8; Desc="Применение миграций БД"; Cmd="cd $REMOTE_DIR && source venv/bin/activate && python teaching_panel/manage.py migrate --noinput" },
         @{ Num=5; Total=8; Desc="Сборка статики Django"; Cmd="cd $REMOTE_DIR && source venv/bin/activate && python teaching_panel/manage.py collectstatic --noinput --clear" },
         @{ Num=6; Total=8; Desc="Установка npm пакетов"; Cmd="cd $REMOTE_DIR/frontend && npm install --silent" },
-        @{ Num=7; Total=8; Desc="Сборка React фронтенда"; Cmd="cd $REMOTE_DIR/frontend && npm run build" },
+        @{ Num=7; Total=8; Desc="Сборка React фронтенда"; Cmd="cd $REMOTE_DIR/frontend && umask 022 && npm run build" },
         @{ Num=8; Total=8; Desc="Перезапуск Django и Nginx"; Cmd="sudo systemctl restart teaching_panel nginx" }
     )
     
@@ -257,7 +257,7 @@ cd $REMOTE_DIR &&
 git pull origin main && 
 cd frontend && 
 npm install --silent && 
-npm run build && 
+umask 022 && npm run build && 
 sudo systemctl restart nginx
 "@
     
