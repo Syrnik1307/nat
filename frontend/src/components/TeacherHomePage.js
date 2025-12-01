@@ -4,6 +4,7 @@ import { getTeacherStatsSummary, getTeacherStatsBreakdown, getLessons, getGroups
 import { Link, useNavigate } from 'react-router-dom';
 import StartLessonButton from '../modules/core/zoom/StartLessonButton';
 import SupportWidget from './SupportWidget';
+import SubscriptionBanner from './SubscriptionBanner';
 import './TeacherHomePage.css';
 
 const TreeGrowth = ({ stage, progress }) => {
@@ -55,7 +56,7 @@ const ProgressBar = ({ value, variant='default' }) => {
 };
 
 const TeacherHomePage = () => {
-  const { accessTokenValid } = useAuth();
+  const { accessTokenValid, subscription } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState([]);
@@ -243,6 +244,11 @@ const TeacherHomePage = () => {
 
   return (
     <div className="teacher-home-page">
+      <SubscriptionBanner 
+        subscription={subscription} 
+        onPayClick={() => navigate('/teacher/subscription')} 
+      />
+      
       {/* Заголовок страницы */}
       <div className="page-header">
         <div className="header-content">

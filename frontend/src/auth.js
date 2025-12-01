@@ -34,6 +34,19 @@ export const AuthProvider = ({ children }) => {
   const [role, setRole] = useState(null); // 'teacher' | 'student' | 'admin'
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [subscription, setSubscription] = useState(null);
+
+  const loadSubscription = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/api/subscription/');
+      setSubscription(res.data);
+      return res.data;
+    } catch (err) {
+      console.error('Не удалось загрузить подписку', err);
+      setSubscription(null);
+      return null;
+    }
+  }, []);
 
   const loadUser = useCallback(async () => {
     try {
@@ -41,6 +54,10 @@ export const AuthProvider = ({ children }) => {
       setUser(res.data);
       if (res.data?.role) {
         setRole(res.data.role);
+      }
+      // Загружаем подписку для teacher/student/admin
+      if (res.data?.role === 'teacher') {
+        await loadSubscription();
       }
       return res.data;
     } catch (err) {
@@ -52,7 +69,7 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       return null;
     }
-  }, []);
+  }, [loadSubscription]);
 
   const check = useCallback(async () => {
     const path = typeof window !== 'undefined' ? window.location.pathname : '';
@@ -202,7 +219,7 @@ export const AuthProvider = ({ children }) => {
   const refreshUser = useCallback(async () => loadUser(), [loadUser]);
 
   return (
-    <AuthContext.Provider value={{ accessTokenValid, role, loading, user, login, logout, refreshUser, register }}>
+    <AuthContext.Provider value={{ accessTokenValid, role, loading, user, subscription, login, logout, refreshUser, register }}>
       {children}
     </AuthContext.Provider>
   );

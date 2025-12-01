@@ -8,8 +8,9 @@ Teaching Panel - это full-stack LMS (Learning Management System) для уп�
 - **Backend**: Django 5.2 + Django REST Framework + JWT authentication
 - **Frontend**: React 18 + React Router v6
 - **Database**: SQLite (dev) / Azure Cosmos DB (production - feature-flagged)
+- **Payments**: YooKassa (Russian payment gateway) with webhook integration
 - **Task Queue**: Celery + Redis
-- **External APIs**: Zoom API (Server-to-Server OAuth), Telegram Bot API, Google Drive API
+- **External APIs**: Zoom API (Server-to-Server OAuth), Telegram Bot API, Google Drive API, YooKassa API
 
 ## Architecture & Project Structure
 
@@ -19,8 +20,14 @@ nat/
 │   ├── accounts/                # Authentication & user management
 │   │   ├── jwt_views.py         # JWT token endpoints (login/register/logout)
 │   │   ├── serializers.py       # CustomTokenObtainPairSerializer (adds role to JWT)
-│   │   └── security.py          # Rate limiting, login attempt tracking
+│   │   ├── security.py          # Rate limiting, login attempt tracking
+│   │   ├── models.py            # User, Subscription, Payment models
+│   │   ├── subscriptions_views.py  # Subscription CRUD, payment creation
+│   │   ├── subscriptions_utils.py  # require_active_subscription decorator
+│   │   ├── payments_service.py  # PaymentService (YooKassa integration)
+│   │   └── payments_views.py    # yookassa_webhook endpoint
 │   ├── schedule/                # Lessons, groups, recurring lessons
+│   │   ├── views.py             # LessonViewSet with subscription checks
 │   │   └── tasks.py             # Celery tasks (release Zoom accounts, reminders)
 │   ├── homework/                # Homework assignments & submissions
 │   ├── analytics/               # Gradebook, control points, teacher stats
@@ -30,19 +37,21 @@ nat/
 │   ├── cosmos_db.py             # Azure Cosmos DB singleton client
 │   ├── cosmos_repositories.py   # Repository pattern for Cosmos containers
 │   └── teaching_panel/
-│       ├── settings.py          # **CRITICAL**: Feature flags, CORS, JWT config
+│       ├── settings.py          # **CRITICAL**: Feature flags, CORS, JWT, YooKassa config
 │       └── urls.py              # API route mapping
 │
 └── frontend/                    # React SPA
     ├── src/
     │   ├── apiService.js        # **CORE**: Axios client, token management, auto-refresh
-    │   ├── auth.js              # AuthContext: login/register/logout state
+    │   ├── auth.js              # AuthContext: login/register/logout state, subscription loading
     │   ├── App.js               # React Router v6 routes
     │   ├── components/          # Page-level components
     │   │   ├── AuthPage.js      # Unified login/register with bot protection
-    │   │   ├── TeacherHomePage.js
+    │   │   ├── TeacherHomePage.js  # Teacher dashboard with SubscriptionBanner
     │   │   ├── StudentHomePage.js
-    │   │   └── AdminHomePage.js
+    │   │   ├── AdminHomePage.js
+    │   │   ├── SubscriptionPage.js  # Subscription management page
+    │   │   └── SubscriptionBanner.js  # Warning banner for expired subscriptions
     │   ├── modules/             # Feature modules
     │   │   ├── core/            # Zoom integration, calendar
     │   │   ├── homework-analytics/  # Homework constructor (8 question types)
@@ -348,6 +357,52 @@ python manage.py check --deploy
 3. **New Celery task**: Define in tasks.py → add to CELERY_BEAT_SCHEDULE if periodic
 4. **Database changes**: Always create migrations (`makemigrations`) and run (`migrate`)
 5. **Cosmos DB changes**: Update container schema in `settings.py::COSMOS_DB_CONTAINERS`
+
+## Subscription & Payment System
+
+**Business Logic:**
+- Single subscription tier with optional storage add-ons
+- Blocks access to lessons and recordings when subscription inactive
+- Shows banner with payment CTA on teacher dashboard
+
+**Plans:**
+- **Monthly**: 990 RUB/month (30 days, 5 GB storage)
+- **Yearly**: 9900 RUB/year (365 days, 10 GB storage, 17% discount)
+- **Storage**: 20 RUB/GB (permanent addition to extra_storage_gb)
+
+**Payment Flow:**
+1. User clicks "Оплатить" on `/teacher/subscription`
+2. Frontend → `POST /api/subscription/create-payment/` with `{plan: 'monthly'}`
+3. Backend → PaymentService creates YooKassa payment
+4. Backend → Returns `{payment_url: 'https://yookassa.ru/...'}`
+5. Frontend → `window.location.href = payment_url` (redirect to YooKassa)
+6. User pays on YooKassa site
+7. YooKassa → `POST /api/payments/yookassa/webhook/` with `{type: 'payment.succeeded'}`
+8. Backend → PaymentService activates subscription (`status='active'`, `expires_at=+30 days`)
+9. User returns to site → access unblocked
+
+**Access Control:**
+- Decorator: `@require_active_subscription` in `accounts/subscriptions_utils.py`
+- Applied to: `start()`, `start_new()`, `quick_start()`, `add_recording()`, `teacher_recordings_list()` in `schedule/views.py`
+- Logic: Check `subscription.status == 'active'` AND `timezone.now() < subscription.expires_at`
+- Response on block: `403 Forbidden` with `{'detail': 'Подписка истекла'}`
+
+**Storage Model:**
+- `base_storage_gb`: Plan-based storage (5 GB monthly, 10 GB yearly)
+- `extra_storage_gb`: Purchased additional storage
+- `used_storage_gb`: Current usage from recordings
+- `total_storage_gb`: Property = `base_storage_gb + extra_storage_gb`
+
+**Key Files:**
+- Backend: `accounts/payments_service.py` (YooKassa integration), `accounts/payments_views.py` (webhook)
+- Frontend: `components/SubscriptionPage.js` (management UI), `components/SubscriptionBanner.js` (warning banner)
+- Config: `settings.py` (YOOKASSA_ACCOUNT_ID, YOOKASSA_SECRET_KEY, YOOKASSA_WEBHOOK_SECRET)
+
+**Mock Mode:**
+- When `YOOKASSA_ACCOUNT_ID` not set → PaymentService returns mock URLs
+- Enables frontend development without real credentials
+
+**Docs:** See `YOOKASSA_INTEGRATION_GUIDE.md` for full documentation, `YOOKASSA_QUICK_START.md` for setup.
 
 ## Emergency Debugging
 

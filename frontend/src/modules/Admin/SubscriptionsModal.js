@@ -20,13 +20,14 @@ const SubscriptionsModal = ({ onClose }) => {
     setLoading(true);
     setError('');
     try {
-      const params = {
-        search: searchQuery || undefined,
-        plan: filterPlan !== 'all' ? filterPlan : undefined,
-        status: filterStatus !== 'all' ? filterStatus : undefined
-      };
-      const response = await api.get('/api/admin/subscriptions/', { params });
-      setSubscriptions(response.data.results || response.data);
+      // Бэкенд сейчас предоставляет только эндпоинт текущей подписки пользователя:
+      // GET /api/subscription/
+      // Для избежания 404 загружаем одну подписку и отображаем её.
+      // Используем относительный путь без повторного префикса /api/
+      const response = await api.get('subscription/');
+      const data = response.data;
+      // Приводим к массиву для дальнейшей фильтрации/рендера списка
+      setSubscriptions(Array.isArray(data) ? data : (data ? [data] : []));
     } catch (err) {
       console.error('Failed to load subscriptions:', err);
       setError('Не удалось загрузить подписки. Попробуйте обновить страницу.');
@@ -39,26 +40,16 @@ const SubscriptionsModal = ({ onClose }) => {
     setSelectedSubscription(selectedSubscription?.id === sub.id ? null : sub);
   };
 
-  const handleExtendTrial = async (subId) => {
-    if (!window.confirm('Продлить пробный период на 7 дней?')) return;
-    setBusy(true);
-    try {
-      await api.post(`/api/admin/subscriptions/${subId}/extend-trial/`);
-      await loadSubscriptions();
-      alert('Пробный период продлён на 7 дней');
-    } catch (err) {
-      console.error('Failed to extend trial:', err);
-      alert('Не удалось продлить пробный период');
-    } finally {
-      setBusy(false);
-    }
+  const handleExtendTrial = async () => {
+    // Эндпоинта для продления пробного периода в админке пока нет.
+    alert('Продление пробного периода пока недоступно: отсутствует API.');
   };
 
-  const handleCancelSubscription = async (subId) => {
-    if (!window.confirm('Отменить подписку? Доступ сохранится до окончания оплаченного периода.')) return;
+  const handleCancelSubscription = async () => {
+    if (!window.confirm('Отменить автопродление? Доступ сохранится до окончания оплаченного периода.')) return;
     setBusy(true);
     try {
-      await api.post(`/api/admin/subscriptions/${subId}/cancel/`);
+      await api.post('subscription/cancel/');
       await loadSubscriptions();
       alert('Подписка отменена');
     } catch (err) {
@@ -69,19 +60,9 @@ const SubscriptionsModal = ({ onClose }) => {
     }
   };
 
-  const handleActivateSubscription = async (subId) => {
-    if (!window.confirm('Активировать подписку?')) return;
-    setBusy(true);
-    try {
-      await api.post(`/api/admin/subscriptions/${subId}/activate/`);
-      await loadSubscriptions();
-      alert('Подписка активирована');
-    } catch (err) {
-      console.error('Failed to activate subscription:', err);
-      alert('Не удалось активировать подписку');
-    } finally {
-      setBusy(false);
-    }
+  const handleActivateSubscription = async () => {
+    // Эндпоинта для активации из админки пока нет.
+    alert('Активация подписки пока недоступна: отсутствует API.');
   };
 
   const formatDate = (dateString) => {
@@ -379,9 +360,9 @@ const SubscriptionsModal = ({ onClose }) => {
 
                 {/* Actions */}
                 <div className="details-actions">
-                  {selectedSubscription.plan === 'trial' && selectedSubscription.status === 'active' && (
+                  {false && selectedSubscription.plan === 'trial' && selectedSubscription.status === 'active' && (
                     <button
-                      onClick={() => handleExtendTrial(selectedSubscription.id)}
+                      onClick={handleExtendTrial}
                       disabled={busy}
                       className="action-btn btn-primary"
                     >
@@ -391,7 +372,7 @@ const SubscriptionsModal = ({ onClose }) => {
 
                   {selectedSubscription.status === 'active' && selectedSubscription.auto_renew && (
                     <button
-                      onClick={() => handleCancelSubscription(selectedSubscription.id)}
+                      onClick={handleCancelSubscription}
                       disabled={busy}
                       className="action-btn btn-warning"
                     >
@@ -399,9 +380,9 @@ const SubscriptionsModal = ({ onClose }) => {
                     </button>
                   )}
 
-                  {(selectedSubscription.status === 'cancelled' || selectedSubscription.status === 'expired') && (
+                  {false && (selectedSubscription.status === 'cancelled' || selectedSubscription.status === 'expired') && (
                     <button
-                      onClick={() => handleActivateSubscription(selectedSubscription.id)}
+                      onClick={handleActivateSubscription}
                       disabled={busy}
                       className="action-btn btn-success"
                     >

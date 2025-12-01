@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../apiService';
+import Modal from '../shared/components/Modal';
+import Button from '../shared/components/Button';
 import './SubscriptionPage.css';
 
 const SubscriptionPage = () => {
@@ -11,6 +13,10 @@ const SubscriptionPage = () => {
   const [subData, setSubData] = useState(null);
   const [storageGb, setStorageGb] = useState(10);
   const [processing, setProcessing] = useState(false);
+  
+  // Состояния для модальных окон
+  const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: null, message: '' });
 
   useEffect(() => {
     loadSubscription();
@@ -41,7 +47,10 @@ const SubscriptionPage = () => {
       window.location.href = paymentUrl;
     } catch (error) {
       console.error('Storage payment failed:', error);
-      alert('Не удалось создать платёж. Попробуйте позже.');
+      setErrorModal({ 
+        isOpen: true, 
+        message: 'Не удалось создать платёж. Попробуйте позже.' 
+      });
       setProcessing(false);
     }
   };
@@ -50,38 +59,44 @@ const SubscriptionPage = () => {
     const isCurrentlyEnabled = subData?.auto_renew;
     const action = isCurrentlyEnabled ? 'отключить' : 'включить';
     
-    if (!window.confirm(`Вы уверены, что хотите ${action} автопродление?`)) {
-      return;
-    }
-
-    setProcessing(true);
-    try {
-      if (isCurrentlyEnabled) {
-        await apiClient.post('subscription/cancel/');
-      } else {
-        // Включение автопродления (если есть такой endpoint, иначе оставляем только отключение)
-        await apiClient.post('subscription/enable-auto-renew/');
+    setConfirmModal({
+      isOpen: true,
+      message: `Вы уверены, что хотите ${action} автопродление?`,
+      action: async () => {
+        setProcessing(true);
+        try {
+          if (isCurrentlyEnabled) {
+            await apiClient.post('subscription/cancel/');
+          } else {
+            await apiClient.post('subscription/enable-auto-renew/');
+          }
+          await loadSubscription();
+        } catch (error) {
+          console.error('Toggle auto-renew failed:', error);
+          setErrorModal({ 
+            isOpen: true, 
+            message: `Не удалось ${action} автопродление` 
+          });
+        } finally {
+          setProcessing(false);
+        }
       }
-      await loadSubscription();
-    } catch (error) {
-      console.error('Toggle auto-renew failed:', error);
-      alert(`Не удалось ${action} автопродление`);
-    } finally {
-      setProcessing(false);
-    }
+    });
   };
 
   const handlePayCycle = async () => {
     if (processing) return;
     setProcessing(true);
     try {
-      // Используем единый план 'monthly' для 28/30 дневного цикла
       const response = await apiClient.post('subscription/create-payment/', { plan: 'monthly' });
       const paymentUrl = response.data.payment_url;
       window.location.href = paymentUrl;
     } catch (error) {
       console.error('Payment failed:', error);
-      alert('Не удалось создать платёж');
+      setErrorModal({ 
+        isOpen: true, 
+        message: 'Не удалось создать платёж' 
+      });
       setProcessing(false);
     }
   };
@@ -232,6 +247,57 @@ const SubscriptionPage = () => {
       </section>
 
       {/* История платежей скрыта для минималистичного вида */}
+      
+      {/* Модальное окно ошибки */}
+      <Modal
+        isOpen={errorModal.isOpen}
+        onClose={() => setErrorModal({ isOpen: false, message: '' })}
+        title="Ошибка"
+        size="small"
+      >
+        <p style={{ margin: 0, fontSize: '1rem', color: '#374151' }}>
+          {errorModal.message}
+        </p>
+        <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+          <Button 
+            variant="primary" 
+            onClick={() => setErrorModal({ isOpen: false, message: '' })}
+          >
+            ОК
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Модальное окно подтверждения */}
+      <Modal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, action: null, message: '' })}
+        title="Подтверждение"
+        size="small"
+      >
+        <p style={{ margin: 0, fontSize: '1rem', color: '#374151' }}>
+          {confirmModal.message}
+        </p>
+        <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+          <Button 
+            variant="secondary" 
+            onClick={() => setConfirmModal({ isOpen: false, action: null, message: '' })}
+          >
+            Отмена
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={() => {
+              if (confirmModal.action) {
+                confirmModal.action();
+              }
+              setConfirmModal({ isOpen: false, action: null, message: '' });
+            }}
+          >
+            Подтвердить
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 };

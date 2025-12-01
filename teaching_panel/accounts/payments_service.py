@@ -50,10 +50,24 @@ class PaymentService:
         """
         if not YOOKASSA_AVAILABLE:
             logger.error("YooKassa not available - using mock payment URL")
-            # Мок для разработки
+            # Мок для разработки - создаём Payment в БД
+            from .models import Payment
+            
+            mock_payment_id = f'mock-{plan}-{subscription.id}-{timezone.now().timestamp()}'
+            mock_payment = Payment.objects.create(
+                subscription=subscription,
+                amount=Decimal(PaymentService.PLAN_PRICES.get(plan, '0.00')),
+                currency='RUB',
+                status=Payment.STATUS_PENDING,
+                payment_system='mock',
+                payment_id=mock_payment_id,
+                payment_url=f'{settings.FRONTEND_URL}/mock-payment?payment_id={mock_payment_id}',
+                metadata={'plan': plan, 'mock': True}
+            )
+            
             return {
-                'payment_url': f'https://example.com/mock-payment/{plan}',
-                'payment_id': f'mock-{plan}-{subscription.id}'
+                'payment_url': mock_payment.payment_url,
+                'payment_id': mock_payment.payment_id
             }
         
         price = PaymentService.PLAN_PRICES.get(plan)
@@ -120,9 +134,26 @@ class PaymentService:
         """
         if not YOOKASSA_AVAILABLE:
             logger.error("YooKassa not available - using mock")
+            # Мок для разработки - создаём Payment в БД
+            from .models import Payment
+            
+            amount = Decimal(PaymentService.STORAGE_PRICE_PER_GB) * gb
+            mock_payment_id = f'mock-storage-{subscription.id}-{gb}-{timezone.now().timestamp()}'
+            
+            mock_payment = Payment.objects.create(
+                subscription=subscription,
+                amount=amount,
+                currency='RUB',
+                status=Payment.STATUS_PENDING,
+                payment_system='mock',
+                payment_id=mock_payment_id,
+                payment_url=f'{settings.FRONTEND_URL}/mock-payment?payment_id={mock_payment_id}',
+                metadata={'type': 'storage', 'gb': gb, 'mock': True}
+            )
+            
             return {
-                'payment_url': f'https://example.com/mock-storage/{gb}gb',
-                'payment_id': f'mock-storage-{subscription.id}-{gb}'
+                'payment_url': mock_payment.payment_url,
+                'payment_id': mock_payment.payment_id
             }
         
         try:

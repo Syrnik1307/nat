@@ -23,10 +23,19 @@ export const clearTokens = (force = false) => {
     }
 };
 
-// Use relative path for API calls
-// In development: proxied to http://127.0.0.1:8000 via package.json proxy
-// In production: handled by nginx proxy_pass
-const FIXED_API_BASE_URL = '/api/';
+// Определяем корректный baseURL в зависимости от среды
+// - Prod (served by nginx on :80): используем относительный '/api/'
+// - Dev (CRA on :3000 на сервере без proxy): используем абсолютный URL к :80
+let FIXED_API_BASE_URL = '/api/';
+if (typeof window !== 'undefined') {
+    const { origin } = window.location;
+    const url = new URL(origin);
+    if (url.port === '3000') {
+        // Если фронт запущен на :3000, отправляем запросы на :80 (nginx)
+        const targetOrigin = `${url.protocol}//${url.hostname}`; // без порта → :80
+        FIXED_API_BASE_URL = `${targetOrigin}/api/`;
+    }
+}
 
 const apiClient = axios.create({
     baseURL: FIXED_API_BASE_URL,
@@ -294,5 +303,6 @@ export const gradeSubmission = (submissionId, grade, feedback = '') => apiClient
 export const getSubscription = () => apiClient.get('subscription/');
 export const cancelSubscription = () => apiClient.post('subscription/cancel/');
 export const createSubscriptionPayment = (plan) => apiClient.post('subscription/create-payment/', { plan });
+export const addStoragePayment = (gb) => apiClient.post('subscription/add-storage/', { gb });
 
 export default apiClient;
