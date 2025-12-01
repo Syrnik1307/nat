@@ -189,6 +189,7 @@ def verify_telegram(request):
 
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def request_password_reset(request):
     """Запрос на восстановление пароля (публичный endpoint)"""
     email = request.data.get('email', '').strip().lower()
@@ -234,6 +235,7 @@ def request_password_reset(request):
 
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def reset_password_with_token(request):
     """Сброс пароля по токену из Telegram"""
     token = request.data.get('token', '').strip()
