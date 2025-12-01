@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../auth';
 import { getTeacherStatsSummary, getTeacherStatsBreakdown, getLessons, getGroups, startQuickLesson } from '../apiService';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import StartLessonButton from '../modules/core/zoom/StartLessonButton';
 import SupportWidget from './SupportWidget';
 import SubscriptionBanner from './SubscriptionBanner';
@@ -58,6 +58,7 @@ const ProgressBar = ({ value, variant='default' }) => {
 const TeacherHomePage = () => {
   const { accessTokenValid, subscription } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState([]);
   const [todayLessons, setTodayLessons] = useState([]);
@@ -66,6 +67,20 @@ const TeacherHomePage = () => {
   const [breakdown, setBreakdown] = useState({ groups: [], students: [] });
   const [quickLessonLoading, setQuickLessonLoading] = useState(false);
   const [quickLessonError, setQuickLessonError] = useState(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  // Проверяем успешную оплату
+  useEffect(() => {
+    if (searchParams.get('payment') === 'success') {
+      setPaymentSuccess(true);
+      // Убираем параметр из URL
+      searchParams.delete('payment');
+      setSearchParams(searchParams, { replace: true });
+      
+      // Скрываем уведомление через 5 секунд
+      setTimeout(() => setPaymentSuccess(false), 5000);
+    }
+  }, [searchParams, setSearchParams]);
 
   const loadData = useCallback(async () => {
     if (!accessTokenValid) return;
@@ -248,6 +263,33 @@ const TeacherHomePage = () => {
         subscription={subscription} 
         onPayClick={() => navigate('/teacher/subscription')} 
       />
+
+      {/* Уведомление об успешной оплате */}
+      {paymentSuccess && (
+        <div style={{
+          position: 'fixed',
+          top: '80px',
+          right: '20px',
+          zIndex: 9999,
+          background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+          color: 'white',
+          padding: '16px 24px',
+          borderRadius: '12px',
+          boxShadow: '0 10px 40px rgba(16, 185, 129, 0.4)',
+          animation: 'slideInRight 0.5s ease',
+          maxWidth: '400px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '24px' }}>✅</span>
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: '4px' }}>Платёж успешен!</div>
+              <div style={{ fontSize: '14px', opacity: 0.9 }}>
+                Ваша подписка активирована. Спасибо за оплату!
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Заголовок страницы */}
       <div className="page-header">

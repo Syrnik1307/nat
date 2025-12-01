@@ -13,7 +13,7 @@ const MockPaymentPage = () => {
       setCountdown(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          navigate('/teacher/subscription?payment=mock-success');
+          navigate('/home-new?payment=success');
           return 0;
         }
         return prev - 1;
@@ -24,7 +24,7 @@ const MockPaymentPage = () => {
   }, [navigate]);
 
   const handleSkip = () => {
-    navigate('/teacher/subscription?payment=mock-success');
+    navigate('/home-new?payment=success');
   };
 
   return (
