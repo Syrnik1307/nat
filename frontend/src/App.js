@@ -27,6 +27,7 @@ import NavBarNew from './components/NavBarNew';
 import StudentNavBar from './components/StudentNavBar';
 import ProfilePage from './components/ProfilePage';
 import SubscriptionPage from './components/SubscriptionPage';
+import MockPaymentPage from './components/MockPaymentPage';
 // Chat система
 import ChatPage from './components/ChatPage';
 // Записи уроков
@@ -73,6 +74,7 @@ const AppRoutes = () => {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<EmailVerificationPage />} />
         <Route path="/reset-password/:uid/:token" element={<PasswordResetPage />} />
+        <Route path="/mock-payment" element={<MockPaymentPage />} />
         
         {/* Teacher */}
         <Route path="/home-new" element={<Protected allowRoles={['teacher', 'admin']}><TeacherHomePage /></Protected>} />

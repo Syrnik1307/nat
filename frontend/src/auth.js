@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
 
   const loadSubscription = useCallback(async () => {
     try {
-      const res = await apiClient.get('/api/subscription/');
+      const res = await apiClient.get('subscription/');
       setSubscription(res.data);
       return res.data;
     } catch (err) {
