@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getTelegramStatus, generateTelegramCode } from '../apiService';
 import './TelegramWarningBanner.css';
@@ -12,38 +12,7 @@ const TelegramWarningBanner = () => {
   const [deepLink, setDeepLink] = useState('');
   const [prefetching, setPrefetching] = useState(false);
 
-  useEffect(() => {
-    checkStatus();
-  }, []);
-
-  const checkStatus = async () => {
-    try {
-      const response = await getTelegramStatus();
-      console.log('[TelegramWarningBanner] API response:', response.data);
-      if (!response.data.telegram_linked) {
-        console.log('[TelegramWarningBanner] Telegram not linked, showing banner');
-        setShow(true);
-        prefetchTelegramLink();
-      } else {
-        console.log('[TelegramWarningBanner] Telegram already linked, hiding banner');
-      }
-    } catch (err) {
-      console.error('[TelegramWarningBanner] Failed to check telegram status:', err);
-      // Не показываем баннер если не смогли проверить (избегаем ложных срабатываний)
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openTelegramLink = (url) => {
-    if (!url) return;
-    const newTab = window.open(url, '_blank');
-    if (!newTab) {
-      window.location.href = url;
-    }
-  };
-
-  const prefetchTelegramLink = async (silent = false) => {
+  const prefetchTelegramLink = useCallback(async (silent = false) => {
     if (prefetching) {
       return;
     }
@@ -63,6 +32,37 @@ const TelegramWarningBanner = () => {
       setLinkError(err.response?.data?.detail || 'Не удалось подготовить ссылку. Попробуйте позже или настройте вручную.');
     } finally {
       setPrefetching(false);
+    }
+  }, [prefetching]);
+
+  const checkStatus = useCallback(async () => {
+    try {
+      const response = await getTelegramStatus();
+      console.log('[TelegramWarningBanner] API response:', response.data);
+      if (!response.data.telegram_linked) {
+        console.log('[TelegramWarningBanner] Telegram not linked, showing banner');
+        setShow(true);
+        prefetchTelegramLink();
+      } else {
+        console.log('[TelegramWarningBanner] Telegram already linked, hiding banner');
+      }
+    } catch (err) {
+      console.error('[TelegramWarningBanner] Failed to check telegram status:', err);
+      // Не показываем баннер если не смогли проверить (избегаем ложных срабатываний)
+    } finally {
+      setLoading(false);
+    }
+  }, [prefetchTelegramLink]);
+
+  useEffect(() => {
+    checkStatus();
+  }, [checkStatus]);
+
+  const openTelegramLink = (url) => {
+    if (!url) return;
+    const newTab = window.open(url, '_blank');
+    if (!newTab) {
+      window.location.href = url;
     }
   };
 
