@@ -279,7 +279,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args if context.args else []
 
     if args:
-        code = args[0].strip().upper()
+        raw_arg = args[0].strip()
+        normalized_arg = raw_arg.lower()
+
+        # Специальный deep-link для мгновенного запуска /reset
+        if normalized_arg in {'reset', 'reset_password', 'resetpass'}:
+            await reset_password(update, context)
+            return
+
+        code = raw_arg.upper()
         logger.info(f"[start] User {telegram_id} attempting link with code: {code}")
         
         # Отправляем сообщение "Проверяем код..."
