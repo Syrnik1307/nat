@@ -141,9 +141,6 @@ const SubscriptionPage = () => {
   return (
     <div className="subscription-page">
       <header className="sub-header">
-        <button className="back-btn" onClick={() => navigate('/teacher')}>
-          ← Назад
-        </button>
         <h1>Подписка</h1>
       </header>
 
