@@ -3,8 +3,11 @@ Management command to test payment URL generation
 """
 from django.core.management.base import BaseCommand
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from accounts.payments_service import PaymentService
-from accounts.models import User, Subscription
+from accounts.models import Subscription
+
+User = get_user_model()
 
 
 class Command(BaseCommand):
