@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import './MockPaymentPage.css';
 
@@ -8,10 +8,30 @@ const MockPaymentPage = () => {
   const [redirecting, setRedirecting] = useState(false);
   const paymentId = searchParams.get('payment_id');
 
+  // Защита от зависания при навигации "Назад"
+  useEffect(() => {
+    // Предотвращаем зависание при повторной загрузке
+    const preventHang = () => {
+      if (document.hidden) {
+        // Страница скрыта - пользователь ушёл
+        return;
+      }
+    };
+    
+    window.addEventListener('pageshow', preventHang);
+    window.addEventListener('visibilitychange', preventHang);
+    
+    return () => {
+      window.removeEventListener('pageshow', preventHang);
+      window.removeEventListener('visibilitychange', preventHang);
+    };
+  }, []);
+
   const handleReturn = () => {
     if (redirecting) return; // Защита от повторных кликов
     setRedirecting(true);
-    navigate('/teacher/subscription');
+    // Используем replace вместо push, чтобы не добавлять в историю
+    navigate('/teacher/subscription', { replace: true });
   };
 
   return (
