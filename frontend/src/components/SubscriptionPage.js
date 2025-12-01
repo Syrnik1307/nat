@@ -203,11 +203,12 @@ const SubscriptionPage = () => {
             </div>
           )}
 
-          <div className="subscription-actions">
+          <div className="subscription-actions" style={{ display: 'flex', flexDirection: 'row', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
             <button 
               className={`pay-btn ${processing ? 'loading' : ''}`}
               onClick={handlePayCycle}
               disabled={processing}
+              style={{ flex: '0 1 auto', maxWidth: '280px', minWidth: '200px', whiteSpace: 'nowrap' }}
             >
               Оплатить 28 дней
             </button>
@@ -215,6 +216,7 @@ const SubscriptionPage = () => {
               className={`toggle-renew-btn ${subData?.auto_renew ? 'renew-enabled' : 'renew-disabled'}`}
               onClick={handleToggleAutoRenew}
               disabled={processing}
+              style={{ flex: '0 1 auto', maxWidth: '280px', minWidth: '200px', whiteSpace: 'nowrap' }}
             >
               {subData?.auto_renew ? 'Отключить автопродление' : 'Подключить автопродление'}
             </button>
