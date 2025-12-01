@@ -166,6 +166,9 @@
 
 .toggle-renew-btn.renew-enabled {
   background: #f87171;
+  flex: 0 1 auto !important;
+  max-width: 280px !important;
+  min-width: 200px !important;
 }
 
 .toggle-renew-btn.renew-enabled:hover:not(:disabled) {
@@ -175,6 +178,9 @@
 
 .toggle-renew-btn.renew-disabled {
   background: #10b981;
+  flex: 0 1 auto !important;
+  max-width: 280px !important;
+  min-width: 200px !important;
 }
 
 .toggle-renew-btn.renew-disabled:hover:not(:disabled) {
@@ -186,6 +192,9 @@
   background: #d1d5db;
   cursor: not-allowed;
   box-shadow: none;
+  flex: 0 1 auto !important;
+  max-width: 280px !important;
+  min-width: 200px !important;
 }
 
 /* Тарифы */

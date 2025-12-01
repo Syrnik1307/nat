@@ -10,22 +10,34 @@ const MockPaymentPage = () => {
 
   // Защита от зависания при навигации "Назад"
   useEffect(() => {
-    // Предотвращаем зависание при повторной загрузке
-    const preventHang = () => {
-      if (document.hidden) {
-        // Страница скрыта - пользователь ушёл
-        return;
+    let isNavigating = false;
+
+    // Обработка возврата назад через браузер
+    const handleBackButton = (e) => {
+      if (!isNavigating) {
+        isNavigating = true;
+        // При возврате назад редиректим на subscription
+        navigate('/teacher/subscription', { replace: true });
       }
     };
     
-    window.addEventListener('pageshow', preventHang);
-    window.addEventListener('visibilitychange', preventHang);
+    // Обработка pageshow (когда страница восстанавливается из bfcache)
+    const handlePageShow = (e) => {
+      if (e.persisted && !isNavigating) {
+        // Страница из cache - редиректим
+        isNavigating = true;
+        navigate('/teacher/subscription', { replace: true });
+      }
+    };
+    
+    window.addEventListener('popstate', handleBackButton);
+    window.addEventListener('pageshow', handlePageShow);
     
     return () => {
-      window.removeEventListener('pageshow', preventHang);
-      window.removeEventListener('visibilitychange', preventHang);
+      window.removeEventListener('popstate', handleBackButton);
+      window.removeEventListener('pageshow', handlePageShow);
     };
-  }, []);
+  }, [navigate]);
 
   const handleReturn = () => {
     if (redirecting) return; // Защита от повторных кликов
