@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { clearTokens } from '../apiService';
-import { Input, Button, Modal, Notification } from '../shared/components';
+import { Input, Button, Notification } from '../shared/components';
 import SupportWidget from './SupportWidget';
-import PasswordResetModal from './PasswordResetModal';
 import './AuthPage.css';
 import EyeIcon from './icons/EyeIcon';
 // import { useRecaptcha } from '../hooks/useRecaptcha'; // отключено
+
+const TELEGRAM_RESET_DEEPLINK = 'https://t.me/nat_panelbot?start=reset';
 
 /**
  * Единая страница аутентификации (вход/регистрация)
@@ -82,12 +83,6 @@ const AuthPage = () => {
     title: '',
     message: '',
   });
-  
-  // === ВОССТАНОВЛЕНИЕ ПАРОЛЯ ===
-  const [showResetModal, setShowResetModal] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetSuccess, setResetSuccess] = useState(false);
-  const [resetLoading, setResetLoading] = useState(false);
   
   // === ЗАЩИТА ОТ БОТОВ ===
   const [loginAttempts, setLoginAttempts] = useState(0);
@@ -457,60 +452,21 @@ const AuthPage = () => {
     }
   };
 
-  // === ВОССТАНОВЛЕНИЕ ПАРОЛЯ ===
-  const handleResetPassword = async () => {
-    const emailError = validateEmail(resetEmail);
-    if (emailError) {
-      setError(emailError);
+  const openTelegramResetFlow = () => {
+    if (loading || blocked) {
       return;
     }
-    
-    setResetLoading(true);
-    setError('');
-    
-    try {
-      // Пробуем новый метод через Telegram
-      const response = await fetch('/accounts/api/password-reset-telegram/request/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: resetEmail }),
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        if (data.telegram_linked) {
-          // Telegram привязан - показываем инструкцию
-          setError('');
-          showNotification(
-            'info',
-            'Откройте Telegram',
-            'Отправьте команду /reset нашему боту @YourBotName для получения ссылки'
-          );
-        } else {
-          // Telegram не привязан
-          showNotification(
-            'warning',
-            'Telegram не привязан',
-            'Обратитесь к администратору для восстановления пароля'
-          );
-        }
-        setResetSuccess(true);
-        setTimeout(() => {
-          setShowResetModal(false);
-          setResetSuccess(false);
-          setResetEmail('');
-        }, 5000);
-      } else {
-        setError(data.detail || 'Ошибка при запросе восстановления');
-      }
-    } catch (err) {
-      setError('Ошибка сети. Попробуйте позже.');
-    } finally {
-      setResetLoading(false);
+
+    const newTab = window.open(TELEGRAM_RESET_DEEPLINK, '_blank');
+    if (!newTab) {
+      window.location.href = TELEGRAM_RESET_DEEPLINK;
     }
+
+    showNotification(
+      'info',
+      'Откройте Telegram',
+      'Мы открыли бота Teaching Panel. Нажмите Start и выполните команду /reset.'
+    );
   };
 
   // === ВЫБОР РОЛИ ===
@@ -733,7 +689,7 @@ const AuthPage = () => {
                 <button
                   type="button"
                   className="link-button"
-                  onClick={() => setShowResetModal(true)}
+                  onClick={openTelegramResetFlow}
                   disabled={loading || blocked}
                 >
                   Забыли пароль?
@@ -795,12 +751,6 @@ const AuthPage = () => {
 
           
         </div>
-
-        {/* Новое модальное окно восстановления пароля через Telegram/WhatsApp */}
-        <PasswordResetModal
-          isOpen={showResetModal}
-          onClose={() => setShowResetModal(false)}
-        />
         
         <SupportWidget />
       </div>
