@@ -147,9 +147,10 @@
   font-size: 1rem;
   cursor: pointer;
   transition: background 0.25s, box-shadow 0.25s;
-  flex: 0 1 auto;
+  flex: 0 1 auto !important;
   white-space: nowrap;
-  max-width: 280px;
+  max-width: 280px !important;
+  min-width: 200px !important;
 }
 
 .pay-btn:hover:not(:disabled) {
