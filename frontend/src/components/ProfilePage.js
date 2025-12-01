@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth';
-import { updateCurrentUser, changePassword, getSubscription, createSubscriptionPayment, cancelSubscription } from '../apiService';
+import { updateCurrentUser, changePassword, getSubscription, createSubscriptionPayment, cancelSubscription, getTelegramStatus, generateTelegramCode, unlinkTelegramAccount } from '../apiService';
 import './ProfilePage.css';
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
@@ -29,11 +29,35 @@ const ProfilePage = () => {
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
+  // Telegram linking state
+  const [telegramInfo, setTelegramInfo] = useState(null);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramError, setTelegramError] = useState('');
+  const [telegramSuccess, setTelegramSuccess] = useState('');
+  const [codeInfo, setCodeInfo] = useState(null);
+  const [codeLoading, setCodeLoading] = useState(false);
+  const [codeMessage, setCodeMessage] = useState('');
+  const [codeError, setCodeError] = useState('');
+
   // Состояние для подписки (только для учителей)
   const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'security' | 'subscription'
   const [subscription, setSubscription] = useState(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState('');
+
+  const tabConfig = useMemo(() => {
+    if (!user) {
+      return [{ key: 'profile', label: '👤 Профиль' }];
+    }
+    const items = [
+      { key: 'profile', label: '👤 Профиль' },
+      { key: 'security', label: '🔒 Безопасность' },
+    ];
+    if (user.role === 'teacher') {
+      items.push({ key: 'subscription', label: '💳 Моя подписка' });
+    }
+    return items;
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -62,6 +86,107 @@ const ProfilePage = () => {
       setSubscriptionError('Не удалось загрузить данные подписки');
     } finally {
       setSubscriptionLoading(false);
+    }
+  };
+
+  const fetchTelegramStatus = useCallback(async () => {
+    setTelegramLoading(true);
+    setTelegramError('');
+    try {
+      const { data } = await getTelegramStatus();
+      setTelegramInfo(data);
+    } catch (err) {
+      console.error('Failed to load telegram status:', err);
+      setTelegramError('Не удалось загрузить статус Telegram. Попробуйте позже.');
+    } finally {
+      setTelegramLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'security') {
+      fetchTelegramStatus();
+    }
+  }, [activeTab, fetchTelegramStatus]);
+
+  const handleGenerateTelegramCode = async () => {
+    setCodeLoading(true);
+    setCodeError('');
+    setCodeMessage('');
+    try {
+      const { data } = await generateTelegramCode();
+      setCodeInfo(data);
+      setCodeMessage('Новый код создан. Он действует около 10 минут.');
+    } catch (err) {
+      console.error('Failed to generate telegram code:', err);
+      setCodeError(err.response?.data?.detail || 'Не удалось создать код. Попробуйте позже.');
+    } finally {
+      setCodeLoading(false);
+    }
+  };
+
+  const handleCopyValue = async (value, label = 'значение') => {
+    if (!value) {
+      return;
+    }
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = value;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCodeMessage(`${label} скопировано в буфер обмена`);
+      setTimeout(() => setCodeMessage(''), 3000);
+    } catch (err) {
+      console.error('Failed to copy value:', err);
+      setCodeError('Не удалось скопировать. Скопируйте вручную.');
+      setTimeout(() => setCodeError(''), 3000);
+    }
+  };
+
+  const handleOpenTelegram = (url) => {
+    if (url) {
+      window.open(url, '_blank', 'noopener');
+    }
+  };
+
+  const handleUnlinkTelegram = async () => {
+    if (!window.confirm('Вы уверены, что хотите отвязать Telegram?')) {
+      return;
+    }
+    setTelegramError('');
+    setTelegramSuccess('');
+    try {
+      await unlinkTelegramAccount();
+      setCodeInfo(null);
+      setTelegramSuccess('Telegram успешно отвязан.');
+      setTimeout(() => setTelegramSuccess(''), 4000);
+      await fetchTelegramStatus();
+    } catch (err) {
+      console.error('Failed to unlink telegram:', err);
+      setTelegramError(err.response?.data?.detail || 'Не удалось отвязать Telegram. Попробуйте позже.');
+    }
+  };
+
+  const formatExpiration = (isoDate) => {
+    if (!isoDate) {
+      return '';
+    }
+    try {
+      return new Date(isoDate).toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: 'long',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (err) {
+      console.error('Failed to format date', err);
+      return isoDate;
     }
   };
 
@@ -105,6 +230,13 @@ const ProfilePage = () => {
       return '';
     }
   }, [user]);
+
+  const telegramLinked = Boolean(telegramInfo?.telegram_linked);
+  const telegramUsername = telegramInfo?.telegram_username || null;
+  const deepLink = codeInfo?.deep_link || '';
+  const qrCodeUrl = deepLink
+    ? `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(deepLink)}&size=200x200`
+    : '';
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
@@ -493,6 +625,127 @@ const ProfilePage = () => {
 
                   {passwordSuccess && <p className="form-message success">{passwordSuccess}</p>}
                   {passwordError && <p className="form-message error">{passwordError}</p>}
+                </div>
+              )}
+            </section>
+
+            <section className="telegram-section">
+              <div className="telegram-header">
+                <div>
+                  <h3>Telegram бот</h3>
+                  <p className="profile-subtitle">
+                    Подключите Telegram, чтобы получать уведомления и быстро подтверждать действия
+                  </p>
+                </div>
+                <span className={`telegram-status-pill ${telegramLinked ? 'linked' : 'unlinked'}`}>
+                  {telegramLinked ? 'Привязан' : 'Не привязан'}
+                </span>
+              </div>
+
+              {telegramLoading ? (
+                <div className="telegram-loading">
+                  <div className="spinner" />
+                  <p>Проверяем статус...</p>
+                </div>
+              ) : (
+                <div className="telegram-grid">
+                  <div className="telegram-card">
+                    <h4>Статус подключения</h4>
+                    <p className="telegram-status-text">
+                      {telegramLinked
+                        ? `Аккаунт ${telegramUsername ? '@' + telegramUsername : 'подтверждён'} уже связан.`
+                        : 'Telegram ещё не подключен. Сгенерируйте код и отправьте его боту Teaching Panel.'}
+                    </p>
+                    <div className="telegram-actions-row">
+                      <button
+                        type="button"
+                        className="primary"
+                        onClick={handleGenerateTelegramCode}
+                        disabled={codeLoading}
+                      >
+                        {codeLoading ? 'Создание кода...' : telegramLinked ? 'Обновить код' : 'Получить код'}
+                      </button>
+                      {telegramLinked && (
+                        <button
+                          type="button"
+                          className="danger-link"
+                          onClick={handleUnlinkTelegram}
+                        >
+                          Отключить Telegram
+                        </button>
+                      )}
+                    </div>
+                    <ul className="telegram-instructions">
+                      <li>1. Нажмите «Получить код».</li>
+                      <li>2. Откройте Telegram и отправьте код боту.</li>
+                      <li>3. Получите подтверждение о привязке.</li>
+                    </ul>
+                  </div>
+
+                  <div className="telegram-card code-card">
+                    <h4>Код подтверждения</h4>
+                    {codeInfo ? (
+                      <>
+                        <div className="code-row">
+                          <div>
+                            <span className="code-label">Ваш код</span>
+                            <div className="code-value">{codeInfo.code}</div>
+                          </div>
+                          <button
+                            type="button"
+                            className="ghost"
+                            onClick={() => handleCopyValue(codeInfo.code, 'Код Telegram')}
+                          >
+                            Скопировать
+                          </button>
+                        </div>
+                        {deepLink && (
+                          <div className="code-row">
+                            <div>
+                              <span className="code-label">Ссылка для открытия бота</span>
+                              <div className="code-value code-value-small">{deepLink}</div>
+                            </div>
+                            <div className="code-row-actions">
+                              <button
+                                type="button"
+                                className="ghost"
+                                onClick={() => handleCopyValue(deepLink, 'Ссылка')}
+                              >
+                                Скопировать
+                              </button>
+                              <button
+                                type="button"
+                                className="secondary"
+                                onClick={() => handleOpenTelegram(deepLink)}
+                              >
+                                Открыть Telegram
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {qrCodeUrl && (
+                          <div className="qr-wrapper">
+                            <img src={qrCodeUrl} alt="QR код для открытия бота" />
+                            <span>Наведите камеру, чтобы открыть бота</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="code-placeholder">
+                        <p>Код пока не создан. Нажмите «Получить код», чтобы начать привязку.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {(telegramSuccess || codeMessage || telegramError || codeError) && (
+                <div className="telegram-messages">
+                  {telegramSuccess && <p className="form-message success">{telegramSuccess}</p>}
+                  {codeMessage && <p className="form-message success">{codeMessage}</p>}
+                  {telegramError && <p className="form-message error">{telegramError}</p>}
+                  {codeError && <p className="form-message error">{codeError}</p>}
                 </div>
               )}
             </section>

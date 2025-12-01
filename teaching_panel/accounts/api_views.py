@@ -1,12 +1,19 @@
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
 from django.utils import timezone
+from django.conf import settings
 
-from .serializers import UserProfileSerializer
-from .models import CustomUser, PasswordResetToken
+from .serializers import UserProfileSerializer, NotificationSettingsSerializer
+from .models import CustomUser, PasswordResetToken, NotificationSettings
+from .telegram_utils import (
+    generate_link_code_for_user,
+    link_account_with_code,
+    TelegramVerificationError,
+    unlink_user_telegram,
+)
 
 
 class MeView(APIView):
@@ -99,35 +106,10 @@ def change_password(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def link_telegram(request):
-    """Привязка Telegram ID к аккаунту пользователя"""
-    user = request.user
-    telegram_id = request.data.get('telegram_id', '').strip()
-    telegram_username = request.data.get('telegram_username', '').strip()
-    
-    if not telegram_id:
-        return Response(
-            {'detail': 'Требуется telegram_id'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    # Проверяем, не привязан ли уже этот Telegram ID к другому аккаунту
-    if CustomUser.objects.filter(telegram_id=telegram_id).exclude(id=user.id).exists():
-        return Response(
-            {'detail': 'Этот Telegram уже привязан к другому аккаунту'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    user.telegram_id = telegram_id
-    user.telegram_username = telegram_username
-    user.save()
-    
+    """Deprecated endpoint kept for backward compatibility."""
     return Response(
-        {
-            'detail': 'Telegram успешно привязан',
-            'telegram_id': telegram_id,
-            'telegram_username': telegram_username
-        },
-        status=status.HTTP_200_OK
+        {'detail': 'Используйте новый процесс привязки через Telegram бота и одноразовый код.'},
+        status=status.HTTP_410_GONE
     )
 
 
@@ -136,19 +118,72 @@ def link_telegram(request):
 def unlink_telegram(request):
     """Отвязка Telegram от аккаунта"""
     user = request.user
-    
+
     if not user.telegram_id:
         return Response(
             {'detail': 'Telegram не привязан'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
-    user.telegram_id = None
-    user.telegram_username = ''
-    user.save()
-    
+
+    unlink_user_telegram(user)
+
     return Response(
         {'detail': 'Telegram успешно отвязан'},
+        status=status.HTTP_200_OK
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_telegram_code(request):
+    """Создаёт новый одноразовый код для привязки Telegram."""
+    code_obj = generate_link_code_for_user(request.user)
+    bot_username = getattr(settings, 'TELEGRAM_BOT_USERNAME', '')
+    deep_link = f"https://t.me/{bot_username}?start={code_obj.code}" if bot_username else ''
+
+    return Response(
+        {
+            'code': code_obj.code,
+            'expires_at': code_obj.expires_at.isoformat(),
+            'bot_username': bot_username,
+            'deep_link': deep_link,
+        },
+        status=status.HTTP_201_CREATED
+    )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_telegram(request):
+    """Подтверждает код привязки. Используется Telegram-ботом."""
+    secret = getattr(settings, 'TELEGRAM_BOT_WEBHOOK_SECRET', '')
+    if secret:
+        header = request.headers.get('X-Bot-Secret')
+        if header != secret:
+            return Response({'detail': 'Недостаточно прав'}, status=status.HTTP_403_FORBIDDEN)
+
+    data = request.data
+    code = data.get('code')
+    telegram_id = data.get('telegram_id')
+    telegram_username = data.get('telegram_username', '')
+    telegram_chat_id = data.get('telegram_chat_id', '')
+
+    try:
+        result = link_account_with_code(
+            code=code,
+            telegram_id=telegram_id,
+            telegram_username=telegram_username,
+            telegram_chat_id=telegram_chat_id,
+        )
+    except TelegramVerificationError as exc:
+        return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(
+        {
+            'detail': 'Telegram успешно привязан',
+            'email': result.user.email,
+            'telegram_username': result.user.telegram_username,
+        },
         status=status.HTTP_200_OK
     )
 
@@ -173,11 +208,11 @@ def request_password_reset(request):
             status=status.HTTP_200_OK
         )
     
-    # Проверяем, привязан ли Telegram
-    if not user.telegram_id:
+    # Проверяем, привязан ли подтвержденный Telegram
+    if not user.telegram_id or not user.telegram_verified:
         return Response(
             {
-                'detail': 'К этому аккаунту не привязан Telegram. Обратитесь к администратору.',
+                'detail': 'Telegram не привязан или не подтверждён. Привяжите чат через профиль.',
                 'telegram_required': True
             },
             status=status.HTTP_400_BAD_REQUEST
@@ -255,12 +290,28 @@ def reset_password_with_token(request):
 def check_telegram_status(request):
     """Проверка статуса привязки Telegram"""
     user = request.user
-    
+
     return Response(
         {
             'telegram_linked': bool(user.telegram_id),
             'telegram_id': user.telegram_id or None,
-            'telegram_username': user.telegram_username or None
+            'telegram_username': user.telegram_username or None,
+            'telegram_verified': user.telegram_verified,
         },
         status=status.HTTP_200_OK
     )
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def notification_settings_view(request):
+    settings_obj, _ = NotificationSettings.objects.get_or_create(user=request.user)
+
+    if request.method == 'GET':
+        serializer = NotificationSettingsSerializer(settings_obj)
+        return Response(serializer.data)
+
+    serializer = NotificationSettingsSerializer(settings_obj, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(serializer.data)

@@ -1,0 +1,29 @@
+[Unit]
+Description=Teaching Panel Telegram Bot
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="DJANGO_SETTINGS_MODULE=teaching_panel.settings"
+Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=/var/www/teaching_panel/.env
+ExecStart=/var/www/teaching_panel/.venv/bin/python /var/www/teaching_panel/teaching_panel/telegram_bot.py
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=telegram_bot
+
+[Install]
+WantedBy=multi-user.target

@@ -10,6 +10,9 @@ from .models import (
     EmailVerification,
     Subscription,
     Payment,
+    TelegramLinkCode,
+    NotificationSettings,
+    NotificationLog,
 )
 
 
@@ -18,14 +21,15 @@ class CustomUserAdmin(UserAdmin):
     """Админ-панель для кастомной модели пользователя"""
     
     model = CustomUser
-    list_display = ('email', 'username_handle', 'role', 'first_name', 'last_name', 'is_staff', 'is_active', 'created_at')
-    list_filter = ('role', 'is_staff', 'is_active', 'agreed_to_marketing')
+    list_display = ('email', 'username_handle', 'role', 'first_name', 'last_name', 'telegram_verified', 'is_staff', 'is_active', 'created_at')
+    list_filter = ('role', 'is_staff', 'is_active', 'agreed_to_marketing', 'telegram_verified')
     
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
         ('Личная информация', {'fields': ('first_name', 'last_name', 'middle_name', 'username_handle', 'phone_number', 'date_of_birth', 'avatar')}),
         ('Роль и права', {'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('Zoom', {'fields': ('zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_user_id')}),
+        ('Telegram', {'fields': ('telegram_id', 'telegram_username', 'telegram_chat_id', 'telegram_verified')}),
         ('Маркетинг', {'fields': ('agreed_to_marketing',)}),
         ('Важные даты', {'fields': ('last_login', 'date_joined')}),
     )
@@ -137,3 +141,36 @@ class PaymentAdmin(admin.ModelAdmin):
     list_filter = ('status', 'payment_system', 'currency', 'created_at')
     search_fields = ('payment_id', 'subscription__user__email')
     raw_id_fields = ('subscription',)
+
+
+@admin.register(TelegramLinkCode)
+class TelegramLinkCodeAdmin(admin.ModelAdmin):
+    list_display = ('code', 'user', 'used', 'created_at', 'expires_at', 'used_at')
+    list_filter = ('used', 'created_at')
+    search_fields = ('code', 'user__email')
+    raw_id_fields = ('user',)
+    readonly_fields = ('code', 'created_at', 'expires_at', 'used_at')
+
+
+@admin.register(NotificationSettings)
+class NotificationSettingsAdmin(admin.ModelAdmin):
+    list_display = (
+        'user', 'telegram_enabled', 'notify_homework_submitted',
+        'notify_homework_graded', 'notify_homework_deadline', 'notify_lesson_reminders',
+        'notify_new_homework', 'notify_subscription_expiring', 'notify_payment_success', 'updated_at'
+    )
+    list_filter = (
+        'telegram_enabled', 'notify_homework_submitted', 'notify_homework_graded',
+        'notify_homework_deadline', 'notify_lesson_reminders', 'notify_new_homework',
+        'notify_subscription_expiring', 'notify_payment_success'
+    )
+    search_fields = ('user__email',)
+    raw_id_fields = ('user',)
+
+
+@admin.register(NotificationLog)
+class NotificationLogAdmin(admin.ModelAdmin):
+    list_display = ('notification_type', 'user', 'channel', 'status', 'created_at')
+    list_filter = ('notification_type', 'channel', 'status', 'created_at')
+    search_fields = ('user__email', 'message')
+    raw_id_fields = ('user',)

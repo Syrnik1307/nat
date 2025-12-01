@@ -314,6 +314,14 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'schedule.tasks.schedule_upcoming_lesson_reminders',
         'schedule': 300.0,  # каждые 5 минут
     },
+    'check-expiring-subscriptions': {
+        'task': 'accounts.tasks.check_expiring_subscriptions',
+        'schedule': 21600.0,  # каждые 6 часов
+    },
+    'process-expired-subscriptions': {
+        'task': 'accounts.tasks.process_expired_subscriptions',
+        'schedule': 3600.0,  # ежечасно обновляем статусы
+    },
 }
 
 # Azure Cosmos DB integration (feature-flagged)
@@ -425,6 +433,17 @@ SMSRU_FROM_NAME = os.environ.get('SMSRU_FROM_NAME', 'Teaching Panel')
 # Стоимость SMS: от 1.15 руб за SMS по России
 # Регистрация: 2 минуты, пополнение: от 100 руб
 # Документация API: https://sms.ru/api/send
+
+
+# =============================================================================
+# TELEGRAM BOT CONFIGURATION
+# =============================================================================
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_BOT_USERNAME = os.environ.get('TELEGRAM_BOT_USERNAME', '')
+TELEGRAM_BOT_WEBHOOK_SECRET = os.environ.get(
+    'TELEGRAM_BOT_WEBHOOK_SECRET',
+    TELEGRAM_BOT_TOKEN,
+)
 
 
 # =============================================================================

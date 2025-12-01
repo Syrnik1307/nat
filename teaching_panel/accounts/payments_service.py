@@ -8,6 +8,8 @@ from django.utils import timezone
 from datetime import timedelta
 import logging
 
+from .notifications import send_telegram_notification
+
 logger = logging.getLogger(__name__)
 
 # YooKassa будет инициализирован при наличии ключей
@@ -234,6 +236,8 @@ class PaymentService:
                 sub = payment.subscription
                 
                 # Обработка подписки
+                message = None
+
                 if 'plan' in metadata:
                     plan = metadata['plan']
                     if plan == 'monthly':
@@ -250,6 +254,12 @@ class PaymentService:
                     sub.save()
                     
                     logger.info(f"Subscription {sub.id} activated with plan {plan}")
+
+                    message = (
+                        "💳 Оплата подписки прошла успешно!\n"
+                        f"План: {sub.get_plan_display()}.\n"
+                        f"Подписка активна до {sub.expires_at.strftime('%d.%m.%Y')}"
+                    )
                 
                 # Обработка хранилища
                 elif 'storage_gb' in metadata:
@@ -260,6 +270,18 @@ class PaymentService:
                     sub.save()
                     
                     logger.info(f"Added {gb} GB storage to subscription {sub.id}")
+
+                    message = (
+                        "☁️ Дополнительное хранилище оплачено!\n"
+                        f"Добавлено: {gb} ГБ. Общий объём: {sub.total_storage_gb} ГБ"
+                    )
+
+                if message:
+                    send_telegram_notification(
+                        sub.user,
+                        'payment_success',
+                        f"{message}\nСумма: {payment.amount} {payment.currency}"
+                    )
                 
                 return True
             

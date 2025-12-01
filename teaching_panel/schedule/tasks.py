@@ -2,8 +2,10 @@
 Celery задачи для приложения schedule
 """
 from celery import shared_task
+from django.core.cache import cache
 from django.utils import timezone
 from datetime import timedelta
+from accounts.notifications import send_telegram_notification
 from .models import ZoomAccount, Lesson
 from zoom_pool.models import ZoomAccount as PoolZoomAccount
 
@@ -117,40 +119,83 @@ def release_finished_zoom_accounts():
 
 
 @shared_task
-def send_lesson_reminder(lesson_id, minutes_before=15):
-    """
-    Отправка напоминания о начале урока (будущая функция)
-    
-    Args:
-        lesson_id: ID урока
-        minutes_before: за сколько минут до начала отправить
-    """
+def send_lesson_reminder(lesson_id, minutes_before=30):
+    """Отправляет телеграм-напоминание ученикам перед занятием."""
     try:
-        lesson = Lesson.objects.get(id=lesson_id)
-        # TODO: Реализовать отправку email/push уведомлений
-        print(f"[Celery] Напоминание об уроке {lesson.title} "
-              f"для группы {lesson.group.name} через {minutes_before} минут")
-        return {'status': 'sent', 'lesson_id': lesson_id}
+        lesson = (
+            Lesson.objects.select_related('group__teacher')
+            .prefetch_related('group__students')
+            .get(id=lesson_id)
+        )
     except Lesson.DoesNotExist:
         print(f"[Celery] Урок #{lesson_id} не найден")
         return {'status': 'error', 'message': 'Lesson not found'}
 
+    if not lesson.group:
+        return {'status': 'skipped', 'reason': 'no-group', 'lesson_id': lesson_id}
+
+    students = [s for s in lesson.group.students.filter(is_active=True)]
+    if not students:
+        return {'status': 'skipped', 'reason': 'no-students', 'lesson_id': lesson_id}
+
+    start_local = timezone.localtime(lesson.start_time) if lesson.start_time else None
+    start_str = start_local.strftime('%H:%M (%d.%m)') if start_local else 'скоро'
+    zoom_line = f"\nСсылка: {lesson.zoom_join_url}" if lesson.zoom_join_url else ''
+    message = (
+        "⏰ Напоминание об уроке!\n"
+        f"Урок: {lesson.title}\n"
+        f"Группа: {lesson.group.name}\n"
+        f"Начало через ~{minutes_before} мин ({start_str})."
+        f"{zoom_line}"
+    )
+
+    sent = 0
+    for student in students:
+        if send_telegram_notification(student, 'lesson_reminder', message):
+            sent += 1
+
+    if sent:
+        print(f"[Celery] Отправлено {sent} напоминаний об уроке {lesson.id}")
+
+    return {
+        'status': 'sent' if sent else 'skipped',
+        'lesson_id': lesson_id,
+        'sent': sent,
+    }
+
 
 @shared_task
 def schedule_upcoming_lesson_reminders():
-    """Планировщик: находит уроки, которые начнутся через X минут и ставит задачу напоминания.
-    Небольшой шаг для демонстрации. В реале можно хранить flag, чтобы не слать повторно."""
-    window_minutes = 15
+    """Находит уроки, стартующие в ближайшее время, и планирует напоминания."""
+    window_minutes = 30
     now = timezone.now()
     target_start = now + timedelta(minutes=window_minutes)
-    lessons = Lesson.objects.filter(start_time__gte=now, start_time__lte=target_start)
+    lessons = (
+        Lesson.objects.select_related('group')
+        .filter(start_time__gte=now, start_time__lte=target_start)
+    )
+
     scheduled = 0
     for lesson in lessons:
+        if not lesson.group_id:
+            continue
+        cache_key = f"lesson-reminder:{lesson.id}:{int(lesson.start_time.timestamp())}"
+        if cache.get(cache_key):
+            continue
+        cache.set(cache_key, True, timeout=3600)
         send_lesson_reminder.delay(lesson.id, minutes_before=window_minutes)
         scheduled += 1
+
     if scheduled:
         print(f"[Celery] Запланировано напоминаний: {scheduled}")
+
     return {'scheduled': scheduled, 'timestamp': now.isoformat()}
+
+
+@shared_task
+def send_lesson_reminders():
+    """Совместимость для ручного запуска через celery_metrics."""
+    return schedule_upcoming_lesson_reminders()
 
 
 @shared_task

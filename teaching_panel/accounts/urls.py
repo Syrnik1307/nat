@@ -38,7 +38,10 @@ from .api_views import (
     unlink_telegram,
     request_password_reset,
     reset_password_with_token,
-    check_telegram_status
+    check_telegram_status,
+    generate_telegram_code,
+    verify_telegram,
+    notification_settings_view,
 )
 
 
@@ -110,8 +113,11 @@ urlpatterns = [
     path('api/telegram/link/', link_telegram, name='link_telegram'),
     path('api/telegram/unlink/', unlink_telegram, name='unlink_telegram'),
     path('api/telegram/status/', check_telegram_status, name='check_telegram_status'),
+    path('api/accounts/generate-telegram-code/', generate_telegram_code, name='generate_telegram_code'),
+    path('api/accounts/verify-telegram/', verify_telegram, name='verify_telegram'),
     path('api/password-reset-telegram/request/', request_password_reset, name='request_password_reset_telegram'),
     path('api/password-reset-telegram/confirm/', reset_password_with_token, name='reset_password_with_token'),
+    path('api/notifications/settings/', notification_settings_view, name='notification_settings'),
     
     # API для чатов
     path('api/', include(router.urls)),

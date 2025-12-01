@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import SystemSettings, Subscription, Payment
+from .models import SystemSettings, Subscription, Payment, NotificationSettings
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -37,6 +37,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'avatar',
             'agreed_to_marketing',
             'date_of_birth',
+            'telegram_username',
+            'telegram_verified',
             'created_at',
             'updated_at',
         ]
@@ -132,3 +134,20 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'id', 'status', 'started_at', 'cancelled_at', 'total_paid',
             'last_payment_date', 'created_at', 'updated_at', 'total_storage_gb'
         ]
+
+
+class NotificationSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotificationSettings
+        fields = [
+            'telegram_enabled',
+            'notify_homework_submitted',
+            'notify_homework_graded',
+            'notify_homework_deadline',
+            'notify_lesson_reminders',
+            'notify_new_homework',
+            'notify_subscription_expiring',
+            'notify_payment_success',
+            'updated_at',
+        ]
+        read_only_fields = ['updated_at']

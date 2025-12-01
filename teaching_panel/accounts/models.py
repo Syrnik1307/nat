@@ -122,6 +122,12 @@ class CustomUser(AbstractUser):
         null=True,
         help_text=_('Chat ID для отправки сообщений через бота')
     )
+
+    telegram_verified = models.BooleanField(
+        _('Telegram подтверждён'),
+        default=False,
+        help_text=_('Флаг показывает, что пользователь подтвердил привязку Telegram через бота')
+    )
     
     # Zoom credentials для учителей
     zoom_account_id = models.CharField(
@@ -537,6 +543,42 @@ class PasswordResetToken(models.Model):
         )
 
 
+class TelegramLinkCode(models.Model):
+    """Одноразовые коды для безопасной привязки Telegram через бота."""
+
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='telegram_link_codes'
+    )
+    code = models.CharField(max_length=16, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = _('код привязки Telegram')
+        verbose_name_plural = _('коды привязки Telegram')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.email} → {self.code} ({'used' if self.used else 'active'})"
+
+    @classmethod
+    def generate_for_user(cls, user, ttl_minutes: int = 10):
+        """Генерирует новый код и удаляет старые для пользователя."""
+        cls.objects.filter(user=user, used=False).delete()
+        code = get_random_string(8).upper()
+        expires_at = timezone.now() + timezone.timedelta(minutes=ttl_minutes)
+        return cls.objects.create(user=user, code=code, expires_at=expires_at)
+
+    def mark_used(self):
+        self.used = True
+        self.used_at = timezone.now()
+        self.save(update_fields=['used', 'used_at'])
+
+
 # =========================
 # Subscriptions & Payments
 # =========================
@@ -647,3 +689,72 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"Payment {self.payment_id} ({self.status})"
+
+
+class NotificationSettings(models.Model):
+    """Персональные настройки уведомлений пользователя."""
+
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='notification_settings')
+    telegram_enabled = models.BooleanField(default=True)
+
+    # Учителям
+    notify_homework_submitted = models.BooleanField(default=True)
+    notify_subscription_expiring = models.BooleanField(default=True)
+    notify_payment_success = models.BooleanField(default=True)
+
+    # Ученикам
+    notify_homework_graded = models.BooleanField(default=True)
+    notify_homework_deadline = models.BooleanField(default=True)
+    notify_lesson_reminders = models.BooleanField(default=True)
+    notify_new_homework = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _('настройки уведомлений')
+        verbose_name_plural = _('настройки уведомлений')
+
+    def __str__(self):
+        return f"Настройки уведомлений {self.user.email}"
+
+
+class NotificationLog(models.Model):
+    """Хранит историю отправленных уведомлений для отладки и аналитики."""
+
+    CHANNEL_CHOICES = (
+        ('telegram', 'Telegram'),
+        ('email', 'Email'),
+    )
+
+    TYPE_CHOICES = (
+        ('homework_submitted', 'ДЗ сдано учеником'),
+        ('homework_graded', 'ДЗ проверено учителем'),
+        ('homework_deadline', 'Напоминание о дедлайне ДЗ'),
+        ('subscription_expiring', 'Истекает подписка'),
+        ('payment_success', 'Оплата прошла успешно'),
+        ('lesson_reminder', 'Напоминание об уроке'),
+        ('new_homework', 'Новое домашнее задание'),
+    )
+
+    STATUS_CHOICES = (
+        ('sent', 'Отправлено'),
+        ('skipped', 'Пропущено'),
+        ('failed', 'Ошибка'),
+    )
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='notification_logs')
+    notification_type = models.CharField(max_length=64, choices=TYPE_CHOICES)
+    channel = models.CharField(max_length=20, choices=CHANNEL_CHOICES, default='telegram')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='sent')
+    message = models.TextField()
+    error_message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('лог уведомлений')
+        verbose_name_plural = _('логи уведомлений')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.notification_type} → {self.user.email} ({self.status})"

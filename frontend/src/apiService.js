@@ -185,6 +185,9 @@ export const changePassword = (oldPassword, newPassword) =>
         old_password: oldPassword, 
         new_password: newPassword 
     });
+export const getTelegramStatus = () => apiClient.get('telegram/status/');
+export const generateTelegramCode = () => apiClient.post('accounts/generate-telegram-code/');
+export const unlinkTelegramAccount = () => apiClient.post('telegram/unlink/');
 
 // =====================
 // Helper for calendar feed
