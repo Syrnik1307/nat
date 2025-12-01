@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.conf import settings
 
 from .serializers import UserProfileSerializer, NotificationSettingsSerializer
-from .models import CustomUser, PasswordResetToken, NotificationSettings, TelegramAutoLoginToken
+from .models import CustomUser, PasswordResetToken, NotificationSettings
 from .telegram_utils import (
     generate_link_code_for_user,
     link_account_with_code,
