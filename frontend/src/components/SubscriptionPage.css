@@ -147,10 +147,9 @@
   font-size: 1rem;
   cursor: pointer;
   transition: background 0.25s, box-shadow 0.25s;
-  flex: 0 1 auto !important;
   white-space: nowrap;
-  max-width: 280px !important;
-  min-width: 200px !important;
+  width: auto;
+  flex-shrink: 0;
 }
 
 .pay-btn:hover:not(:disabled) {
@@ -167,9 +166,6 @@
 
 .toggle-renew-btn.renew-enabled {
   background: #f87171;
-  flex: 0 1 auto !important;
-  max-width: 280px !important;
-  min-width: 200px !important;
 }
 
 .toggle-renew-btn.renew-enabled:hover:not(:disabled) {
@@ -179,9 +175,6 @@
 
 .toggle-renew-btn.renew-disabled {
   background: #10b981;
-  flex: 0 1 auto !important;
-  max-width: 280px !important;
-  min-width: 200px !important;
 }
 
 .toggle-renew-btn.renew-disabled:hover:not(:disabled) {
@@ -192,9 +185,6 @@
 .toggle-renew-btn:disabled {
   cursor: not-allowed;
   box-shadow: none;
-  flex: 0 1 auto !important;
-  max-width: 280px !important;
-  min-width: 200px !important;
   opacity: 0.6;
 }
 
