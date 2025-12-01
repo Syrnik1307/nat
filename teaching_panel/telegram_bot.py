@@ -6,6 +6,7 @@ import django
 import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
+from asgiref.sync import sync_to_async
 
 # Django setup
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'teaching_panel.settings')
@@ -36,7 +37,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if args:
         code = args[0].strip().upper()
         try:
-            link_account_with_code(
+            await sync_to_async(link_account_with_code)(
                 code=code,
                 telegram_id=telegram_id,
                 telegram_username=user.username or '',
@@ -52,7 +53,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Проверяем, привязан ли уже аккаунт
     try:
-        db_user = User.objects.get(telegram_id=telegram_id)
+        db_user = await sync_to_async(User.objects.get)(telegram_id=telegram_id)
         await update.message.reply_text(
             f"👋 Привет, {db_user.first_name or user.first_name}!\n\n"
             f"✅ Аккаунт уже привязан.\n"
@@ -106,7 +107,7 @@ async def reset_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = str(update.effective_user.id)
     
     try:
-        db_user = User.objects.get(telegram_id=telegram_id)
+        db_user = await sync_to_async(User.objects.get)(telegram_id=telegram_id)
     except User.DoesNotExist:
         await update.message.reply_text(
             "❌ Ваш Telegram не привязан ни к одному аккаунту.\n"
@@ -121,7 +122,7 @@ async def reset_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Генерируем токен восстановления
-    reset_token = PasswordResetToken.generate_token(db_user, expires_in_minutes=15)
+    reset_token = await sync_to_async(PasswordResetToken.generate_token)(db_user, expires_in_minutes=15)
     reset_url = f"{WEBAPP_URL}/reset-password?token={reset_token.token}"
     
     keyboard = [
@@ -143,7 +144,7 @@ async def unlink_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = str(update.effective_user.id)
     
     try:
-        db_user = User.objects.get(telegram_id=telegram_id)
+        db_user = await sync_to_async(User.objects.get)(telegram_id=telegram_id)
 
         keyboard = [
             [
@@ -173,8 +174,8 @@ async def confirm_unlink_callback(update: Update, context: ContextTypes.DEFAULT_
     telegram_id = str(query.from_user.id)
     
     try:
-        db_user = User.objects.get(telegram_id=telegram_id)
-        unlink_user_telegram(db_user)
+        db_user = await sync_to_async(User.objects.get)(telegram_id=telegram_id)
+        await sync_to_async(unlink_user_telegram)(db_user)
         
         await query.edit_message_text(
             "✅ Аккаунт успешно отвязан от Telegram.\n\n"
@@ -196,7 +197,7 @@ async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = str(update.effective_user.id)
     
     try:
-        db_user = User.objects.get(telegram_id=telegram_id)
+        db_user = await sync_to_async(User.objects.get)(telegram_id=telegram_id)
         
         role_emoji = {
             'student': '🎓',
@@ -234,7 +235,7 @@ async def notifications_info(update: Update, context: ContextTypes.DEFAULT_TYPE)
     telegram_id = str(update.effective_user.id)
 
     try:
-        db_user = User.objects.get(telegram_id=telegram_id)
+        db_user = await sync_to_async(User.objects.get)(telegram_id=telegram_id)
     except User.DoesNotExist:
         await update.message.reply_text(
             "❌ Telegram ещё не привязан. Используйте /start для привязки."
@@ -242,9 +243,9 @@ async def notifications_info(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
 
     try:
-        settings_obj = db_user.notification_settings
+        settings_obj = await sync_to_async(lambda: db_user.notification_settings)()
     except NotificationSettings.DoesNotExist:
-        settings_obj = NotificationSettings.objects.create(user=db_user)
+        settings_obj = await sync_to_async(NotificationSettings.objects.create)(user=db_user)
 
     message = (
         "🔔 *Настройки уведомлений*\n\n"
