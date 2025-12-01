@@ -16,11 +16,11 @@ Environment="PATH=/var/www/teaching_panel/venv/bin"
 EnvironmentFile=-/var/www/teaching_panel/teaching_panel/teaching_panel/.env
 # Frontend URL for payment redirects
 Environment="FRONTEND_URL=http://72.56.81.163"
-# Рекомендуемые продакшн переменные (раскомментируйте и заполните):
+# Production settings
+Environment="ALLOWED_HOSTS=72.56.81.163,localhost,127.0.0.1"
 # Environment="DJANGO_SETTINGS_MODULE=teaching_panel.settings"
 # Environment="SECRET_KEY=__CHANGE_ME__"
 # Environment="DEBUG=False"
-# Environment="ALLOWED_HOSTS=72.56.81.163,localhost"
 Environment="GUNICORN_WORKERS=5"
 Environment="GUNICORN_BIND=0.0.0.0:8000"
 Environment="GUNICORN_TIMEOUT=120"
