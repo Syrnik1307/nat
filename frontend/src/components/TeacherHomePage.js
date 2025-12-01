@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import StartLessonButton from '../modules/core/zoom/StartLessonButton';
 import SupportWidget from './SupportWidget';
 import SubscriptionBanner from './SubscriptionBanner';
+import TelegramWarningBanner from './TelegramWarningBanner';
 import './TeacherHomePage.css';
 
 const TreeGrowth = ({ stage, progress }) => {
@@ -259,6 +260,8 @@ const TeacherHomePage = () => {
 
   return (
     <div className="teacher-home-page">
+      <TelegramWarningBanner />
+      
       <SubscriptionBanner 
         subscription={subscription} 
         onPayClick={() => navigate('/teacher/subscription')} 
