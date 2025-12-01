@@ -291,7 +291,7 @@ const NavBar = () => {
               </Link>
               
               <Link 
-                to="/billing" 
+                to="/teacher/subscription" 
                 className="nav-link"
                 onClick={() => setShowMobileMenu(false)}
               >

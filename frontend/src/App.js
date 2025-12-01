@@ -110,7 +110,7 @@ const AppRoutes = () => {
         {/* Common */}
         <Route path="/calendar" element={<Protected allowRoles={['teacher', 'student']}><Calendar /></Protected>} />
         <Route path="/profile" element={<Protected allowRoles={['teacher', 'student', 'admin']}><ProfilePage /></Protected>} />
-        <Route path="/billing" element={<Protected allowRoles={['teacher', 'admin']}><SubscriptionPage /></Protected>} />
+        <Route path="/billing" element={<Navigate to="/teacher/subscription" replace />} />
         <Route path="/teacher/subscription" element={<Protected allowRoles={['teacher', 'admin']}><SubscriptionPage /></Protected>} />
         <Route path="/chat" element={<Protected allowRoles={['teacher', 'student']}><ChatPage /></Protected>} />
         <Route path="/redirect" element={<RoleRouter />} />
