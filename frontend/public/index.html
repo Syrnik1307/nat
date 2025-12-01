@@ -13,17 +13,23 @@
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>Teaching Panel</title>
-    <!-- CRITICAL FIX: Force button width override -->
+    <!-- CRITICAL FIX: Force button width override with maximum specificity -->
     <style>
-      .pay-btn, .toggle-renew-btn {
+      .subscription-actions .pay-btn,
+      .subscription-actions .toggle-renew-btn,
+      button.pay-btn,
+      button.toggle-renew-btn {
         flex: 0 1 auto !important;
         max-width: 280px !important;
         min-width: 200px !important;
         width: auto !important;
+        align-self: flex-start !important;
       }
-      .subscription-actions {
+      .subscription-actions,
+      div.subscription-actions {
         display: flex !important;
         flex-direction: row !important;
+        align-items: flex-start !important;
         gap: 0.75rem !important;
         flex-wrap: wrap !important;
       }
