@@ -9,6 +9,8 @@ const TelegramWarningBanner = () => {
   const [linking, setLinking] = useState(false);
   const [linkMessage, setLinkMessage] = useState('');
   const [linkError, setLinkError] = useState('');
+  const [deepLink, setDeepLink] = useState('');
+  const [prefetching, setPrefetching] = useState(false);
 
   useEffect(() => {
     checkStatus();
@@ -21,6 +23,7 @@ const TelegramWarningBanner = () => {
       if (!response.data.telegram_linked) {
         console.log('[TelegramWarningBanner] Telegram not linked, showing banner');
         setShow(true);
+        prefetchTelegramLink();
       } else {
         console.log('[TelegramWarningBanner] Telegram already linked, hiding banner');
       }
@@ -40,30 +43,47 @@ const TelegramWarningBanner = () => {
     }
   };
 
-  const handleConnectClick = async () => {
-    if (linking) {
+  const prefetchTelegramLink = async (silent = false) => {
+    if (prefetching) {
       return;
     }
+    if (!silent) {
+      setLinkMessage('Готовим ссылку для Telegram...');
+    }
     setLinkError('');
-    setLinkMessage('');
-    setLinking(true);
-
+    setPrefetching(true);
     try {
       const { data } = await generateTelegramCode();
-      const deepLink = data?.deep_link;
-
-      if (deepLink) {
-        setLinkMessage('Открываем Telegram... Если ничего не произошло, нажмите повторно.');
-        openTelegramLink(deepLink);
-      } else {
-        setLinkMessage('Код создан. Завершите привязку на странице профиля, вкладка «Безопасность».');
+      setDeepLink(data?.deep_link || '');
+      if (!silent) {
+        setLinkMessage('Ссылка обновлена. Нажмите кнопку, чтобы открыть Telegram.');
       }
     } catch (err) {
-      console.error('[TelegramWarningBanner] Failed to generate telegram code:', err);
-      setLinkError(err.response?.data?.detail || 'Не удалось открыть Telegram. Попробуйте ещё раз или настройте вручную.');
+      console.error('[TelegramWarningBanner] Failed to prefetch telegram code:', err);
+      setLinkError(err.response?.data?.detail || 'Не удалось подготовить ссылку. Попробуйте позже или настройте вручную.');
     } finally {
-      setLinking(false);
+      setPrefetching(false);
     }
+  };
+
+  const handleConnectClick = async () => {
+    if (linking || prefetching) {
+      return;
+    }
+
+    if (!deepLink) {
+      setLinkError('Не удалось получить ссылку автоматически. Пробуем ещё раз...');
+      await prefetchTelegramLink(true);
+      return;
+    }
+
+    setLinkError('');
+    setLinkMessage('Открываем Telegram...');
+    setLinking(true);
+
+    openTelegramLink(deepLink);
+    await prefetchTelegramLink(true);
+    setLinking(false);
   };
 
   if (loading || !show) {
@@ -89,9 +109,9 @@ const TelegramWarningBanner = () => {
               type="button"
               className="banner-button primary"
               onClick={handleConnectClick}
-              disabled={linking}
+              disabled={linking || prefetching}
             >
-              {linking ? 'Создаём ссылку...' : '🔗 Привязать Telegram сейчас'}
+              {linking || prefetching ? 'Готовим ссылку...' : '🔗 Привязать Telegram сейчас'}
             </button>
             <div className="banner-benefits">
               <span className="benefit">✅ Восстановление пароля за 30 сек</span>
