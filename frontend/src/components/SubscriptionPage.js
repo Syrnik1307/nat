@@ -20,6 +20,13 @@ const SubscriptionPage = () => {
 
   useEffect(() => {
     loadSubscription();
+    
+    // Убираем query параметры после показа уведомления
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.has('payment')) {
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
   }, []);
 
   const loadSubscription = async () => {

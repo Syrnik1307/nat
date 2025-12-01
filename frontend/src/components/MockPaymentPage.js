@@ -1,30 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import './MockPaymentPage.css';
 
 const MockPaymentPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [countdown, setCountdown] = useState(5);
+  const [redirecting, setRedirecting] = useState(false);
   const paymentId = searchParams.get('payment_id');
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          navigate('/home-new?payment=success');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [navigate]);
-
-  const handleSkip = () => {
-    navigate('/home-new?payment=success');
+  const handleReturn = () => {
+    if (redirecting) return; // Защита от повторных кликов
+    setRedirecting(true);
+    navigate('/teacher/subscription');
   };
 
   return (
@@ -60,9 +47,12 @@ const MockPaymentPage = () => {
         </div>
 
         <div className="mock-redirect">
-          <p>Автоматический возврат через <strong>{countdown}</strong> сек...</p>
-          <button className="skip-button" onClick={handleSkip}>
-            Вернуться сейчас
+          <button 
+            className="skip-button" 
+            onClick={handleReturn}
+            disabled={redirecting}
+          >
+            {redirecting ? 'Возвращаем...' : 'Вернуться в личный кабинет'}
           </button>
         </div>
       </div>
