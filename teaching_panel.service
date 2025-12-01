@@ -14,6 +14,8 @@ PIDFile=/run/teaching_panel/teaching_panel.pid
 WorkingDirectory=/var/www/teaching_panel/teaching_panel/teaching_panel
 Environment="PATH=/var/www/teaching_panel/venv/bin"
 EnvironmentFile=-/var/www/teaching_panel/teaching_panel/teaching_panel/.env
+# Frontend URL for payment redirects
+Environment="FRONTEND_URL=http://72.56.81.163"
 # Рекомендуемые продакшн переменные (раскомментируйте и заполните):
 # Environment="DJANGO_SETTINGS_MODULE=teaching_panel.settings"
 # Environment="SECRET_KEY=__CHANGE_ME__"
