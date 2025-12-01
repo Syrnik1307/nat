@@ -202,7 +202,7 @@ const SubscriptionPage = () => {
 
           <div className="subscription-actions">
             <button 
-              className={`pay-btn ${processing ? 'loading' : ''}`}
+              className={`pay-btn ${processing ? 'is-loading' : ''}`}
               onClick={handlePayCycle}
               disabled={processing}
             >
