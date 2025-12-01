@@ -75,7 +75,7 @@ urlpatterns = [
     
     # Accounts (authentication)
     path('accounts/', include('accounts.urls')),
-    path('api/', include('accounts.urls')),  # Include accounts API under /api/ for telegram endpoints
+    path('', include('accounts.urls')),  # Include accounts at root for /api/* paths defined in accounts/urls.py
     
     # Schedule (web UI + API)
     path('schedule/', include('schedule.urls')),
