@@ -9,11 +9,10 @@ Group=www-data
 # Дополнительные каталоги и PID (runtime isolation)
 RuntimeDirectory=teaching_panel
 PIDFile=/run/teaching_panel/teaching_panel.pid
-# Текущая вложенная структура: manage.py находится в /var/www/teaching_panel/teaching_panel/teaching_panel
-# Если позже распакуете структуру (уберёте один уровень), обновите WorkingDirectory.
-WorkingDirectory=/var/www/teaching_panel/teaching_panel/teaching_panel
+# Django project root: manage.py находится в /var/www/teaching_panel/teaching_panel/
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
 Environment="PATH=/var/www/teaching_panel/venv/bin"
-EnvironmentFile=-/var/www/teaching_panel/teaching_panel/teaching_panel/.env
+EnvironmentFile=-/var/www/teaching_panel/teaching_panel/.env
 # Frontend URL for payment redirects
 Environment="FRONTEND_URL=http://72.56.81.163"
 # Production settings
