@@ -233,7 +233,13 @@ const ProfilePage = () => {
 
   const telegramLinked = Boolean(telegramInfo?.telegram_linked);
   const telegramUsername = telegramInfo?.telegram_username || null;
-  const deepLink = codeInfo?.deep_link || '';
+  const deepLink = useMemo(() => {
+    const dl = codeInfo?.deep_link;
+    if (dl) return dl;
+    const code = codeInfo?.code;
+    const bot = codeInfo?.bot_username;
+    return code && bot ? `https://t.me/${bot}?start=${code}` : '';
+  }, [codeInfo]);
   const qrCodeUrl = deepLink
     ? `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(deepLink)}&size=200x200`
     : '';

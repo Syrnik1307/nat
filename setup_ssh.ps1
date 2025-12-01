@@ -4,8 +4,9 @@
 
 $SERVER = "root@72.56.81.163"
 $SSH_DIR = "$env:USERPROFILE\.ssh"
-$PRIVATE_KEY = "$SSH_DIR\id_rsa"
-$PUBLIC_KEY = "$SSH_DIR\id_rsa.pub"
+# Единый deploy-ключ без пароля, согласованный с auto_deploy.ps1
+$PRIVATE_KEY = "$SSH_DIR\id_rsa_deploy"
+$PUBLIC_KEY = "$SSH_DIR\id_rsa_deploy.pub"
 
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════╗" -ForegroundColor Cyan
@@ -48,8 +49,8 @@ if (Test-Path $PRIVATE_KEY) {
         New-Item -ItemType Directory -Path $SSH_DIR | Out-Null
     }
     
-    # Создать ключи без пароля
-    ssh-keygen -t rsa -b 4096 -f $PRIVATE_KEY -N '""' -C "teaching-panel-deploy"
+    # Создать deploy-ключ без пароля (ed25519 быстрее и короче)
+    ssh-keygen -t ed25519 -f $PRIVATE_KEY -N "" -C "teaching-panel-deploy"
     
     Write-Host "✅ SSH ключи созданы" -ForegroundColor Green
 }
@@ -164,10 +165,45 @@ Write-Host "  Итоговая проверка" -ForegroundColor Cyan
 Write-Host "════════════════════════════════════════════" -ForegroundColor Cyan
 Write-Host ""
 
+# Создаём/обновляем SSH config для принудительного использования deploy-ключа
+try {
+    $sshConfigPath = Join-Path $SSH_DIR "config"
+    $configBlock = @()
+    if (Test-Path $sshConfigPath) {
+        $configBlock = Get-Content $sshConfigPath
+    }
+
+    $hostLine = "Host teaching-panel"
+    $desired = @(
+        $hostLine,
+        "  HostName 72.56.81.163",
+        "  User root",
+        "  IdentityFile $PRIVATE_KEY",
+        "  IdentitiesOnly yes",
+        "  ServerAliveInterval 30",
+        "  ServerAliveCountMax 3"
+    )
+
+    $needsWrite = $true
+    if ($configBlock -and ($configBlock -join "`n") -match [regex]::Escape($hostLine)) {
+        # Если блок уже есть, не дублируем
+        $needsWrite = $false
+    }
+
+    if ($needsWrite) {
+        Add-Content -Path $sshConfigPath -Value "`n$($desired -join "`n")`n"
+        Write-Host "✅ Обновлён ~/.ssh/config для teaching-panel" -ForegroundColor Green
+    } else {
+        Write-Host "ℹ️  ~/.ssh/config уже содержит блок teaching-panel" -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "⚠️  Не удалось обновить ~/.ssh/config: $_" -ForegroundColor Yellow
+}
+
 # Финальная проверка
 Write-Host "Проверка SSH подключения..." -ForegroundColor Yellow
 try {
-    $testResult = ssh -o ConnectTimeout=5 -o BatchMode=yes $SERVER "echo 'OK'" 2>&1
+    $testResult = ssh -o ConnectTimeout=5 -o BatchMode=yes -i $PRIVATE_KEY -o IdentitiesOnly=yes $SERVER "echo 'OK'" 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✅ SSH настроен правильно!" -ForegroundColor Green
         Write-Host ""

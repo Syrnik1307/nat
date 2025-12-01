@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import './App.css';
 import { AuthProvider, useAuth, Protected } from './auth';
 import RegisterPage from './components/RegisterPage';
-import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboard';
 import StudentHomePage from './components/StudentHomePage';
 import HomeworkList from './components/HomeworkList';
@@ -78,7 +77,7 @@ const AppRoutes = () => {
         
         {/* Teacher */}
         <Route path="/home-new" element={<Protected allowRoles={['teacher', 'admin']}><TeacherHomePage /></Protected>} />
-        <Route path="/teacher" element={<Protected allowRoles={['teacher', 'admin']}><TeacherDashboard /></Protected>} />
+        <Route path="/teacher" element={<Navigate to="/home-new" replace />} />
         <Route path="/teacher/recordings" element={<Protected allowRoles={['teacher']}><TeacherRecordingsPage /></Protected>} />
         <Route path="/homework/manage" element={<Protected allowRoles={['teacher']}><HomeworkManage /></Protected>} />
         <Route

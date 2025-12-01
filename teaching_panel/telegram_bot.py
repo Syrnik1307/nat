@@ -4,8 +4,14 @@ Telegram бот для восстановления пароля и привяз
 import os
 import django
 import asyncio
+import logging
+from typing import List, Optional
+from urllib.parse import urljoin
+
+from django.conf import settings
+from django.db.models import Prefetch, Q
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from asgiref.sync import sync_to_async
 
 # Django setup
@@ -14,6 +20,8 @@ django.setup()
 
 from django.contrib.auth import get_user_model
 from accounts.models import PasswordResetToken, NotificationSettings
+from schedule.models import Lesson
+from homework.models import Homework, StudentSubmission
 from accounts.telegram_utils import (
     link_account_with_code,
     TelegramVerificationError,
@@ -23,9 +31,245 @@ from django.utils import timezone
 
 User = get_user_model()
 
+# Настройка логирования
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
 # Получите токен от @BotFather в Telegram
 BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE')
-WEBAPP_URL = os.environ.get('WEBAPP_URL', 'http://localhost:3000')
+DEFAULT_FRONTEND_URL = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+WEBAPP_URL = (os.environ.get('WEBAPP_URL') or DEFAULT_FRONTEND_URL or 'http://localhost:3000').rstrip('/')
+RESET_PASSWORD_PATH = os.environ.get('RESET_PASSWORD_PATH', '/reset-password')
+
+ROLE_EMOJI = {
+    'student': '🎓',
+    'teacher': '👨\u200d🏫',
+    'admin': '⚙️',
+}
+
+ROLE_NAMES = {
+    'student': 'Ученик',
+    'teacher': 'Учитель',
+    'admin': 'Администратор',
+}
+
+
+def _build_frontend_url(path: str = '') -> str:
+    base = WEBAPP_URL.rstrip('/') + '/'
+    relative = (path or '').lstrip('/')
+    return urljoin(base, relative) if relative else WEBAPP_URL
+
+MAIN_MENU_LAYOUT = [
+    [
+        InlineKeyboardButton('📅 Уроки', callback_data='menu:lessons'),
+        InlineKeyboardButton('📝 Домашки', callback_data='menu:homework'),
+    ],
+    [
+        InlineKeyboardButton('🔔 Уведомления', callback_data='menu:notifications'),
+        InlineKeyboardButton('👤 Профиль', callback_data='menu:profile'),
+    ],
+    [InlineKeyboardButton('❓ Помощь', callback_data='menu:help')],
+]
+
+NOTIFICATION_FIELDS_META = {
+    'telegram_enabled': {'label': 'Telegram канал', 'emoji': '📲', 'roles': None, 'short': 'Канал'},
+    'notify_lesson_reminders': {'label': 'Напоминания об уроках', 'emoji': '⏰', 'roles': {'student'}, 'short': 'Уроки'},
+    'notify_new_homework': {'label': 'Новое ДЗ', 'emoji': '🆕', 'roles': {'student'}, 'short': 'Новое ДЗ'},
+    'notify_homework_deadline': {'label': 'Напоминания о дедлайнах', 'emoji': '📎', 'roles': {'student'}, 'short': 'Дедлайны'},
+    'notify_homework_graded': {'label': 'Проверка ДЗ', 'emoji': '✅', 'roles': {'student'}, 'short': 'Проверка'},
+    'notify_homework_submitted': {'label': 'ДЗ сдано учеником', 'emoji': '📝', 'roles': {'teacher'}, 'short': 'Сдачи'},
+    'notify_payment_success': {'label': 'Платёж прошёл', 'emoji': '💳', 'roles': {'teacher', 'admin'}, 'short': 'Платежи'},
+    'notify_subscription_expiring': {'label': 'Подписка истекает', 'emoji': '⚠️', 'roles': {'teacher', 'admin'}, 'short': 'Подписка'},
+}
+
+ROLE_SECTION_TITLES = {
+    'student': '🎓 Уведомления ученика',
+    'teacher': '👨\u200d🏫 Уведомления преподавателя',
+}
+
+
+def _notification_sections_for_user(user: User) -> List[str]:
+    """Return ordered sections (roles) that current user may manage."""
+    if getattr(user, 'role', None) == 'admin':
+        return ['teacher', 'student']
+    if getattr(user, 'role', None) in ROLE_SECTION_TITLES:
+        return [user.role]
+    return ['student']
+
+
+def _fields_for_section(section_role: str) -> List[str]:
+    return [
+        field
+        for field, meta in NOTIFICATION_FIELDS_META.items()
+        if meta['roles'] and section_role in meta['roles']
+    ]
+
+
+def _role_badge(user: User) -> str:
+    return f"{ROLE_EMOJI.get(user.role, '👤')} {ROLE_NAMES.get(user.role, user.role.title())}"
+
+
+def _format_display_name(user: User) -> str:
+    full = user.get_full_name() if hasattr(user, 'get_full_name') else ''
+    return (full or user.first_name or user.email or 'Пользователь').strip()
+
+
+def _build_main_menu_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(MAIN_MENU_LAYOUT)
+
+
+def _build_section_keyboard(section: str, include_refresh: bool = True) -> InlineKeyboardMarkup:
+    rows = []
+    if include_refresh:
+        rows.append([InlineKeyboardButton('🔄 Обновить', callback_data=f'menu:{section}')])
+    rows.append([InlineKeyboardButton('⬅️ В главное меню', callback_data='menu:root')])
+    return InlineKeyboardMarkup(rows)
+
+
+async def _send_response(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    text: str,
+    reply_markup: Optional[InlineKeyboardMarkup] = None,
+    *,
+    parse_mode: Optional[str] = 'Markdown',
+    disable_preview: bool = True,
+):
+    common_kwargs = {
+        'reply_markup': reply_markup,
+        'disable_web_page_preview': disable_preview,
+    }
+    if parse_mode:
+        common_kwargs['parse_mode'] = parse_mode
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(text=text, **common_kwargs)
+    elif update.message:
+        await update.message.reply_text(text, **common_kwargs)
+    else:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=text, **common_kwargs)
+
+
+async def _get_linked_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[User]:
+    telegram_id = str(update.effective_user.id)
+    try:
+        return await sync_to_async(User.objects.get)(telegram_id=telegram_id)
+    except User.DoesNotExist:
+        warning = '❌ Telegram ещё не привязан. Откройте Teaching Panel → Профиль → Безопасность и отправьте /start <код>.'
+        if update.callback_query:
+            await update.callback_query.answer('Привяжите аккаунт через /start', show_alert=True)
+        if update.effective_chat:
+            await context.bot.send_message(update.effective_chat.id, warning)
+        return None
+
+
+async def _fetch_upcoming_lessons(user: User, limit: int = 5) -> List[Lesson]:
+    def query():
+        now = timezone.now()
+        qs = Lesson.objects.select_related('group', 'teacher').filter(start_time__gte=now)
+        if user.role == 'teacher':
+            qs = qs.filter(teacher=user)
+        elif user.role == 'student':
+            qs = qs.filter(group__students=user)
+        else:
+            qs = qs.filter(Q(teacher=user) | Q(group__students=user))
+        return list(qs.order_by('start_time').distinct()[:limit])
+
+    return await sync_to_async(query)()
+
+
+async def _fetch_student_homeworks(user: User, limit: int = 5) -> List[Homework]:
+    def query():
+        submissions_prefetch = Prefetch(
+            'submissions',
+            queryset=StudentSubmission.objects.filter(student=user),
+            to_attr='student_submissions',
+        )
+        qs = (
+            Homework.objects.select_related('teacher', 'lesson', 'lesson__group')
+            .prefetch_related(submissions_prefetch)
+            .filter(lesson__group__students=user)
+            .order_by('-created_at')
+        )
+        return list(qs.distinct()[:limit])
+
+    return await sync_to_async(query)()
+
+
+async def _fetch_teacher_submissions(user: User, limit: int = 5) -> List[StudentSubmission]:
+    def query():
+        qs = (
+            StudentSubmission.objects.select_related('student', 'homework', 'homework__lesson', 'homework__lesson__group')
+            .filter(homework__teacher=user, status='submitted')
+            .order_by('-submitted_at')
+        )
+        return list(qs[:limit])
+
+    return await sync_to_async(query)()
+
+
+def _format_lesson_entry(lesson: Lesson) -> str:
+    start_local = timezone.localtime(lesson.start_time) if lesson.start_time else None
+    start_line = start_local.strftime('%d.%m %H:%M') if start_local else 'скоро'
+    teacher_name = _format_display_name(lesson.teacher)
+    group_name = lesson.group.name if lesson.group else 'Без группы'
+    zoom_line = f"\n🔗 Zoom: {lesson.zoom_join_url}" if lesson.zoom_join_url else ''
+    return (
+        f"• {start_line} — {lesson.title}\n"
+        f"  Группа: {group_name}\n"
+        f"  Преподаватель: {teacher_name}{zoom_line}"
+    )
+
+
+def _build_notification_message(user: User, settings_obj: NotificationSettings) -> str:
+    def status(label: str) -> str:
+        return '✅' if getattr(settings_obj, label, False) else '❌'
+
+    lines = ["🔔 *Настройки уведомлений*\n"]
+    lines.append(f"{NOTIFICATION_FIELDS_META['telegram_enabled']['emoji']} {NOTIFICATION_FIELDS_META['telegram_enabled']['label']}: {status('telegram_enabled')}")
+
+    for section_role in _notification_sections_for_user(user):
+        title = ROLE_SECTION_TITLES.get(section_role)
+        fields = _fields_for_section(section_role)
+        if not fields or not title:
+            continue
+        lines.append(f"\n{title}")
+        for field in fields:
+            meta = NOTIFICATION_FIELDS_META[field]
+            lines.append(f"{meta['emoji']} {meta['label']}: {status(field)}")
+
+    footer = {
+        'teacher': '\nВы управляете только уведомлениями преподавателя.',
+        'student': '\nВы управляете только уведомлениями ученика.',
+        'admin': '\nВы администратор: отображаются настройки ученика и преподавателя, изменения касаются вашего Telegram.',
+    }
+    lines.append(footer.get(getattr(user, 'role', ''), '\nИзменения применяются только к вашему Telegram.'))
+    lines.append('\nНажмите кнопку ниже, чтобы включить или выключить конкретное уведомление.')
+    return '\n'.join(lines)
+
+
+def _build_notification_keyboard(user: User, settings_obj: NotificationSettings) -> InlineKeyboardMarkup:
+    ordered_fields: List[str] = ['telegram_enabled']
+    for section_role in _notification_sections_for_user(user):
+        ordered_fields.extend(_fields_for_section(section_role))
+
+    # Deduplicate while preserving order (актуально для админа)
+    seen = set()
+    buttons = []
+    for field in ordered_fields:
+        if field in seen:
+            continue
+        seen.add(field)
+        meta = NOTIFICATION_FIELDS_META[field]
+        current = '✅' if getattr(settings_obj, field, False) else '❌'
+        buttons.append(InlineKeyboardButton(f"{current} {meta['short']}", callback_data=f'notif_toggle:{field}'))
+
+    rows = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
+    rows.append([InlineKeyboardButton('⬅️ В меню', callback_data='menu:root')])
+    return InlineKeyboardMarkup(rows)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -36,19 +280,65 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if args:
         code = args[0].strip().upper()
+        logger.info(f"[start] User {telegram_id} attempting link with code: {code}")
+        
+        # Отправляем сообщение "Проверяем код..."
+        checking_msg = await update.message.reply_text("🔄 Проверяем код привязки...")
+        
         try:
-            await sync_to_async(link_account_with_code)(
+            # Выполняем привязку
+            result = await sync_to_async(link_account_with_code)(
                 code=code,
                 telegram_id=telegram_id,
                 telegram_username=user.username or '',
                 telegram_chat_id=str(update.effective_chat.id),
             )
+            linked_user = result.user
+            logger.info(f"[start] Successfully linked {telegram_id} with code {code}")
+            
+            # Удаляем сообщение о проверке
+            await checking_msg.delete()
+            
+            # Отправляем красивое подтверждение с кнопкой
+            keyboard = [
+                [InlineKeyboardButton("🌐 Открыть Teaching Panel", url=WEBAPP_URL)]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
             await update.message.reply_text(
-                "✅ Аккаунт успешно привязан!\n"
-                "Теперь вы можете сбрасывать пароль через /reset и получать уведомления."
+                "🎉 *Отлично! Аккаунт успешно привязан!*\n\n"
+                f"✅ Email: `{linked_user.email}`\n"
+                f"✅ Имя: {linked_user.first_name or 'Не указано'}\n\n"
+                "🔔 *Теперь вы будете получать:*\n"
+                "• Уведомления о новых домашних заданиях\n"
+                "• Напоминания о занятиях\n"
+                "• Возможность сбросить пароль через /reset\n\n"
+                "💬 Команды:\n"
+                "/menu — главное меню\n"
+                "/profile — ваш профиль\n"
+                "/reset — сбросить пароль\n"
+                "/notifications — настройки уведомлений\n"
+                "/unlink — отвязать аккаунт",
+                parse_mode='Markdown',
+                reply_markup=reply_markup
             )
+            await show_main_menu(update, context, linked_user)
         except TelegramVerificationError as exc:
-            await update.message.reply_text(f"❌ Не удалось привязать аккаунт: {exc}")
+            logger.error(f"[start] Link failed for {telegram_id}: {exc.code} - {exc}")
+            await checking_msg.delete()
+            
+            # Более подробное сообщение об ошибке
+            error_details = {
+                'empty_code': '❌ *Код не указан*\n\nПожалуйста, используйте ссылку из профиля Teaching Panel.',
+                'invalid_code': '❌ *Код не найден*\n\nЭтот код недействителен или срок его действия истёк (коды действуют 10 минут).\n\nПожалуйста:\n1. Откройте Teaching Panel → Профиль → Безопасность\n2. Создайте новый код привязки\n3. Вернитесь в Telegram и откройте новую ссылку',
+                'code_used': '❌ *Код уже использован*\n\nЭтот код уже был использован для привязки. Создайте новый код в профиле.',
+                'code_expired': '❌ *Код истёк*\n\nСрок действия этого кода истёк (коды действуют 10 минут).\n\nПожалуйста создайте новый код в профиле Teaching Panel.',
+                'telegram_in_use': '⚠️ *Этот Telegram уже привязан*\n\nВаш Telegram ID уже привязан к другому аккаунту Teaching Panel. Если это ваш аккаунт, сначала отвяжите его через /unlink.',
+                'empty_telegram_id': '❌ *Ошибка Telegram ID*\n\nНе удалось получить ваш Telegram ID. Попробуйте ещё раз.'
+            }
+            
+            error_msg = error_details.get(exc.code, f"❌ Ошибка привязки: {exc}")
+            await update.message.reply_text(error_msg, parse_mode='Markdown')
         return
 
     # Проверяем, привязан ли уже аккаунт
@@ -58,12 +348,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"👋 Привет, {db_user.first_name or user.first_name}!\n\n"
             f"✅ Аккаунт уже привязан.\n"
             f"📧 Email: {db_user.email}\n\n"
-            f"Команды:\n"
-            f"/reset — сбросить пароль\n"
-            f"/profile — профиль\n"
-            f"/notifications — узнать настройки\n"
-            f"/unlink — отвязать Telegram"
+            "Попробуйте обновлённое меню:\n"
+            "• /menu — быстрый доступ ко всем разделам\n"
+            "• /lessons — ближайшие уроки\n"
+            "• /homework — статусы домашних заданий\n"
+            "• /notifications — настройки уведомлений\n"
+            "• /reset — восстановление пароля\n"
+            "• /unlink — отвязать Telegram"
         )
+        await show_main_menu(update, context, db_user)
     except User.DoesNotExist:
         keyboard = [
             [InlineKeyboardButton("🔗 Как привязать аккаунт", callback_data='link_account')]
@@ -102,40 +395,173 @@ async def link_account_callback(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
 
+async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, user: Optional[User] = None):
+    if not user:
+        user = await _get_linked_user(update, context)
+        if not user:
+            return
+
+    lessons = await _fetch_upcoming_lessons(user, limit=1)
+    if lessons:
+        lesson = lessons[0]
+        start_local = timezone.localtime(lesson.start_time) if lesson.start_time else None
+        start_str = start_local.strftime('%d.%m %H:%M') if start_local else 'скоро'
+        summary_line = f"📅 Ближайший урок: {lesson.title} • {start_str}"
+    else:
+        summary_line = '📅 Ближайших уроков пока нет'
+
+    text = (
+        "✨ *Teaching Panel бот*\n"
+        f"{_role_badge(user)} · {_format_display_name(user)}\n"
+        f"{summary_line}\n\n"
+        "Выберите действие на клавиатуре ниже 👇"
+    )
+
+    await _send_response(update, context, text, reply_markup=_build_main_menu_keyboard())
+
+
+async def show_lessons(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = await _get_linked_user(update, context)
+    if not user:
+        return
+
+    lessons = await _fetch_upcoming_lessons(user, limit=5)
+    if lessons:
+        lesson_text = '\n\n'.join(_format_lesson_entry(lesson) for lesson in lessons)
+    else:
+        lesson_text = 'Нет занятий в ближайшие 48 часов. Проверьте календарь в Teaching Panel.'
+
+    text = (
+        '📅 *Ближайшие уроки*\n\n'
+        f"{lesson_text}\n\n"
+        'Перейдите в веб-приложение, чтобы увидеть полный календарь.'
+    )
+
+    await _send_response(update, context, text, reply_markup=_build_section_keyboard('lessons'))
+
+
+async def show_homework_digest(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = await _get_linked_user(update, context)
+    if not user:
+        return
+
+    if user.role == 'teacher':
+        submissions = await _fetch_teacher_submissions(user, limit=5)
+        if not submissions:
+            content = 'Новых сдач, которые ждут проверки, пока нет.'
+        else:
+            rows = []
+            for submission in submissions:
+                student_name = _format_display_name(submission.student)
+                lesson = submission.homework.lesson
+                group_name = lesson.group.name if lesson and lesson.group else 'Без группы'
+                submitted_local = timezone.localtime(submission.submitted_at) if submission.submitted_at else None
+                submitted_str = submitted_local.strftime('%d.%m %H:%M') if submitted_local else 'неизвестно'
+                rows.append(
+                    f"• {submission.homework.title}\n"
+                    f"  {student_name} · {group_name}\n"
+                    f"  Сдано: {submitted_str}"
+                )
+            content = '\n\n'.join(rows)
+
+        text = (
+            '📝 *Домашние задания (учитель)*\n\n'
+            f"{content}\n\n"
+            'Откройте раздел "Домашка" в Teaching Panel, чтобы выставить оценки.'
+        )
+    else:
+        homeworks = await _fetch_student_homeworks(user, limit=5)
+        if not homeworks:
+            content = 'Пока нет заданий, которые нужно сдать. Посмотрите расписание или спросите учителя.'
+        else:
+            rows = []
+            for hw in homeworks:
+                submission = hw.student_submissions[0] if getattr(hw, 'student_submissions', []) else None
+                if not submission:
+                    status = '⏳ нужно сдать'
+                elif submission.status == 'submitted':
+                    status = '🟡 проверяется'
+                elif submission.status == 'graded':
+                    score = submission.total_score or 0
+                    status = f'✅ проверено ({score} балл.)'
+                else:
+                    status = '✍️ в работе'
+
+                lesson = hw.lesson
+                group_name = lesson.group.name if lesson and lesson.group else '—'
+                rows.append(
+                    f"• {hw.title}\n"
+                    f"  Группа: {group_name}\n"
+                    f"  Статус: {status}"
+                )
+            content = '\n\n'.join(rows)
+
+        text = (
+            '📝 *Домашние задания (ученик)*\n\n'
+            f"{content}\n\n"
+            'Зайдите в Teaching Panel, чтобы загрузить ответы или посмотреть комментарии.'
+        )
+
+    await _send_response(update, context, text, reply_markup=_build_section_keyboard('homework'))
+
+
+async def handle_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    _, target = query.data.split(':', 1)
+
+    if target == 'root':
+        await show_main_menu(update, context)
+    elif target == 'lessons':
+        await show_lessons(update, context)
+    elif target == 'homework':
+        await show_homework_digest(update, context)
+    elif target == 'notifications':
+        await notifications_info(update, context)
+    elif target == 'profile':
+        await show_profile(update, context)
+    elif target == 'help':
+        await help_command(update, context)
+    else:
+        await query.answer('Раздел временно недоступен', show_alert=True)
+
+
 async def reset_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /reset - восстановление пароля"""
-    telegram_id = str(update.effective_user.id)
-    
-    try:
-        db_user = await sync_to_async(User.objects.get)(telegram_id=telegram_id)
-    except User.DoesNotExist:
-        await update.message.reply_text(
-            "❌ Ваш Telegram не привязан ни к одному аккаунту.\n"
-            "Используйте /start для привязки."
-        )
+    db_user = await _get_linked_user(update, context)
+    if not db_user:
         return
 
     if not db_user.telegram_verified:
-        await update.message.reply_text(
-            "❌ Telegram ещё не подтверждён. Создайте код в профиле и отправьте /start <код>."
+        await _send_response(
+            update,
+            context,
+            "❌ Telegram ещё не подтверждён. Создайте код в профиле Teaching Panel и отправьте /start <код>.",
+            parse_mode=None,
         )
         return
-    
-    # Генерируем токен восстановления
+
     reset_token = await sync_to_async(PasswordResetToken.generate_token)(db_user, expires_in_minutes=15)
-    reset_url = f"{WEBAPP_URL}/reset-password?token={reset_token.token}"
-    
-    keyboard = [
-        [InlineKeyboardButton("🔐 Сбросить пароль", url=reset_url)]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await update.message.reply_text(
-        f"🔐 Восстановление пароля для {db_user.email}\n\n"
-        f"Нажмите кнопку ниже для сброса пароля.\n"
-        f"⏱ Ссылка действительна 15 минут.\n\n"
-        f"Если вы не запрашивали сброс пароля, просто проигнорируйте это сообщение.",
-        reply_markup=reply_markup
+    reset_page = _build_frontend_url(RESET_PASSWORD_PATH)
+    separator = '&' if '?' in reset_page else '?'
+    reset_url = f"{reset_page}{separator}token={reset_token.token}"
+
+    keyboard = [[InlineKeyboardButton("🔐 Открыть страницу сброса", url=reset_url)]]
+    message = (
+        "🔐 Восстановление пароля\n\n"
+        f"Email: {db_user.email}\n"
+        "1. Нажмите кнопку ниже или откройте ссылку вручную.\n"
+        f"2. Если кнопка не работает, скопируйте ссылку: {reset_url}\n\n"
+        f"Токен для ручного ввода: {reset_token.token}\n"
+        "Ссылка и токен действительны 15 минут."
+    )
+
+    await _send_response(
+        update,
+        context,
+        message,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode=None,
     )
 
 
@@ -194,93 +620,90 @@ async def cancel_unlink_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать информацию о профиле"""
-    telegram_id = str(update.effective_user.id)
-    
-    try:
-        db_user = await sync_to_async(User.objects.get)(telegram_id=telegram_id)
-        
-        role_emoji = {
-            'student': '🎓',
-            'teacher': '👨‍🏫',
-            'admin': '⚙️'
-        }
-        
-        role_name = {
-            'student': 'Ученик',
-            'teacher': 'Учитель',
-            'admin': 'Администратор'
-        }
-        
-        await update.message.reply_text(
-            f"👤 **Ваш профиль**\n\n"
-            f"📧 Email: {db_user.email}\n"
-            f"{role_emoji.get(db_user.role, '👤')} Роль: {role_name.get(db_user.role, db_user.role)}\n"
-            f"👤 Имя: {db_user.first_name} {db_user.last_name}\n"
-            f"📱 Telegram ID: `{telegram_id}`\n"
-            f"📅 Дата регистрации: {db_user.created_at.strftime('%d.%m.%Y')}\n\n"
-            f"Доступные команды:\n"
-            f"/reset - Сбросить пароль\n"
-            f"/unlink - Отвязать аккаунт",
-            parse_mode='Markdown'
-        )
-    except User.DoesNotExist:
-        await update.message.reply_text(
-            "❌ Ваш Telegram не привязан ни к одному аккаунту.\n"
-            "Используйте /start для привязки."
-        )
+    user = await _get_linked_user(update, context)
+    if not user:
+        return
+
+    text = (
+        "👤 *Ваш профиль*\n\n"
+        f"📧 Email: {user.email}\n"
+        f"{_role_badge(user)}\n"
+        f"👤 Имя: {user.first_name or '—'} {user.last_name or ''}\n"
+        f"📱 Telegram ID: `{user.telegram_id or '—'}`\n"
+        f"📅 Дата регистрации: {user.created_at.strftime('%d.%m.%Y')}\n\n"
+        "Команды:\n"
+        "/reset — сбросить пароль\n"
+        "/unlink — отвязать аккаунт"
+    )
+
+    await _send_response(update, context, text, reply_markup=_build_section_keyboard('profile', include_refresh=False))
 
 
 async def notifications_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показывает текущие настройки уведомлений пользователя."""
-    telegram_id = str(update.effective_user.id)
-
-    try:
-        db_user = await sync_to_async(User.objects.get)(telegram_id=telegram_id)
-    except User.DoesNotExist:
-        await update.message.reply_text(
-            "❌ Telegram ещё не привязан. Используйте /start для привязки."
-        )
+    user = await _get_linked_user(update, context)
+    if not user:
         return
 
-    try:
-        settings_obj = await sync_to_async(lambda: db_user.notification_settings)()
-    except NotificationSettings.DoesNotExist:
-        settings_obj = await sync_to_async(NotificationSettings.objects.create)(user=db_user)
+    settings_obj, _ = await sync_to_async(NotificationSettings.objects.get_or_create)(user=user)
+    message = _build_notification_message(user, settings_obj)
+    keyboard = _build_notification_keyboard(user, settings_obj)
+    await _send_response(update, context, message, reply_markup=keyboard)
 
-    message = (
-        "🔔 *Настройки уведомлений*\n\n"
-        f"Telegram включён: {'✅' if settings_obj.telegram_enabled else '❌'}\n"
-        f"ДЗ сдано (учителю): {'✅' if settings_obj.notify_homework_submitted else '❌'}\n"
-        f"ДЗ проверено (ученику): {'✅' if settings_obj.notify_homework_graded else '❌'}\n"
-        f"Дедлайны ДЗ: {'✅' if settings_obj.notify_homework_deadline else '❌'}\n"
-        f"Напоминания об уроках: {'✅' if settings_obj.notify_lesson_reminders else '❌'}\n"
-        f"Новое ДЗ: {'✅' if settings_obj.notify_new_homework else '❌'}\n"
-        f"Подписка истекает: {'✅' if settings_obj.notify_subscription_expiring else '❌'}\n"
-        f"Платежи: {'✅' if settings_obj.notify_payment_success else '❌'}\n\n"
-        "Изменить можно в веб-версии: Профиль → вкладка 'Уведомления'."
-    )
 
-    await update.message.reply_text(message, parse_mode='Markdown')
+async def toggle_notification_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    _, field = query.data.split(':', 1)
+    meta = NOTIFICATION_FIELDS_META.get(field)
+
+    if not meta:
+        await query.answer('Неизвестная настройка', show_alert=True)
+        return
+
+    user = await _get_linked_user(update, context)
+    if not user:
+        return
+
+    roles = meta.get('roles')
+    if roles and user.role != 'admin' and user.role not in roles:
+        if 'student' in roles and 'teacher' in roles:
+            audience = 'этой роли'
+        elif 'student' in roles:
+            audience = 'учеников'
+        elif 'teacher' in roles:
+            audience = 'преподавателей'
+        else:
+            audience = 'этой роли'
+        await query.answer(f'Настройка доступна только для {audience}.', show_alert=True)
+        return
+
+    settings_obj, _ = await sync_to_async(NotificationSettings.objects.get_or_create)(user=user)
+    new_value = not getattr(settings_obj, field, False)
+    setattr(settings_obj, field, new_value)
+    await sync_to_async(settings_obj.save)(update_fields=[field, 'updated_at'])
+
+    await query.answer(f"{meta['label']}: {'включено' if new_value else 'выключено'}")
+    await notifications_info(update, context)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /help"""
-    await update.message.reply_text(
-        "📚 **Доступные команды:**\n\n"
-        "/start - Начать работу с ботом\n"
-        "/reset - Сбросить пароль\n"
-        "/profile - Показать профиль\n"
-        "/unlink - Отвязать аккаунт\n"
-        "/notifications - Показать настройки уведомлений\n"
-        "/help - Показать эту справку\n\n"
-        "❓ **Как это работает:**\n\n"
-        "1. Привяжите Telegram к аккаунту в настройках профиля\n"
-        "2. Если забыли пароль, отправьте /reset\n"
-        "3. Получите ссылку для сброса пароля\n"
-        "4. Установите новый пароль\n\n"
-        "🔐 Это безопасно - токены действительны только 15 минут!",
-        parse_mode='Markdown'
+    text = (
+        "📚 *Доступные команды*\n\n"
+        "/menu — Главное меню\n"
+        "/lessons — Ближайшие уроки\n"
+        "/homework — Домашние задания\n"
+        "/notifications — Настройки уведомлений\n"
+        "/profile — Профиль\n"
+        "/reset — Сбросить пароль\n"
+        "/unlink — Отвязать Telegram\n"
+        "/help — Эта справка\n\n"
+        "❓ *Как начать:*\n"
+        "1. В Teaching Panel откройте Профиль → Безопасность\n"
+        "2. Создайте код и отправьте /start <код> в этот чат\n"
+        "3. Используйте меню или команды выше для быстрого доступа."
     )
+    await _send_response(update, context, text, reply_markup=_build_section_keyboard('help', include_refresh=False))
 
 
 def main():
@@ -297,6 +720,9 @@ def main():
     
     # Регистрируем обработчики команд
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("menu", show_main_menu))
+    application.add_handler(CommandHandler("lessons", show_lessons))
+    application.add_handler(CommandHandler("homework", show_homework_digest))
     application.add_handler(CommandHandler("reset", reset_password))
     application.add_handler(CommandHandler("unlink", unlink_account))
     application.add_handler(CommandHandler("profile", show_profile))
@@ -307,6 +733,8 @@ def main():
     application.add_handler(CallbackQueryHandler(link_account_callback, pattern='^link_account$'))
     application.add_handler(CallbackQueryHandler(confirm_unlink_callback, pattern='^confirm_unlink$'))
     application.add_handler(CallbackQueryHandler(cancel_unlink_callback, pattern='^cancel_unlink$'))
+    application.add_handler(CallbackQueryHandler(handle_menu_callback, pattern='^menu:'))
+    application.add_handler(CallbackQueryHandler(toggle_notification_callback, pattern='^notif_toggle:'))
     
     # Запускаем бота
     print("🤖 Telegram бот запущен!")

@@ -25,7 +25,11 @@ const TelegramWarningBanner = () => {
     setPrefetching(true);
     try {
       const { data } = await generateTelegramCode();
-      setDeepLink(data?.deep_link || '');
+      // Резерв: если backend вернул пустой deep_link, собираем сами из bot_username + code
+      const fallbackLink = data?.code && data?.bot_username
+        ? `https://t.me/${data.bot_username}?start=${data.code}`
+        : '';
+      setDeepLink(data?.deep_link || fallbackLink);
       if (!silent) {
         setLinkMessage('Ссылка обновлена. Нажмите кнопку, чтобы открыть Telegram.');
       }

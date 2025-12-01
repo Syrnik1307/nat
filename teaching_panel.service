@@ -12,9 +12,12 @@ PIDFile=/run/teaching_panel/teaching_panel.pid
 # Django project root: manage.py находится в /var/www/teaching_panel/teaching_panel/
 WorkingDirectory=/var/www/teaching_panel/teaching_panel
 Environment="PATH=/var/www/teaching_panel/venv/bin"
-EnvironmentFile=-/var/www/teaching_panel/teaching_panel/.env
+EnvironmentFile=-/var/www/teaching_panel/.env
 # Frontend URL for payment redirects
 Environment="FRONTEND_URL=http://72.56.81.163"
+# Telegram Bot
+Environment="TELEGRAM_BOT_TOKEN=8306654343:AAGWJu8jY3TXneag_3JfQEkgjsjaTro91l0"
+Environment="TELEGRAM_BOT_USERNAME=nat_panelbot"
 # Production settings
 Environment="ALLOWED_HOSTS=72.56.81.163,localhost,127.0.0.1"
 # Environment="DJANGO_SETTINGS_MODULE=teaching_panel.settings"

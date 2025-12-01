@@ -156,8 +156,8 @@ const NavBar = () => {
     if (!profileButtonRef.current) return;
     const rect = profileButtonRef.current.getBoundingClientRect();
     setMenuPosition({
-      top: rect.bottom + window.scrollY + 12,
-      right: window.innerWidth - rect.right - window.scrollX,
+      top: rect.bottom + 12,
+      right: Math.max(window.innerWidth - rect.right, 16),
     });
   };
 
@@ -414,7 +414,7 @@ const NavBar = () => {
               {showProfileMenu && createPortal(
                 <div
                   className="profile-dropdown"
-                  style={{ position: 'fixed', top: menuPosition.top, right: menuPosition.right, zIndex: 6500 }}
+                  style={{ position: 'fixed', top: menuPosition.top, right: menuPosition.right, zIndex: 99999, backgroundColor: '#fff' }}
                 >
                   <div className="dropdown-header">
                     <div className="user-info">

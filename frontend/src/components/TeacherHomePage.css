@@ -364,6 +364,116 @@
    БАННЕРЫ
    ================================================ */
 
+.subscription-banner {
+  position: sticky;
+  top: 12px;
+  z-index: 1;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 16px;
+  padding: 16px 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideDown 0.3s ease-out;
+  margin: 0 0 12px 0;
+  width: 100%;
+}
+
+.subscription-banner.expired {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  border-bottom: 2px solid #ef4444;
+}
+
+.subscription-banner.warning {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-bottom: 2px solid #f59e0b;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.banner-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.banner-text {
+  flex: 1;
+}
+
+.banner-text strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #1f2937;
+}
+
+.banner-text p {
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.4;
+}
+
+.banner-actions {
+  flex-shrink: 0;
+}
+
+.pay-button {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+}
+
+.pay-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
+  background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
+}
+
+.pay-button:active {
+  transform: translateY(0);
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .banner-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .banner-actions {
+    width: 100%;
+  }
+
+  .pay-button {
+    width: 100%;
+  }
+}
+
 .error-banner {
   display: flex;
   align-items: center;
