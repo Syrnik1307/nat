@@ -25,9 +25,6 @@ Environment="GUNICORN_WORKERS=5"
 Environment="GUNICORN_BIND=0.0.0.0:8000"
 Environment="GUNICORN_TIMEOUT=120"
 
-# Простой pre-hook для логирования старта (можно убрать)
-ExecStartPre=/usr/bin/env bash -c 'echo [teaching_panel] starting gunicorn with $GUNICORN_WORKERS workers'
-
 # Убрали лишний --chdir: WorkingDirectory уже задаёт нужный путь
 ExecStart=/var/www/teaching_panel/venv/bin/gunicorn teaching_panel.wsgi:application \
   --bind ${GUNICORN_BIND} \
