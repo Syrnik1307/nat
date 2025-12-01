@@ -482,7 +482,10 @@
 }
 
 /* Профиль */
-.profile-menu-container {position: relative;}
+.profile-menu-container {
+  position: relative;
+  z-index: 1100;
+}
 
 .profile-button { 
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
