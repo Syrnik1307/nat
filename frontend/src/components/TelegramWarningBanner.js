@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { getTelegramStatus, generateTelegramCode } from '../apiService';
 import './TelegramWarningBanner.css';
@@ -11,11 +11,13 @@ const TelegramWarningBanner = () => {
   const [linkError, setLinkError] = useState('');
   const [deepLink, setDeepLink] = useState('');
   const [prefetching, setPrefetching] = useState(false);
+  const isPrefetchingRef = useRef(false);
 
   const prefetchTelegramLink = useCallback(async (silent = false) => {
-    if (prefetching) {
+    if (isPrefetchingRef.current) {
       return;
     }
+    isPrefetchingRef.current = true;
     if (!silent) {
       setLinkMessage('Готовим ссылку для Telegram...');
     }
@@ -32,8 +34,9 @@ const TelegramWarningBanner = () => {
       setLinkError(err.response?.data?.detail || 'Не удалось подготовить ссылку. Попробуйте позже или настройте вручную.');
     } finally {
       setPrefetching(false);
+      isPrefetchingRef.current = false;
     }
-  }, [prefetching]);
+  }, []);
 
   const checkStatus = useCallback(async () => {
     try {
