@@ -28,6 +28,7 @@ from accounts.telegram_utils import (
     unlink_user_telegram,
 )
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 
 User = get_user_model()
 
@@ -534,8 +535,13 @@ async def handle_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         await query.answer('Раздел временно недоступен', show_alert=True)
 
 
+def _generate_temp_password(length: int = 12) -> str:
+    alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@$%&*?'
+    return get_random_string(length, alphabet)
+
+
 async def reset_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработчик команды /reset - восстановление пароля"""
+    """Обработчик команды /reset - мгновенное обновление пароля."""
     db_user = await _get_linked_user(update, context)
     if not db_user:
         return
@@ -549,28 +555,26 @@ async def reset_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    reset_token = await sync_to_async(PasswordResetToken.generate_token)(db_user, expires_in_minutes=15)
-    reset_page = _build_frontend_url(RESET_PASSWORD_PATH)
-    separator = '&' if '?' in reset_page else '?'
-    reset_url = f"{reset_page}{separator}token={reset_token.token}"
+    new_password = _generate_temp_password()
 
-    keyboard = [[InlineKeyboardButton("🔐 Открыть страницу сброса", url=reset_url)]]
+    def _apply_new_password():
+        db_user.set_password(new_password)
+        db_user.save(update_fields=['password'])
+        PasswordResetToken.objects.filter(user=db_user, used=False).update(
+            used=True,
+            used_at=timezone.now(),
+        )
+
+    await sync_to_async(_apply_new_password)()
+
     message = (
-        "🔐 Восстановление пароля\n\n"
+        "✅ Пароль сброшен\n\n"
         f"Email: {db_user.email}\n"
-        "1. Нажмите кнопку ниже или откройте ссылку вручную.\n"
-        f"2. Если кнопка не работает, скопируйте ссылку: {reset_url}\n\n"
-        f"Токен для ручного ввода: {reset_token.token}\n"
-        "Ссылка и токен действительны 15 минут."
+        f"Новый пароль: {new_password}\n\n"
+        "Скопируйте пароль, войдите в Teaching Panel и поменяйте его в профиле."
     )
 
-    await _send_response(
-        update,
-        context,
-        message,
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode=None,
-    )
+    await _send_response(update, context, message, parse_mode=None)
 
 
 async def unlink_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
