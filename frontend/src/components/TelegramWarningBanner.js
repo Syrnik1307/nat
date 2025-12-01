@@ -32,6 +32,14 @@ const TelegramWarningBanner = () => {
     }
   };
 
+  const openTelegramLink = (url) => {
+    if (!url) return;
+    const newTab = window.open(url, '_blank');
+    if (!newTab) {
+      window.location.href = url;
+    }
+  };
+
   const handleConnectClick = async () => {
     if (linking) {
       return;
@@ -40,26 +48,18 @@ const TelegramWarningBanner = () => {
     setLinkMessage('');
     setLinking(true);
 
-    // Открываем вкладку заранее, чтобы браузер не заблокировал переход
-    const pendingWindow = window.open('', '_blank', 'noopener,noreferrer');
-
     try {
       const { data } = await generateTelegramCode();
       const deepLink = data?.deep_link;
+
       if (deepLink) {
-        if (pendingWindow) {
-          pendingWindow.location = deepLink;
-        } else {
-          window.open(deepLink, '_blank', 'noopener,noreferrer');
-        }
-        setLinkMessage('Telegram откроется в новой вкладке. Подтвердите подключение в боте.');
+        setLinkMessage('Открываем Telegram... Если ничего не произошло, нажмите повторно.');
+        openTelegramLink(deepLink);
       } else {
-        pendingWindow?.close();
         setLinkMessage('Код создан. Завершите привязку на странице профиля, вкладка «Безопасность».');
       }
     } catch (err) {
       console.error('[TelegramWarningBanner] Failed to generate telegram code:', err);
-      pendingWindow?.close();
       setLinkError(err.response?.data?.detail || 'Не удалось открыть Telegram. Попробуйте ещё раз или настройте вручную.');
     } finally {
       setLinking(false);
