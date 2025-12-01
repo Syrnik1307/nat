@@ -13,14 +13,13 @@ const TelegramWarningBanner = () => {
 
   const checkStatus = async () => {
     try {
-      const { data } = await getTelegramStatus();
-      if (!data.telegram_linked) {
+      const response = await getTelegramStatus();
+      if (!response.data.telegram_linked) {
         setShow(true);
       }
     } catch (err) {
       console.error('Failed to check telegram status:', err);
-      // Показываем баннер если не смогли проверить
-      setShow(true);
+      // Не показываем баннер если не смогли проверить (избегаем ложных срабатываний)
     } finally {
       setLoading(false);
     }
