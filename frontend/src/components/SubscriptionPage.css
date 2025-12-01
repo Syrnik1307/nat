@@ -159,9 +159,10 @@
 }
 
 .pay-btn:disabled {
-  background: #9ca3af;
+  background: #6366f1;
   cursor: not-allowed;
   box-shadow: none;
+  opacity: 0.6;
 }
 
 .toggle-renew-btn.renew-enabled {
@@ -189,12 +190,12 @@
 }
 
 .toggle-renew-btn:disabled {
-  background: #d1d5db;
   cursor: not-allowed;
   box-shadow: none;
   flex: 0 1 auto !important;
   max-width: 280px !important;
   min-width: 200px !important;
+  opacity: 0.6;
 }
 
 /* Тарифы */
