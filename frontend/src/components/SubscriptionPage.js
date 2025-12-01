@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../apiService';
@@ -18,18 +18,7 @@ const SubscriptionPage = () => {
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: null, message: '' });
 
-  useEffect(() => {
-    loadSubscription();
-    
-    // Убираем query параметры после показа уведомления
-    const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.has('payment')) {
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
-    }
-  }, []);
-
-  const loadSubscription = async () => {
+  const loadSubscription = useCallback(async () => {
     try {
       // Используем относительный путь без повторного /api/
       const response = await apiClient.get('subscription/');
@@ -39,7 +28,44 @@ const SubscriptionPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadSubscription();
+    
+    // Убираем query параметры после показа уведомления
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.has('payment')) {
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [loadSubscription]);
+
+  useEffect(() => {
+    const handlePageShow = (event) => {
+      const navEntries = typeof performance !== 'undefined' && performance.getEntriesByType
+        ? performance.getEntriesByType('navigation')
+        : [];
+      const cameFromHistory = Array.isArray(navEntries) && navEntries.some((entry) => entry.type === 'back_forward');
+
+      if (event.persisted || cameFromHistory) {
+        setProcessing(false);
+        loadSubscription();
+      }
+    };
+
+    const handleFocus = () => {
+      setProcessing(false);
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [loadSubscription]);
 
   // Тариф один — убираем оплату планов и оставляем только прогресс подписки
 
