@@ -5,8 +5,6 @@ from typing import Dict
 import requests
 from django.conf import settings
 
-from .models import NotificationSettings, NotificationLog
-
 logger = logging.getLogger(__name__)
 
 
@@ -30,6 +28,8 @@ def _get_bot_token() -> str:
 
 def send_telegram_notification(user, notification_type: str, message: str, *, disable_web_page_preview: bool = True, silent: bool = False) -> bool:
     """Send a Telegram message respecting user notification preferences."""
+    from .models import NotificationSettings, NotificationLog
+    
     if not user:
         return False
 
