@@ -161,6 +161,7 @@
   transition: background 0.25s, box-shadow 0.25s;
   flex: 0 1 auto;
   white-space: nowrap;
+  max-width: 280px;
 }
 
 .pay-btn:hover:not(:disabled) {
