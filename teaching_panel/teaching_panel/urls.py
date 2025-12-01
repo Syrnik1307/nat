@@ -41,6 +41,7 @@ from accounts.subscriptions_views import (
     SubscriptionPaymentStatusView,
 )
 from accounts.payments_views import yookassa_webhook
+from accounts.debug_views import debug_env  # Debug endpoint
 
 # Create a router and register our viewsets with it.
 router = DefaultRouter()
@@ -65,6 +66,9 @@ def health(request):
 urlpatterns = [
     path('', health, name='root'),
     path('admin/', admin.site.urls),  # Django admin для управления БД
+    
+    # Debug endpoint (remove in production)
+    path('api/debug/env/', debug_env, name='debug-env'),
     
     # Test page for email verification
     path('test-verification/', TemplateView.as_view(template_name='test_verification.html'), name='test-verification'),
