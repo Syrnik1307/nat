@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import Logo from './Logo';
@@ -31,6 +32,8 @@ const NavBar = () => {
   const [bannerVisible, setBannerVisible] = useState(true);
   const [messages, setMessages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const profileButtonRef = useRef(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
 
   useEffect(() => {
     if (accessTokenValid) {
@@ -148,6 +151,30 @@ const NavBar = () => {
   const teacherMessages = messages.filter(m => m.target === 'teachers' || m.target === 'all');
   const studentMessages = messages.filter(m => m.target === 'students' || m.target === 'all');
   const currentMessage = messages.length > 0 ? messages[currentIndex] : null;
+
+  const updateProfileMenuPosition = () => {
+    if (!profileButtonRef.current) return;
+    const rect = profileButtonRef.current.getBoundingClientRect();
+    setMenuPosition({
+      top: rect.bottom + window.scrollY + 12,
+      right: window.innerWidth - rect.right - window.scrollX,
+    });
+  };
+
+  useEffect(() => {
+    if (!showProfileMenu) {
+      return undefined;
+    }
+
+    updateProfileMenuPosition();
+    window.addEventListener('scroll', updateProfileMenuPosition);
+    window.addEventListener('resize', updateProfileMenuPosition);
+
+    return () => {
+      window.removeEventListener('scroll', updateProfileMenuPosition);
+      window.removeEventListener('resize', updateProfileMenuPosition);
+    };
+  }, [showProfileMenu]);
 
   return (
     <>
@@ -358,7 +385,13 @@ const NavBar = () => {
             <div className="profile-menu-container">
               <button 
                 className="profile-button"
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                ref={profileButtonRef}
+                onClick={() => {
+                  if (!showProfileMenu) {
+                    updateProfileMenuPosition();
+                  }
+                  setShowProfileMenu(!showProfileMenu);
+                }}
                 aria-label="Меню профиля"
               >
                 <div className="avatar" aria-hidden="true">
@@ -378,8 +411,11 @@ const NavBar = () => {
                 </span>
               </button>
 
-              {showProfileMenu && (
-                <div className="profile-dropdown">
+              {showProfileMenu && createPortal(
+                <div
+                  className="profile-dropdown"
+                  style={{ position: 'fixed', top: menuPosition.top, right: menuPosition.right, zIndex: 6500 }}
+                >
                   <div className="dropdown-header">
                     <div className="user-info">
                       <p className="user-name">
@@ -410,7 +446,8 @@ const NavBar = () => {
                     <span>🚪</span>
                     <span>Выйти</span>
                   </button>
-                </div>
+                </div>,
+                document.body
               )}
             </div>
           )}
