@@ -345,22 +345,50 @@ def process_zoom_recording(recording_id):
             recording.save()
             return
         
-        # Проверяем размер файла перед загрузкой
-        file_size = os.path.getsize(temp_file_path)
-        recording.file_size = file_size
+        original_size = os.path.getsize(temp_file_path)
+        logger.info(f"Downloaded from Zoom: {original_size / (1024**2):.1f} MB")
+        
+        # 2. Сжатие через FFmpeg (если включено)
+        upload_file_path = temp_file_path
+        compression_enabled = getattr(settings, 'VIDEO_COMPRESSION_ENABLED', True)
+        
+        if compression_enabled and temp_file_path.endswith('.mp4'):
+            import tempfile
+            from .gdrive_utils import compress_video
+            
+            fd, compressed_path = tempfile.mkstemp(suffix='_compressed.mp4')
+            os.close(fd)
+            
+            logger.info(f"Starting FFmpeg compression for recording {recording_id}...")
+            if compress_video(temp_file_path, compressed_path):
+                compressed_size = os.path.getsize(compressed_path)
+                compression_ratio = (1 - compressed_size / original_size) * 100
+                logger.info(f"Compression successful: {original_size / (1024**2):.1f} MB → {compressed_size / (1024**2):.1f} MB ({compression_ratio:.1f}% reduction)")
+                
+                # Используем сжатый файл
+                _cleanup_temp_file(temp_file_path)
+                upload_file_path = compressed_path
+            else:
+                logger.warning(f"FFmpeg compression failed for recording {recording_id}, using original")
+                # Удаляем неудачный compressed файл
+                _cleanup_temp_file(compressed_path)
+        
+        # Проверяем итоговый размер файла для загрузки
+        final_size = os.path.getsize(upload_file_path)
+        recording.file_size = final_size
         recording.save()
         
         # Проверяем доступное место
-        if not quota.can_upload(file_size):
-            logger.warning(f"Teacher {teacher.id} insufficient space. Need {file_size} bytes, available {quota.available_bytes}")
+        if not quota.can_upload(final_size):
+            logger.warning(f"Teacher {teacher.id} insufficient space. Need {final_size} bytes, available {quota.total_quota_bytes - quota.used_bytes}")
             recording.status = 'failed'
             recording.save()
-            _cleanup_temp_file(temp_file_path)
+            _cleanup_temp_file(upload_file_path)
             _notify_teacher_quota_exceeded(teacher, quota)
             return
         
-        # 2. Загружаем в Google Drive
-        gdrive_file = _upload_to_gdrive(recording, temp_file_path)
+        # 3. Загружаем в Google Drive
+        gdrive_file = _upload_to_gdrive(recording, upload_file_path)
         
         if not gdrive_file:
             logger.error(f"Failed to upload recording {recording_id} to Google Drive")
@@ -395,7 +423,7 @@ def process_zoom_recording(recording_id):
         logger.info(f"Successfully processed recording {recording_id}")
         
         # 5. Удаляем временный файл
-        _cleanup_temp_file(temp_file_path)
+        _cleanup_temp_file(upload_file_path)
         
         # 6. Удаляем запись с Zoom (освобождаем место)
         _delete_from_zoom(recording)
@@ -730,32 +758,37 @@ def cleanup_old_recordings():
 def _notify_teacher_quota_exceeded(teacher, quota):
     """Уведомление преподавателя о превышении квоты"""
     import logging
+    from accounts.notifications import send_telegram_notification
+    
     logger = logging.getLogger(__name__)
     
     logger.warning(f"Teacher {teacher.id} ({teacher.email}) quota exceeded: {quota.used_gb:.2f}/{quota.total_gb:.2f} GB")
     
-    # TODO: Отправить email/уведомление преподавателю
-    # Пример:
-    # send_email(
-    #     to=teacher.email,
-    #     subject='Превышен лимит хранилища',
-    #     template='quota_exceeded',
-    #     context={'teacher': teacher, 'quota': quota}
-    # )
+    message = (
+        f"❌ *Квота хранилища исчерпана!*\n\n"
+        f"Хранилище записей переполнено:\n"
+        f"📊 {quota.used_gb:.2f} / {quota.total_gb:.2f} GB\n\n"
+        f"Новые записи не будут сохраняться.\n"
+        f"Удалите записи или обратитесь к администратору."
+    )
+    
+    send_telegram_notification(teacher, 'storage_quota_exceeded', message)
 
 
 def _notify_teacher_quota_warning(teacher, quota):
     """Предупреждение преподавателя о приближении к лимиту (80%)"""
     import logging
+    from accounts.notifications import send_telegram_notification
+    
     logger = logging.getLogger(__name__)
     
     logger.info(f"Teacher {teacher.id} ({teacher.email}) quota warning: {quota.used_gb:.2f}/{quota.total_gb:.2f} GB ({quota.usage_percent:.1f}%)")
     
-    # TODO: Отправить email/уведомление преподавателю
-    # Пример:
-    # send_email(
-    #     to=teacher.email,
-    #     subject='Внимание: заканчивается место для записей',
-    #     template='quota_warning',
-    #     context={'teacher': teacher, 'quota': quota}
-    # )
+    message = (
+        f"⚠️ *Внимание!*\n\n"
+        f"Использовано *{quota.usage_percent:.0f}%* хранилища записей:\n"
+        f"📊 {quota.used_gb:.2f} / {quota.total_gb:.2f} GB\n\n"
+        f"Рекомендуем удалить старые записи или увеличить квоту."
+    )
+    
+    send_telegram_notification(teacher, 'storage_quota_warning', message)

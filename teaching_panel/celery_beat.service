@@ -1,0 +1,23 @@
+[Unit]
+Description=Teaching Panel Celery Beat Scheduler
+After=network.target redis.service celery_worker.service
+Requires=celery_worker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+Environment="DJANGO_SETTINGS_MODULE=teaching_panel.settings"
+ExecStart=/var/www/teaching_panel/venv/bin/celery -A teaching_panel beat \
+    --loglevel=info \
+    --logfile=/var/log/celery/beat.log \
+    --pidfile=/var/run/celery/beat.pid
+
+# Restart strategy
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

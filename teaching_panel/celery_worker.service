@@ -1,0 +1,28 @@
+[Unit]
+Description=Teaching Panel Celery Worker
+After=network.target redis.service
+
+[Service]
+Type=forking
+User=root
+Group=root
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+Environment="DJANGO_SETTINGS_MODULE=teaching_panel.settings"
+ExecStart=/var/www/teaching_panel/venv/bin/celery -A teaching_panel worker \
+    --loglevel=info \
+    --logfile=/var/log/celery/worker.log \
+    --pidfile=/var/run/celery/worker.pid \
+    --detach
+
+ExecStop=/var/www/teaching_panel/venv/bin/celery -A teaching_panel control shutdown
+
+# Restart strategy
+Restart=on-failure
+RestartSec=10s
+
+# Limits
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
