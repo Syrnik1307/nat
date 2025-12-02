@@ -9,6 +9,8 @@ from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from django.conf import settings
 import os
 import io
+import subprocess
+import tempfile
 import logging
 
 logger = logging.getLogger(__name__)
@@ -230,3 +232,74 @@ def get_gdrive_manager():
         _gdrive_manager = GoogleDriveManager()
     
     return _gdrive_manager
+
+
+def compress_video(input_path, output_path):
+    """
+    Сжимает видео через FFmpeg
+    
+    Параметры:
+    - input_path: путь к исходному файлу
+    - output_path: путь к сжатому файлу
+    
+    Возвращает:
+    - True если успешно, False если ошибка
+    """
+    try:
+        # Проверка что FFmpeg установлен
+        try:
+            subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            logger.warning("FFmpeg not installed, skipping compression")
+            return False
+        
+        # Получить настройки из settings
+        video_resolution = getattr(settings, 'VIDEO_MAX_RESOLUTION', '1280:720')
+        video_crf = getattr(settings, 'VIDEO_CRF', 23)
+        video_preset = getattr(settings, 'VIDEO_PRESET', 'medium')
+        audio_bitrate = getattr(settings, 'AUDIO_BITRATE', '128k')
+        
+        # FFmpeg команда для оптимального сжатия
+        cmd = [
+            'ffmpeg',
+            '-i', input_path,                    # Входной файл
+            '-c:v', 'libx264',                   # Видеокодек H.264
+            '-preset', video_preset,             # Баланс скорость/качество
+            '-crf', str(video_crf),              # Constant Rate Factor
+            '-vf', f'scale={video_resolution}',  # Масштабировать до 720p
+            '-c:a', 'aac',                       # Аудиокодек AAC
+            '-b:a', audio_bitrate,               # Битрейт аудио
+            '-movflags', '+faststart',           # Оптимизация для веб-стриминга
+            '-y',                                # Перезаписать если существует
+            output_path
+        ]
+        
+        logger.info(f"Starting video compression: {input_path}")
+        
+        # Запустить FFmpeg
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=3600  # Таймаут 1 час
+        )
+        
+        if result.returncode == 0:
+            # Проверить что файл создан и меньше оригинала
+            if os.path.exists(output_path):
+                original_size = os.path.getsize(input_path)
+                compressed_size = os.path.getsize(output_path)
+                compression_ratio = (1 - compressed_size / original_size) * 100
+                
+                logger.info(f"Video compressed: {original_size / (1024**2):.1f} MB → {compressed_size / (1024**2):.1f} MB ({compression_ratio:.1f}% reduction)")
+                return True
+        else:
+            logger.error(f"FFmpeg failed: {result.stderr.decode()}")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        logger.error("FFmpeg timeout (>1 hour)")
+        return False
+    except Exception as e:
+        logger.error(f"Compression error: {e}")
+        return False

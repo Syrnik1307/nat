@@ -222,6 +222,12 @@ class LessonRecording(models.Model):
     zoom_recording_id = models.CharField(_('ID записи Zoom'), max_length=100, blank=True, default='')
     download_url = models.URLField(_('ссылка для скачивания'), blank=True)
     play_url = models.URLField(_('ссылка для просмотра'), blank=True)
+    recording_type = models.CharField(
+        _('тип записи'),
+        max_length=50,
+        default='shared_screen_with_speaker_view',
+        help_text='Тип Zoom записи: shared_screen_with_speaker_view, audio_only и т.д.'
+    )
     
     # Архивирование в Google Drive / S3 / Azure Blob
     storage_provider = models.CharField(

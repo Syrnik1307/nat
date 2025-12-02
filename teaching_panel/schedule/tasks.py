@@ -503,7 +503,7 @@ def _upload_to_gdrive(recording, file_path):
         lesson = recording.lesson
         
         # Формируем имя файла для Drive
-        file_name = f"{lesson.subject.name} - {lesson.start_time.strftime('%Y-%m-%d %H:%M')}"
+        file_name = f"{lesson.title} - {lesson.start_time.strftime('%Y-%m-%d %H:%M')}"
         
         if lesson.group:
             file_name = f"{lesson.group.name} - {file_name}"
@@ -528,6 +528,7 @@ def _upload_to_gdrive(recording, file_path):
             # Получаем ссылки для воспроизведения
             result['embed_link'] = gdrive.get_embed_link(result['file_id'])
             result['download_link'] = gdrive.get_direct_download_link(result['file_id'])
+            result['folder_id'] = result.get('folder_id', '')
             
             return result
         else:

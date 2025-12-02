@@ -277,6 +277,17 @@ ZOOM_WEBHOOK_SECRET_TOKEN = os.environ.get('ZOOM_WEBHOOK_SECRET_TOKEN', '2ocO-3h
 ZOOM_API_KEY = os.environ.get('ZOOM_API_KEY', '')
 ZOOM_API_SECRET = os.environ.get('ZOOM_API_SECRET', '')
 
+# Google Drive API settings
+GDRIVE_CREDENTIALS_FILE = os.environ.get('GDRIVE_CREDENTIALS_FILE', os.path.join(BASE_DIR, 'gdrive-credentials.json'))
+GDRIVE_RECORDINGS_FOLDER_ID = os.environ.get('GDRIVE_RECORDINGS_FOLDER_ID', '')  # ID папки в Google Drive
+
+# Video compression settings
+VIDEO_COMPRESSION_ENABLED = os.environ.get('VIDEO_COMPRESSION_ENABLED', '1') == '1'
+VIDEO_MAX_RESOLUTION = os.environ.get('VIDEO_MAX_RESOLUTION', '1280:720')  # 720p
+VIDEO_CRF = int(os.environ.get('VIDEO_CRF', '23'))  # 18-28, чем ниже = лучше качество
+VIDEO_PRESET = os.environ.get('VIDEO_PRESET', 'medium')  # ultrafast/fast/medium/slow
+AUDIO_BITRATE = os.environ.get('AUDIO_BITRATE', '128k')
+
 # Authentication settings
 LOGIN_URL = '/api/jwt/login/'  # SPA login, не Django admin
 LOGIN_REDIRECT_URL = 'schedule:teacher_schedule'  # По умолчанию
@@ -321,6 +332,10 @@ CELERY_BEAT_SCHEDULE = {
     'process-expired-subscriptions': {
         'task': 'accounts.tasks.process_expired_subscriptions',
         'schedule': 3600.0,  # ежечасно обновляем статусы
+    },
+    'cleanup-old-recordings': {
+        'task': 'schedule.tasks.cleanup_old_recordings',
+        'schedule': 86400.0,  # каждые 24 часа (03:00 UTC)
     },
 }
 
