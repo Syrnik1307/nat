@@ -67,6 +67,16 @@ const StudentHomePage = () => {
     ? `Сегодня у вас ${todayLessons.length} ${todayLessons.length === 1 ? 'занятие' : 'занятия'}`
     : 'Сегодня либо нет занятий, либо они уже закончились';
 
+  // Format today's date in Russian
+  const formatTodayDate = () => {
+    const days = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+    const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    const dayName = days[today.getDay()];
+    const day = today.getDate();
+    const month = months[today.getMonth()];
+    return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${day} ${month}`;
+  };
+
   return (
     <div className="student-home">
       {/* Main Content */}
@@ -78,7 +88,7 @@ const StudentHomePage = () => {
           <div className="student-today-status">
             <div className="student-status-icon">📅</div>
             <div className="student-status-text">
-              Сегодня <span className="student-status-date">Суббота, 22 ноября</span>
+              Сегодня <span className="student-status-date">{formatTodayDate()}</span>
             </div>
           </div>
 
