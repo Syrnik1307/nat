@@ -515,11 +515,12 @@ def _upload_to_gdrive(recording, file_path):
         
         logger.info(f"Uploading to Google Drive: {file_name}")
         
-        # Загружаем файл
+        # Загружаем файл с указанием преподавателя (для создания подпапки)
         result = gdrive.upload_file(
-            file_path=file_path,
+            file_path_or_object=file_path,
             file_name=file_name,
-            mime_type=mime_type
+            mime_type=mime_type,
+            teacher=lesson.teacher  # Передаём преподавателя для создания подпапки
         )
         
         if result:

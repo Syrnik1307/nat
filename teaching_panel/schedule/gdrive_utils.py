@@ -1,9 +1,10 @@
 """
 Утилиты для работы с Google Drive API
-Автоматическая загрузка записей уроков в Google Drive
+Автоматическая загрузка записей уроков в Google Drive через OAuth2
 """
 
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from django.conf import settings
@@ -12,33 +13,55 @@ import io
 import subprocess
 import tempfile
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
 
 class GoogleDriveManager:
-    """Менеджер для работы с Google Drive"""
+    """Менеджер для работы с Google Drive через OAuth2"""
     
     def __init__(self):
         """Инициализация клиента Google Drive"""
         try:
-            # Путь к файлу credentials (Service Account)
-            creds_path = getattr(settings, 'GDRIVE_CREDENTIALS_FILE', 'gdrive-credentials.json')
+            # Путь к файлу OAuth2 token
+            token_path = getattr(settings, 'GDRIVE_TOKEN_FILE', 'gdrive_token.json')
             
-            if not os.path.exists(creds_path):
-                logger.error(f"Google Drive credentials file not found: {creds_path}")
-                raise FileNotFoundError(f"Missing {creds_path}")
+            if not os.path.exists(token_path):
+                logger.error(f"Google Drive token file not found: {token_path}")
+                raise FileNotFoundError(f"Missing {token_path}")
             
-            # Создаем credentials из Service Account
-            credentials = service_account.Credentials.from_service_account_file(
-                creds_path,
-                scopes=['https://www.googleapis.com/auth/drive.file']
-            )
+            # Загружаем credentials из token file
+            creds = None
+            try:
+                creds = Credentials.from_authorized_user_file(
+                    token_path,
+                    scopes=['https://www.googleapis.com/auth/drive.file']
+                )
+            except Exception as e:
+                logger.error(f"Failed to load credentials from {token_path}: {e}")
+                raise
+            
+            # Обновляем токен если истёк
+            if creds and creds.expired and creds.refresh_token:
+                try:
+                    logger.info("Refreshing expired Google Drive token...")
+                    creds.refresh(Request())
+                    # Сохраняем обновлённый токен
+                    with open(token_path, 'w') as token:
+                        token.write(creds.to_json())
+                    logger.info("Token refreshed successfully")
+                except Exception as e:
+                    logger.error(f"Failed to refresh token: {e}")
+                    raise
+            
+            if not creds or not creds.valid:
+                raise ValueError("Invalid credentials - run setup_gdrive_oauth.py to get new token")
             
             # Создаем клиент Drive API
-            self.service = build('drive', 'v3', credentials=credentials)
+            self.service = build('drive', 'v3', credentials=creds)
             
-            # ID корневой папки для хранения записей (создайте в Google Drive и укажите в settings)
+            # ID корневой папки для хранения записей
             self.root_folder_id = getattr(settings, 'GDRIVE_RECORDINGS_FOLDER_ID', None)
             
             if not self.root_folder_id:
@@ -82,26 +105,77 @@ class GoogleDriveManager:
             logger.error(f"Failed to create Google Drive folder: {e}")
             raise
     
-    def upload_file(self, file_path_or_object, file_name, folder_id=None, mime_type='video/mp4'):
+    def get_or_create_teacher_folder(self, teacher):
+        """
+        Получить или создать подпапку для преподавателя
+        
+        Args:
+            teacher: Объект CustomUser (преподаватель)
+            
+        Returns:
+            str: ID папки преподавателя
+        """
+        try:
+            # Формируем название папки: teacher_123_Ivan_Petrov
+            folder_name = f"teacher_{teacher.id}_{teacher.first_name}_{teacher.last_name}".replace(' ', '_')
+            
+            # Ищем существующую папку
+            query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+            if self.root_folder_id:
+                query += f" and '{self.root_folder_id}' in parents"
+            
+            results = self.service.files().list(
+                q=query,
+                spaces='drive',
+                fields='files(id, name)'
+            ).execute()
+            
+            items = results.get('files', [])
+            
+            if items:
+                # Папка уже существует
+                folder_id = items[0]['id']
+                logger.info(f"Found existing teacher folder: {folder_name} (ID: {folder_id})")
+                return folder_id
+            else:
+                # Создаём новую папку
+                folder_id = self.create_folder(folder_name, self.root_folder_id)
+                logger.info(f"Created new teacher folder: {folder_name} (ID: {folder_id})")
+                return folder_id
+                
+        except Exception as e:
+            logger.error(f"Failed to get/create teacher folder: {e}")
+            # Если не удалось создать подпапку, используем root
+            return self.root_folder_id
+    
+    def upload_file(self, file_path_or_object, file_name, folder_id=None, mime_type='video/mp4', teacher=None):
         """
         Загрузить файл в Google Drive
         
         Args:
             file_path_or_object: Путь к локальному файлу (str) или file object
             file_name: Имя файла в Google Drive
-            folder_id: ID папки назначения
+            folder_id: ID папки назначения (если None, использует папку преподавателя)
             mime_type: MIME тип файла
+            teacher: Объект преподавателя (для создания подпапки)
             
         Returns:
             dict: {'file_id': str, 'web_view_link': str, 'web_content_link': str}
         """
         try:
+            # Определяем целевую папку
+            target_folder_id = folder_id
+            if not target_folder_id and teacher:
+                # Создаём/получаем папку преподавателя
+                target_folder_id = self.get_or_create_teacher_folder(teacher)
+            elif not target_folder_id:
+                # Используем root папку
+                target_folder_id = self.root_folder_id
+            
             file_metadata = {'name': file_name}
             
-            if folder_id:
-                file_metadata['parents'] = [folder_id]
-            elif self.root_folder_id:
-                file_metadata['parents'] = [self.root_folder_id]
+            if target_folder_id:
+                file_metadata['parents'] = [target_folder_id]
             
             # Поддержка как путей, так и file objects
             if isinstance(file_path_or_object, str):
@@ -141,7 +215,7 @@ class GoogleDriveManager:
             # Делаем файл доступным по ссылке
             self.set_file_public(file_id)
             
-            logger.info(f"Uploaded file to Google Drive: {file_name} (ID: {file_id})")
+            logger.info(f"Uploaded file to Google Drive: {file_name} (ID: {file_id}) in folder {target_folder_id}")
             
             return {
                 'file_id': file_id,

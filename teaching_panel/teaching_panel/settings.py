@@ -277,9 +277,9 @@ ZOOM_WEBHOOK_SECRET_TOKEN = os.environ.get('ZOOM_WEBHOOK_SECRET_TOKEN', '2ocO-3h
 ZOOM_API_KEY = os.environ.get('ZOOM_API_KEY', '')
 ZOOM_API_SECRET = os.environ.get('ZOOM_API_SECRET', '')
 
-# Google Drive API settings
-GDRIVE_CREDENTIALS_FILE = os.environ.get('GDRIVE_CREDENTIALS_FILE', os.path.join(BASE_DIR, 'gdrive-credentials.json'))
-GDRIVE_RECORDINGS_FOLDER_ID = os.environ.get('GDRIVE_RECORDINGS_FOLDER_ID', '')  # ID папки в Google Drive
+# Google Drive API settings (OAuth2)
+GDRIVE_TOKEN_FILE = os.environ.get('GDRIVE_TOKEN_FILE', os.path.join(BASE_DIR, 'gdrive_token.json'))
+GDRIVE_RECORDINGS_FOLDER_ID = os.environ.get('GDRIVE_RECORDINGS_FOLDER_ID', '')  # ID корневой папки в Google Drive
 
 # Video compression settings
 VIDEO_COMPRESSION_ENABLED = os.environ.get('VIDEO_COMPRESSION_ENABLED', '1') == '1'
