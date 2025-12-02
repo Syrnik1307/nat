@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './AdminStorageManagementPage.css';
-import api from '../../apiService';
+import api, { withScheduleApiBase } from '../../apiService';
 
 function AdminStorageManagementPage() {
   const [quotas, setQuotas] = useState([]);
@@ -38,8 +38,8 @@ function AdminStorageManagementPage() {
       }
 
       const responses = await Promise.all([
-        api.get('/schedule/api/storage/quotas/', { params }),
-        api.get('/schedule/api/storage/statistics/')
+        api.get('storage/quotas/', withScheduleApiBase({ params })),
+        api.get('storage/statistics/', withScheduleApiBase())
       ]);
 
       setQuotas(responses[0].data.results || responses[0].data);
@@ -56,9 +56,11 @@ function AdminStorageManagementPage() {
     if (!selectedTeacher) return;
 
     try {
-      await api.post(`/schedule/api/storage/quotas/${selectedTeacher.id}/increase/`, {
-        additional_gb: increaseAmount
-      });
+      await api.post(
+        `storage/quotas/${selectedTeacher.id}/increase/`,
+        { additional_gb: increaseAmount },
+        withScheduleApiBase()
+      );
 
       setShowIncreaseModal(false);
       setSelectedTeacher(null);
@@ -78,7 +80,11 @@ function AdminStorageManagementPage() {
     }
 
     try {
-      await api.post(`/schedule/api/storage/quotas/${quotaId}/reset-warnings/`);
+      await api.post(
+        `storage/quotas/${quotaId}/reset-warnings/`,
+        {},
+        withScheduleApiBase()
+      );
       loadData();
       alert('Предупреждения сброшены');
     } catch (err) {

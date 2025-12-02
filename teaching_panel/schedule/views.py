@@ -186,6 +186,94 @@ class LessonViewSet(viewsets.ModelViewSet):
     serializer_class = LessonSerializer
     permission_classes = [IsLessonOwnerOrReadOnly]
     
+    @action(detail=False, methods=['post'], url_path='upload_standalone_recording')
+    def upload_standalone_recording(self, request):
+        """Загрузить самостоятельное видео без привязки к уроку"""
+        # Требуем активную подписку
+        try:
+            require_active_subscription(request.user)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        
+        if getattr(request.user, 'role', None) != 'teacher':
+            return Response({'detail': 'Только преподаватели могут загружать видео'}, status=status.HTTP_403_FORBIDDEN)
+        
+        video_file = request.FILES.get('video')
+        title = request.data.get('title', '').strip()
+        
+        if not video_file:
+            return Response({'detail': 'Видео файл обязателен'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not title:
+            return Response({'detail': 'Название обязательно для самостоятельного видео'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        privacy_type = request.data.get('privacy_type', 'all')
+        allowed_groups = request.data.get('allowed_groups')
+        allowed_students = request.data.get('allowed_students')
+        
+        try:
+            import json
+            if allowed_groups:
+                allowed_groups = json.loads(allowed_groups) if isinstance(allowed_groups, str) else allowed_groups
+            if allowed_students:
+                allowed_students = json.loads(allowed_students) if isinstance(allowed_students, str) else allowed_students
+        except:
+            pass
+        
+        from django.core.files.storage import default_storage
+        from django.conf import settings
+        import os
+        
+        # Создаём папку для записей если нет
+        upload_dir = 'lesson_recordings'
+        media_root = getattr(settings, 'MEDIA_ROOT', '/tmp')
+        if not os.path.exists(os.path.join(media_root, upload_dir)):
+            os.makedirs(os.path.join(media_root, upload_dir))
+        
+        # Сохраняем файл
+        from django.utils.text import slugify
+        safe_filename = f'{slugify(title)}_{video_file.name}'
+        file_path = os.path.join(upload_dir, safe_filename)
+        saved_path = default_storage.save(file_path, video_file)
+        
+        # Создаём фиктивный урок для хранения самостоятельного видео
+        # Или создаём запись без lesson (нужно сделать lesson nullable в модели)
+        # Пока создадим с текущим временем как "урок"
+        dummy_lesson = Lesson.objects.create(
+            title=title,
+            teacher=request.user,
+            group=request.user.teaching_groups.first() or Group.objects.create(
+                name=f'Материалы • {request.user.get_full_name()}',
+                teacher=request.user,
+                description='Автоматически созданная группа для самостоятельных материалов'
+            ),
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(hours=1),
+            notes='Самостоятельное видео (не привязано к уроку)'
+        )
+        
+        # Создаём запись
+        recording = LessonRecording.objects.create(
+            lesson=dummy_lesson,
+            play_url=f'/media/{saved_path}',
+            download_url=f'/media/{saved_path}',
+            status='ready',
+            file_size=video_file.size,
+            storage_provider='local'
+        )
+        
+        logger.info(f"Standalone video uploaded by {request.user.email}: {saved_path}, privacy: {privacy_type}")
+        
+        return Response({
+            'status': 'success',
+            'recording': {
+                'id': recording.id,
+                'play_url': recording.play_url,
+                'file_size': recording.file_size,
+                'created_at': recording.created_at
+            }
+        }, status=status.HTTP_201_CREATED)
+    
     def get_queryset(self):
         """Фильтрация по параметрам запроса"""
         queryset = super().get_queryset()
@@ -443,6 +531,8 @@ class LessonViewSet(viewsets.ModelViewSet):
         """Добавить запись урока (URL)"""
         lesson = self.get_object()
         url = request.data.get('url')
+        available_days = request.data.get('available_days', 90)
+        
         if not url:
             return Response({'detail': 'url обязателен'}, status=status.HTTP_400_BAD_REQUEST)
         # Требуем активную подписку
@@ -450,12 +540,104 @@ class LessonViewSet(viewsets.ModelViewSet):
             require_active_subscription(request.user)
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
-        recording = LessonRecording.objects.create(lesson=lesson, url=url)
+        
+        # Проверка прав: только преподаватель своего урока
+        if lesson.teacher != request.user:
+            return Response({'detail': 'Только преподаватель урока может добавлять записи'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Вычисляем available_until
+        from django.utils import timezone
+        from datetime import timedelta
+        available_until = None
+        if available_days and available_days > 0:
+            available_until = timezone.now() + timedelta(days=available_days)
+        
+        recording = LessonRecording.objects.create(
+            lesson=lesson,
+            play_url=url,
+            download_url=url,
+            status='ready',
+            available_until=available_until
+        )
         return Response({
             'status': 'created',
             'recording': {
                 'id': recording.id,
-                'url': recording.url,
+                'play_url': recording.play_url,
+                'created_at': recording.created_at,
+                'available_until': recording.available_until
+            }
+        }, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='upload_recording')
+    def upload_recording(self, request, pk=None):
+        """Загрузить видео файл урока с настройками приватности"""
+        lesson = self.get_object()
+        
+        # Требуем активную подписку
+        try:
+            require_active_subscription(request.user)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Проверка прав: только преподаватель своего урока
+        if lesson.teacher != request.user:
+            return Response({'detail': 'Только преподаватель урока может добавлять записи'}, status=status.HTTP_403_FORBIDDEN)
+        
+        video_file = request.FILES.get('video')
+        if not video_file:
+            return Response({'detail': 'Видео файл обязателен'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        privacy_type = request.data.get('privacy_type', 'all')
+        allowed_groups = request.data.get('allowed_groups')
+        allowed_students = request.data.get('allowed_students')
+        
+        try:
+            import json
+            if allowed_groups:
+                allowed_groups = json.loads(allowed_groups) if isinstance(allowed_groups, str) else allowed_groups
+            if allowed_students:
+                allowed_students = json.loads(allowed_students) if isinstance(allowed_students, str) else allowed_students
+        except:
+            pass
+        
+        # TODO: Здесь должна быть загрузка файла в Google Drive или другое хранилище
+        # Пока сохраняем как временную запись с локальным путем
+        from django.core.files.storage import default_storage
+        from django.conf import settings
+        import os
+        
+        # Создаём папку для записей если нет
+        upload_dir = 'lesson_recordings'
+        media_root = getattr(settings, 'MEDIA_ROOT', '/tmp')
+        if not os.path.exists(os.path.join(media_root, upload_dir)):
+            os.makedirs(os.path.join(media_root, upload_dir))
+        
+        # Сохраняем файл
+        file_path = os.path.join(upload_dir, f'lesson_{lesson.id}_{video_file.name}')
+        saved_path = default_storage.save(file_path, video_file)
+        
+        # Создаём запись
+        recording = LessonRecording.objects.create(
+            lesson=lesson,
+            play_url=f'/media/{saved_path}',
+            download_url=f'/media/{saved_path}',
+            status='ready',
+            file_size=video_file.size,
+            storage_provider='local'
+        )
+        
+        # Сохраняем настройки приватности в JSON поле details (если есть)
+        # Или можно создать отдельную модель для связи recording-groups/students
+        
+        logger.info(f"Video uploaded for lesson {lesson.id}: {saved_path}, privacy: {privacy_type}")
+        
+        return Response({
+            'status': 'success',
+            'recording': {
+                'id': recording.id,
+                'play_url': recording.play_url,
+                'file_size': recording.file_size,
                 'created_at': recording.created_at
             }
         }, status=status.HTTP_201_CREATED)
@@ -1049,17 +1231,12 @@ def student_recordings_list(request):
         }, status=status.HTTP_403_FORBIDDEN)
     
     try:
-        # Получаем все группы студента
-        from accounts.models import Student
-        student = Student.objects.get(user=user)
-        
-        # Находим все записи уроков из групп студента
+        # Находим все записи уроков из групп, где состоит текущий пользователь-студент
         recordings = LessonRecording.objects.filter(
-            lesson__group__students=student,
+            lesson__group__students=user,
             status='ready'
         ).select_related(
             'lesson',
-            'lesson__subject',
             'lesson__group',
             'lesson__teacher'
         ).order_by('-lesson__start_time')
@@ -1068,10 +1245,6 @@ def student_recordings_list(request):
         group_id = request.query_params.get('group_id')
         if group_id:
             recordings = recordings.filter(lesson__group_id=group_id)
-        
-        subject_id = request.query_params.get('subject_id')
-        if subject_id:
-            recordings = recordings.filter(lesson__subject_id=subject_id)
         
         # Поиск по названию
         search = request.query_params.get('search')
@@ -1087,10 +1260,9 @@ def student_recordings_list(request):
         serializer = LessonRecordingSerializer(paginated_recordings, many=True)
         return paginator.get_paginated_response(serializer.data)
     
-    except Student.DoesNotExist:
-        return Response({
-            'error': 'Профиль студента не найден'
-        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception:
+        # Любые точечные ошибки выше перехватим ниже общим блоком
+        raise
     except Exception as e:
         logger.exception(f"Error loading recordings: {e}")
         return Response({
@@ -1124,7 +1296,6 @@ def teacher_recordings_list(request):
             lesson__teacher=user
         ).select_related(
             'lesson',
-            'lesson__subject',
             'lesson__group'
         ).order_by('-lesson__start_time')
         
@@ -1170,7 +1341,6 @@ def recording_detail(request, recording_id):
     try:
         recording = LessonRecording.objects.select_related(
             'lesson',
-            'lesson__subject',
             'lesson__group',
             'lesson__teacher'
         ).get(id=recording_id)
@@ -1183,12 +1353,7 @@ def recording_detail(request, recording_id):
             has_access = recording.lesson.teacher_id == user.id
         elif getattr(user, 'role', None) == 'student':
             # Студент видит записи своих групп
-            from accounts.models import Student
-            try:
-                student = Student.objects.get(user=user)
-                has_access = recording.lesson.group and recording.lesson.group.students.filter(id=student.id).exists()
-            except Student.DoesNotExist:
-                pass
+            has_access = bool(recording.lesson.group and recording.lesson.group.students.filter(id=user.id).exists())
         elif getattr(user, 'role', None) == 'admin':
             # Админ видит все
             has_access = True
@@ -1230,12 +1395,7 @@ def recording_track_view(request, recording_id):
         if getattr(user, 'role', None) == 'teacher':
             has_access = recording.lesson.teacher_id == user.id
         elif getattr(user, 'role', None) == 'student':
-            from accounts.models import Student
-            try:
-                student = Student.objects.get(user=user)
-                has_access = recording.lesson.group and recording.lesson.group.students.filter(id=student.id).exists()
-            except Student.DoesNotExist:
-                pass
+            has_access = bool(recording.lesson.group and recording.lesson.group.students.filter(id=user.id).exists())
         elif getattr(user, 'role', None) == 'admin':
             has_access = True
         
@@ -1285,12 +1445,7 @@ def lesson_recording(request, lesson_id):
         if getattr(user, 'role', None) == 'teacher':
             has_access = lesson.teacher_id == user.id
         elif getattr(user, 'role', None) == 'student':
-            from accounts.models import Student
-            try:
-                student = Student.objects.get(user=user)
-                has_access = lesson.group and lesson.group.students.filter(id=student.id).exists()
-            except Student.DoesNotExist:
-                pass
+            has_access = bool(lesson.group and lesson.group.students.filter(id=user.id).exists())
         elif getattr(user, 'role', None) == 'admin':
             has_access = True
         
@@ -1303,7 +1458,6 @@ def lesson_recording(request, lesson_id):
         try:
             recording = LessonRecording.objects.select_related(
                 'lesson',
-                'lesson__subject',
                 'lesson__group',
                 'lesson__teacher'
             ).get(lesson_id=lesson_id, status='ready')

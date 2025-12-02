@@ -2,34 +2,6 @@ server {
     listen 80;
     server_name 72.56.81.163;
 
-    # Redirect all HTTP to HTTPS
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name 72.56.81.163;
-
-    # SSL certs (replace with your real domain + cert paths from Let's Encrypt)
-    ssl_certificate /etc/letsencrypt/live/teachingpanel.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/teachingpanel.example.com/privkey.pem;
-    ssl_trusted_certificate /etc/letsencrypt/live/teachingpanel.example.com/chain.pem;
-
-    # Strong SSL settings (minimal; can be hardened later)
-    ssl_session_timeout 1d;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_tickets off;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers off;
-
-    # Security headers (adjust as needed; HSTS can be enabled after validation)
-    add_header X-Content-Type-Options nosniff always;
-    add_header X-Frame-Options DENY always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy strict-origin-when-cross-origin always;
-    # Uncomment after confirming HTTPS works everywhere:
-    # add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-
     client_max_body_size 20M;
 
     # Rewrite storage API to /schedule/api (frontend calls /api/storage/*)
@@ -43,9 +15,9 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Schedule API direct path (frontend calls /schedule/api/*)
-    location /schedule/api/ {
-        proxy_pass http://127.0.0.1:8000/schedule/api/;
+    # Backend API - НЕ убираем /api/ из пути
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/api/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -57,9 +29,9 @@ server {
         proxy_connect_timeout 75s;
     }
 
-    # Backend API - НЕ убираем /api/ из пути
-    location /api/ {
-        proxy_pass http://127.0.0.1:8000/api/;
+    # Schedule API direct path (proxy to Django)
+    location /schedule/api/ {
+        proxy_pass http://127.0.0.1:8000/schedule/api/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -96,20 +68,38 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    # React admin SPA обслуживает /admin и вложенные роуты
-    location = /admin {
+    # React admin home page (главная админки)
+    location = /admin-home {
         root /var/www/teaching_panel/frontend/build;
-        try_files /index.html /index.html;
+        try_files /index.html =404;
     }
 
-    location ^~ /admin/ {
+    # React admin static files
+    location ^~ /admin-home/static/ {
+        alias /var/www/teaching_panel/frontend/build/static/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # React admin subpages
+    location ^~ /admin/storage {
         root /var/www/teaching_panel/frontend/build;
         try_files $uri /index.html;
     }
 
-    # Django Admin перенесён на отдельный префикс
-    location /dj-admin {
-        proxy_pass http://127.0.0.1:8000/admin;
+    location ^~ /admin/analytics {
+        root /var/www/teaching_panel/frontend/build;
+        try_files $uri /index.html;
+    }
+
+    location ^~ /admin/reports {
+        root /var/www/teaching_panel/frontend/build;
+        try_files $uri /index.html;
+    }
+
+    # Django Admin (backend) - все остальные /admin/* пути
+    location /admin {
+        proxy_pass http://127.0.0.1:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -140,6 +130,8 @@ server {
 
     # React Static files (fallback for other static paths)
     location /static/ {
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
         alias /var/www/teaching_panel/frontend/build/static/;
     }
 
@@ -147,5 +139,11 @@ server {
     location / {
         root /var/www/teaching_panel/frontend/build;
         try_files $uri $uri/ /index.html;
+        
+        # Disable cache for index.html
+        location = /index.html {
+            add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
+            expires -1;
+        }
     }
 }

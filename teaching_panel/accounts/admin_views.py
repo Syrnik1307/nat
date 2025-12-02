@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Sum, ExpressionWrapper, F, DurationField
 from django.utils import timezone
 from django.conf import settings
 from datetime import timedelta
@@ -12,10 +12,70 @@ import logging
 from schedule.models import Lesson, Group as ScheduleGroup
 
 from .serializers import UserProfileSerializer, SystemSettingsSerializer
-from .models import StatusBarMessage, SystemSettings
+from .models import StatusBarMessage, SystemSettings, Subscription
+from .subscriptions_utils import get_subscription
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
+def _serialize_subscription(sub: Subscription):
+    if not sub:
+        return None
+    total_storage = (sub.total_storage_gb or 0)
+    used_storage = float(sub.used_storage_gb or 0)
+    storage_usage_percent = 0
+    if total_storage > 0:
+        storage_usage_percent = round(min(100, (used_storage / total_storage) * 100), 2)
+    return {
+        'plan': sub.plan,
+        'status': sub.status,
+        'expires_at': sub.expires_at,
+        'remaining_days': sub.days_until_expiry(),
+        'base_storage_gb': sub.base_storage_gb,
+        'extra_storage_gb': sub.extra_storage_gb,
+        'used_storage_gb': used_storage,
+        'total_storage_gb': total_storage,
+        'storage_usage_percent': storage_usage_percent,
+        'auto_renew': sub.auto_renew,
+        'next_billing_date': sub.next_billing_date,
+        'last_payment_date': sub.last_payment_date,
+        'total_paid': sub.total_paid,
+    }
+
+
+def _ensure_admin(request):
+    if request.user.role != 'admin':
+        raise PermissionError('Доступ запрещен')
+
+
+def _format_timedelta_minutes(duration):
+    if not duration:
+        return 0
+    return int(duration.total_seconds() // 60)
+
+
+def _get_teacher_metrics(teacher):
+    now = timezone.now()
+    lessons_qs = Lesson.objects.filter(teacher=teacher)
+    total_lessons = lessons_qs.count()
+    recent_period = now - timedelta(days=30)
+    recent_lessons_qs = lessons_qs.filter(start_time__gte=recent_period)
+    duration_expr = ExpressionWrapper(F('end_time') - F('start_time'), output_field=DurationField())
+    duration_value = recent_lessons_qs.aggregate(total=Sum(duration_expr))['total']
+    teaching_minutes_recent = _format_timedelta_minutes(duration_value)
+
+    groups_qs = ScheduleGroup.objects.filter(teacher=teacher)
+    total_groups = groups_qs.count()
+    total_students = groups_qs.filter(students__isnull=False).values('students').distinct().count()
+
+    return {
+        'total_lessons': total_lessons,
+        'lessons_last_30_days': recent_lessons_qs.count(),
+        'teaching_minutes_last_30_days': teaching_minutes_recent,
+        'total_groups': total_groups,
+        'total_students': total_students,
+    }
 
 
 class AdminStatsView(APIView):
@@ -198,6 +258,14 @@ class AdminTeachersListView(APIView):
         
         teachers_data = []
         for teacher in teachers:
+            try:
+                subscription = teacher.subscription
+            except Subscription.DoesNotExist:
+                subscription = None
+            metrics = _get_teacher_metrics(teacher)
+            days_on_platform = 0
+            if teacher.created_at:
+                days_on_platform = (timezone.now() - teacher.created_at).days
             teachers_data.append({
                 'id': teacher.id,
                 'email': teacher.email,
@@ -212,9 +280,142 @@ class AdminTeachersListView(APIView):
                 'has_zoom_config': bool(teacher.zoom_account_id and teacher.zoom_client_id and teacher.zoom_client_secret),
                 'created_at': teacher.created_at,
                 'last_login': teacher.last_login,
+                'subscription': _serialize_subscription(subscription),
+                'metrics': metrics,
+                'days_on_platform': days_on_platform,
             })
         
         return Response(teachers_data)
+
+
+class AdminTeacherDetailView(APIView):
+    """Детальная информация по преподавателю"""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, teacher_id):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            teacher = User.objects.get(id=teacher_id, role='teacher')
+        except User.DoesNotExist:
+            return Response({'error': 'Учитель не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        subscription = get_subscription(teacher)
+        metrics = _get_teacher_metrics(teacher)
+        days_on_platform = 0
+        if teacher.created_at:
+            days_on_platform = (timezone.now() - teacher.created_at).days
+
+        zoom_config = {
+            'zoom_account_id': teacher.zoom_account_id,
+            'zoom_client_id': teacher.zoom_client_id,
+            'zoom_client_secret': teacher.zoom_client_secret,
+            'zoom_user_id': teacher.zoom_user_id,
+            'has_zoom_config': bool(teacher.zoom_account_id and teacher.zoom_client_id and teacher.zoom_client_secret),
+        }
+
+        metrics_extended = {
+            **metrics,
+            'teaching_hours_last_30_days': round(metrics['teaching_minutes_last_30_days'] / 60, 2) if metrics['teaching_minutes_last_30_days'] else 0,
+        }
+
+        profile = {
+            'id': teacher.id,
+            'first_name': teacher.first_name,
+            'last_name': teacher.last_name,
+            'middle_name': teacher.middle_name,
+            'email': teacher.email,
+            'phone_number': teacher.phone_number,
+            'role': teacher.role,
+            'created_at': teacher.created_at,
+            'last_login': teacher.last_login,
+            'days_on_platform': days_on_platform,
+            'avatar': teacher.avatar,
+        }
+
+        return Response({
+            'teacher': profile,
+            'subscription': _serialize_subscription(subscription),
+            'metrics': metrics_extended,
+            'zoom': zoom_config,
+        })
+
+
+class AdminTeacherSubscriptionView(APIView):
+    """Управление подпиской преподавателя"""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, teacher_id):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        action = request.data.get('action')
+        if action not in {'activate', 'deactivate'}:
+            return Response({'error': 'Некорректное действие'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            teacher = User.objects.get(id=teacher_id, role='teacher')
+        except User.DoesNotExist:
+            return Response({'error': 'Учитель не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        subscription = get_subscription(teacher)
+
+        if action == 'activate':
+            days = request.data.get('days') or 28
+            try:
+                days = int(days)
+            except (TypeError, ValueError):
+                days = 28
+            days = max(1, min(days, 365))
+            subscription.plan = Subscription.PLAN_MONTHLY
+            subscription.status = Subscription.STATUS_ACTIVE
+            subscription.expires_at = timezone.now() + timedelta(days=days)
+            subscription.auto_renew = False
+            update_fields = ['plan', 'status', 'expires_at', 'auto_renew', 'updated_at']
+        else:
+            subscription.status = Subscription.STATUS_PENDING
+            subscription.expires_at = timezone.now()
+            subscription.auto_renew = False
+            update_fields = ['status', 'expires_at', 'auto_renew', 'updated_at']
+
+        subscription.save(update_fields=update_fields)
+        subscription.refresh_from_db()
+
+        return Response({'subscription': _serialize_subscription(subscription)})
+
+
+class AdminTeacherStorageView(APIView):
+    """Добавление дополнительного хранилища преподавателю"""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, teacher_id):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        extra_gb = request.data.get('extra_gb')
+        try:
+            extra_gb = int(extra_gb)
+        except (TypeError, ValueError):
+            extra_gb = 0
+
+        if extra_gb <= 0:
+            return Response({'error': 'Укажите количество гигабайт больше 0'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            teacher = User.objects.get(id=teacher_id, role='teacher')
+        except User.DoesNotExist:
+            return Response({'error': 'Учитель не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        subscription = get_subscription(teacher)
+        subscription.extra_storage_gb += extra_gb
+        subscription.save(update_fields=['extra_storage_gb', 'updated_at'])
+        subscription.refresh_from_db()
+
+        return Response({'subscription': _serialize_subscription(subscription)})
 
 
 class AdminUpdateTeacherZoomView(APIView):

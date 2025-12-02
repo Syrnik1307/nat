@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { TELEGRAM_RESET_DEEPLINK } from '../constants';
 import Logo from './Logo';
 import '../styles/StudentNavBar.css';
 
@@ -34,6 +35,14 @@ const StudentNavBar = () => {
   const handleLogout = () => {
     logout();
     navigate('/auth');
+  };
+
+  const openTelegramResetFlow = () => {
+    const newTab = window.open(TELEGRAM_RESET_DEEPLINK, '_blank');
+    if (!newTab) {
+      window.location.href = TELEGRAM_RESET_DEEPLINK;
+    }
+    setShowProfileMenu(false);
   };
 
   return (
@@ -98,6 +107,13 @@ const StudentNavBar = () => {
                 >
                   Вопросы и Ответы
                 </NavLink>
+                <button
+                  type="button"
+                  className="student-dropdown-item"
+                  onClick={openTelegramResetFlow}
+                >
+                  <span role="img" aria-hidden="true">🔑</span> Сбросить пароль
+                </button>
                 <button
                   type="button"
                   className="student-dropdown-item student-logout"

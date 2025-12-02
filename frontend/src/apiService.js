@@ -27,15 +27,23 @@ export const clearTokens = (force = false) => {
 // - Prod (served by nginx on :80): используем относительный '/api/'
 // - Dev (CRA on :3000 на сервере без proxy): используем абсолютный URL к :80
 let FIXED_API_BASE_URL = '/api/';
+let FIXED_ROOT_ORIGIN = '';
 if (typeof window !== 'undefined') {
     const { origin } = window.location;
     const url = new URL(origin);
     if (url.port === '3000') {
         // Если фронт запущен на :3000, отправляем запросы на :80 (nginx)
         const targetOrigin = `${url.protocol}//${url.hostname}`; // без порта → :80
+        FIXED_ROOT_ORIGIN = targetOrigin;
         FIXED_API_BASE_URL = `${targetOrigin}/api/`;
+    } else {
+        FIXED_ROOT_ORIGIN = origin;
     }
 }
+
+const SCHEDULE_API_BASE_URL = FIXED_ROOT_ORIGIN
+    ? `${FIXED_ROOT_ORIGIN}/schedule/api/`
+    : '/schedule/api/';
 
 const apiClient = axios.create({
     baseURL: FIXED_API_BASE_URL,
@@ -50,6 +58,11 @@ if (typeof window !== 'undefined') {
 
 // Export apiClient for direct use when needed
 export { apiClient };
+
+export const withScheduleApiBase = (config = {}) => ({
+    baseURL: SCHEDULE_API_BASE_URL,
+    ...config
+});
 
 // Attach access token on each request
 apiClient.interceptors.request.use(

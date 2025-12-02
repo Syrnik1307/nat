@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from accounts.models import CustomUser
+from accounts.models import CustomUser, Subscription
 from schedule.models import Group, Lesson
 
 
@@ -70,3 +70,88 @@ class AdminStatsViewTests(APITestCase):
         half_year_entry = next((item for item in growth_periods if item['key'] == 'half_year'), None)
         self.assertIsNotNone(half_year_entry)
         self.assertGreaterEqual(half_year_entry['lessons'], day_entry['lessons'])
+
+
+class AdminTeacherSubscriptionViewTests(APITestCase):
+    def setUp(self):
+        self.admin = CustomUser.objects.create_user(
+            email='chief@example.com',
+            password='StrongPass123',
+            role='admin',
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.teacher = CustomUser.objects.create_user(
+            email='mentor@example.com',
+            password='StrongPass123',
+            role='teacher',
+        )
+        self.client.force_authenticate(user=self.admin)
+        self.url = reverse('accounts:admin_teacher_subscription', args=[self.teacher.id])
+
+    def test_admin_can_activate_subscription_with_default_duration(self):
+        response = self.client.post(self.url, {'action': 'activate'}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        subscription = Subscription.objects.get(user=self.teacher)
+        self.assertEqual(subscription.status, Subscription.STATUS_ACTIVE)
+        self.assertEqual(subscription.plan, Subscription.PLAN_MONTHLY)
+        self.assertFalse(subscription.auto_renew)
+
+        now = timezone.now()
+        self.assertGreaterEqual(subscription.expires_at, now + timedelta(days=27))
+        self.assertLessEqual(subscription.expires_at, now + timedelta(days=29))
+
+    def test_admin_can_deactivate_subscription(self):
+        self.client.post(self.url, {'action': 'activate'}, format='json')
+
+        response = self.client.post(self.url, {'action': 'deactivate'}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        subscription = Subscription.objects.get(user=self.teacher)
+        self.assertEqual(subscription.status, Subscription.STATUS_PENDING)
+        self.assertLessEqual(subscription.expires_at, timezone.now())
+        self.assertFalse(subscription.auto_renew)
+
+    def test_non_admin_cannot_manage_subscription(self):
+        self.client.force_authenticate(user=self.teacher)
+
+        response = self.client.post(self.url, {'action': 'activate'}, format='json')
+
+        self.assertEqual(response.status_code, 403)
+
+
+class AdminTeacherStorageViewTests(APITestCase):
+    def setUp(self):
+        self.admin = CustomUser.objects.create_user(
+            email='chief2@example.com',
+            password='StrongPass123',
+            role='admin',
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.teacher = CustomUser.objects.create_user(
+            email='mentor2@example.com',
+            password='StrongPass123',
+            role='teacher',
+        )
+        self.client.force_authenticate(user=self.admin)
+        self.url = reverse('accounts:admin_teacher_storage', args=[self.teacher.id])
+
+    def test_admin_can_add_extra_storage(self):
+        response = self.client.post(self.url, {'extra_gb': 15}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        subscription = Subscription.objects.get(user=self.teacher)
+        self.assertEqual(subscription.extra_storage_gb, 15)
+        self.assertEqual(response.data['subscription']['extra_storage_gb'], 15)
+        self.assertEqual(response.data['subscription']['total_storage_gb'], subscription.total_storage_gb)
+
+    def test_rejects_invalid_storage_payload(self):
+        response = self.client.post(self.url, {'extra_gb': 0}, format='json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_non_admin_cannot_add_storage(self):
+        self.client.force_authenticate(user=self.teacher)
+        response = self.client.post(self.url, {'extra_gb': 5}, format='json')
+        self.assertEqual(response.status_code, 403)

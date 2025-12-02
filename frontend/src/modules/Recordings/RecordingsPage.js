@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../apiService';
+import api, { withScheduleApiBase } from '../../apiService';
 import RecordingCard from './RecordingCard';
 import RecordingPlayer from './RecordingPlayer';
 import './RecordingsPage.css';
@@ -22,8 +22,14 @@ function RecordingsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get('/schedule/api/recordings/');
-      setRecordings(response.data.results || response.data);
+      const response = await api.get('recordings/', withScheduleApiBase());
+      const data = response?.data;
+      const results = Array.isArray(data?.results) ? data.results : null;
+      const arr = results ?? (Array.isArray(data) ? data : []);
+      if (!results && !Array.isArray(data)) {
+        console.warn('[RecordingsPage] Unexpected recordings response shape:', data);
+      }
+      setRecordings(arr);
     } catch (err) {
       console.error('Failed to load recordings:', err);
       setError('Не удалось загрузить записи. Попробуйте обновить страницу.');
@@ -34,8 +40,14 @@ function RecordingsPage() {
 
   const loadGroups = async () => {
     try {
-      const response = await api.get('/schedule/api/groups/');
-      setGroups(response.data.results || response.data);
+      const response = await api.get('groups/', withScheduleApiBase());
+      const data = response?.data;
+      const results = Array.isArray(data?.results) ? data.results : null;
+      const arr = results ?? (Array.isArray(data) ? data : []);
+      if (!results && !Array.isArray(data)) {
+        console.warn('[RecordingsPage] Unexpected groups response shape:', data);
+      }
+      setGroups(arr);
     } catch (err) {
       console.error('Failed to load groups:', err);
     }
@@ -44,7 +56,7 @@ function RecordingsPage() {
   const openPlayer = (recording) => {
     setSelectedRecording(recording);
     // Отслеживаем просмотр
-    api.post(`/schedule/api/recordings/${recording.id}/view/`)
+    api.post(`recordings/${recording.id}/view/`, {}, withScheduleApiBase())
       .catch(err => console.error('Failed to track view:', err));
   };
 

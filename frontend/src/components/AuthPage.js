@@ -3,12 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { clearTokens } from '../apiService';
 import { Input, Button, Notification } from '../shared/components';
+import { TELEGRAM_RESET_DEEPLINK } from '../constants';
 import SupportWidget from './SupportWidget';
 import './AuthPage.css';
 import EyeIcon from './icons/EyeIcon';
 // import { useRecaptcha } from '../hooks/useRecaptcha'; // отключено
-
-const TELEGRAM_RESET_DEEPLINK = 'https://t.me/nat_panelbot?start=reset';
 
 /**
  * Единая страница аутентификации (вход/регистрация)

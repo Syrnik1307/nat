@@ -1,78 +1,228 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../auth';
-import apiService from '../apiService';
+import React, { useState, useEffect, useMemo } from 'react';
 import './TeachersManage.css';
 
+const statusLabels = {
+  active: 'Активна',
+  pending: 'Ожидает оплаты',
+  expired: 'Истекла',
+  cancelled: 'Отменена',
+  trial: 'Триал',
+  none: 'Нет подписки'
+};
+
 const TeachersManage = ({ onClose }) => {
-  const { user } = useAuth();
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTeacherId, setSelectedTeacherId] = useState(null);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
-  const [showZoomForm, setShowZoomForm] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [storageInput, setStorageInput] = useState(5);
+  const [actionMessage, setActionMessage] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
   const [zoomForm, setZoomForm] = useState({
     zoom_account_id: '',
     zoom_client_id: '',
     zoom_client_secret: '',
     zoom_user_id: ''
   });
-  const [formError, setFormError] = useState('');
-  const [formSuccess, setFormSuccess] = useState('');
 
   useEffect(() => {
     loadTeachers();
-    // Автообновление списка каждые 5 секунд
-    const interval = setInterval(loadTeachers, 5000);
+    const interval = setInterval(() => loadTeachers(true), 20000);
     return () => clearInterval(interval);
   }, []);
 
-  const loadTeachers = async () => {
+  useEffect(() => {
+    if (!selectedTeacherId && teachers.length > 0) {
+      handleSelectTeacher(teachers[0]);
+    }
+  }, [teachers, selectedTeacherId]);
+
+  useEffect(() => {
+    if (selectedTeacherId) {
+      loadTeacherProfile(selectedTeacherId);
+    }
+  }, [selectedTeacherId]);
+
+  useEffect(() => {
+    if (profile?.zoom) {
+      setZoomForm({
+        zoom_account_id: profile.zoom.zoom_account_id || '',
+        zoom_client_id: profile.zoom.zoom_client_id || '',
+        zoom_client_secret: profile.zoom.zoom_client_secret || '',
+        zoom_user_id: profile.zoom.zoom_user_id || ''
+      });
+    }
+  }, [profile]);
+
+  const filteredTeachers = useMemo(() => {
+    if (!searchTerm) return teachers;
+    return teachers.filter((teacher) => {
+      const fullName = `${teacher.last_name || ''} ${teacher.first_name || ''} ${teacher.middle_name || ''}`.toLowerCase();
+      return fullName.includes(searchTerm.toLowerCase()) || (teacher.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+    });
+  }, [teachers, searchTerm]);
+
+  const loadTeachers = async (silent = false) => {
     try {
+      if (!silent) setLoading(true);
       const token = localStorage.getItem('tp_access_token');
       const response = await fetch('/accounts/api/admin/teachers/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       if (!response.ok) {
-        throw new Error('Failed to load teachers');
+        throw new Error('Не удалось загрузить список учителей');
       }
-
       const data = await response.json();
       const list = Array.isArray(data)
         ? data
         : Array.isArray(data?.results)
           ? data.results
           : [];
-
       setTeachers(list);
-      setLoading(false);
+      if (selectedTeacherId) {
+        const updated = list.find((item) => item.id === selectedTeacherId);
+        if (updated) setSelectedTeacher(updated);
+      }
     } catch (error) {
       console.error('Ошибка загрузки учителей:', error);
-      setTeachers([]);
-      setLoading(false);
+      if (!silent) {
+        setActionError(error.message || 'Ошибка загрузки данных');
+      }
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const loadTeacherProfile = async (teacherId) => {
+    try {
+      setProfileLoading(true);
+      const token = localStorage.getItem('tp_access_token');
+      const response = await fetch(`/accounts/api/admin/teachers/${teacherId}/profile/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Не удалось загрузить профиль');
+      }
+      const data = await response.json();
+      setProfile(data);
+    } catch (error) {
+      console.error('Ошибка загрузки профиля:', error);
+      setActionError(error.message || 'Ошибка загрузки профиля');
+    } finally {
+      setProfileLoading(false);
     }
   };
 
   const handleSelectTeacher = (teacher) => {
+    if (!teacher) {
+      setSelectedTeacherId(null);
+      setSelectedTeacher(null);
+      setProfile(null);
+      return;
+    }
+    setSelectedTeacherId(teacher.id);
     setSelectedTeacher(teacher);
-    setZoomForm({
-      zoom_account_id: teacher.zoom_account_id || '',
-      zoom_client_id: teacher.zoom_client_id || '',
-      zoom_client_secret: teacher.zoom_client_secret || '',
-      zoom_user_id: teacher.zoom_user_id || ''
-    });
-    setShowZoomForm(true);
-    setFormError('');
-    setFormSuccess('');
+    setActionError('');
+    setActionMessage('');
+  };
+
+  const handleDeleteTeacher = async (teacherId, teacherName) => {
+    if (!window.confirm(`Удалить учителя ${teacherName}?`)) {
+      return;
+    }
+    try {
+      const token = localStorage.getItem('tp_access_token');
+      const response = await fetch(`/accounts/api/admin/teachers/${teacherId}/delete/`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Не удалось удалить');
+      }
+      await loadTeachers();
+      if (selectedTeacherId === teacherId) {
+        setSelectedTeacherId(null);
+        setSelectedTeacher(null);
+        setProfile(null);
+      }
+      setActionMessage('Учитель удален');
+    } catch (error) {
+      setActionError(error.message || 'Ошибка удаления учителя');
+    }
+  };
+
+  const handleSubscriptionAction = async (action) => {
+    if (!selectedTeacherId) return;
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem('tp_access_token');
+      const response = await fetch(`/accounts/api/admin/teachers/${selectedTeacherId}/subscription/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ action, days: 28 })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Не удалось обновить подписку');
+      }
+      setProfile((prev) => prev ? { ...prev, subscription: data.subscription } : prev);
+      setActionMessage(action === 'activate' ? 'Подписка активирована на 28 дней' : 'Подписка переведена в ожидание');
+      loadTeachers(true);
+    } catch (error) {
+      setActionError(error.message || 'Ошибка обновления подписки');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAddStorage = async () => {
+    if (!selectedTeacherId) return;
+    if (!storageInput || Number(storageInput) <= 0) {
+      setActionError('Введите количество гигабайт больше 0');
+      return;
+    }
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem('tp_access_token');
+      const response = await fetch(`/accounts/api/admin/teachers/${selectedTeacherId}/storage/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ extra_gb: Number(storageInput) })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Не удалось увеличить хранилище');
+      }
+      setProfile((prev) => prev ? { ...prev, subscription: data.subscription } : prev);
+      setActionMessage(`Добавлено ${storageInput} ГБ к хранилищу`);
+      setStorageInput(5);
+      loadTeachers(true);
+    } catch (error) {
+      setActionError(error.message || 'Ошибка увеличения хранилища');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleUpdateZoom = async (e) => {
     e.preventDefault();
-    setFormError('');
-    setFormSuccess('');
-
+    if (!selectedTeacherId) return;
     try {
+      setActionLoading(true);
       const token = localStorage.getItem('tp_access_token');
-      const response = await fetch(`/accounts/api/admin/teachers/${selectedTeacher.id}/zoom/`, {
+      const response = await fetch(`/accounts/api/admin/teachers/${selectedTeacherId}/zoom/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -82,50 +232,34 @@ const TeachersManage = ({ onClose }) => {
       });
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to update');
+        throw new Error(data.error || 'Не удалось сохранить Zoom данные');
       }
-      setFormSuccess('Zoom credentials успешно обновлены!');
-      // Перезагружаем список учителей
-      loadTeachers();
-      // Закрываем форму через 2 секунды
-      setTimeout(() => {
-        setShowZoomForm(false);
-        setSelectedTeacher(null);
-        setFormSuccess('');
-      }, 2000);
+      setActionMessage('Zoom credentials сохранены');
+      loadTeachers(true);
     } catch (error) {
-      setFormError(error.response?.data?.error || 'Ошибка обновления Zoom credentials');
+      setActionError(error.message || 'Ошибка сохранения Zoom данных');
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleDeleteTeacher = async (teacherId, teacherName) => {
-    if (!window.confirm(`Вы уверены, что хотите удалить учителя ${teacherName}? Это действие нельзя отменить.`)) {
-      return;
-    }
+  const formatDate = (value) => {
+    if (!value) return '—';
+    return new Date(value).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
 
-    try {
-      const token = localStorage.getItem('tp_access_token');
-      const response = await fetch(`/accounts/api/admin/teachers/${teacherId}/delete/`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete');
-      }
-      
-      // Обновляем список учителей
-      await loadTeachers();
-      
-      // Если удаляем текущего выбранного учителя, закрываем форму
-      if (selectedTeacher?.id === teacherId) {
-        setShowZoomForm(false);
-        setSelectedTeacher(null);
-      }
-    } catch (error) {
-      alert('Ошибка удаления учителя: ' + (error.message || 'Неизвестная ошибка'));
-    }
+  const formatDateTime = (value) => {
+    if (!value) return '—';
+    return new Date(value).toLocaleString('ru-RU');
+  };
+
+  const formatDuration = (minutes) => {
+    if (!minutes) return '0 ч';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours === 0) return `${mins} мин`;
+    if (mins === 0) return `${hours} ч`;
+    return `${hours} ч ${mins} мин`;
   };
 
   if (loading) {
@@ -138,151 +272,242 @@ const TeachersManage = ({ onClose }) => {
     );
   }
 
-  const teacherList = Array.isArray(teachers) ? teachers : [];
-
   return (
     <div className="teachers-manage-overlay" onClick={onClose}>
       <div className="teachers-manage-modal" onClick={(e) => e.stopPropagation()}>
         <div className="tm-header">
           <h2>👨‍🏫 Управление учителями</h2>
-          <button className="tm-refresh" onClick={loadTeachers} title="Обновить список">
-            🔄
-          </button>
-          <button className="tm-close" onClick={onClose}>✕</button>
+          <div className="tm-header-actions">
+            <button className="tm-refresh" onClick={() => loadTeachers()} title="Обновить список">
+              🔄
+            </button>
+            <button className="tm-close" onClick={onClose}>✕</button>
+          </div>
         </div>
-
-        <div className="tm-content">
-          {!showZoomForm ? (
-            <div className="tm-teachers-list">
-              <div className="tm-list-header">
-                <span>Учитель</span>
-                <span>Email</span>
-                <span>Zoom статус</span>
-                <span>Действия</span>
-              </div>
-              {teacherList.map((teacher) => (
-                <div 
-                  key={teacher.id} 
-                  className="tm-teacher-item"
-                >
-                  <div className="tm-teacher-name" onClick={() => handleSelectTeacher(teacher)}>
-                    {teacher.last_name} {teacher.first_name} {teacher.middle_name}
-                  </div>
-                  <div className="tm-teacher-email" onClick={() => handleSelectTeacher(teacher)}>{teacher.email}</div>
-                  <div className={`tm-zoom-status ${teacher.has_zoom_config ? 'configured' : 'not-configured'}`} onClick={() => handleSelectTeacher(teacher)}>
-                    {teacher.has_zoom_config ? (
-                      <>
-                        <span className="status-icon">✓</span>
-                        Настроен
-                      </>
-                    ) : (
-                      <>
-                        <span className="status-icon">⚠</span>
-                        Не настроен
-                      </>
-                    )}
-                  </div>
-                  <div className="tm-teacher-actions">
-                    <button 
-                      className="tm-delete-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteTeacher(teacher.id, `${teacher.first_name} ${teacher.last_name}`);
-                      }}
-                      title="Удалить учителя"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {teacherList.length === 0 && (
-                <div className="tm-empty">Нет учителей в системе</div>
+        <div className="tm-body">
+          <div className="tm-left-panel">
+            <div className="tm-search-box">
+              <input
+                type="text"
+                placeholder="Поиск по имени или email"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="tm-teacher-cards">
+              {filteredTeachers.map((teacher) => {
+                const status = teacher.subscription?.status || 'none';
+                return (
+                  <button
+                    key={teacher.id}
+                    className={`tm-teacher-card ${teacher.id === selectedTeacherId ? 'active' : ''}`}
+                    onClick={() => handleSelectTeacher(teacher)}
+                  >
+                    <div className="tm-teacher-card-name">
+                      {teacher.last_name} {teacher.first_name}
+                    </div>
+                    <div className="tm-teacher-card-email">{teacher.email}</div>
+                    <div className="tm-teacher-card-meta">
+                      <span className={`tm-status-pill mini ${status}`}>
+                        {statusLabels[status] || status}
+                      </span>
+                      <span className="tm-meta-value">
+                        {teacher.metrics?.lessons_last_30_days || 0} уроков · {teacher.metrics?.total_students || 0} учеников
+                      </span>
+                    </div>
+                    <div className="tm-card-footer">
+                      <span>{teacher.days_on_platform} дней на платформе</span>
+                      <button
+                        className="tm-delete-inline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteTeacher(teacher.id, `${teacher.first_name} ${teacher.last_name}`);
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </button>
+                );
+              })}
+              {filteredTeachers.length === 0 && (
+                <div className="tm-empty">Учителя не найдены</div>
               )}
             </div>
-          ) : (
-            <div className="tm-zoom-form">
-              <button className="tm-back" onClick={() => setShowZoomForm(false)}>
-                ← Назад к списку
-              </button>
-              
-              <div className="tm-selected-teacher">
-                <h3>Настройка Zoom для: {selectedTeacher.last_name} {selectedTeacher.first_name}</h3>
-                <p className="tm-teacher-email-small">{selectedTeacher.email}</p>
+          </div>
+          <div className="tm-right-panel">
+            {actionError && <div className="tm-banner error">{actionError}</div>}
+            {actionMessage && <div className="tm-banner success">{actionMessage}</div>}
+            {!selectedTeacherId && (
+              <div className="tm-empty-state">Выберите учителя слева, чтобы увидеть подробности</div>
+            )}
+            {selectedTeacherId && (
+              <div className="tm-details">
+                {profileLoading && !profile && <div className="tm-loading">Загрузка данных...</div>}
+                {profile && (
+                  <>
+                    <div className="tm-detail-header">
+                      <div>
+                        <h3>{profile.teacher.last_name} {profile.teacher.first_name}</h3>
+                        <p>{profile.teacher.email}</p>
+                      </div>
+                      <span className={`tm-status-pill ${profile.subscription?.status || 'none'}`}>
+                        {statusLabels[profile.subscription?.status] || 'Нет подписки'}
+                      </span>
+                    </div>
+
+                    <div className="tm-info-grid">
+                      <div>
+                        <span>Телефон</span>
+                        <strong>{profile.teacher.phone_number || '—'}</strong>
+                      </div>
+                      <div>
+                        <span>На платформе</span>
+                        <strong>{profile.teacher.days_on_platform} дней</strong>
+                      </div>
+                      <div>
+                        <span>Создан</span>
+                        <strong>{formatDate(profile.teacher.created_at)}</strong>
+                      </div>
+                      <div>
+                        <span>Последний вход</span>
+                        <strong>{formatDateTime(profile.teacher.last_login)}</strong>
+                      </div>
+                    </div>
+
+                    <div className="tm-metrics-grid">
+                      <div className="tm-metric-card">
+                        <span>Уроков за 30 дней</span>
+                        <strong>{profile.metrics.lessons_last_30_days || 0}</strong>
+                        <small>Всего: {profile.metrics.total_lessons || 0}</small>
+                      </div>
+                      <div className="tm-metric-card">
+                        <span>Время преподавания (30 дней)</span>
+                        <strong>{formatDuration(profile.metrics.teaching_minutes_last_30_days)}</strong>
+                        <small>{profile.metrics.teaching_hours_last_30_days} ч</small>
+                      </div>
+                      <div className="tm-metric-card">
+                        <span>Ученики</span>
+                        <strong>{profile.metrics.total_students || 0}</strong>
+                        <small>Групп: {profile.metrics.total_groups || 0}</small>
+                      </div>
+                    </div>
+
+                    <div className="tm-section">
+                      <div className="tm-section-header">
+                        <h4>Подписка</h4>
+                        <span className="tm-plan-label">{profile.subscription?.plan || '—'}</span>
+                      </div>
+                      <div className="tm-subscription-details">
+                        <div>
+                          <span>Статус</span>
+                          <strong>{statusLabels[profile.subscription?.status] || 'Нет'}</strong>
+                        </div>
+                        <div>
+                          <span>Действует до</span>
+                          <strong>{formatDateTime(profile.subscription?.expires_at)}</strong>
+                        </div>
+                        <div>
+                          <span>Осталось дней</span>
+                          <strong>{profile.subscription?.remaining_days ?? 0}</strong>
+                        </div>
+                        <div>
+                          <span>Хранилище</span>
+                          <strong>{profile.subscription?.used_storage_gb || 0} / {profile.subscription?.total_storage_gb || 0} ГБ</strong>
+                        </div>
+                      </div>
+                      <div className="tm-storage-progress">
+                        <div
+                          className="tm-storage-progress-bar"
+                          style={{ width: `${profile.subscription?.storage_usage_percent || 0}%` }}
+                        />
+                      </div>
+                      <div className="tm-actions-row">
+                        <button
+                          className="btn-submit"
+                          disabled={actionLoading}
+                          onClick={() => handleSubscriptionAction('activate')}
+                        >
+                          Активировать на 28 дней
+                        </button>
+                        <button
+                          className="btn-outline"
+                          disabled={actionLoading}
+                          onClick={() => handleSubscriptionAction('deactivate')}
+                        >
+                          Деактивировать
+                        </button>
+                      </div>
+                      <div className="tm-storage-form">
+                        <input
+                          type="number"
+                          min="1"
+                          value={storageInput}
+                          onChange={(e) => setStorageInput(e.target.value)}
+                        />
+                        <button
+                          className="btn-submit"
+                          disabled={actionLoading}
+                          onClick={handleAddStorage}
+                        >
+                          + ГБ хранилища
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="tm-section">
+                      <div className="tm-section-header">
+                        <h4>Zoom credentials</h4>
+                        {profile.zoom?.has_zoom_config ? <span className="tm-status-pill success">Настроено</span> : <span className="tm-status-pill warning">Не настроено</span>}
+                      </div>
+                      <form onSubmit={handleUpdateZoom} className="tm-zoom-grid">
+                        <div className="form-group">
+                          <label>Zoom Account ID *</label>
+                          <input
+                            type="text"
+                            value={zoomForm.zoom_account_id}
+                            onChange={(e) => setZoomForm({ ...zoomForm, zoom_account_id: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Zoom Client ID *</label>
+                          <input
+                            type="text"
+                            value={zoomForm.zoom_client_id}
+                            onChange={(e) => setZoomForm({ ...zoomForm, zoom_client_id: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Zoom Client Secret *</label>
+                          <input
+                            type="password"
+                            value={zoomForm.zoom_client_secret}
+                            onChange={(e) => setZoomForm({ ...zoomForm, zoom_client_secret: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Zoom User ID</label>
+                          <input
+                            type="text"
+                            value={zoomForm.zoom_user_id}
+                            onChange={(e) => setZoomForm({ ...zoomForm, zoom_user_id: e.target.value })}
+                          />
+                        </div>
+                        <div className="tm-actions-row">
+                          <button type="submit" className="btn-submit" disabled={actionLoading}>
+                            Сохранить Zoom данные
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </>
+                )}
               </div>
-
-              <form onSubmit={handleUpdateZoom}>
-                {formError && <div className="form-error">{formError}</div>}
-                {formSuccess && <div className="form-success">{formSuccess}</div>}
-
-                <div className="form-group">
-                  <label>Zoom Account ID *</label>
-                  <input
-                    type="text"
-                    value={zoomForm.zoom_account_id}
-                    onChange={(e) => setZoomForm({ ...zoomForm, zoom_account_id: e.target.value })}
-                    placeholder="6w5GrnCgSgaHwMFFbhmlKw"
-                    required
-                  />
-                  <small>Account ID из Zoom App Marketplace</small>
-                </div>
-
-                <div className="form-group">
-                  <label>Zoom Client ID *</label>
-                  <input
-                    type="text"
-                    value={zoomForm.zoom_client_id}
-                    onChange={(e) => setZoomForm({ ...zoomForm, zoom_client_id: e.target.value })}
-                    placeholder="vNl9EzZTy6h2UifsGVERg"
-                    required
-                  />
-                  <small>Client ID из Zoom App</small>
-                </div>
-
-                <div className="form-group">
-                  <label>Zoom Client Secret *</label>
-                  <input
-                    type="password"
-                    value={zoomForm.zoom_client_secret}
-                    onChange={(e) => setZoomForm({ ...zoomForm, zoom_client_secret: e.target.value })}
-                    placeholder="••••••••••••••••••••"
-                    required
-                  />
-                  <small>Client Secret из Zoom App</small>
-                </div>
-
-                <div className="form-group">
-                  <label>Zoom User ID</label>
-                  <input
-                    type="text"
-                    value={zoomForm.zoom_user_id}
-                    onChange={(e) => setZoomForm({ ...zoomForm, zoom_user_id: e.target.value })}
-                    placeholder="me или email@example.com"
-                  />
-                  <small>User ID в Zoom (можно оставить пустым, будет использовано 'me')</small>
-                </div>
-
-                <div className="tm-help">
-                  <h4>📚 Где взять Zoom credentials:</h4>
-                  <ol>
-                    <li>Перейдите на <a href="https://marketplace.zoom.us/" target="_blank" rel="noopener noreferrer">Zoom App Marketplace</a></li>
-                    <li>Создайте Server-to-Server OAuth приложение</li>
-                    <li>Скопируйте Account ID, Client ID и Client Secret</li>
-                    <li>Активируйте необходимые scopes для создания встреч</li>
-                  </ol>
-                </div>
-
-                <div className="form-actions">
-                  <button type="button" onClick={() => setShowZoomForm(false)} className="btn-cancel">
-                    Отмена
-                  </button>
-                  <button type="submit" className="btn-submit">
-                    Сохранить Zoom credentials
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

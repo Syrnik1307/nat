@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './TeacherRecordingsPage.css';
-import api from '../../apiService';
+import api, { withScheduleApiBase } from '../../apiService';
 import RecordingCard from './RecordingCard';
 import RecordingPlayer from './RecordingPlayer';
 
@@ -19,17 +19,63 @@ function TeacherRecordingsPage() {
     processing: 0,
     failed: 0
   });
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadForm, setUploadForm] = useState({
+    lessonId: '',
+    title: '',
+    file: null,
+    privacyType: 'all', // 'all', 'groups', 'students'
+    selectedGroups: [],
+    selectedStudents: []
+  });
+  const [lessons, setLessons] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
     loadRecordings();
     loadGroups();
+    loadLessons();
+    loadStudents();
   }, []);
+
+  const loadLessons = async () => {
+    try {
+      const response = await api.get('lessons', withScheduleApiBase());
+      const lessonsData = response.data.results || response.data;
+      setLessons(Array.isArray(lessonsData) ? lessonsData : []);
+    } catch (err) {
+      console.error('Error loading lessons:', err);
+    }
+  };
+
+  const loadStudents = async () => {
+    try {
+      const response = await api.get('groups', withScheduleApiBase());
+      const groupsData = response.data.results || response.data;
+      const allStudents = [];
+      groupsData.forEach(group => {
+        if (group.students && Array.isArray(group.students)) {
+          group.students.forEach(student => {
+            if (!allStudents.find(s => s.id === student.id)) {
+              allStudents.push(student);
+            }
+          });
+        }
+      });
+      setStudents(allStudents);
+    } catch (err) {
+      console.error('Error loading students:', err);
+    }
+  };
 
   const loadRecordings = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get('/schedule/api/recordings/teacher/');
+      const response = await api.get('recordings/teacher/', withScheduleApiBase());
       const recordingsData = response.data.results || response.data;
       setRecordings(recordingsData);
       
@@ -51,8 +97,9 @@ function TeacherRecordingsPage() {
 
   const loadGroups = async () => {
     try {
-      const response = await api.get('/schedule/api/teacher/groups/');
-      setGroups(response.data);
+      const response = await api.get('groups', withScheduleApiBase());
+      const groupsData = response.data.results || response.data;
+      setGroups(Array.isArray(groupsData) ? groupsData : []);
     } catch (err) {
       console.error('Error loading groups:', err);
     }
@@ -62,7 +109,7 @@ function TeacherRecordingsPage() {
     setSelectedRecording(recording);
     // Трекаем просмотр
     try {
-      await api.post(`/schedule/api/recordings/${recording.id}/view/`);
+      await api.post(`recordings/${recording.id}/view/`, {}, withScheduleApiBase());
     } catch (err) {
       console.error('Error tracking view:', err);
     }
@@ -80,12 +127,132 @@ function TeacherRecordingsPage() {
     }
 
     try {
-      await api.delete(`/schedule/api/recordings/${recordingId}/`);
+      await api.delete(`recordings/${recordingId}/`, withScheduleApiBase());
       setRecordings(recordings.filter(r => r.id !== recordingId));
       alert('Запись успешно удалена');
     } catch (err) {
       console.error('Error deleting recording:', err);
       alert('Не удалось удалить запись. Попробуйте позже.');
+    }
+  };
+
+  const handleUploadSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!uploadForm.file) {
+      alert('Пожалуйста, выберите видео файл');
+      return;
+    }
+
+    if (!uploadForm.lessonId && !uploadForm.title.trim()) {
+      alert('Укажите название видео или выберите урок');
+      return;
+    }
+
+    if (uploadForm.privacyType === 'groups' && uploadForm.selectedGroups.length === 0) {
+      alert('Выберите хотя бы одну группу');
+      return;
+    }
+
+    if (uploadForm.privacyType === 'students' && uploadForm.selectedStudents.length === 0) {
+      alert('Выберите хотя бы одного ученика');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setUploadProgress(0);
+      
+      const formData = new FormData();
+      formData.append('video', uploadForm.file);
+      formData.append('privacy_type', uploadForm.privacyType);
+      
+      if (uploadForm.lessonId) {
+        formData.append('lesson_id', uploadForm.lessonId);
+      }
+      
+      if (uploadForm.title.trim()) {
+        formData.append('title', uploadForm.title.trim());
+      }
+      
+      if (uploadForm.privacyType === 'groups') {
+        formData.append('allowed_groups', JSON.stringify(uploadForm.selectedGroups));
+      } else if (uploadForm.privacyType === 'students') {
+        formData.append('allowed_students', JSON.stringify(uploadForm.selectedStudents));
+      }
+      
+      const endpoint = uploadForm.lessonId 
+        ? `lessons/${uploadForm.lessonId}/upload_recording/`
+        : 'lessons/upload_standalone_recording/';
+      
+      await api.post(
+        endpoint,
+        formData,
+        {
+          ...withScheduleApiBase(),
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+          }
+        }
+      );
+      
+      alert('Видео успешно загружено!');
+      setShowUploadModal(false);
+      setUploadForm({
+        lessonId: '',
+        title: '',
+        file: null,
+        privacyType: 'all',
+        selectedGroups: [],
+        selectedStudents: []
+      });
+      setUploadProgress(0);
+      loadRecordings();
+    } catch (err) {
+      console.error('Error uploading video:', err);
+      alert(err.response?.data?.detail || 'Не удалось загрузить видео. Попробуйте позже.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith('video/')) {
+        setUploadForm({...uploadForm, file});
+      } else {
+        alert('Пожалуйста, выберите видео файл');
+      }
+    }
+  };
+
+  const handleFileInput = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.type.startsWith('video/')) {
+        setUploadForm({...uploadForm, file});
+      } else {
+        alert('Пожалуйста, выберите видео файл');
+      }
     }
   };
 
@@ -102,8 +269,16 @@ function TeacherRecordingsPage() {
   return (
     <div className="teacher-recordings-page">
       <div className="teacher-recordings-header">
-        <h1>📹 Записи моих уроков</h1>
-        <p className="teacher-recordings-subtitle">Управление и просмотр записей занятий</p>
+        <div>
+          <h1>📹 Записи моих уроков</h1>
+          <p className="teacher-recordings-subtitle">Управление и просмотр записей занятий</p>
+        </div>
+        <button 
+          className="teacher-upload-btn"
+          onClick={() => setShowUploadModal(true)}
+        >
+          ⬆️ Загрузить видео
+        </button>
       </div>
 
       {/* Статистика */}
@@ -232,6 +407,220 @@ function TeacherRecordingsPage() {
           recording={selectedRecording}
           onClose={closePlayer}
         />
+      )}
+
+      {/* Модальное окно загрузки */}
+      {showUploadModal && (
+        <div className="teacher-upload-modal-overlay" onClick={() => setShowUploadModal(false)}>
+          <div className="teacher-upload-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="teacher-upload-modal-header">
+              <h2>⬆️ Загрузить видео урока</h2>
+              <button className="teacher-modal-close" onClick={() => setShowUploadModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleUploadSubmit} className="teacher-upload-form" noValidate>
+              <div className="teacher-upload-field">
+                <label>Урок (необязательно)</label>
+                <select
+                  value={uploadForm.lessonId}
+                  onChange={(e) => setUploadForm({...uploadForm, lessonId: e.target.value})}
+                  className="teacher-upload-select"
+                >
+                  <option value="">Самостоятельное видео (не привязано к уроку)</option>
+                  {lessons.map(lesson => (
+                    <option key={lesson.id} value={lesson.id}>
+                      {lesson.title} - {lesson.group_name} ({new Date(lesson.start_time).toLocaleDateString()})
+                    </option>
+                  ))}
+                </select>
+                <small className="teacher-upload-hint">
+                  Оставьте пустым, если это дополнительный материал или видео не привязано к конкретному уроку
+                </small>
+              </div>
+
+              <div className="teacher-upload-field">
+                <label>Название видео {!uploadForm.lessonId && '*'}</label>
+                <input
+                  type="text"
+                  value={uploadForm.title}
+                  onChange={(e) => setUploadForm({...uploadForm, title: e.target.value})}
+                  placeholder="Например: Дополнительный материал по теме..."
+                  className="teacher-upload-input"
+                />
+                <small className="teacher-upload-hint">
+                  {uploadForm.lessonId 
+                    ? 'Необязательно - будет использовано название урока' 
+                    : 'Обязательно для самостоятельных видео'}
+                </small>
+              </div>
+
+              <div className="teacher-upload-field">
+                <label>Видео файл *</label>
+                <div 
+                  className={`teacher-dropzone ${dragActive ? 'teacher-dropzone-active' : ''}`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                >
+                  {uploadForm.file ? (
+                    <div className="teacher-file-preview">
+                      <div className="teacher-file-icon">🎬</div>
+                      <div className="teacher-file-info">
+                        <div className="teacher-file-name">{uploadForm.file.name}</div>
+                        <div className="teacher-file-size">
+                          {(uploadForm.file.size / (1024 * 1024)).toFixed(2)} MB
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="teacher-file-remove"
+                        onClick={() => setUploadForm({...uploadForm, file: null})}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="teacher-dropzone-icon">📁</div>
+                      <p className="teacher-dropzone-text">
+                        Перетащите видео сюда или
+                      </p>
+                      <label className="teacher-file-input-label">
+                        <input
+                          type="file"
+                          accept="video/*"
+                          onChange={handleFileInput}
+                          className="teacher-file-input-hidden"
+                        />
+                        <span className="teacher-file-input-btn">Выберите файл</span>
+                      </label>
+                      <p className="teacher-dropzone-hint">
+                        Поддерживаются: MP4, AVI, MOV, MKV
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="teacher-upload-field">
+                <label>Приватность *</label>
+                <div className="teacher-privacy-tabs">
+                  <button
+                    type="button"
+                    className={`teacher-privacy-tab ${uploadForm.privacyType === 'all' ? 'active' : ''}`}
+                    onClick={() => setUploadForm({...uploadForm, privacyType: 'all'})}
+                  >
+                    🌍 Все ученики
+                  </button>
+                  <button
+                    type="button"
+                    className={`teacher-privacy-tab ${uploadForm.privacyType === 'groups' ? 'active' : ''}`}
+                    onClick={() => setUploadForm({...uploadForm, privacyType: 'groups'})}
+                  >
+                    👥 Выбрать группы
+                  </button>
+                  <button
+                    type="button"
+                    className={`teacher-privacy-tab ${uploadForm.privacyType === 'students' ? 'active' : ''}`}
+                    onClick={() => setUploadForm({...uploadForm, privacyType: 'students'})}
+                  >
+                    👤 Выбрать учеников
+                  </button>
+                </div>
+
+                {uploadForm.privacyType === 'groups' && (
+                  <div className="teacher-privacy-selector">
+                    <p className="teacher-privacy-hint">Выберите группы, которые смогут видеть это видео:</p>
+                    <div className="teacher-checkbox-list">
+                      {groups.map(group => (
+                        <label key={group.id} className="teacher-checkbox-item">
+                          <input
+                            type="checkbox"
+                            checked={uploadForm.selectedGroups.includes(group.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setUploadForm({
+                                  ...uploadForm,
+                                  selectedGroups: [...uploadForm.selectedGroups, group.id]
+                                });
+                              } else {
+                                setUploadForm({
+                                  ...uploadForm,
+                                  selectedGroups: uploadForm.selectedGroups.filter(id => id !== group.id)
+                                });
+                              }
+                            }}
+                          />
+                          <span>{group.name} ({group.student_count || 0} учеников)</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {uploadForm.privacyType === 'students' && (
+                  <div className="teacher-privacy-selector">
+                    <p className="teacher-privacy-hint">Выберите учеников, которые смогут видеть это видео:</p>
+                    <div className="teacher-checkbox-list">
+                      {students.map(student => (
+                        <label key={student.id} className="teacher-checkbox-item">
+                          <input
+                            type="checkbox"
+                            checked={uploadForm.selectedStudents.includes(student.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setUploadForm({
+                                  ...uploadForm,
+                                  selectedStudents: [...uploadForm.selectedStudents, student.id]
+                                });
+                              } else {
+                                setUploadForm({
+                                  ...uploadForm,
+                                  selectedStudents: uploadForm.selectedStudents.filter(id => id !== student.id)
+                                });
+                              }
+                            }}
+                          />
+                          <span>{student.first_name} {student.last_name} ({student.email})</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {uploading && (
+                <div className="teacher-upload-progress">
+                  <div className="teacher-progress-bar">
+                    <div 
+                      className="teacher-progress-fill"
+                      style={{width: `${uploadProgress}%`}}
+                    />
+                  </div>
+                  <p className="teacher-progress-text">{uploadProgress}%</p>
+                </div>
+              )}
+
+              <div className="teacher-upload-actions">
+                <button 
+                  type="button" 
+                  onClick={() => setShowUploadModal(false)}
+                  className="teacher-cancel-btn"
+                  disabled={uploading}
+                >
+                  Отмена
+                </button>
+                <button 
+                  type="submit" 
+                  className="teacher-submit-btn"
+                  disabled={uploading}
+                >
+                  {uploading ? `Загрузка... ${uploadProgress}%` : '⬆️ Загрузить'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
