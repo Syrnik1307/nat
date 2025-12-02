@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.http import JsonResponse
 from django.db import transaction
+from django.db.models import Q
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 import json
@@ -29,8 +30,48 @@ from .serializers import (
 )
 from .zoom_client import my_zoom_api_client
 from accounts.subscriptions_utils import require_active_subscription
+from accounts.models import CustomUser
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_ids_list(raw_value):
+    """Парсим список идентификаторов из строки или массива."""
+    if raw_value in (None, ''):
+        return []
+    if isinstance(raw_value, (list, tuple)):
+        iterable = raw_value
+    else:
+        try:
+            iterable = json.loads(raw_value)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            iterable = [raw_value]
+
+    ids = []
+    for item in iterable:
+        try:
+            ids.append(int(item))
+        except (TypeError, ValueError):
+            continue
+    return ids
+
+
+def _user_has_recording_access(user, recording):
+    role = getattr(user, 'role', None)
+    if role == 'admin':
+        return True
+    if role == 'teacher':
+        return recording.lesson.teacher_id == user.id
+    if role != 'student':
+        return False
+
+    if recording.visibility == LessonRecording.Visibility.ALL_TEACHER_GROUPS:
+        return Group.objects.filter(teacher=recording.lesson.teacher, students=user).exists()
+
+    if recording.allowed_students.filter(id=user.id).exists():
+        return True
+
+    return recording.allowed_groups.filter(students=user).exists()
 
 
 def log_audit(user, action, resource_type, resource_id=None, request=None, details=None):
@@ -97,7 +138,6 @@ class GroupViewSet(viewsets.ModelViewSet):
         
         for student_id in student_ids:
             try:
-                from accounts.models import CustomUser
                 student = CustomUser.objects.get(id=student_id, role='student')
                 group.students.add(student)
             except CustomUser.DoesNotExist:
@@ -115,7 +155,6 @@ class GroupViewSet(viewsets.ModelViewSet):
         
         for student_id in student_ids:
             try:
-                from accounts.models import CustomUser
                 student = CustomUser.objects.get(id=student_id, role='student')
                 group.students.remove(student)
             except CustomUser.DoesNotExist:
@@ -138,8 +177,6 @@ class GroupViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def join_by_code(self, request):
         """Присоединиться к группе по коду приглашения"""
-        from accounts.models import CustomUser
-        
         invite_code = request.data.get('invite_code', '').strip().upper()
         if not invite_code:
             return Response(
@@ -208,17 +245,8 @@ class LessonViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Название обязательно для самостоятельного видео'}, status=status.HTTP_400_BAD_REQUEST)
         
         privacy_type = request.data.get('privacy_type', 'all')
-        allowed_groups = request.data.get('allowed_groups')
-        allowed_students = request.data.get('allowed_students')
-        
-        try:
-            import json
-            if allowed_groups:
-                allowed_groups = json.loads(allowed_groups) if isinstance(allowed_groups, str) else allowed_groups
-            if allowed_students:
-                allowed_students = json.loads(allowed_students) if isinstance(allowed_students, str) else allowed_students
-        except:
-            pass
+        allowed_groups = _parse_ids_list(request.data.get('allowed_groups'))
+        allowed_students = _parse_ids_list(request.data.get('allowed_students'))
         
         from django.core.files.storage import default_storage
         from django.conf import settings
@@ -262,6 +290,13 @@ class LessonViewSet(viewsets.ModelViewSet):
             storage_provider='local'
         )
         
+        recording.apply_privacy(
+            privacy_type=privacy_type,
+            group_ids=allowed_groups,
+            student_ids=allowed_students,
+            teacher=request.user
+        )
+
         logger.info(f"Standalone video uploaded by {request.user.email}: {saved_path}, privacy: {privacy_type}")
         
         return Response({
@@ -559,6 +594,10 @@ class LessonViewSet(viewsets.ModelViewSet):
             status='ready',
             available_until=available_until
         )
+        recording.apply_privacy(
+            privacy_type=LessonRecording.Visibility.LESSON_GROUP,
+            teacher=lesson.teacher
+        )
         return Response({
             'status': 'created',
             'recording': {
@@ -589,17 +628,8 @@ class LessonViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Видео файл обязателен'}, status=status.HTTP_400_BAD_REQUEST)
         
         privacy_type = request.data.get('privacy_type', 'all')
-        allowed_groups = request.data.get('allowed_groups')
-        allowed_students = request.data.get('allowed_students')
-        
-        try:
-            import json
-            if allowed_groups:
-                allowed_groups = json.loads(allowed_groups) if isinstance(allowed_groups, str) else allowed_groups
-            if allowed_students:
-                allowed_students = json.loads(allowed_students) if isinstance(allowed_students, str) else allowed_students
-        except:
-            pass
+        allowed_groups = _parse_ids_list(request.data.get('allowed_groups'))
+        allowed_students = _parse_ids_list(request.data.get('allowed_students'))
         
         # TODO: Здесь должна быть загрузка файла в Google Drive или другое хранилище
         # Пока сохраняем как временную запись с локальным путем
@@ -625,6 +655,12 @@ class LessonViewSet(viewsets.ModelViewSet):
             status='ready',
             file_size=video_file.size,
             storage_provider='local'
+        )
+        recording.apply_privacy(
+            privacy_type=privacy_type,
+            group_ids=allowed_groups,
+            student_ids=allowed_students,
+            teacher=request.user
         )
         
         # Сохраняем настройки приватности в JSON поле details (если есть)
@@ -1233,18 +1269,25 @@ def student_recordings_list(request):
     try:
         # Находим все записи уроков из групп, где состоит текущий пользователь-студент
         recordings = LessonRecording.objects.filter(
-            lesson__group__students=user,
             status='ready'
+        ).filter(
+            Q(visibility=LessonRecording.Visibility.ALL_TEACHER_GROUPS,
+              lesson__teacher__teaching_groups__students=user)
+            | Q(allowed_groups__students=user)
+            | Q(allowed_students=user)
         ).select_related(
             'lesson',
             'lesson__group',
             'lesson__teacher'
-        ).order_by('-lesson__start_time')
+        ).prefetch_related('allowed_groups', 'allowed_students').order_by('-lesson__start_time').distinct()
         
         # Фильтры
         group_id = request.query_params.get('group_id')
         if group_id:
-            recordings = recordings.filter(lesson__group_id=group_id)
+            recordings = recordings.filter(
+                Q(lesson__group_id=group_id) |
+                Q(allowed_groups__id=group_id)
+            )
         
         # Поиск по названию
         search = request.query_params.get('search')
@@ -1297,12 +1340,15 @@ def teacher_recordings_list(request):
         ).select_related(
             'lesson',
             'lesson__group'
-        ).order_by('-lesson__start_time')
+        ).prefetch_related('allowed_groups', 'allowed_students').order_by('-lesson__start_time').distinct()
         
         # Фильтры
         group_id = request.query_params.get('group_id')
         if group_id:
-            recordings = recordings.filter(lesson__group_id=group_id)
+            recordings = recordings.filter(
+                Q(lesson__group_id=group_id) |
+                Q(allowed_groups__id=group_id)
+            )
         
         status_filter = request.query_params.get('status')
         if status_filter:
@@ -1343,22 +1389,9 @@ def recording_detail(request, recording_id):
             'lesson',
             'lesson__group',
             'lesson__teacher'
-        ).get(id=recording_id)
+        ).prefetch_related('allowed_groups', 'allowed_students').get(id=recording_id)
         
-        # Проверка прав доступа
-        has_access = False
-        
-        if getattr(user, 'role', None) == 'teacher':
-            # Преподаватель видит свои записи
-            has_access = recording.lesson.teacher_id == user.id
-        elif getattr(user, 'role', None) == 'student':
-            # Студент видит записи своих групп
-            has_access = bool(recording.lesson.group and recording.lesson.group.students.filter(id=user.id).exists())
-        elif getattr(user, 'role', None) == 'admin':
-            # Админ видит все
-            has_access = True
-        
-        if not has_access:
+        if not _user_has_recording_access(user, recording):
             return Response({
                 'error': 'У вас нет доступа к этой записи'
             }, status=status.HTTP_403_FORBIDDEN)
@@ -1387,19 +1420,9 @@ def recording_track_view(request, recording_id):
     user = request.user
     
     try:
-        recording = LessonRecording.objects.select_related('lesson', 'lesson__group').get(id=recording_id)
+        recording = LessonRecording.objects.select_related('lesson', 'lesson__group').prefetch_related('allowed_groups', 'allowed_students').get(id=recording_id)
         
-        # Проверка прав доступа (аналогично recording_detail)
-        has_access = False
-        
-        if getattr(user, 'role', None) == 'teacher':
-            has_access = recording.lesson.teacher_id == user.id
-        elif getattr(user, 'role', None) == 'student':
-            has_access = bool(recording.lesson.group and recording.lesson.group.students.filter(id=user.id).exists())
-        elif getattr(user, 'role', None) == 'admin':
-            has_access = True
-        
-        if not has_access:
+        if not _user_has_recording_access(user, recording):
             return Response({
                 'error': 'У вас нет доступа к этой записи'
             }, status=status.HTTP_403_FORBIDDEN)
@@ -1513,35 +1536,37 @@ def lesson_recording(request, lesson_id):
     
     try:
         lesson = Lesson.objects.select_related('group', 'teacher').get(id=lesson_id)
-        
-        # Проверка прав доступа к уроку
-        has_access = False
-        
-        if getattr(user, 'role', None) == 'teacher':
-            has_access = lesson.teacher_id == user.id
-        elif getattr(user, 'role', None) == 'student':
-            has_access = bool(lesson.group and lesson.group.students.filter(id=user.id).exists())
-        elif getattr(user, 'role', None) == 'admin':
-            has_access = True
-        
-        if not has_access:
-            return Response({
-                'error': 'У вас нет доступа к этому уроку'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        # Ищем запись урока
+
+        role = getattr(user, 'role', None)
+        base_access = False
+        if role == 'admin':
+            base_access = True
+        elif role == 'teacher' and lesson.teacher_id == user.id:
+            base_access = True
+        elif role == 'student' and lesson.group and lesson.group.students.filter(id=user.id).exists():
+            base_access = True
+
         try:
             recording = LessonRecording.objects.select_related(
                 'lesson',
                 'lesson__group',
                 'lesson__teacher'
-            ).get(lesson_id=lesson_id, status='ready')
-            
+            ).prefetch_related('allowed_groups', 'allowed_students').get(lesson_id=lesson_id, status='ready')
+
+            if not base_access and not _user_has_recording_access(user, recording):
+                return Response({
+                    'error': 'У вас нет доступа к этой записи'
+                }, status=status.HTTP_403_FORBIDDEN)
+
             serializer = LessonRecordingSerializer(recording)
             return Response(serializer.data)
-        
+
         except LessonRecording.DoesNotExist:
-            # Проверяем есть ли запись в обработке
+            if not base_access:
+                return Response({
+                    'error': 'У вас нет доступа к этому уроку'
+                }, status=status.HTTP_403_FORBIDDEN)
+
             processing = LessonRecording.objects.filter(
                 lesson_id=lesson_id,
                 status='processing'

@@ -33,7 +33,7 @@ const Calendar = () => {
   const loadLessons = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await apiService.get('/api/schedule/lessons/');
+      const response = await apiService.get('/schedule/lessons/');
       const resolveColor = (status) => {
         switch (status) {
           case 'scheduled':

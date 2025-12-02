@@ -1,0 +1,3 @@
+
+# Google Drive OAuth2 token file
+GDRIVE_TOKEN_FILE = os.environ.get('GDRIVE_TOKEN_FILE', os.path.join(BASE_DIR, 'gdrive_token.json'))

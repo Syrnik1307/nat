@@ -65,13 +65,25 @@ function RecordingsPage() {
   };
 
   // Фильтрация записей
+  const getAccessGroupIds = (rec) => {
+    if (Array.isArray(rec.access_groups) && rec.access_groups.length > 0) {
+      return rec.access_groups.map((group) => group.id);
+    }
+    const fallbackId = rec.lesson_info?.group_id;
+    return fallbackId ? [fallbackId] : [];
+  };
+
   const filteredRecordings = recordings.filter(rec => {
-    const matchesSearch = !searchTerm || 
-      rec.lesson_info?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      rec.lesson_info?.subject?.toLowerCase().includes(searchTerm.toLowerCase());
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const matchesSearch = !normalizedSearch || 
+      rec.lesson_info?.title?.toLowerCase().includes(normalizedSearch) ||
+      rec.lesson_info?.subject?.toLowerCase().includes(normalizedSearch) ||
+      (Array.isArray(rec.access_groups) && rec.access_groups
+        .some(group => (group.name || '').toLowerCase().includes(normalizedSearch)));
     
+    const accessGroupIds = getAccessGroupIds(rec);
     const matchesGroup = groupFilter === 'all' || 
-      rec.lesson_info?.group === groupFilter;
+      accessGroupIds.includes(Number(groupFilter));
     
     return matchesSearch && matchesGroup;
   });
@@ -122,7 +134,7 @@ function RecordingsPage() {
           >
             <option value="all">Все группы</option>
             {groups.map(group => (
-              <option key={group.id} value={group.name}>
+              <option key={group.id} value={group.id}>
                 {group.name}
               </option>
             ))}

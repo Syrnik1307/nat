@@ -6,7 +6,15 @@ function RecordingPlayer({ recording, onClose }) {
   const copyTimeoutRef = useRef(null);
   const lessonInfo = recording.lesson_info || {};
   const subject = lessonInfo.subject || 'Запись урока';
-  const groupName = lessonInfo.group || lessonInfo.group_name || null;
+  const accessGroups = Array.isArray(recording.access_groups) && recording.access_groups.length > 0
+    ? recording.access_groups
+    : (lessonInfo.group || lessonInfo.group_name
+        ? [{ id: lessonInfo.group_id, name: lessonInfo.group || lessonInfo.group_name }]
+        : []);
+  const accessStudents = Array.isArray(recording.access_students) ? recording.access_students : [];
+  const groupName = accessGroups.length > 1
+    ? `${accessGroups.length} групп`
+    : accessGroups[0]?.name || null;
 
   useEffect(() => {
     const handleEscape = (e) => {
@@ -71,7 +79,8 @@ function RecordingPlayer({ recording, onClose }) {
 
   const detailRows = [
     { label: 'Статус', value: statusLabels[recording.status] || statusLabels.default },
-    { label: 'Группа', value: groupName },
+    { label: 'Группы', value: accessGroups.map((group) => group.name).join(', ') || null },
+    { label: 'Индивидуальный доступ', value: accessStudents.map((student) => student.name).join(', ') || null },
     { label: 'Продолжительность', value: recording.duration_display ? `${recording.duration_display} минут` : null },
     { label: 'Просмотров', value: typeof recording.views_count === 'number' ? `${recording.views_count}` : null },
     { label: 'Размер файла', value: recording.file_size_mb ? `${recording.file_size_mb} МБ` : null },

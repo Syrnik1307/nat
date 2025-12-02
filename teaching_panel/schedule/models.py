@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 
 
 class ZoomAccount(models.Model):
@@ -212,6 +213,13 @@ class Lesson(models.Model):
 
 class LessonRecording(models.Model):
     """Запись урока (ссылка на облачную запись Zoom + архив)"""
+
+    class Visibility(models.TextChoices):
+        LESSON_GROUP = 'lesson_group', _('Только группа урока')
+        ALL_TEACHER_GROUPS = 'all_teacher_groups', _('Все группы преподавателя')
+        CUSTOM_GROUPS = 'custom_groups', _('Выбранные группы')
+        CUSTOM_STUDENTS = 'custom_students', _('Выбранные ученики')
+
     lesson = models.ForeignKey(
         Lesson,
         on_delete=models.CASCADE,
@@ -297,6 +305,27 @@ class LessonRecording(models.Model):
         ],
         default='processing'
     )
+
+    visibility = models.CharField(
+        _('видимость'),
+        max_length=32,
+        choices=Visibility.choices,
+        default=Visibility.LESSON_GROUP,
+        help_text=_('Определяет, кому доступна запись')
+    )
+    allowed_groups = models.ManyToManyField(
+        Group,
+        related_name='recording_access',
+        blank=True,
+        verbose_name=_('доступные группы')
+    )
+    allowed_students = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='recording_access',
+        blank=True,
+        limit_choices_to={'role': 'student'},
+        verbose_name=_('доступные студенты')
+    )
     
     # Доступность
     available_until = models.DateTimeField(
@@ -321,6 +350,86 @@ class LessonRecording(models.Model):
 
     def __str__(self):
         return f"Recording for {self.lesson.title} ({self.created_at.strftime('%d.%m.%Y %H:%M')})"
+
+    def ensure_base_group_access(self):
+        """Убеждаемся, что базовая группа урока всегда имеет доступ."""
+        if self.lesson_id and self.lesson and self.lesson.group_id:
+            if not self.allowed_groups.filter(id=self.lesson.group_id).exists():
+                self.allowed_groups.add(self.lesson.group)
+
+    def apply_privacy(self, privacy_type=None, group_ids=None, student_ids=None, teacher=None):
+        """Применяет настройки приватности к записи."""
+        visibility_map = {
+            None: self.Visibility.LESSON_GROUP,
+            'lesson_group': self.Visibility.LESSON_GROUP,
+            self.Visibility.LESSON_GROUP: self.Visibility.LESSON_GROUP,
+            'all': self.Visibility.ALL_TEACHER_GROUPS,
+            self.Visibility.ALL_TEACHER_GROUPS: self.Visibility.ALL_TEACHER_GROUPS,
+            'groups': self.Visibility.CUSTOM_GROUPS,
+            self.Visibility.CUSTOM_GROUPS: self.Visibility.CUSTOM_GROUPS,
+            'students': self.Visibility.CUSTOM_STUDENTS,
+            self.Visibility.CUSTOM_STUDENTS: self.Visibility.CUSTOM_STUDENTS,
+        }
+        resolved_visibility = visibility_map.get(privacy_type, self.Visibility.LESSON_GROUP)
+
+        teacher = teacher or (self.lesson.teacher if self.lesson_id and self.lesson else None)
+
+        def _clean_ids(values):
+            cleaned = []
+            if not values:
+                return cleaned
+            for value in values:
+                try:
+                    cleaned.append(int(value))
+                except (TypeError, ValueError):
+                    continue
+            return cleaned
+
+        group_ids = set(_clean_ids(group_ids))
+        student_ids = set(_clean_ids(student_ids))
+
+        if self.lesson_id and self.lesson and self.lesson.group_id:
+            group_ids.add(self.lesson.group_id)
+
+        self.visibility = resolved_visibility
+        self.save(update_fields=['visibility'])
+
+        if resolved_visibility == self.Visibility.ALL_TEACHER_GROUPS:
+            # Достаточно хранить базовую группу как fallback
+            if group_ids:
+                base_groups = Group.objects.filter(id__in=group_ids)
+                self.allowed_groups.set(base_groups)
+            else:
+                self.allowed_groups.clear()
+            self.allowed_students.clear()
+            return
+
+        if resolved_visibility == self.Visibility.CUSTOM_GROUPS:
+            group_qs = Group.objects.filter(id__in=group_ids)
+            if teacher:
+                group_qs = group_qs.filter(teacher=teacher)
+            self.allowed_groups.set(group_qs)
+            self.allowed_students.clear()
+            return
+
+        if resolved_visibility == self.Visibility.CUSTOM_STUDENTS:
+            UserModel = get_user_model()
+            students_qs = UserModel.objects.filter(id__in=student_ids, role='student')
+            if group_ids:
+                base_groups = Group.objects.filter(id__in=group_ids)
+                self.allowed_groups.set(base_groups)
+            else:
+                self.allowed_groups.clear()
+            self.allowed_students.set(students_qs)
+            return
+
+        # По умолчанию запись доступна только базовой группе
+        if group_ids:
+            base_groups = Group.objects.filter(id__in=group_ids)
+            self.allowed_groups.set(base_groups)
+        else:
+            self.allowed_groups.clear()
+        self.allowed_students.clear()
 
 
 class Attendance(models.Model):

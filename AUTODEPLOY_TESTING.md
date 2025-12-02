@@ -1,6 +1,57 @@
 # 🧪 Тестирование автодеплой скрипта
 
+> Актуальная инструкция по деплою: см. `AUTO_DEPLOY_GUIDE_NEW.md` (содержит авто- и ручные шаги). Этот файл — чек-лист для тестирования скрипта и быстрые команды.
+
 ## ✅ Чек-лист перед использованием
+
+## ⚡ Быстрый мануальный деплой (если авто-скрипт не используется)
+
+Ниже — минимальный набор проверенных команд для ручного деплоя на прод. Команды для PowerShell (локально), выполняются против сервера `72.56.81.163`.
+
+```powershell
+# 1) Залить свежий фронтенд билд
+scp -r C:/Users/User/Desktop/nat/frontend/build tp:/tmp/frontend_build
+ssh tp "sudo rm -rf /var/www/teaching_panel/frontend && sudo mv /tmp/frontend_build /var/www/teaching_panel/frontend"
+
+# 2) Выставить права/владельца (фиксирует 403/permission denied в nginx)
+ssh tp "sudo chown -R www-data:www-data /var/www/teaching_panel/frontend && sudo find /var/www/teaching_panel/frontend -type f -exec chmod 644 {} \; && sudo find /var/www/teaching_panel/frontend -type d -exec chmod 755 {} \;"
+
+# 3) Применить миграции и собрать статику
+ssh tp "cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && python manage.py migrate"
+ssh tp "cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && python manage.py collectstatic --noinput"
+
+# 4) Перезапустить сервисы
+ssh tp "sudo systemctl restart teaching_panel"
+ssh tp "sudo systemctl restart nginx"
+
+# 5) Смок-проверки
+ssh tp "systemctl is-active teaching_panel && systemctl is-active nginx"
+ssh tp "curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1/"
+```
+
+Если видите `403`/`Permission denied` по статике — убедитесь, что фронтенд действительно в ` /var/www/teaching_panel/frontend` и права выставлены как выше.
+
+### Настройка лимита загрузки (большие файлы)
+
+Для аплоада крупных записей увеличьте лимит в `nginx_teaching_panel.conf`:
+
+```nginx
+server {
+  # ...
+  client_max_body_size 512M;  # подберите нужный размер
+}
+```
+
+После правки:
+
+```powershell
+ssh tp "sudo systemctl reload nginx"
+```
+
+### Частые точки отказа и быстрые фиксы
+- Статика фронтенда: размещайте файлы в ` /var/www/teaching_panel/frontend` (если конфиг ожидает `build/`, создайте каталог и синхронизируйте: `rsync -a --delete frontend/ frontend/build/`).
+- `manage.py` not found: выполняйте команды из ` /var/www/teaching_panel/teaching_panel` и активируйте venv `source ../venv/bin/activate`.
+- 404 на `/api/health`: эндпоинт может отсутствовать — проверяйте главную (`/`) и рабочие страницы приложения.
 
 ### Предварительные требования
 

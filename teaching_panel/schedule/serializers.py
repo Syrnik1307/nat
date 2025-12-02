@@ -361,6 +361,8 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
     file_size_mb = serializers.SerializerMethodField()
     duration_display = serializers.SerializerMethodField()
     available_days_left = serializers.SerializerMethodField()
+    access_groups = serializers.SerializerMethodField()
+    access_students = serializers.SerializerMethodField()
 
     def get_lesson_info(self, obj):
         if not obj.lesson:
@@ -369,7 +371,11 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
         return {
             'id': lesson.id,
             'title': lesson.title,
+            # Frontend expects subject/group_name/group_id fields for filtering
+            'subject': lesson.title,
             'group': lesson.group.name if lesson.group else None,
+            'group_name': lesson.group.name if lesson.group else None,
+            'group_id': lesson.group.id if lesson.group else None,
             'teacher': {
                 'id': lesson.teacher.id,
                 'name': f"{lesson.teacher.first_name} {lesson.teacher.last_name}".strip() or lesson.teacher.email
@@ -398,6 +404,31 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
             return 0
         return None
 
+    def get_access_groups(self, obj):
+        groups = getattr(obj, 'allowed_groups', None)
+        if not groups:
+            return []
+        return [
+            {
+                'id': group.id,
+                'name': group.name
+            }
+            for group in groups.all()
+        ]
+
+    def get_access_students(self, obj):
+        students = getattr(obj, 'allowed_students', None)
+        if not students:
+            return []
+        return [
+            {
+                'id': student.id,
+                'name': student.get_full_name() or student.email,
+                'email': student.email
+            }
+            for student in students.all()
+        ]
+
     class Meta:
         model = LessonRecording
         fields = [
@@ -408,6 +439,7 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
             'play_url', 'download_url', 'thumbnail_url',
             'storage_provider', 'gdrive_file_id',
             'status', 'views_count',
+            'visibility', 'access_groups', 'access_students',
             'available_until', 'available_days_left',
             'created_at', 'updated_at'
         ]
@@ -415,7 +447,7 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
             'id', 'zoom_recording_id', 'file_size',
             'play_url', 'download_url', 'thumbnail_url',
             'storage_provider', 'gdrive_file_id',
-            'status', 'views_count',
+            'status', 'views_count', 'visibility',
             'created_at', 'updated_at'
         ]
 

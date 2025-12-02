@@ -92,28 +92,6 @@ const StudentNavBar = () => {
                 >
                   Профиль
                 </NavLink>
-                <NavLink
-                  to="/messages"
-                  className="student-dropdown-item"
-                  onClick={() => setShowProfileMenu(false)}
-                >
-                  Сообщения
-                </NavLink>
-
-                <NavLink
-                  to="/help"
-                  className="student-dropdown-item"
-                  onClick={() => setShowProfileMenu(false)}
-                >
-                  Вопросы и Ответы
-                </NavLink>
-                <button
-                  type="button"
-                  className="student-dropdown-item"
-                  onClick={openTelegramResetFlow}
-                >
-                  <span role="img" aria-hidden="true">🔑</span> Сбросить пароль
-                </button>
                 <button
                   type="button"
                   className="student-dropdown-item student-logout"

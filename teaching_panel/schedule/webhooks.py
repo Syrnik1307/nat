@@ -206,6 +206,11 @@ def handle_recording_completed(payload):
                 lesson_recording.file_size = file_size
                 lesson_recording.status = 'processing'
                 lesson_recording.save()
+
+            lesson_recording.apply_privacy(
+                privacy_type=LessonRecording.Visibility.LESSON_GROUP,
+                teacher=lesson.teacher
+            )
             
             logger.info(f"{'Created' if created else 'Updated'} LessonRecording {lesson_recording.id}")
             

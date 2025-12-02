@@ -256,11 +256,32 @@ function TeacherRecordingsPage() {
     }
   };
 
+  const getRecordingAccessGroupIds = (recording) => {
+    if (Array.isArray(recording.access_groups) && recording.access_groups.length > 0) {
+      return recording.access_groups.map(group => group.id);
+    }
+    const fallbackId = recording.lesson_info?.group_id;
+    return fallbackId ? [fallbackId] : [];
+  };
+
   // Фильтрация записей
   const filteredRecordings = recordings.filter(recording => {
-    const matchesSearch = recording.lesson_info?.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         recording.lesson_info?.group_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesGroup = groupFilter === 'all' || recording.lesson_info?.group_id === parseInt(groupFilter);
+    const lessonInfo = recording.lesson_info || {};
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const lessonTitle = (lessonInfo.title || '').toLowerCase();
+    const lessonSubject = (lessonInfo.subject || '').toLowerCase();
+    const lessonGroupName = (lessonInfo.group_name || lessonInfo.group || '').toLowerCase();
+    const matchesSearch = !normalizedSearch 
+      || lessonTitle.includes(normalizedSearch)
+      || lessonSubject.includes(normalizedSearch)
+      || lessonGroupName.includes(normalizedSearch)
+      || (Array.isArray(recording.access_groups) && recording.access_groups
+        .some(group => (group.name || '').toLowerCase().includes(normalizedSearch)));
+
+    const accessGroupIds = getRecordingAccessGroupIds(recording);
+    const matchesGroup = groupFilter === 'all' 
+      || accessGroupIds.includes(Number(groupFilter));
+
     const matchesStatus = statusFilter === 'all' || recording.status === statusFilter;
     
     return matchesSearch && matchesGroup && matchesStatus;

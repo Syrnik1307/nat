@@ -74,6 +74,43 @@ cd C:\Users\User\Desktop\nat
 .\auto_deploy.ps1
 ```
 
+### ⚡ Быстрый мануальный деплой (если авто-скрипт не используется)
+
+Проверенные команды для ручного деплоя на прод (PowerShell локально):
+
+```powershell
+# 1) Залить свежий фронтенд билд
+scp -r C:/Users/User/Desktop/nat/frontend/build tp:/tmp/frontend_build
+ssh tp "sudo rm -rf /var/www/teaching_panel/frontend && sudo mv /tmp/frontend_build /var/www/teaching_panel/frontend"
+
+# 2) Выставить права/владельца (фиксирует 403/permission denied в nginx)
+ssh tp "sudo chown -R www-data:www-data /var/www/teaching_panel/frontend && sudo find /var/www/teaching_panel/frontend -type f -exec chmod 644 {} \\; && sudo find /var/www/teaching_panel/frontend -type d -exec chmod 755 {} \\;"
+
+# 3) Применить миграции и собрать статику
+ssh tp "cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && python manage.py migrate"
+ssh tp "cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && python manage.py collectstatic --noinput"
+
+# 4) Перезапустить сервисы
+ssh tp "sudo systemctl restart teaching_panel"
+ssh tp "sudo systemctl restart nginx"
+
+# 5) Смок-проверки
+ssh tp "systemctl is-active teaching_panel && systemctl is-active nginx"
+ssh tp "curl -s -o /dev/null -w '%{http_code}\\n' http://127.0.0.1/"
+```
+
+Если видите `403`/`Permission denied` по статике — убедитесь, что фронтенд действительно в `/var/www/teaching_panel/frontend` и права выставлены как выше.
+
+Для крупных загрузок в `nginx_teaching_panel.conf` поднимите лимит:
+
+```nginx
+server {
+  client_max_body_size 512M;  # подберите нужный размер
+}
+```
+
+Затем: `ssh tp "sudo systemctl reload nginx"`.
+
 ### 📋 Меню автодеплоя:
 
 ```

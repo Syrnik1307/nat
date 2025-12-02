@@ -38,6 +38,16 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
     }
   };
 
+  const accessGroups = Array.isArray(recording.access_groups) && recording.access_groups.length > 0
+    ? recording.access_groups
+    : (recording.lesson_info?.group
+        ? [{ id: recording.lesson_info.group_id, name: recording.lesson_info.group }]
+        : []);
+
+  const primaryGroupLabel = accessGroups.length > 1
+    ? `${accessGroups.length} групп`
+    : accessGroups[0]?.name;
+
   return (
     <div className="recording-card">
       {/* Превью */}
@@ -66,10 +76,23 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
         </div>
 
         <div className="recording-subtitle">
-          {recording.lesson_info?.group && (
-            <span className="group-name">{recording.lesson_info.group}</span>
+          {primaryGroupLabel && (
+            <span className="group-pill primary">{primaryGroupLabel}</span>
           )}
         </div>
+
+        {accessGroups.length > 0 && (
+          <div className="recording-groups-list">
+            {accessGroups.slice(0, 4).map((group) => (
+              <span key={group.id} className="group-pill">
+                {group.name}
+              </span>
+            ))}
+            {accessGroups.length > 4 && (
+              <span className="group-pill more">+{accessGroups.length - 4}</span>
+            )}
+          </div>
+        )}
 
         <div className="recording-meta">
           <div className="meta-row">
