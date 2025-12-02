@@ -82,12 +82,12 @@ class GoogleDriveManager:
             logger.error(f"Failed to create Google Drive folder: {e}")
             raise
     
-    def upload_file(self, file_path, file_name, folder_id=None, mime_type='video/mp4'):
+    def upload_file(self, file_path_or_object, file_name, folder_id=None, mime_type='video/mp4'):
         """
         Загрузить файл в Google Drive
         
         Args:
-            file_path: Путь к локальному файлу
+            file_path_or_object: Путь к локальному файлу (str) или file object
             file_name: Имя файла в Google Drive
             folder_id: ID папки назначения
             mime_type: MIME тип файла
@@ -103,11 +103,25 @@ class GoogleDriveManager:
             elif self.root_folder_id:
                 file_metadata['parents'] = [self.root_folder_id]
             
-            media = MediaFileUpload(
-                file_path,
-                mimetype=mime_type,
-                resumable=True
-            )
+            # Поддержка как путей, так и file objects
+            if isinstance(file_path_or_object, str):
+                media = MediaFileUpload(
+                    file_path_or_object,
+                    mimetype=mime_type,
+                    resumable=True
+                )
+            else:
+                # Если передан file object, сохраним во временный файл
+                import tempfile
+                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_name)[1]) as tmp:
+                    tmp.write(file_path_or_object.read())
+                    tmp_path = tmp.name
+                
+                media = MediaFileUpload(
+                    tmp_path,
+                    mimetype=mime_type,
+                    resumable=True
+                )
             
             file = self.service.files().create(
                 body=file_metadata,
@@ -116,6 +130,13 @@ class GoogleDriveManager:
             ).execute()
             
             file_id = file.get('id')
+            
+            # Удалить временный файл если создавался
+            if not isinstance(file_path_or_object, str):
+                try:
+                    os.remove(tmp_path)
+                except:
+                    pass
             
             # Делаем файл доступным по ссылке
             self.set_file_public(file_id)
@@ -132,6 +153,12 @@ class GoogleDriveManager:
             
         except Exception as e:
             logger.error(f"Failed to upload file to Google Drive: {e}")
+            # Удалить временный файл в случае ошибки
+            if not isinstance(file_path_or_object, str):
+                try:
+                    os.remove(tmp_path)
+                except:
+                    pass
             raise
     
     def set_file_public(self, file_id):
