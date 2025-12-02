@@ -9,10 +9,30 @@ const GroupInviteModal = ({ group, onClose }) => {
 
   const inviteLink = `${window.location.origin}/student?code=${inviteCode}`;
 
-  const handleCopy = (text) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      // Fallback для старых браузеров или HTTP контекста
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('Fallback copy failed:', err);
+        alert('Не удалось скопировать. Скопируйте вручную.');
+      }
+      document.body.removeChild(textArea);
+    }
   };
 
   const handleRegenerate = async () => {

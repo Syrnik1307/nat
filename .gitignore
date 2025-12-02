@@ -40,6 +40,12 @@ env/
 .env.production
 .env.*.local
 
+# Google Drive OAuth credentials
+client_secrets.json
+gdrive_token.json
+**/client_secrets.json
+**/gdrive_token.json
+
 # Deployment files (keep templates)
 deployment/*.pid
 deployment/*.sock
