@@ -1,4 +1,5 @@
 import React from 'react';
+import FileUploader from './FileUploader';
 
 const clampPercent = (value) => {
   const number = Number(value);
@@ -8,7 +9,7 @@ const clampPercent = (value) => {
   return Math.round(number * 10) / 10;
 };
 
-const HotspotQuestion = ({ question, onChange }) => {
+const HotspotQuestion = React.memo(({ question, onChange }) => {
   const { config = {} } = question;
   const hotspots = Array.isArray(config.hotspots) ? config.hotspots : [];
 
@@ -51,14 +52,14 @@ const HotspotQuestion = ({ question, onChange }) => {
   return (
     <div className="hc-question-editor">
       <div className="form-group">
-        <label className="form-label">Ссылка на изображение</label>
-        <input
-          className="form-input"
-          placeholder="https://example.com/image.png"
-          value={config.imageUrl || ''}
-          onChange={(event) => updateConfig({ imageUrl: event.target.value })}
+        <label className="form-label">Изображение для задания</label>
+        <FileUploader
+          fileType="image"
+          currentUrl={config.imageUrl || ''}
+          onUploadSuccess={(url) => updateConfig({ imageUrl: url })}
+          accept="image/*"
         />
-        <small className="gm-hint">Мы добавим визуальную разметку, когда подключим react-image-annotate.</small>
+        <small className="gm-hint">Файл загружается в Google Drive в вашу папку</small>
       </div>
 
       {config.imageUrl && (
@@ -168,6 +169,10 @@ const HotspotQuestion = ({ question, onChange }) => {
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  return prevProps.question.id === nextProps.question.id &&
+         JSON.stringify(prevProps.question.config) === JSON.stringify(nextProps.question.config) &&
+         prevProps.question.question_text === nextProps.question.question_text;
+});
 
 export default HotspotQuestion;

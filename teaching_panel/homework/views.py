@@ -24,7 +24,8 @@ class HomeworkViewSet(viewsets.ModelViewSet):
             if getattr(user, 'role', None) == 'teacher':
                 return qs.filter(teacher=user)
             elif getattr(user, 'role', None) == 'student':
-                return qs.filter(lesson__group__students=user) | qs.filter(teacher__teaching_groups__students=user)
+                # Студенты видят только опубликованные ДЗ из своих групп
+                return (qs.filter(lesson__group__students=user) | qs.filter(teacher__teaching_groups__students=user)).filter(status='published')
         return qs.none()
 
     def get_serializer_class(self):
@@ -37,6 +38,147 @@ class HomeworkViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         homework = serializer.save()
         self._notify_students_about_new_homework(homework)
+
+    @action(detail=True, methods=['post'], url_path='publish')
+    def publish(self, request, pk=None):
+        """Опубликовать домашнее задание"""
+        homework = self.get_object()
+        
+        # Проверки
+        if homework.status == 'published':
+            return Response(
+                {'detail': 'ДЗ уже опубликовано'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not homework.questions.exists():
+            return Response(
+                {'detail': 'Добавьте хотя бы один вопрос'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Публикация
+        homework.status = 'published'
+        homework.published_at = timezone.now()
+        homework.save()
+        
+        # Отправить уведомления студентам
+        self._notify_students_about_new_homework(homework)
+        
+        return Response({
+            'status': 'success',
+            'message': 'ДЗ опубликовано',
+            'homework_id': homework.id,
+            'published_at': homework.published_at,
+        })
+
+    @action(detail=False, methods=['post'], url_path='upload-file')
+    def upload_file(self, request):
+        """
+        Загрузить файл (изображение или аудио) для вопроса домашки в Google Drive
+        
+        POST /api/homework/homeworks/upload-file/
+        Body (multipart/form-data):
+            - file: файл (изображение или аудио)
+            - file_type: 'image' или 'audio'
+        
+        Returns:
+            {
+                'url': 'https://drive.google.com/...',
+                'file_id': 'gdrive_file_id',
+                'file_name': 'original_filename.jpg',
+                'mime_type': 'image/jpeg'
+            }
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Проверка прав: только учителя
+        if not request.user.is_authenticated or getattr(request.user, 'role', None) != 'teacher':
+            return Response(
+                {'detail': 'Только учителя могут загружать файлы'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Получаем файл из request
+        uploaded_file = request.FILES.get('file')
+        if not uploaded_file:
+            return Response(
+                {'detail': 'Файл не найден в запросе'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        file_type = request.data.get('file_type', 'image')
+        
+        # Валидация MIME типа
+        allowed_image_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+        allowed_audio_types = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/mp4']
+        
+        mime_type = uploaded_file.content_type
+        
+        if file_type == 'image' and mime_type not in allowed_image_types:
+            return Response(
+                {'detail': f'Неподдерживаемый тип изображения: {mime_type}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if file_type == 'audio' and mime_type not in allowed_audio_types:
+            return Response(
+                {'detail': f'Неподдерживаемый тип аудио: {mime_type}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Проверка размера файла (макс 50 MB)
+        max_size = 50 * 1024 * 1024
+        if uploaded_file.size > max_size:
+            return Response(
+                {'detail': f'Файл слишком большой. Максимум: 50 MB'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Импортируем Google Drive Manager
+            from schedule.gdrive_utils import GoogleDriveManager
+            
+            gdrive = GoogleDriveManager()
+            
+            # Формируем имя файла: homework_teacher123_timestamp_filename.jpg
+            import time
+            timestamp = int(time.time())
+            safe_name = uploaded_file.name.replace(' ', '_')
+            file_name = f"homework_teacher{request.user.id}_{timestamp}_{safe_name}"
+            
+            # Загружаем в Google Drive в папку учителя
+            result = gdrive.upload_file(
+                file_path_or_object=uploaded_file,
+                file_name=file_name,
+                mime_type=mime_type,
+                teacher=request.user
+            )
+            
+            # Логирование
+            logger.info(
+                f"Teacher {request.user.email} uploaded homework file: "
+                f"{file_name} ({mime_type}, {uploaded_file.size} bytes) to Google Drive"
+            )
+            
+            # Возвращаем URL для встраивания в вопрос
+            return Response({
+                'status': 'success',
+                'url': result['web_view_link'],
+                'download_url': result.get('web_content_link', result['web_view_link']),
+                'file_id': result['file_id'],
+                'file_name': uploaded_file.name,
+                'mime_type': mime_type,
+                'size': uploaded_file.size
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            logger.error(f"Failed to upload homework file: {e}", exc_info=True)
+            return Response(
+                {'detail': f'Ошибка загрузки файла: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def _notify_students_about_new_homework(self, homework: Homework):
         lesson = getattr(homework, 'lesson', None)

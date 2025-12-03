@@ -348,12 +348,17 @@
 
 .hc-option-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.75rem;
   padding: 0.65rem 0.75rem;
   border-radius: 12px;
   background: rgba(148, 163, 184, 0.12);
+}
+
+.hc-option-row .form-input {
+  min-width: 0;
+  width: 100%;
 }
 
 .hc-option-radio,

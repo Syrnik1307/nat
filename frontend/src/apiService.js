@@ -289,6 +289,14 @@ export const getHomework = (id) => apiClient.get(`homework/${id}/`);
 export const createHomework = (data) => apiClient.post('homework/', data);
 export const updateHomework = (id, data) => apiClient.put(`homework/${id}/`, data);
 export const deleteHomework = (id) => apiClient.delete(`homework/${id}/`);
+export const uploadHomeworkFile = (file, fileType) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('file_type', fileType);
+  return apiClient.post('homework/upload-file/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};
 
 // Submissions
 export const getSubmissions = (params = {}) => apiClient.get('submissions/', { params });

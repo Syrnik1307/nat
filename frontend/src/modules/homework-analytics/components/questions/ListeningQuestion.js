@@ -1,6 +1,7 @@
 import React from 'react';
+import FileUploader from './FileUploader';
 
-const ListeningQuestion = ({ question, onChange }) => {
+const ListeningQuestion = React.memo(({ question, onChange }) => {
   const { config = {} } = question;
   const subQuestions = Array.isArray(config.subQuestions) ? config.subQuestions : [];
 
@@ -30,14 +31,14 @@ const ListeningQuestion = ({ question, onChange }) => {
   return (
     <div className="hc-question-editor">
       <div className="form-group">
-        <label className="form-label">Ссылка на аудио</label>
-        <input
-          className="form-input"
-          placeholder="https://example.com/audio.mp3"
-          value={config.audioUrl || ''}
-          onChange={(event) => updateConfig({ audioUrl: event.target.value })}
+        <label className="form-label">Аудиофайл</label>
+        <FileUploader
+          fileType="audio"
+          currentUrl={config.audioUrl || ''}
+          onUploadSuccess={(url) => updateConfig({ audioUrl: url })}
+          accept="audio/*"
         />
-        <small className="gm-hint">Пока используется ссылка. Загрузка файлов появится после интеграции хранилища.</small>
+        <small className="gm-hint">Файл загружается в Google Drive в вашу папку</small>
       </div>
 
       {config.audioUrl && (
@@ -109,6 +110,10 @@ const ListeningQuestion = ({ question, onChange }) => {
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  return prevProps.question.id === nextProps.question.id &&
+         JSON.stringify(prevProps.question.config) === JSON.stringify(nextProps.question.config) &&
+         prevProps.question.question_text === nextProps.question.question_text;
+});
 
 export default ListeningQuestion;
