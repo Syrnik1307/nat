@@ -602,3 +602,57 @@
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
 }
 
+/* Стилизация datetime-local календаря */
+input[type="datetime-local"] {
+  position: relative;
+  padding: 0.75rem 1rem;
+  border: 2px solid rgba(148, 163, 184, 0.25);
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+input[type="datetime-local"]:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.02);
+}
+
+input[type="datetime-local"]:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Стилизация иконки календаря */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0.25rem;
+  transition: background 0.2s ease;
+  filter: opacity(0.6);
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  background: rgba(59, 130, 246, 0.1);
+  filter: opacity(1);
+}
+
+/* Для Firefox */
+input[type="datetime-local"]::-moz-calendar-picker-indicator {
+  cursor: pointer;
+  filter: opacity(0.6);
+}
+
+input[type="datetime-local"]::-moz-calendar-picker-indicator:hover {
+  filter: opacity(1);
+}
+
+/* Placeholder стиль */
+input[type="datetime-local"]:invalid {
+  color: #9ca3af;
+}
