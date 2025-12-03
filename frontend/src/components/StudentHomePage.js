@@ -1,18 +1,32 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { getLessons, getHomeworkList, getSubmissions, getGroups } from '../apiService';
 import JoinGroupModal from './JoinGroupModal';
 import SupportWidget from './SupportWidget';
 import '../styles/StudentHome.css';
 
 const StudentHomePage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
   const [homework, setHomework] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [groups, setGroups] = useState([]);
+  const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState('');
 
   useEffect(() => {
     loadData();
+    
+    // Check for invite code in URL
+    const params = new URLSearchParams(location.search);
+    const code = params.get('code');
+    if (code) {
+      setInviteCodeFromUrl(code);
+      setShowJoinModal(true);
+      // Clean URL without reloading
+      navigate('/student', { replace: true });
+    }
   }, []);
 
   const loadData = async () => {
@@ -36,6 +50,7 @@ const StudentHomePage = () => {
   };
 
   const handleJoinSuccess = () => {
+    setInviteCodeFromUrl(''); // Clear the code after successful join
     loadData();
   };
 
@@ -138,8 +153,12 @@ const StudentHomePage = () => {
       {/* Join Group Modal */}
       {showJoinModal && (
         <JoinGroupModal 
-          onClose={() => setShowJoinModal(false)}
+          onClose={() => {
+            setShowJoinModal(false);
+            setInviteCodeFromUrl('');
+          }}
           onSuccess={handleJoinSuccess}
+          initialCode={inviteCodeFromUrl}
         />
       )}
 

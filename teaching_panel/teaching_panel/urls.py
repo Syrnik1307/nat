@@ -42,6 +42,8 @@ from accounts.subscriptions_views import (
 )
 from accounts.payments_views import yookassa_webhook
 from accounts.debug_views import debug_env  # Debug endpoint
+from django.conf import settings
+from django.conf.urls.static import static
 
 # Create a router and register our viewsets with it.
 router = DefaultRouter()
@@ -121,3 +123,7 @@ urlpatterns = [
     # Payment webhooks
     path('api/payments/yookassa/webhook/', yookassa_webhook, name='yookassa_webhook'),
 ]
+
+# Serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

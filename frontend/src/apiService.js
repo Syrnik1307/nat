@@ -268,6 +268,7 @@ export const deleteGroup = (id) => apiClient.delete(`groups/${id}/`);
 export const addStudentsToGroup = (groupId, studentIds) => apiClient.post(`groups/${groupId}/add_students/`, { student_ids: studentIds });
 export const removeStudentsFromGroup = (groupId, studentIds) => apiClient.post(`groups/${groupId}/remove_students/`, { student_ids: studentIds });
 export const regenerateGroupInviteCode = (groupId) => apiClient.post(`groups/${groupId}/regenerate_code/`);
+export const getGroupByInviteCode = (inviteCode) => apiClient.get(`groups/preview_by_code/?code=${inviteCode}`);
 export const joinGroupByCode = (inviteCode) => apiClient.post('groups/join_by_code/', { invite_code: inviteCode });
 
 // Attendance

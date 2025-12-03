@@ -137,37 +137,43 @@ class HomeworkViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            # Импортируем Google Drive Manager
-            from schedule.gdrive_utils import GoogleDriveManager
-            
-            gdrive = GoogleDriveManager()
+            # Используем локальное хранение вместо Google Drive
+            import os
+            import time
+            from django.conf import settings
             
             # Формируем имя файла: homework_teacher123_timestamp_filename.jpg
-            import time
             timestamp = int(time.time())
-            safe_name = uploaded_file.name.replace(' ', '_')
+            safe_name = uploaded_file.name.replace(' ', '_').replace('..', '')
             file_name = f"homework_teacher{request.user.id}_{timestamp}_{safe_name}"
             
-            # Загружаем в Google Drive в папку учителя
-            result = gdrive.upload_file(
-                file_path_or_object=uploaded_file,
-                file_name=file_name,
-                mime_type=mime_type,
-                teacher=request.user
-            )
+            # Создаём директорию для homework файлов
+            homework_media_dir = os.path.join(settings.MEDIA_ROOT, 'homework_files')
+            os.makedirs(homework_media_dir, exist_ok=True)
+            
+            # Путь к файлу
+            file_path = os.path.join(homework_media_dir, file_name)
+            
+            # Сохраняем файл на диск
+            with open(file_path, 'wb+') as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
             
             # Логирование
             logger.info(
                 f"Teacher {request.user.email} uploaded homework file: "
-                f"{file_name} ({mime_type}, {uploaded_file.size} bytes) to Google Drive"
+                f"{file_name} ({mime_type}, {uploaded_file.size} bytes) to local storage"
             )
+            
+            # Генерируем URL для доступа
+            file_url = f"{settings.MEDIA_URL}homework_files/{file_name}"
             
             # Возвращаем URL для встраивания в вопрос
             return Response({
                 'status': 'success',
-                'url': result['web_view_link'],
-                'download_url': result.get('web_content_link', result['web_view_link']),
-                'file_id': result['file_id'],
+                'url': file_url,
+                'download_url': file_url,
+                'file_id': file_name,
                 'file_name': uploaded_file.name,
                 'mime_type': mime_type,
                 'size': uploaded_file.size

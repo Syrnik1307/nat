@@ -1,43 +1,64 @@
 import React, { useState } from 'react';
 import { regenerateGroupInviteCode } from '../apiService';
+import ConfirmModal from '../shared/components/ConfirmModal';
 import '../styles/InviteModal.css';
 
 const GroupInviteModal = ({ group, onClose }) => {
   const [inviteCode, setInviteCode] = useState(group?.invite_code || '');
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const inviteLink = `${window.location.origin}/student?code=${inviteCode}`;
 
-  const handleCopy = async (text) => {
+  const handleCopy = async (text, type) => {
+    const setCopied = type === 'code' ? setCopiedCode : setCopiedLink;
+    
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      // Попытка использовать Clipboard API
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        return;
+      }
     } catch (error) {
-      console.error('Failed to copy:', error);
-      // Fallback для старых браузеров или HTTP контекста
+      console.warn('Clipboard API failed, using fallback:', error);
+    }
+    
+    // Fallback для HTTP или старых браузеров
+    try {
       const textArea = document.createElement('textarea');
       textArea.value = text;
       textArea.style.position = 'fixed';
-      textArea.style.left = '-999999px';
+      textArea.style.top = '0';
+      textArea.style.left = '0';
+      textArea.style.opacity = '0';
       document.body.appendChild(textArea);
+      textArea.focus();
       textArea.select();
-      try {
-        document.execCommand('copy');
+      
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      if (successful) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-      } catch (err) {
-        console.error('Fallback copy failed:', err);
-        alert('Не удалось скопировать. Скопируйте вручную.');
+      } else {
+        alert('Не удалось скопировать. Пожалуйста, скопируйте вручную:\n' + text);
       }
-      document.body.removeChild(textArea);
+    } catch (err) {
+      console.error('Fallback copy failed:', err);
+      alert('Не удалось скопировать. Пожалуйста, скопируйте вручную:\n' + text);
     }
   };
 
-  const handleRegenerate = async () => {
-    if (!window.confirm('Вы уверены? Старый код перестанет работать.')) return;
-    
+  const handleRegenerateClick = () => {
+    setShowConfirm(true);
+  };
+
+  const handleConfirmRegenerate = async () => {
     setRegenerating(true);
     try {
       const response = await regenerateGroupInviteCode(group.id);
@@ -64,9 +85,9 @@ const GroupInviteModal = ({ group, onClose }) => {
             <span className="invite-code-text">{inviteCode}</span>
             <button 
               className="invite-copy-btn"
-              onClick={() => handleCopy(inviteCode)}
+              onClick={() => handleCopy(inviteCode, 'code')}
             >
-              {copied ? '✓ Скопировано' : '📋 Копировать'}
+              {copiedCode ? '✓ Скопировано' : '📋 Копировать'}
             </button>
           </div>
           <p className="invite-hint">Ученики могут ввести этот код на странице "Мои курсы"</p>
@@ -83,9 +104,9 @@ const GroupInviteModal = ({ group, onClose }) => {
             />
             <button 
               className="invite-copy-btn"
-              onClick={() => handleCopy(inviteLink)}
+              onClick={() => handleCopy(inviteLink, 'link')}
             >
-              {copied ? '✓ Скопировано' : '📋 Копировать'}
+              {copiedLink ? '✓ Скопировано' : '📋 Копировать'}
             </button>
           </div>
         </div>
@@ -100,12 +121,10 @@ const GroupInviteModal = ({ group, onClose }) => {
             />
           </div>
           <p className="invite-hint">Покажите QR-код на экране, ученики отсканируют его</p>
-        </div>
-
         <div className="invite-actions">
           <button 
             className="invite-regenerate-btn"
-            onClick={handleRegenerate}
+            onClick={handleRegenerateClick}
             disabled={regenerating}
           >
             {regenerating ? 'Генерация...' : '🔄 Создать новый код'}
@@ -115,7 +134,20 @@ const GroupInviteModal = ({ group, onClose }) => {
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={handleConfirmRegenerate}
+        title="Создать новый код?"
+        message="Старый код приглашения перестанет работать. Все ученики, у которых был старый код, больше не смогут присоединиться к группе."
+        confirmText="Создать новый"
+        cancelText="Отмена"
+        variant="warning"
+      />
     </div>
+  );
+};  </div>
   );
 };
 

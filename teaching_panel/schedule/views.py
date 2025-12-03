@@ -174,6 +174,27 @@ class GroupViewSet(viewsets.ModelViewSet):
             'message': 'Новый код приглашения создан'
         })
     
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def preview_by_code(self, request):
+        """Получить информацию о группе по коду приглашения (без присоединения)"""
+        invite_code = request.query_params.get('code', '').strip().upper()
+        if not invite_code:
+            return Response(
+                {'error': 'Код приглашения не указан'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            group = Group.objects.select_related('teacher').get(invite_code=invite_code)
+        except Group.DoesNotExist:
+            return Response(
+                {'error': 'Группа с таким кодом не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        serializer = self.get_serializer(group)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def join_by_code(self, request):
         """Присоединиться к группе по коду приглашения"""
