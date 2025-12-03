@@ -357,8 +357,9 @@
 }
 
 .hc-option-row .form-input {
-  min-width: 0;
   width: 100%;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .hc-option-radio,

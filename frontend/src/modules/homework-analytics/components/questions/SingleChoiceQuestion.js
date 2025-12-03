@@ -1,6 +1,6 @@
 import React from 'react';
 
-const SingleChoiceQuestion = React.memo(({ question, onChange }) => {
+const SingleChoiceQuestion = ({ question, onChange }) => {
   const { config = {} } = question;
   const options = Array.isArray(config.options) ? config.options : [];
 
@@ -72,11 +72,6 @@ const SingleChoiceQuestion = React.memo(({ question, onChange }) => {
       </div>
     </div>
   );
-}, (prevProps, nextProps) => {
-  // Ре-рендер только если изменился сам вопрос или его конфиг
-  return prevProps.question.id === nextProps.question.id &&
-         JSON.stringify(prevProps.question.config) === JSON.stringify(nextProps.question.config) &&
-         prevProps.question.question_text === nextProps.question.question_text;
-});
+};
 
 export default SingleChoiceQuestion;

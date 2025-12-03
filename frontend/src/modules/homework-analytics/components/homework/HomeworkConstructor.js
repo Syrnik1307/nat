@@ -80,19 +80,20 @@ const HomeworkConstructor = () => {
 
   const handleAddQuestion = (type) => {
     const template = createQuestionTemplate(type);
+    // Генерируем СТАБИЛЬНЫЙ уникальный ID один раз при создании
+    template.id = `q-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     template.order = questions.length;
     setQuestions((previous) => [...previous, template]);
     setShowTypeMenu(false);
   };
 
   const handleUpdateQuestion = (index, nextQuestion) => {
-    setQuestions((previous) =>
-      previous.map((question, questionIndex) =>
-        questionIndex === index
-          ? { ...nextQuestion, order: questionIndex }
-          : { ...question, order: questionIndex }
-      )
-    );
+    setQuestions((previous) => {
+      const updated = [...previous];
+      // Обновляем ТОЛЬКО нужный вопрос, остальные остаются теми же объектами
+      updated[index] = { ...nextQuestion, order: index };
+      return updated;
+    });
   };
 
   const handleQuestionTextChange = (index, text) => {
