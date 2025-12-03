@@ -59,7 +59,7 @@
 }
 
 .sm-close:hover {
-  background: var(--bg-gray);
+  background: var(--gray-100);
   color: var(--text-primary);
 }
 
@@ -197,7 +197,7 @@
 
 /* Create Form */
 .sm-create-form {
-  background: var(--bg-gray);
+  background: var(--gray-100);
   padding: 1.5rem;
   border-radius: var(--radius-md);
 }
@@ -307,7 +307,7 @@
 }
 
 .sm-message-item {
-  background: var(--bg-gray);
+  background: var(--gray-100);
   border: 1px solid var(--border-gray);
   border-radius: var(--radius-md);
   padding: 0.875rem;

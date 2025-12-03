@@ -308,7 +308,7 @@
 
 .captcha-container {
   padding: 1.5rem;
-  background: var(--bg-gray);
+  background: var(--gray-100);
   border: 1px solid var(--border-gray);
   border-radius: var(--radius-md);
 }
@@ -465,7 +465,7 @@
   text-align: center;
   margin: 0;
   padding: 1rem;
-  background: var(--bg-gray);
+  background: var(--gray-100);
   border-radius: var(--radius-sm);
 }
 

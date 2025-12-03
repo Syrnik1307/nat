@@ -59,7 +59,7 @@
   display: grid;
   grid-template-columns: minmax(180px,240px) repeat(2, 1fr);
   gap: 1.25rem;
-  background: var(--bg-gray);
+  background: var(--gray-100);
   border:1px solid rgba(37,99,235,0.12);
   padding: .9rem 1.1rem;
   border-radius:16px;
@@ -92,7 +92,7 @@
   align-items: center;
   gap: 1rem;
   padding: 1.25rem 1.5rem;
-  background: var(--bg-gray);
+  background: var(--gray-100);
   border-radius: 18px;
   border: 1px solid rgba(37, 99, 235, 0.12);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
@@ -194,7 +194,7 @@
 
 .teacher-home-page {
   min-height: 100vh;
-  background: var(--bg-gray);
+  background: var(--gray-100);
   padding: 2rem;
 }
 
@@ -990,7 +990,7 @@
   border: 1px solid var(--border-gray);
   border-radius: var(--radius-md);
   padding: 1rem 1.25rem;
-  background: var(--bg-gray);
+  background: var(--gray-100);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -1082,7 +1082,7 @@
   grid-template-columns: auto 1fr auto;
   gap: 1.5rem;
   padding: 1.25rem;
-  background: var(--bg-gray);
+  background: var(--gray-100);
   border: 1px solid var(--border-gray);
   border-left: 4px solid var(--primary-blue);
   border-radius: var(--radius-md);
@@ -1219,7 +1219,7 @@
 .group-card {
   display: block;
   padding: 1.25rem;
-  background: var(--bg-gray);
+  background: var(--gray-100);
   border: 1px solid var(--border-gray);
   border-radius: var(--radius-md);
   text-decoration: none;
@@ -1320,7 +1320,7 @@
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  background: var(--bg-gray);
+  background: var(--gray-100);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-gray);
 }
