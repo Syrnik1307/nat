@@ -39,6 +39,11 @@ export const validateQuestion = (question) => {
       if (answers.length !== blanks) {
         issues.push('Количество ответов должно совпадать с количеством пропусков');
       }
+      
+      // Проверка, что все ответы заполнены
+      if (answers.some(answer => !answer?.trim())) {
+        issues.push('Все правильные ответы для пропусков должны быть заполнены');
+      }
       break;
     }
     case 'LISTENING': {
@@ -62,6 +67,19 @@ export const validateQuestion = (question) => {
       if (pairs.some((pair) => !pair.left?.trim() || !pair.right?.trim())) {
         issues.push('Каждая пара должна содержать значения в обеих колонках');
       }
+      
+      // Проверка уникальности элементов
+      const leftValues = pairs.map(p => p.left).filter(Boolean);
+      const rightValues = pairs.map(p => p.right).filter(Boolean);
+      const uniqueLeft = new Set(leftValues);
+      const uniqueRight = new Set(rightValues);
+      
+      if (uniqueLeft.size !== leftValues.length) {
+        issues.push('Дублирующиеся элементы в левой колонке');
+      }
+      if (uniqueRight.size !== rightValues.length) {
+        issues.push('Дублирующиеся элементы в правой колонке');
+      }
       break;
     }
     case 'DRAG_DROP': {
@@ -79,10 +97,18 @@ export const validateQuestion = (question) => {
       const imageUrl = question.config?.imageUrl || '';
       const hotspots = question.config?.hotspots || [];
       if (!imageUrl.trim()) {
-        issues.push('Укажите изображение для хотспота');
+        issues.push('Загрузите изображение для хотспота');
       }
       if (!hotspots.length) {
-        issues.push('Добавьте хотя бы одну активную область');
+        issues.push('Добавьте хотя бы одну кликабельную область');
+      }
+      
+      // Проверка, что у всех хотспотов есть координаты
+      const invalidHotspots = hotspots.filter(h => 
+        !h.x || !h.y || !h.width || !h.height
+      );
+      if (invalidHotspots.length > 0) {
+        issues.push('Все области должны иметь корректные координаты');
       }
       break;
     }

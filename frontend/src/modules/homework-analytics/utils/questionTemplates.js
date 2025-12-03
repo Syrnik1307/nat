@@ -113,4 +113,18 @@ const getQuestionLabel = (type) => {
   return meta ? meta.label : type;
 };
 
-export { QUESTION_TYPES, createQuestionTemplate, getQuestionLabel };
+const getQuestionIcon = (type) => {
+  const icons = {
+    TEXT: '📝',
+    SINGLE_CHOICE: '⭕',
+    MULTIPLE_CHOICE: '☑️',
+    LISTENING: '🎧',
+    MATCHING: '🔗',
+    DRAG_DROP: '↕️',
+    FILL_BLANKS: '✍️',
+    HOTSPOT: '🎯',
+  };
+  return icons[type] || '❓';
+};
+
+export { QUESTION_TYPES, createQuestionTemplate, getQuestionLabel, getQuestionIcon };

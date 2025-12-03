@@ -1,10 +1,13 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { apiClient } from '../../../../apiService';
 import useHomeworkConstructor from '../../hooks/useHomeworkConstructor';
 import {
   QUESTION_TYPES,
   createQuestionTemplate,
   getQuestionLabel,
+  getQuestionIcon,
 } from '../../utils/questionTemplates';
 import TextQuestion from '../questions/TextQuestion';
 import SingleChoiceQuestion from '../questions/SingleChoiceQuestion';
@@ -37,6 +40,7 @@ const QUESTION_COMPONENTS = {
 };
 
 const HomeworkConstructor = () => {
+  const navigate = useNavigate();
   const {
     groupOptions,
     loadingGroups,
@@ -52,6 +56,9 @@ const HomeworkConstructor = () => {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [validationIssues, setValidationIssues] = useState(null);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [homeworkId, setHomeworkId] = useState(null);
+  const [previewQuestion, setPreviewQuestion] = useState(0);
 
   const handleMetaChange = (field, value) => {
     setAssignmentMeta((previous) => ({
@@ -150,7 +157,86 @@ const HomeworkConstructor = () => {
 
   const questionCount = questions.length;
 
-  const previewTitle = useMemo(() => assignmentMeta.title || 'Новое домашнее задание', [assignmentMeta.title]);
+  const PreviewSection = () => {
+    if (questions.length === 0) {
+      return <div className="hc-preview-placeholder">Добавьте вопросы для превью</div>;
+    }
+    
+    const currentQuestion = questions[previewQuestion];
+    
+    const renderPreviewContent = () => {
+      switch (currentQuestion.question_type) {
+        case 'TEXT':
+          return (
+            <div className="preview-question">
+              <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
+              <textarea className="form-textarea" placeholder="Ответ студента..." disabled rows={4} />
+            </div>
+          );
+        
+        case 'SINGLE_CHOICE':
+          return (
+            <div className="preview-question">
+              <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
+              {(currentQuestion.config?.options || []).map((option, idx) => (
+                <div key={idx} className="preview-option">
+                  <input type="radio" name="preview-radio" disabled />
+                  <label>{option.text || `Вариант ${idx + 1}`}</label>
+                </div>
+              ))}
+            </div>
+          );
+        
+        case 'MULTIPLE_CHOICE':
+          return (
+            <div className="preview-question">
+              <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
+              {(currentQuestion.config?.options || []).map((option, idx) => (
+                <div key={idx} className="preview-option">
+                  <input type="checkbox" disabled />
+                  <label>{option.text || `Вариант ${idx + 1}`}</label>
+                </div>
+              ))}
+            </div>
+          );
+        
+        default:
+          return (
+            <div className="preview-question">
+              <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
+              <p className="preview-note">Тип: {getQuestionLabel(currentQuestion.question_type)}</p>
+            </div>
+          );
+      }
+    };
+    
+    return (
+      <div className="hc-preview-live">
+        <div className="hc-preview-nav">
+          <span>Вопрос {previewQuestion + 1} из {questions.length}</span>
+          <div>
+            <button 
+              type="button"
+              className="gm-btn-surface"
+              onClick={() => setPreviewQuestion(Math.max(0, previewQuestion - 1))}
+              disabled={previewQuestion === 0}
+            >
+              ← Пред.
+            </button>
+            <button 
+              type="button"
+              className="gm-btn-surface"
+              onClick={() => setPreviewQuestion(Math.min(questions.length - 1, previewQuestion + 1))}
+              disabled={previewQuestion === questions.length - 1}
+            >
+              След. →
+            </button>
+          </div>
+        </div>
+        {renderPreviewContent()}
+      </div>
+    );
+  };
 
   const QuestionEditor = ({ question, index }) => {
     const TypeComponent = QUESTION_COMPONENTS[question.question_type];
@@ -171,7 +257,7 @@ const HomeworkConstructor = () => {
     setFeedback(null);
     setValidationIssues(null);
     try {
-      const result = await saveDraft(assignmentMeta, questions, null);
+      const result = await saveDraft(assignmentMeta, questions, homeworkId);
       if (!result.saved) {
         setValidationIssues(result.validation);
         setFeedback({
@@ -179,6 +265,11 @@ const HomeworkConstructor = () => {
           message: 'Проверьте настройки — найдено несколько моментов, требующих внимания.',
         });
         return;
+      }
+
+      // Сохраняем ID для последующей публикации
+      if (result.homeworkId) {
+        setHomeworkId(result.homeworkId);
       }
 
       setFeedback({ status: 'success', message: 'Черновик успешно сохранен.' });
@@ -189,6 +280,67 @@ const HomeworkConstructor = () => {
       setFeedback({ status: 'error', message: backendMessage || 'Не удалось сохранить задание.' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    // Валидация перед публикацией
+    if (!assignmentMeta.title || !assignmentMeta.groupId || questions.length === 0) {
+      setFeedback({
+        status: 'error',
+        message: 'Заполните название, выберите группу и добавьте хотя бы один вопрос',
+      });
+      setShowPublishModal(false);
+      return;
+    }
+
+    setSaving(true);
+    setFeedback(null);
+
+    try {
+      // Сначала сохраняем черновик, если нужно
+      let currentHomeworkId = homeworkId;
+      
+      if (!currentHomeworkId) {
+        const saveResult = await saveDraft(assignmentMeta, questions, null);
+        if (!saveResult.saved) {
+          setValidationIssues(saveResult.validation);
+          setFeedback({
+            status: 'error',
+            message: 'Исправьте ошибки перед публикацией',
+          });
+          setSaving(false);
+          setShowPublishModal(false);
+          return;
+        }
+        currentHomeworkId = saveResult.homeworkId;
+        setHomeworkId(currentHomeworkId);
+      }
+
+      // Затем публикуем
+      await apiClient.post(
+        `/homework/homeworks/${currentHomeworkId}/publish/`
+      );
+
+      setFeedback({
+        status: 'success',
+        message: '🎉 ДЗ опубликовано! Студенты получат уведомления.',
+      });
+
+      // Redirect через 2 секунды
+      setTimeout(() => {
+        navigate('/teacher');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Publish error:', error);
+      setFeedback({
+        status: 'error',
+        message: error.response?.data?.detail || 'Ошибка при публикации ДЗ',
+      });
+    } finally {
+      setSaving(false);
+      setShowPublishModal(false);
     }
   };
 
@@ -342,10 +494,18 @@ const HomeworkConstructor = () => {
               </div>
             </div>
 
-            <div className="gm-actions">
+            <div className="gm-actions hc-action-buttons">
               <button
                 type="button"
                 className="gm-btn-primary"
+                onClick={() => setShowPublishModal(true)}
+                disabled={saving || questions.length === 0}
+              >
+                📢 Опубликовать
+              </button>
+              <button
+                type="button"
+                className="gm-btn-surface"
                 onClick={handleSaveDraft}
                 disabled={saving}
               >
@@ -355,8 +515,11 @@ const HomeworkConstructor = () => {
                 type="button"
                 className="gm-btn-surface"
                 onClick={() => {
-                  setAssignmentMeta({ ...initialMeta });
-                  setQuestions([]);
+                  if (window.confirm('Очистить всю форму?')) {
+                    setAssignmentMeta({ ...initialMeta });
+                    setQuestions([]);
+                    setHomeworkId(null);
+                  }
                 }}
                 disabled={saving}
               >
@@ -368,13 +531,7 @@ const HomeworkConstructor = () => {
 
         <div className="hc-card hc-preview-card">
           <div className="hc-section-title">Превью для студентов</div>
-          <div className="hc-preview-placeholder">
-            <strong>{previewTitle}</strong>
-            <p>
-              Здесь будет интерактивный предпросмотр, как только мы подключим рендерер вопросов и экран
-              прохождения.
-            </p>
-          </div>
+          <PreviewSection />
         </div>
       </div>
 
@@ -426,7 +583,9 @@ const HomeworkConstructor = () => {
                           <div className="hc-question-toolbar">
                             <div className="hc-question-toolbar-left">
                               <span className="hc-question-index">{index + 1}</span>
-                              <span className="hc-question-type">{getQuestionLabel(question.question_type)}</span>
+                              <span className={`hc-question-type-badge ${question.question_type}`}>
+                                {getQuestionIcon(question.question_type)} {getQuestionLabel(question.question_type).replace(/^[^\s]+\s/, '')}
+                              </span>
                             </div>
                             <div className="hc-question-actions">
                               <button
@@ -435,7 +594,7 @@ const HomeworkConstructor = () => {
                                 {...draggableProvided.dragHandleProps}
                                 aria-label="Переместить вопрос"
                               >
-                                ☰
+                                ⋮⋮
                               </button>
                               <button
                                 type="button"
@@ -488,6 +647,30 @@ const HomeworkConstructor = () => {
           </DragDropContext>
         )}
       </div>
+
+      {/* Модальное окно подтверждения публикации */}
+      {showPublishModal && (
+        <div className="hc-modal-overlay" onClick={() => setShowPublishModal(false)}>
+          <div className="hc-modal-content" onClick={e => e.stopPropagation()}>
+            <h3>Опубликовать домашнее задание?</h3>
+            <p>После публикации:</p>
+            <ul>
+              <li>✉️ Все студенты группы получат уведомление</li>
+              <li>📱 Уведомления придут в Telegram (если привязан)</li>
+              <li>⏰ Начнется отсчет до дедлайна</li>
+              <li>🔒 Редактирование будет ограничено</li>
+            </ul>
+            <div className="hc-modal-buttons">
+              <button className="gm-btn-primary" onClick={handlePublish} disabled={saving}>
+                {saving ? 'Публикация...' : 'Да, опубликовать'}
+              </button>
+              <button className="gm-btn-surface" onClick={() => setShowPublishModal(false)} disabled={saving}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
