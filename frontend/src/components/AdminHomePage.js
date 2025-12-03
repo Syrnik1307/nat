@@ -354,7 +354,7 @@ const AdminHomePage = () => {
                 />
               </div>
 
-              <div className="form-row">
+              <div className="admin-form-row">
                 <div className="form-group">
                   <label>Имя *</label>
                   <input
