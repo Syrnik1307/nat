@@ -59,7 +59,7 @@ const HotspotQuestion = React.memo(({ question, onChange }) => {
           onUploadSuccess={(url) => updateConfig({ imageUrl: url })}
           accept="image/*"
         />
-        <small className="gm-hint">Файл загружается в Google Drive в вашу папку</small>
+        <small className="gm-hint">Загрузите изображение (JPG, PNG, GIF, WebP, до 50 МБ)</small>
       </div>
 
       {config.imageUrl && (

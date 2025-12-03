@@ -38,7 +38,7 @@ const ListeningQuestion = React.memo(({ question, onChange }) => {
           onUploadSuccess={(url) => updateConfig({ audioUrl: url })}
           accept="audio/*"
         />
-        <small className="gm-hint">Файл загружается в Google Drive в вашу папку</small>
+        <small className="gm-hint">Загрузите аудио (MP3, WAV, OGG, до 50 МБ)</small>
       </div>
 
       {config.audioUrl && (
