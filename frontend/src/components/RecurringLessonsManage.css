@@ -48,27 +48,27 @@
 }
 
 /* КРИТИЧНО: Локальные form стили чтобы работали на production */
-.form-row {
+.rl-form .form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: var(--space-lg);
   margin-bottom: var(--space-lg);
 }
 
-.form-group {
+.rl-form .form-group {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
 }
 
-.form-label {
+.rl-form .form-label {
   font-weight: 600;
   color: var(--text-primary);
   font-size: 0.9rem;
 }
 
-.form-input,
-.form-select {
+.rl-form .form-input,
+.rl-form .form-select {
   padding: 0.75rem 1rem;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -78,20 +78,20 @@
   color: var(--text-primary);
 }
 
-.form-input:focus,
-.form-select:focus {
+.rl-form .form-input:focus,
+.rl-form .form-select:focus {
   outline: none;
   border-color: var(--primary-blue);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-.form-input:hover:not(:disabled):not(:focus),
-.form-select:hover:not(:disabled):not(:focus) {
+.rl-form .form-input:hover:not(:disabled):not(:focus),
+.rl-form .form-select:hover:not(:disabled):not(:focus) {
   border-color: var(--text-secondary);
 }
 
-.form-input:disabled,
-.form-select:disabled {
+.rl-form .form-input:disabled,
+.rl-form .form-select:disabled {
   background: var(--bg-gray);
   cursor: not-allowed;
   opacity: 0.6;
@@ -126,7 +126,7 @@
 @media (max-width: 768px){
   .rl-header { flex-direction: column; align-items: flex-start; gap: var(--space-md); }
   .rl-page { padding: var(--space-xl); }
-  .form-row {
+  .rl-form .form-row {
     grid-template-columns: 1fr;
   }
 }
