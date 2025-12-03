@@ -6,86 +6,84 @@ import {
   apiClient,
 } from '../../../apiService';
 
-const mapQuestionToPayload = (question, order) => {
-  const basePayload = {
-    question_type: question.question_type,
-    question_text: question.question_text?.trim() || '',
-    points: Number.isFinite(question.points) ? question.points : 0,
-    order,
-    config: question.config ?? {},
-    correct_answer: question.correct_answer ?? null,
-  };
+const SUPPORTED_TYPES = [
+  'TEXT',
+  'SINGLE_CHOICE',
+  'MULTIPLE_CHOICE',
+  'LISTENING',
+  'MATCHING',
+  'DRAG_DROP',
+  'FILL_BLANKS',
+  'HOTSPOT',
+];
 
-  if (question.question_type === 'TEXT') {
-    basePayload.correct_answer = question.config?.correctAnswer || null;
+const mapFrontendTypeToBackend = (type) => {
+  if (type === 'MULTIPLE_CHOICE') {
+    return 'MULTI_CHOICE';
   }
-
-  if (question.question_type === 'SINGLE_CHOICE') {
-    basePayload.correct_answer = question.config?.correctOptionId || null;
-  }
-
-  if (question.question_type === 'MULTIPLE_CHOICE') {
-    basePayload.correct_answer = question.config?.correctOptionIds || [];
-  }
-
-  if (question.question_type === 'FILL_BLANKS') {
-    basePayload.correct_answer = question.config?.answers || [];
-  }
-
-  if (question.question_type === 'MATCHING') {
-    const pairs = question.config?.pairs || [];
-    basePayload.correct_answer = pairs.map((pair) => ({ left: pair.left, right: pair.right }));
-  }
-
-  if (question.question_type === 'DRAG_DROP') {
-    basePayload.correct_answer = question.config?.correctOrder || [];
-  }
-
-  if (question.question_type === 'LISTENING') {
-    basePayload.correct_answer = (question.config?.subQuestions || []).map((item) => ({
-      id: item.id,
-      answer: item.answer,
-    }));
-  }
-
-  if (question.question_type === 'HOTSPOT') {
-    basePayload.correct_answer = question.config?.hotspots || [];
-  }
-
-  return basePayload;
+  return type;
 };
 
-export const buildHomeworkPayload = (meta, questions) => {
-  const deadlineIso = meta.deadline ? new Date(meta.deadline).toISOString() : null;
+const buildChoiceList = (question) => {
+  const options = question.config?.options || [];
+  if (!options.length) {
+    return [];
+  }
+  const correctIds = new Set(question.config?.correctOptionIds || []);
+  const correctSingle = question.config?.correctOptionId || null;
+  return options
+    .filter((option) => option?.text?.trim())
+    .map((option) => ({
+      text: option.text.trim(),
+      is_correct:
+        question.question_type === 'SINGLE_CHOICE'
+          ? option.id === correctSingle
+          : correctIds.has(option.id),
+    }));
+};
 
-  const groupId = meta.groupId ? Number(meta.groupId) : null;
+const mapQuestionToPayload = (question, order) => {
+  if (!SUPPORTED_TYPES.includes(question.question_type)) {
+    const error = new Error(
+      `Тип вопроса "${question.question_type}" пока не поддерживается сервером`
+    );
+    error.userFacing = true;
+    throw error;
+  }
 
+  const question_type = mapFrontendTypeToBackend(question.question_type);
   const payload = {
-    title: meta.title?.trim() || '',
-    description: meta.description?.trim() || '',
-    group: Number.isFinite(groupId) ? groupId : null,
-    deadline: deadlineIso,
-    max_score: Number(meta.maxScore) || 0,
-    gamification_enabled: Boolean(meta.gamificationEnabled),
-    questions: questions.map((question, index) => mapQuestionToPayload(question, index)),
+    prompt: question.question_text?.trim() || '',
+    question_type,
+    points: Number.isFinite(question.points) ? question.points : 0,
+    order,
+    config: (question.config && typeof question.config === 'object') ? question.config : {},
   };
 
-  if (!payload.deadline) {
-    delete payload.deadline;
+  if (question.question_type === 'SINGLE_CHOICE' || question.question_type === 'MULTIPLE_CHOICE') {
+    payload.choices = buildChoiceList(question);
   }
 
   return payload;
 };
 
+export const buildHomeworkPayload = (meta, questions) => ({
+  title: meta.title?.trim() || '',
+  description: meta.description?.trim() || '',
+  questions: questions.map((question, index) => mapQuestionToPayload(question, index)),
+});
+
 export const homeworkService = {
   buildHomeworkPayload,
   async create(meta, questions) {
     const payload = buildHomeworkPayload(meta, questions);
-    return createHomework(payload);
+    const response = await createHomework(payload);
+    return response?.data;
   },
   async update(id, meta, questions) {
     const payload = buildHomeworkPayload(meta, questions);
-    return updateHomework(id, payload);
+    const response = await updateHomework(id, payload);
+    return response?.data;
   },
   async fetchHomework(homeworkId) {
     const response = await getHomework(homeworkId);

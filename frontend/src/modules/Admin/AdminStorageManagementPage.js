@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './AdminStorageManagementPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
+import { ConfirmModal } from '../../shared/components';
 
 function AdminStorageManagementPage() {
   const [quotas, setQuotas] = useState([]);
@@ -14,6 +15,21 @@ function AdminStorageManagementPage() {
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [showIncreaseModal, setShowIncreaseModal] = useState(false);
   const [increaseAmount, setIncreaseAmount] = useState(5);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    variant: 'warning',
+    confirmText: 'Да',
+    cancelText: 'Отмена'
+  });
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'info'
+  });
 
   useEffect(() => {
     loadData();
@@ -67,30 +83,57 @@ function AdminStorageManagementPage() {
       setIncreaseAmount(5);
       loadData();
 
-      alert(`Квота увеличена на ${increaseAmount} ГБ`);
+      setAlertModal({
+        isOpen: true,
+        title: 'Успех',
+        message: `Квота увеличена на ${increaseAmount} ГБ`,
+        variant: 'info'
+      });
     } catch (err) {
       console.error('Error increasing quota:', err);
-      alert('Не удалось увеличить квоту');
+      setAlertModal({
+        isOpen: true,
+        title: 'Ошибка',
+        message: 'Не удалось увеличить квоту',
+        variant: 'danger'
+      });
     }
   };
 
   const handleResetWarnings = async (quotaId) => {
-    if (!window.confirm('Сбросить предупреждения для этого преподавателя?')) {
-      return;
-    }
-
-    try {
-      await api.post(
-        `storage/quotas/${quotaId}/reset-warnings/`,
-        {},
-        withScheduleApiBase()
-      );
-      loadData();
-      alert('Предупреждения сброшены');
-    } catch (err) {
-      console.error('Error resetting warnings:', err);
-      alert('Не удалось сбросить предупреждения');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Сброс предупреждений',
+      message: 'Сбросить предупреждения для этого преподавателя?',
+      variant: 'warning',
+      confirmText: 'Сбросить',
+      cancelText: 'Отмена',
+      onConfirm: async () => {
+        try {
+          await api.post(
+            `storage/quotas/${quotaId}/reset-warnings/`,
+            {},
+            withScheduleApiBase()
+          );
+          loadData();
+          setAlertModal({
+            isOpen: true,
+            title: 'Успех',
+            message: 'Предупреждения сброшены',
+            variant: 'info'
+          });
+        } catch (err) {
+          console.error('Error resetting warnings:', err);
+          setAlertModal({
+            isOpen: true,
+            title: 'Ошибка',
+            message: 'Не удалось сбросить предупреждения',
+            variant: 'danger'
+          });
+        }
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      }
+    });
   };
 
   const getUsageColor = (percent) => {
@@ -107,7 +150,7 @@ function AdminStorageManagementPage() {
   return (
     <div className="admin-storage-page">
       <div className="admin-storage-header">
-        <h1>💾 Управление хранилищем</h1>
+        <h1>Управление хранилищем</h1>
         <p className="admin-storage-subtitle">Мониторинг квот преподавателей</p>
       </div>
 
@@ -115,7 +158,7 @@ function AdminStorageManagementPage() {
       {statistics && (
         <div className="storage-stats-grid">
           <div className="storage-stat-card">
-            <div className="storage-stat-icon">👥</div>
+            <div className="storage-stat-icon"></div>
             <div className="storage-stat-info">
               <div className="storage-stat-value">{statistics.total_teachers}</div>
               <div className="storage-stat-label">Преподавателей</div>
@@ -123,7 +166,7 @@ function AdminStorageManagementPage() {
           </div>
 
           <div className="storage-stat-card">
-            <div className="storage-stat-icon">💾</div>
+            <div className="storage-stat-icon"></div>
             <div className="storage-stat-info">
               <div className="storage-stat-value">{statistics.total_used_gb} / {statistics.total_quota_gb} GB</div>
               <div className="storage-stat-label">Использовано / Квота</div>
@@ -131,7 +174,7 @@ function AdminStorageManagementPage() {
           </div>
 
           <div className="storage-stat-card">
-            <div className="storage-stat-icon">📊</div>
+            <div className="storage-stat-icon"></div>
             <div className="storage-stat-info">
               <div className="storage-stat-value">{statistics.average_usage_percent}%</div>
               <div className="storage-stat-label">Средняя загрузка</div>
@@ -139,7 +182,7 @@ function AdminStorageManagementPage() {
           </div>
 
           <div className="storage-stat-card storage-stat-warning">
-            <div className="storage-stat-icon">⚠️</div>
+            <div className="storage-stat-icon"></div>
             <div className="storage-stat-info">
               <div className="storage-stat-value">{statistics.exceeded_count}</div>
               <div className="storage-stat-label">Превышений квоты</div>
@@ -147,7 +190,7 @@ function AdminStorageManagementPage() {
           </div>
 
           <div className="storage-stat-card">
-            <div className="storage-stat-icon">📹</div>
+            <div className="storage-stat-icon"></div>
             <div className="storage-stat-info">
               <div className="storage-stat-value">{statistics.total_recordings}</div>
               <div className="storage-stat-label">Всего записей</div>
@@ -155,7 +198,7 @@ function AdminStorageManagementPage() {
           </div>
 
           <div className="storage-stat-card">
-            <div className="storage-stat-icon">✅</div>
+            <div className="storage-stat-icon"></div>
             <div className="storage-stat-info">
               <div className="storage-stat-value">{statistics.total_available_gb.toFixed(2)} GB</div>
               <div className="storage-stat-label">Доступно</div>
@@ -164,10 +207,32 @@ function AdminStorageManagementPage() {
         </div>
       )}
 
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+      />
+
+      <ConfirmModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        variant={alertModal.variant}
+        confirmText="OK"
+        cancelText=""
+      />
+
       {/* Топ пользователей по использованию */}
       {statistics?.top_users && statistics.top_users.length > 0 && (
         <div className="top-users-section">
-          <h3>📈 Топ-5 по использованию</h3>
+          <h3>Топ-5 по использованию</h3>
           <div className="top-users-list">
             {statistics.top_users.map((user, index) => (
               <div key={user.teacher_id} className="top-user-item">
@@ -198,7 +263,7 @@ function AdminStorageManagementPage() {
         <div className="storage-search-box">
           <input
             type="text"
-            placeholder="🔍 Поиск преподавателя..."
+            placeholder="Поиск преподавателя..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="storage-search-input"
@@ -246,7 +311,7 @@ function AdminStorageManagementPage() {
         </div>
 
         <button onClick={loadData} className="storage-refresh-btn">
-          🔄 Обновить
+          Обновить
         </button>
       </div>
 
@@ -258,12 +323,12 @@ function AdminStorageManagementPage() {
         </div>
       ) : error ? (
         <div className="storage-error">
-          <p>❌ {error}</p>
+          <p>{error}</p>
           <button onClick={loadData} className="storage-retry-btn">Повторить</button>
         </div>
       ) : quotas.length === 0 ? (
         <div className="storage-empty">
-          <div className="storage-empty-icon">📭</div>
+          <div className="storage-empty-icon"></div>
           <h3>Квоты не найдены</h3>
           <p>Попробуйте изменить фильтры</p>
         </div>
@@ -316,7 +381,7 @@ function AdminStorageManagementPage() {
                       onClick={() => openIncreaseModal(quota)}
                       title="Увеличить квоту"
                     >
-                      ➕
+                      Добавить
                     </button>
                     {quota.warning_sent && (
                       <button
@@ -324,7 +389,7 @@ function AdminStorageManagementPage() {
                         onClick={() => handleResetWarnings(quota.id)}
                         title="Сбросить предупреждения"
                       >
-                        🔄
+                        Сброс
                       </button>
                     )}
                   </td>

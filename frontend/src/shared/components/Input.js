@@ -31,31 +31,31 @@ const Input = ({
   const [showPassword, setShowPassword] = useState(false);
 
   const containerStyles = {
-    marginBottom: '1rem',
+    marginBottom: 'var(--space-lg)',
     width: '100%',
   };
 
   const labelStyles = {
     display: 'block',
-    marginBottom: '0.5rem',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#374151',
+    marginBottom: 'var(--space-sm)',
+    fontSize: 'var(--text-sm)',
+    fontWeight: 'var(--font-medium)',
+    color: 'var(--text-primary)',
   };
 
   const inputBaseStyles = {
     width: '100%',
-    padding: 'var(--space-sm) var(--space-md)',
-    fontSize: '0.9375rem',
-    border: `1px solid ${error ? 'var(--error-500)' : focused ? 'var(--accent-500)' : '#cbd5f5'}`,
+    padding: 'var(--space-md) var(--space-lg)',
+    fontSize: 'var(--text-base)',
+    border: `1px solid ${error ? 'var(--error-500)' : focused ? 'var(--primary-500)' : 'var(--border-color)'}`,
     borderRadius: 'var(--radius-lg)',
     outline: 'none',
     transition: 'all var(--transition-base)',
-    backgroundColor: disabled ? '#e2e8f0' : '#ffffff',
-    color: disabled ? '#94a3b8' : '#0f172a',
+    backgroundColor: disabled ? 'var(--gray-100)' : 'var(--bg-primary)',
+    color: disabled ? 'var(--text-tertiary)' : 'var(--text-primary)',
     cursor: disabled ? 'not-allowed' : 'text',
-    boxShadow: focused ? '0 0 0 3px rgba(37, 99, 235, 0.12)' : 'none',
-    fontFamily: 'inherit',
+    boxShadow: focused ? `0 0 0 3px ${error ? 'rgba(239, 68, 68, 0.12)' : 'rgba(255, 107, 53, 0.12)'}` : 'none',
+    fontFamily: 'var(--font-sans)',
   };
 
   const passwordContainerStyles = {
@@ -65,27 +65,28 @@ const Input = ({
 
   const togglePasswordStyles = {
     position: 'absolute',
-    right: '0.75rem',
+    right: 'var(--space-md)',
     top: '50%',
     transform: 'translateY(-50%)',
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    fontSize: '0.875rem',
-    color: focused ? 'var(--accent-600)' : '#6b7280',
-    padding: '0.25rem',
+    fontSize: 'var(--text-sm)',
+    color: focused ? 'var(--primary-600)' : 'var(--text-secondary)',
+    padding: 'var(--space-xs)',
+    transition: 'color var(--transition-base)',
   };
 
   const errorStyles = {
-    marginTop: '0.25rem',
-    fontSize: '0.75rem',
-    color: '#ef4444',
+    marginTop: 'var(--space-xs)',
+    fontSize: 'var(--text-xs)',
+    color: 'var(--error-500)',
   };
 
   const helperStyles = {
-    marginTop: '0.25rem',
-    fontSize: '0.75rem',
-    color: '#6b7280',
+    marginTop: 'var(--space-xs)',
+    fontSize: 'var(--text-xs)',
+    color: 'var(--text-secondary)',
   };
 
   const handleChange = (e) => {
@@ -167,7 +168,7 @@ const Input = ({
       {label && (
         <label style={labelStyles}>
           {label}
-          {required && <span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span>}
+          {required && <span style={{ color: 'var(--error-500)', marginLeft: 'var(--space-xs)' }}>*</span>}
         </label>
       )}
       {renderInput()}

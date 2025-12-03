@@ -9,7 +9,7 @@ const navItems = [
   { to: '/student', label: 'Мои курсы' },
   { to: '/calendar', label: 'Расписание' },
   { to: '/homework', label: 'Домашнее задание' },
-  { to: '/student/recordings', label: '📹 Записи уроков' },
+  { to: '/student/recordings', label: 'Записи уроков' },
   { to: '/student/stats', label: 'Моя статистика' },
 ];
 
@@ -49,7 +49,7 @@ const StudentNavBar = () => {
     <nav className="student-navbar">
       <div className="student-navbar-content">
         <div className="student-navbar-left">
-          <NavLink to="/student" aria-label="Teaching Panel">
+          <NavLink to="/student" aria-label="Easy Teaching">
             <Logo size={34} />
           </NavLink>
         </div>
@@ -97,7 +97,7 @@ const StudentNavBar = () => {
                   className="student-dropdown-item student-logout"
                   onClick={handleLogout}
                 >
-                  <span>🚪</span> Выйти
+                  Выйти
                 </button>
               </div>
             )}

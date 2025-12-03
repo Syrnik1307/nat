@@ -18,6 +18,8 @@ import DragDropQuestion from '../questions/DragDropQuestion';
 import FillBlanksQuestion from '../questions/FillBlanksQuestion';
 import HotspotQuestion from '../questions/HotspotQuestion';
 import './HomeworkConstructor.css';
+import DateTimePicker from './DateTimePicker';
+import GroupSelect from './GroupSelect';
 
 const initialMeta = {
   title: '',
@@ -59,6 +61,31 @@ const HomeworkConstructor = () => {
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [homeworkId, setHomeworkId] = useState(null);
   const [previewQuestion, setPreviewQuestion] = useState(0);
+  const [confirmDialog, setConfirmDialog] = useState({ open: false });
+
+  const openConfirmDialog = (config) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Подтверждение',
+      message: '',
+      confirmLabel: 'Подтвердить',
+      cancelLabel: 'Отмена',
+      onConfirm: null,
+      ...config,
+    });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog((previous) => ({ ...previous, open: false }));
+  };
+
+  const handleConfirmDialog = () => {
+    const action = confirmDialog.onConfirm;
+    closeConfirmDialog();
+    if (typeof action === 'function') {
+      action();
+    }
+  };
 
   const handleMetaChange = (field, value) => {
     setAssignmentMeta((previous) => ({
@@ -121,12 +148,18 @@ const HomeworkConstructor = () => {
   };
 
   const handleRemoveQuestion = (index) => {
-    if (!window.confirm('Удалить вопрос из задания?')) return;
-    setQuestions((previous) =>
-      previous
-        .filter((_, questionIndex) => questionIndex !== index)
-        .map((question, order) => ({ ...question, order }))
-    );
+    openConfirmDialog({
+      title: 'Удалить вопрос?',
+      message: 'После удаления восстановить вопрос будет нельзя.',
+      confirmLabel: 'Удалить',
+      onConfirm: () => {
+        setQuestions((previous) =>
+          previous
+            .filter((_, questionIndex) => questionIndex !== index)
+            .map((question, order) => ({ ...question, order }))
+        );
+      },
+    });
   };
 
   const handleDuplicateQuestion = (index) => {
@@ -319,9 +352,7 @@ const HomeworkConstructor = () => {
       }
 
       // Затем публикуем
-      await apiClient.post(
-        `/homework/homeworks/${currentHomeworkId}/publish/`
-      );
+      await apiClient.post(`/homework/${currentHomeworkId}/publish/`);
 
       setFeedback({
         status: 'success',
@@ -372,7 +403,7 @@ const HomeworkConstructor = () => {
   return (
     <div className="homework-constructor-page">
       <div className="hc-header">
-        <h1 className="hc-header-title">🏗️ Конструктор домашних заданий</h1>
+        <h1 className="hc-header-title">📝 Конструктор домашних заданий</h1>
         <p className="hc-header-subtitle">
           Соберите идеальное ДЗ с разными типами вопросов, настройте дедлайны и включите геймификацию.
         </p>
@@ -426,35 +457,21 @@ const HomeworkConstructor = () => {
             </div>
 
             <div className="hc-inline-fields">
-              <div className="form-group">
-                <label className="form-label">Группа</label>
-                <select
-                  className="form-input"
-                  value={assignmentMeta.groupId}
-                  onChange={(event) => handleMetaChange('groupId', event.target.value)}
-                  disabled={loadingGroups}
-                >
-                  <option value="">Выберите группу</option>
-                  {groupOptions.map((group) => (
-                    <option key={group.value} value={group.value}>
-                      {group.label}
-                    </option>
-                  ))}
-                </select>
-                {groupError && (
-                  <button type="button" className="gm-btn-surface" onClick={reloadGroups}>
-                    Повторить загрузку групп
-                  </button>
-                )}
-              </div>
+              <GroupSelect
+                value={assignmentMeta.groupId}
+                options={groupOptions}
+                onChange={(nextValue) => handleMetaChange('groupId', nextValue)}
+                disabled={loadingGroups}
+                loading={loadingGroups}
+                error={groupError}
+                onRetry={reloadGroups}
+                placeholder="Выберите группу"
+              />
 
               <div className="form-group">
-                <label className="form-label">Дедлайн</label>
-                <input
-                  className="form-input"
-                  type="datetime-local"
+                <DateTimePicker
                   value={assignmentMeta.deadline}
-                  onChange={(event) => handleMetaChange('deadline', event.target.value)}
+                  onChange={(nextValue) => handleMetaChange('deadline', nextValue)}
                 />
               </div>
             </div>
@@ -516,11 +533,16 @@ const HomeworkConstructor = () => {
                 type="button"
                 className="gm-btn-surface"
                 onClick={() => {
-                  if (window.confirm('Очистить всю форму?')) {
-                    setAssignmentMeta({ ...initialMeta });
-                    setQuestions([]);
-                    setHomeworkId(null);
-                  }
+                  openConfirmDialog({
+                    title: 'Сбросить задание?',
+                    message: 'Все текущие настройки будут очищены.',
+                    confirmLabel: 'Сбросить',
+                    onConfirm: () => {
+                      setAssignmentMeta({ ...initialMeta });
+                      setQuestions([]);
+                      setHomeworkId(null);
+                    },
+                  });
                 }}
                 disabled={saving}
               >
@@ -667,6 +689,23 @@ const HomeworkConstructor = () => {
               </button>
               <button className="gm-btn-surface" onClick={() => setShowPublishModal(false)} disabled={saving}>
                 Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDialog.open && (
+        <div className="hc-modal-overlay" onClick={closeConfirmDialog}>
+          <div className="hc-modal-content" onClick={(event) => event.stopPropagation()}>
+            <h3>{confirmDialog.title}</h3>
+            {confirmDialog.message && <p>{confirmDialog.message}</p>}
+            <div className="hc-modal-buttons">
+              <button type="button" className="gm-btn-surface" onClick={closeConfirmDialog}>
+                {confirmDialog.cancelLabel}
+              </button>
+              <button type="button" className="gm-btn-primary" onClick={handleConfirmDialog}>
+                {confirmDialog.confirmLabel}
               </button>
             </div>
           </div>

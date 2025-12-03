@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './LessonMaterialsManager.css';
+import { ConfirmModal } from '../../shared/components';
 
 /**
  * Компонент для управления учебными материалами урока (для учителя)
@@ -29,6 +30,21 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
     const [selectedMaterial, setSelectedMaterial] = useState(null);
     const [materialViews, setMaterialViews] = useState(null);
     const [loadingViews, setLoadingViews] = useState(false);
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: null,
+        variant: 'warning',
+        confirmText: 'Да',
+        cancelText: 'Отмена'
+    });
+    const [alertModal, setAlertModal] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        variant: 'info'
+    });
 
     useEffect(() => {
         loadData();
@@ -61,7 +77,12 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
         e.preventDefault();
         
         if (!uploadForm.title || !uploadForm.file_url) {
-            alert('Заполните обязательные поля: название и ссылка на файл');
+            setAlertModal({
+                isOpen: true,
+                title: 'Внимание',
+                message: 'Заполните обязательные поля: название и ссылка на файл',
+                variant: 'warning'
+            });
             return;
         }
         
@@ -93,34 +114,62 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
             // Перезагрузить данные
             await loadData();
             
-            alert('Материал успешно загружен!');
+            setAlertModal({
+                isOpen: true,
+                title: 'Успех',
+                message: 'Материал успешно загружен!',
+                variant: 'info'
+            });
         } catch (err) {
-            alert(`Ошибка: ${err.message}`);
+            setAlertModal({
+                isOpen: true,
+                title: 'Ошибка',
+                message: `Ошибка: ${err.message}`,
+                variant: 'danger'
+            });
         } finally {
             setUploading(false);
         }
     };
 
     const handleDeleteMaterial = async (materialId, materialTitle) => {
-        if (!window.confirm(`Удалить материал "${materialTitle}"?`)) return;
-        
-        try {
-            const response = await fetch(`/schedule/api/materials/${materialId}/delete/`, {
-                method: 'DELETE'
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Ошибка удаления');
+        setConfirmModal({
+            isOpen: true,
+            title: 'Удаление материала',
+            message: `Удалить материал "${materialTitle}"?`,
+            variant: 'danger',
+            confirmText: 'Удалить',
+            cancelText: 'Отмена',
+            onConfirm: async () => {
+                try {
+                    const response = await fetch(`/schedule/api/materials/${materialId}/delete/`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Ошибка удаления');
+                    }
+                    
+                    await loadData();
+                    
+                    setAlertModal({
+                        isOpen: true,
+                        title: 'Успех',
+                        message: 'Материал удален',
+                        variant: 'info'
+                    });
+                } catch (err) {
+                    setAlertModal({
+                        isOpen: true,
+                        title: 'Ошибка',
+                        message: `Ошибка: ${err.message}`,
+                        variant: 'danger'
+                    });
+                }
+                setConfirmModal({ ...confirmModal, isOpen: false });
             }
-            
-            // Перезагрузить данные
-            await loadData();
-            
-            alert('Материал удален');
-        } catch (err) {
-            alert(`Ошибка: ${err.message}`);
-        }
+        });
     };
 
     const handleViewStatistics = async (material) => {
@@ -134,7 +183,12 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
             const data = await response.json();
             setMaterialViews(data);
         } catch (err) {
-            alert(`Ошибка: ${err.message}`);
+            setAlertModal({
+                isOpen: true,
+                title: 'Ошибка',
+                message: `Ошибка: ${err.message}`,
+                variant: 'danger'
+            });
         } finally {
             setLoadingViews(false);
         }
@@ -144,6 +198,33 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
         setSelectedMaterial(null);
         setMaterialViews(null);
     };
+
+    return (
+        <>
+            {/* existing JSX below remains unchanged */}
+            {/* Modals */}
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                variant={confirmModal.variant}
+                confirmText={confirmModal.confirmText}
+                cancelText={confirmModal.cancelText}
+            />
+            <ConfirmModal
+                isOpen={alertModal.isOpen}
+                onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+                onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
+                title={alertModal.title}
+                message={alertModal.message}
+                variant={alertModal.variant}
+                confirmText="OK"
+                cancelText=""
+            />
+        </>
+    );
 
     if (loading) {
         return (
@@ -174,7 +255,7 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
             <div className="materials-manager-modal" onClick={(e) => e.stopPropagation()}>
                 {/* Заголовок */}
                 <div className="materials-manager-header">
-                    <h2>📚 Учебные материалы</h2>
+                    <h2>Учебные материалы</h2>
                     <p className="lesson-title">{lessonTitle}</p>
                     <button className="btn-close-icon" onClick={onClose}>×</button>
                 </div>
@@ -211,7 +292,7 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
                         className="btn-add-material"
                         onClick={() => setShowUploadForm(!showUploadForm)}
                     >
-                        {showUploadForm ? '✖ Отмена' : '➕ Добавить материал'}
+                        {showUploadForm ? 'Отмена' : 'Добавить материал'}
                     </button>
                 </div>
 
@@ -227,8 +308,8 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
                                     onChange={(e) => setUploadForm({...uploadForm, material_type: e.target.value})}
                                     required
                                 >
-                                    <option value="theory">📖 Теория (перед уроком)</option>
-                                    <option value="notes">📝 Конспект (после урока)</option>
+                                    <option value="theory">Теория (перед уроком)</option>
+                                    <option value="notes">Конспект (после урока)</option>
                                 </select>
                             </div>
                             
@@ -289,7 +370,7 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
                             
                             <div className="form-actions">
                                 <button type="submit" className="btn-submit" disabled={uploading}>
-                                    {uploading ? 'Загрузка...' : '✓ Загрузить'}
+                                    {uploading ? 'Загрузка...' : 'Загрузить'}
                                 </button>
                             </div>
                         </form>
@@ -300,7 +381,7 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
                 <div className="materials-content">
                     {/* Теория */}
                     <div className="materials-section">
-                        <h3>📖 Теория (перед уроком)</h3>
+                        <h3>Теория (перед уроком)</h3>
                         {theoryMaterials.length === 0 ? (
                             <p className="no-materials">Материалов нет</p>
                         ) : (
@@ -311,9 +392,9 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
                                             <h4>{material.title}</h4>
                                             {material.description && <p className="material-description">{material.description}</p>}
                                             <div className="material-meta">
-                                                <span>📁 {material.file_name || 'Файл'}</span>
-                                                <span>💾 {material.file_size_mb} MB</span>
-                                                <span>👁️ {material.views_count} просмотров</span>
+                                                <span>Файл: {material.file_name || 'Файл'}</span>
+                                                <span>Размер: {material.file_size_mb} MB</span>
+                                                <span>Просмотров: {material.views_count}</span>
                                             </div>
                                         </div>
                                         <div className="material-actions">
@@ -321,7 +402,7 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
                                                 className="btn-statistics"
                                                 onClick={() => handleViewStatistics(material)}
                                             >
-                                                📊 Статистика
+                                                Статистика
                                             </button>
                                             <a 
                                                 href={material.file_url} 
@@ -329,13 +410,13 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
                                                 rel="noopener noreferrer"
                                                 className="btn-view"
                                             >
-                                                👁️ Открыть
+                                                Открыть
                                             </a>
                                             <button
                                                 className="btn-delete"
                                                 onClick={() => handleDeleteMaterial(material.id, material.title)}
                                             >
-                                                🗑️ Удалить
+                                                Удалить
                                             </button>
                                         </div>
                                     </div>
@@ -346,7 +427,7 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
 
                     {/* Конспекты */}
                     <div className="materials-section">
-                        <h3>📝 Конспекты (после урока)</h3>
+                        <h3>Конспекты (после урока)</h3>
                         {notesMaterials.length === 0 ? (
                             <p className="no-materials">Материалов нет</p>
                         ) : (
@@ -357,9 +438,9 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
                                             <h4>{material.title}</h4>
                                             {material.description && <p className="material-description">{material.description}</p>}
                                             <div className="material-meta">
-                                                <span>📁 {material.file_name || 'Файл'}</span>
-                                                <span>💾 {material.file_size_mb} MB</span>
-                                                <span>👁️ {material.views_count} просмотров</span>
+                                                <span>Файл: {material.file_name || 'Файл'}</span>
+                                                <span>Размер: {material.file_size_mb} MB</span>
+                                                <span>Просмотров: {material.views_count}</span>
                                             </div>
                                         </div>
                                         <div className="material-actions">
@@ -367,7 +448,7 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
                                                 className="btn-statistics"
                                                 onClick={() => handleViewStatistics(material)}
                                             >
-                                                📊 Статистика
+                                                Статистика
                                             </button>
                                             <a 
                                                 href={material.file_url} 
@@ -375,13 +456,13 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
                                                 rel="noopener noreferrer"
                                                 className="btn-view"
                                             >
-                                                👁️ Открыть
+                                                Открыть
                                             </a>
                                             <button
                                                 className="btn-delete"
                                                 onClick={() => handleDeleteMaterial(material.id, material.title)}
                                             >
-                                                🗑️ Удалить
+                                                Удалить
                                             </button>
                                         </div>
                                     </div>
@@ -396,7 +477,7 @@ function LessonMaterialsManager({ lessonId, lessonTitle, onClose }) {
                     <div className="views-modal-overlay" onClick={closeViewsModal}>
                         <div className="views-modal" onClick={(e) => e.stopPropagation()}>
                             <div className="views-modal-header">
-                                <h3>📊 Статистика просмотров</h3>
+                                <h3>Статистика просмотров</h3>
                                 <p>{selectedMaterial.title}</p>
                                 <button className="btn-close-icon" onClick={closeViewsModal}>×</button>
                             </div>

@@ -47,14 +47,14 @@ const ProfilePage = () => {
 
   const tabConfig = useMemo(() => {
     if (!user) {
-      return [{ key: 'profile', label: '👤 Профиль' }];
+      return [{ key: 'profile', label: 'Профиль' }];
     }
     const items = [
-      { key: 'profile', label: '👤 Профиль' },
+      { key: 'profile', label: 'Профиль' },
       { key: 'security', label: '🔒 Безопасность' },
     ];
     if (user.role === 'teacher') {
-      items.push({ key: 'subscription', label: '💳 Моя подписка' });
+      items.push({ key: 'subscription', label: 'Моя подписка' });
     }
     return items;
   }, [user]);
@@ -358,7 +358,7 @@ const ProfilePage = () => {
               className={`profile-tab ${activeTab === 'profile' ? 'active' : ''}`}
               onClick={() => setActiveTab('profile')}
             >
-              👤 Профиль
+              Профиль
             </button>
             <button
               className={`profile-tab ${activeTab === 'security' ? 'active' : ''}`}
@@ -370,7 +370,7 @@ const ProfilePage = () => {
               className={`profile-tab ${activeTab === 'subscription' ? 'active' : ''}`}
               onClick={() => setActiveTab('subscription')}
             >
-              💳 Моя подписка
+              Моя подписка
             </button>
           </div>
         )}
@@ -660,7 +660,7 @@ const ProfilePage = () => {
                     <p className="telegram-status-text">
                       {telegramLinked
                         ? `Аккаунт ${telegramUsername ? '@' + telegramUsername : 'подтверждён'} уже связан.`
-                        : 'Telegram ещё не подключен. Сгенерируйте код и отправьте его боту Teaching Panel.'}
+                        : 'Telegram ещё не подключен. Сгенерируйте код и отправьте его боту Easy Teaching.'}
                     </p>
                     <div className="telegram-actions-row">
                       <button
@@ -768,7 +768,7 @@ const ProfilePage = () => {
               </div>
             ) : subscriptionError ? (
               <div className="subscription-error">
-                <span className="error-icon">⚠️</span>
+                <span className="error-icon"></span>
                 <p>{subscriptionError}</p>
                 <button onClick={loadSubscription} className="retry-btn">
                   Повторить
@@ -782,19 +782,19 @@ const ProfilePage = () => {
                   <div className="subscription-card">
                     <div className="subscription-plan-badge">
                       {subscription.plan === 'trial' && '🎁 Пробная'}
-                      {subscription.plan === 'monthly' && '📅 Месячная'}
+                      {subscription.plan === 'monthly' && 'Месячная'}
                       {subscription.plan === 'yearly' && '🎯 Годовая'}
                     </div>
                     
                     <div className="subscription-status">
                       {subscription.status === 'active' && (
-                        <span className="status-badge active">✅ Активна</span>
+                        <span className="status-badge active">Активна</span>
                       )}
                       {subscription.status === 'pending' && (
-                        <span className="status-badge pending">⏳ Ожидает оплаты</span>
+                        <span className="status-badge pending">Ожидает оплаты</span>
                       )}
                       {subscription.status === 'cancelled' && (
-                        <span className="status-badge cancelled">❌ Отменена</span>
+                        <span className="status-badge cancelled">Отменена</span>
                       )}
                       {subscription.status === 'expired' && (
                         <span className="status-badge expired">⏱️ Истекла</span>
@@ -817,7 +817,7 @@ const ProfilePage = () => {
                       <div className="detail-row">
                         <span className="label">Автопродление:</span>
                         <span className="value">
-                          {subscription.auto_renew ? '✅ Включено' : '❌ Выключено'}
+                          {subscription.auto_renew ? 'Включено' : 'Выключено'}
                         </span>
                       </div>
                       <div className="detail-row">
@@ -845,10 +845,10 @@ const ProfilePage = () => {
                           <div className="pricing-period">в месяц</div>
                         </div>
                         <ul className="pricing-features">
-                          <li>✅ Без ограничений по студентам</li>
-                          <li>✅ Zoom интеграция</li>
-                          <li>✅ Конструктор ДЗ</li>
-                          <li>✅ Материалы уроков</li>
+                          <li>Без ограничений по студентам</li>
+                          <li>Zoom интеграция</li>
+                          <li>Конструктор ДЗ</li>
+                          <li>Материалы уроков</li>
                         </ul>
                         <button
                           onClick={() => handleCreatePayment('monthly')}
@@ -867,10 +867,10 @@ const ProfilePage = () => {
                           <div className="pricing-save">Экономия 990 ₽</div>
                         </div>
                         <ul className="pricing-features">
-                          <li>✅ Все возможности месячной</li>
-                          <li>✅ 2 месяца в подарок</li>
-                          <li>✅ Приоритетная поддержка</li>
-                          <li>✅ Ранний доступ к новым функциям</li>
+                          <li>Все возможности месячной</li>
+                          <li>2 месяца в подарок</li>
+                          <li>Приоритетная поддержка</li>
+                          <li>Ранний доступ к новым функциям</li>
                         </ul>
                         <button
                           onClick={() => handleCreatePayment('yearly')}
@@ -889,7 +889,7 @@ const ProfilePage = () => {
                       onClick={handleCancelSubscription}
                       className="cancel-subscription-btn"
                     >
-                      ❌ Отменить автопродление
+                      Отменить автопродление
                     </button>
                     <p className="cancel-hint">
                       Доступ сохранится до {new Date(subscription.expires_at).toLocaleDateString('ru-RU')}

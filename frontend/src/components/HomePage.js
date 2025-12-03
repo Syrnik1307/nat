@@ -52,17 +52,17 @@ const HomePage = () => {
     return (
       <div style={styles.heroWrap}>
         <div style={styles.heroCard}>
-          <h1 style={styles.heroTitle}>Добро пожаловать в Teaching Panel</h1>
+          <h1 style={styles.heroTitle}>Добро пожаловать в Easy Teaching</h1>
           <p style={styles.heroSubtitle}>Расписание, задания, аналитика и Zoom – всё в одном месте.</p>
           <div style={{ display:'flex', gap:'1rem', marginTop:'1.5rem' }}>
             <a href="/login" style={styles.ctaPrimary}>Войти</a>
             <a href="https://docs.example.com" style={styles.ctaSecondary}>Документация</a>
           </div>
           <div style={styles.featureGrid}>
-            <Feature icon="📅" title="Расписание" text="Гибкое расписание и повторяющиеся занятия" />
-            <Feature icon="📝" title="Домашки" text="Автоматическая проверка и баллы" />
-            <Feature icon="📊" title="Аналитика" text="Посещаемость и успеваемость" />
-            <Feature icon="🎥" title="Zoom" text="Пул лицензий и записи" />
+            <Feature icon="" title="Расписание" text="Гибкое расписание и повторяющиеся занятия" />
+            <Feature icon="" title="Домашки" text="Автоматическая проверка и баллы" />
+            <Feature icon="" title="Аналитика" text="Посещаемость и успеваемость" />
+            <Feature icon="" title="Zoom" text="Пул лицензий и записи" />
           </div>
         </div>
       </div>
@@ -114,10 +114,10 @@ const HomePage = () => {
           {role === 'teacher' && teacherStats && (
             <section style={styles.statsSection}>
               <div style={styles.statsGrid}>
-                <StatCard icon="📚" label="Уроков" value={teacherStats.total_lessons} color="#FF6B35" />
+                <StatCard icon="" label="Уроков" value={teacherStats.total_lessons} color="#FF6B35" />
                 <StatCard icon="⏱️" label="Средняя длит." value={`${Math.round((teacherStats.average_duration_seconds || 0) / 60)} мин`} color="#2563eb" />
-                <StatCard icon="🎥" label="Записано" value={`${teacherStats.recording_ratio_percent}%`} color="#16a34a" />
-                <StatCard icon="👥" label="Учеников" value={teacherStats.total_students} color="#9333ea" />
+                <StatCard icon="" label="Записано" value={`${teacherStats.recording_ratio_percent}%`} color="#16a34a" />
+                <StatCard icon="" label="Учеников" value={teacherStats.total_students} color="#9333ea" />
               </div>
             </section>
           )}
@@ -148,7 +148,7 @@ const HomePage = () => {
               ))}
               {upcomingLessons.length === 0 && (
                 <div style={styles.emptyState}>
-                  <div style={styles.emptyIcon}>📅</div>
+                  <div style={styles.emptyIcon}></div>
                   <p>Сегодня нет занятий</p>
                 </div>
               )}
@@ -160,7 +160,7 @@ const HomePage = () => {
           {(role === 'student' || homework.length > 0) && (
             <div style={styles.sidebarCard}>
               <h3 style={styles.sidebarTitle}>
-                <span>📝</span>
+                <span></span>
                 Нужно сделать
               </h3>
               <div style={styles.tasksList}>
@@ -185,7 +185,7 @@ const HomePage = () => {
 
           <div style={styles.sidebarCard}>
             <h3 style={styles.sidebarTitle}>
-              <span>👥</span>
+              <span></span>
               Мои группы
             </h3>
             <div style={styles.groupsList}>
@@ -250,7 +250,7 @@ const LessonCard = ({ title, time, group, location, teacher }) => (
         <span>{location}</span>
       </div>
       <div style={styles.lessonMetaItem}>
-        <span>📹</span>
+        <span></span>
         <span>Занятие онлайн</span>
       </div>
     </div>

@@ -16,6 +16,7 @@ import GroupsManage from './components/GroupsManage';
 // Импорт новых компонентов из модуля Core
 import { Calendar } from './modules/core';
 import { HomeworkConstructor } from './modules/homework-analytics';
+import HomeworkPage from './modules/homework-analytics/components/HomeworkPage';
 // Новый дизайн - синяя тема
 import AuthPage from './components/AuthPage';
 import EmailVerificationPage from './components/EmailVerificationPage';
@@ -82,7 +83,15 @@ const AppRoutes = () => {
         <Route path="/homework/manage" element={<Protected allowRoles={['teacher']}><HomeworkManage /></Protected>} />
         <Route
           path="/homework/constructor"
-          element={<Protected allowRoles={['teacher']}><HomeworkConstructor /></Protected>}
+          element={<Protected allowRoles={['teacher']}><HomeworkPage /></Protected>}
+        />
+        <Route
+          path="/homework/to-review"
+          element={<Protected allowRoles={['teacher']}><HomeworkPage /></Protected>}
+        />
+        <Route
+          path="/homework/graded"
+          element={<Protected allowRoles={['teacher']}><HomeworkPage /></Protected>}
         />
         <Route
           path="/submissions"

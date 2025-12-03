@@ -3,6 +3,7 @@ import './TeacherRecordingsPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
 import RecordingCard from './RecordingCard';
 import RecordingPlayer from './RecordingPlayer';
+import { ConfirmModal } from '../../shared/components';
 
 function TeacherRecordingsPage() {
   const [recordings, setRecordings] = useState([]);
@@ -33,6 +34,21 @@ function TeacherRecordingsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    variant: 'warning',
+    confirmText: 'Да',
+    cancelText: 'Отмена'
+  });
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'info'
+  });
 
   useEffect(() => {
     loadRecordings();
@@ -122,40 +138,77 @@ function TeacherRecordingsPage() {
   };
 
   const handleDelete = async (recordingId) => {
-    if (!window.confirm('Вы уверены, что хотите удалить эту запись? Это действие необратимо.')) {
-      return;
-    }
-
-    try {
-      await api.delete(`recordings/${recordingId}/`, withScheduleApiBase());
-      setRecordings(recordings.filter(r => r.id !== recordingId));
-      alert('Запись успешно удалена');
-    } catch (err) {
-      console.error('Error deleting recording:', err);
-      alert('Не удалось удалить запись. Попробуйте позже.');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Удаление записи',
+      message: 'Вы уверены, что хотите удалить эту запись? Это действие необратимо.',
+      variant: 'danger',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена',
+      onConfirm: async () => {
+        try {
+          await api.delete(`recordings/${recordingId}/`, withScheduleApiBase());
+          setRecordings(recordings.filter(r => r.id !== recordingId));
+          setAlertModal({
+            isOpen: true,
+            title: 'Успех',
+            message: 'Запись успешно удалена',
+            variant: 'info'
+          });
+        } catch (err) {
+          console.error('Error deleting recording:', err);
+          setAlertModal({
+            isOpen: true,
+            title: 'Ошибка',
+            message: 'Не удалось удалить запись. Попробуйте позже.',
+            variant: 'danger'
+          });
+        }
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      }
+    });
   };
 
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
     
     if (!uploadForm.file) {
-      alert('Пожалуйста, выберите видео файл');
+      setAlertModal({
+        isOpen: true,
+        title: 'Внимание',
+        message: 'Пожалуйста, выберите видео файл',
+        variant: 'warning'
+      });
       return;
     }
 
     if (!uploadForm.lessonId && !uploadForm.title.trim()) {
-      alert('Укажите название видео или выберите урок');
+      setAlertModal({
+        isOpen: true,
+        title: 'Внимание',
+        message: 'Укажите название видео или выберите урок',
+        variant: 'warning'
+      });
       return;
     }
 
     if (uploadForm.privacyType === 'groups' && uploadForm.selectedGroups.length === 0) {
-      alert('Выберите хотя бы одну группу');
+      setAlertModal({
+        isOpen: true,
+        title: 'Внимание',
+        message: 'Выберите хотя бы одну группу',
+        variant: 'warning'
+      });
       return;
     }
 
     if (uploadForm.privacyType === 'students' && uploadForm.selectedStudents.length === 0) {
-      alert('Выберите хотя бы одного ученика');
+      setAlertModal({
+        isOpen: true,
+        title: 'Внимание',
+        message: 'Выберите хотя бы одного ученика',
+        variant: 'warning'
+      });
       return;
     }
 
@@ -200,7 +253,12 @@ function TeacherRecordingsPage() {
         }
       );
       
-      alert('Видео успешно загружено!');
+      setAlertModal({
+        isOpen: true,
+        title: 'Успех',
+        message: 'Видео успешно загружено!',
+        variant: 'info'
+      });
       setShowUploadModal(false);
       setUploadForm({
         lessonId: '',
@@ -214,7 +272,12 @@ function TeacherRecordingsPage() {
       loadRecordings();
     } catch (err) {
       console.error('Error uploading video:', err);
-      alert(err.response?.data?.detail || 'Не удалось загрузить видео. Попробуйте позже.');
+      setAlertModal({
+        isOpen: true,
+        title: 'Ошибка',
+        message: err.response?.data?.detail || 'Не удалось загрузить видео. Попробуйте позже.',
+        variant: 'danger'
+      });
     } finally {
       setUploading(false);
     }
@@ -240,7 +303,12 @@ function TeacherRecordingsPage() {
       if (file.type.startsWith('video/')) {
         setUploadForm({...uploadForm, file});
       } else {
-        alert('Пожалуйста, выберите видео файл');
+        setAlertModal({
+          isOpen: true,
+          title: 'Внимание',
+          message: 'Пожалуйста, выберите видео файл',
+          variant: 'warning'
+        });
       }
     }
   };
@@ -251,7 +319,12 @@ function TeacherRecordingsPage() {
       if (file.type.startsWith('video/')) {
         setUploadForm({...uploadForm, file});
       } else {
-        alert('Пожалуйста, выберите видео файл');
+        setAlertModal({
+          isOpen: true,
+          title: 'Внимание',
+          message: 'Пожалуйста, выберите видео файл',
+          variant: 'warning'
+        });
       }
     }
   };
@@ -291,42 +364,42 @@ function TeacherRecordingsPage() {
     <div className="teacher-recordings-page">
       <div className="teacher-recordings-header">
         <div>
-          <h1>📹 Записи моих уроков</h1>
+          <h1>Записи моих уроков</h1>
           <p className="teacher-recordings-subtitle">Управление и просмотр записей занятий</p>
         </div>
         <button 
           className="teacher-upload-btn"
           onClick={() => setShowUploadModal(true)}
         >
-          ⬆️ Загрузить видео
+          Загрузить видео
         </button>
       </div>
 
       {/* Статистика */}
       <div className="teacher-stats-grid">
         <div className="teacher-stat-card">
-          <div className="teacher-stat-icon">📊</div>
+          <div className="teacher-stat-icon"></div>
           <div className="teacher-stat-info">
             <div className="teacher-stat-value">{stats.total}</div>
             <div className="teacher-stat-label">Всего записей</div>
           </div>
         </div>
         <div className="teacher-stat-card teacher-stat-success">
-          <div className="teacher-stat-icon">✅</div>
+          <div className="teacher-stat-icon"></div>
           <div className="teacher-stat-info">
             <div className="teacher-stat-value">{stats.ready}</div>
             <div className="teacher-stat-label">Готово</div>
           </div>
         </div>
         <div className="teacher-stat-card teacher-stat-warning">
-          <div className="teacher-stat-icon">⏳</div>
+          <div className="teacher-stat-icon"></div>
           <div className="teacher-stat-info">
             <div className="teacher-stat-value">{stats.processing}</div>
             <div className="teacher-stat-label">Обрабатывается</div>
           </div>
         </div>
         <div className="teacher-stat-card teacher-stat-danger">
-          <div className="teacher-stat-icon">❌</div>
+          <div className="teacher-stat-icon"></div>
           <div className="teacher-stat-info">
             <div className="teacher-stat-value">{stats.failed}</div>
             <div className="teacher-stat-label">Ошибка</div>
@@ -339,7 +412,7 @@ function TeacherRecordingsPage() {
         <div className="teacher-search-box">
           <input
             type="text"
-            placeholder="🔍 Поиск по предмету или группе..."
+            placeholder="Поиск по предмету или группе..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="teacher-search-input"
@@ -376,7 +449,7 @@ function TeacherRecordingsPage() {
         </div>
 
         <button onClick={loadRecordings} className="teacher-refresh-btn">
-          🔄 Обновить
+          Обновить
         </button>
       </div>
 
@@ -388,14 +461,14 @@ function TeacherRecordingsPage() {
         </div>
       ) : error ? (
         <div className="teacher-recordings-error">
-          <p>❌ {error}</p>
+          <p>{error}</p>
           <button onClick={loadRecordings} className="teacher-retry-btn">
             Попробовать снова
           </button>
         </div>
       ) : filteredRecordings.length === 0 ? (
         <div className="teacher-recordings-empty">
-          <div className="teacher-empty-icon">📹</div>
+          <div className="teacher-empty-icon"></div>
           <h3>Записей не найдено</h3>
           <p>
             {recordings.length === 0
@@ -422,6 +495,28 @@ function TeacherRecordingsPage() {
         </>
       )}
 
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+      />
+
+      <ConfirmModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        variant={alertModal.variant}
+        confirmText="OK"
+        cancelText=""
+      />
+
       {/* Плеер */}
       {selectedRecording && (
         <RecordingPlayer
@@ -435,7 +530,7 @@ function TeacherRecordingsPage() {
         <div className="teacher-upload-modal-overlay" onClick={() => setShowUploadModal(false)}>
           <div className="teacher-upload-modal" onClick={(e) => e.stopPropagation()}>
             <div className="teacher-upload-modal-header">
-              <h2>⬆️ Загрузить видео урока</h2>
+              <h2>Загрузить видео урока</h2>
               <button className="teacher-modal-close" onClick={() => setShowUploadModal(false)}>✕</button>
             </div>
             <form onSubmit={handleUploadSubmit} className="teacher-upload-form" noValidate>
@@ -485,7 +580,7 @@ function TeacherRecordingsPage() {
                 >
                   {uploadForm.file ? (
                     <div className="teacher-file-preview">
-                      <div className="teacher-file-icon">🎬</div>
+                      <div className="teacher-file-icon"></div>
                       <div className="teacher-file-info">
                         <div className="teacher-file-name">{uploadForm.file.name}</div>
                         <div className="teacher-file-size">
@@ -502,7 +597,7 @@ function TeacherRecordingsPage() {
                     </div>
                   ) : (
                     <>
-                      <div className="teacher-dropzone-icon">📁</div>
+                      <div className="teacher-dropzone-icon"></div>
                       <p className="teacher-dropzone-text">
                         Перетащите видео сюда или
                       </p>
@@ -531,21 +626,21 @@ function TeacherRecordingsPage() {
                     className={`teacher-privacy-tab ${uploadForm.privacyType === 'all' ? 'active' : ''}`}
                     onClick={() => setUploadForm({...uploadForm, privacyType: 'all'})}
                   >
-                    🌍 Все ученики
+                    Все ученики
                   </button>
                   <button
                     type="button"
                     className={`teacher-privacy-tab ${uploadForm.privacyType === 'groups' ? 'active' : ''}`}
                     onClick={() => setUploadForm({...uploadForm, privacyType: 'groups'})}
                   >
-                    👥 Выбрать группы
+                    Выбрать группы
                   </button>
                   <button
                     type="button"
                     className={`teacher-privacy-tab ${uploadForm.privacyType === 'students' ? 'active' : ''}`}
                     onClick={() => setUploadForm({...uploadForm, privacyType: 'students'})}
                   >
-                    👤 Выбрать учеников
+                    Выбрать учеников
                   </button>
                 </div>
 
@@ -636,7 +731,7 @@ function TeacherRecordingsPage() {
                   className="teacher-submit-btn"
                   disabled={uploading}
                 >
-                  {uploading ? `Загрузка... ${uploadProgress}%` : '⬆️ Загрузить'}
+                  {uploading ? `Загрузка... ${uploadProgress}%` : 'Загрузить'}
                 </button>
               </div>
             </form>

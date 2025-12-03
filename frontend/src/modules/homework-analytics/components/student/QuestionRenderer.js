@@ -1,4 +1,5 @@
 import React from 'react';
+import MediaPreview from '../shared/MediaPreview';
 
 const QuestionRenderer = ({ question, answer, onChange }) => {
   if (!question) return null;
@@ -125,9 +126,7 @@ const QuestionRenderer = ({ question, answer, onChange }) => {
     return (
       <div className="ht-listening">
         {config.audioUrl && (
-          <audio controls src={config.audioUrl} className="ht-audio-player">
-            Ваш браузер не поддерживает аудио.
-          </audio>
+          <MediaPreview type="audio" src={config.audioUrl} alt="Аудио для прослушивания" />
         )}
         {config.prompt && <p className="ht-prompt">{config.prompt}</p>}
         <div className="ht-sub-questions">
@@ -251,9 +250,7 @@ const QuestionRenderer = ({ question, answer, onChange }) => {
     return (
       <div className="ht-hotspot">
         {config.imageUrl && (
-          <div className="ht-hotspot-image">
-            <img src={config.imageUrl} alt="Проверяемое изображение" />
-          </div>
+          <MediaPreview type="image" src={config.imageUrl} alt="Изображение для вопроса" />
         )}
         <div className="ht-hotspot-options">
           {hotspots.map((hotspot) => (

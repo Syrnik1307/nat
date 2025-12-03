@@ -1,40 +1,54 @@
 import React from 'react';
 
-// Новый логотип (книга + планшет + шапочка) адаптирован в SVG.
-// size управляет высотой блока; ширина масштабируется пропорционально.
-const Logo = ({ size = 36, withText = false }) => {
-  const width = withText ? Math.round(size * 4.4) : size; // пропорция ширины для варианта с текстом
+// Easy Teaching logo - минималистичная иконка книги с современным текстом
+const Logo = ({ size = 40, withText = true }) => {
   return (
-    <div className="tp-logo" style={{ height: size, width }} aria-label="Teaching Panel logo">
+    <div className="easy-teaching-logo" style={{ display: 'flex', alignItems: 'center', gap: '10px', height: size }} aria-label="Easy Teaching logo">
       <svg
-        width={width}
+        width={size}
         height={size}
-        viewBox={withText ? '0 0 160 48' : '0 0 60 48'}
+        viewBox="0 0 40 40"
         xmlns="http://www.w3.org/2000/svg"
         role="img"
-        aria-hidden={false}
+        style={{ flexShrink: 0 }}
       >
-        <style>
-          {`.tp-stroke{stroke:#1d4ed8;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;} .tp-fill{fill:#1d4ed8;} @media (prefers-color-scheme:dark){ .tp-stroke{stroke:#3b82f6;} .tp-fill{fill:#3b82f6;} }`}
-        </style>
-        {/* Книга */}
-        <path className="tp-stroke" d="M6 14h18v20c-6-3-12-3-18 0V14Z" fill="#eef3ff" />
-        <path className="tp-stroke" d="M24 14h18v20c-6-3-12-3-18 0V14Z" fill="#ffffff" />
-        {/* Планшет */}
-        <rect className="tp-stroke" x="36" y="8" width="22" height="28" rx="4" fill="#fff" />
-        <rect className="tp-stroke" x="41" y="14" width="12" height="16" rx="2" />
-        <path className="tp-stroke" d="M47 34h4" />
-        {/* Шапочка */}
-        <path className="tp-fill" d="M30 8 20 12l10 4 10-4-10-4Z" />
-        <path className="tp-fill" d="M25.5 13.2v4.2c0 .9 1.2 1.6 2.5 1.6s2.5-.7 2.5-1.6v-4.2" fill="none" stroke="#1d4ed8" strokeWidth="1.6" strokeLinecap="round" />
-        <path className="tp-fill" d="M34 12v6" stroke="#1d4ed8" strokeWidth="1.6" strokeLinecap="round" />
-        {withText && (
-          <g fill="#1d4ed8" fontFamily="system-ui,Segoe UI,Roboto,Arial" fontSize="18" fontWeight="600">
-            <text x="64" y="24" letterSpacing=".5">Teaching</text>
-            <text x="64" y="42" letterSpacing=".5">Panel</text>
-          </g>
-        )}
+        <defs>
+          <linearGradient id="bookGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: '#3b82f6', stopOpacity: 1 }} />
+            <stop offset="100%" style={{ stopColor: '#2563eb', stopOpacity: 1 }} />
+          </linearGradient>
+        </defs>
+        {/* Стилизованная открытая книга */}
+        <path 
+          d="M20 8 C15 8, 10 10, 6 13 L6 32 C10 29, 15 27, 20 27 M20 8 C25 8, 30 10, 34 13 L34 32 C30 29, 25 27, 20 27 M20 8 L20 27" 
+          fill="none"
+          stroke="url(#bookGradient)"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {/* Закладка */}
+        <path 
+          d="M20 8 L20 18" 
+          stroke="#3b82f6"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
       </svg>
+      {withText && (
+        <span style={{
+          fontSize: '20px',
+          fontWeight: '700',
+          letterSpacing: '0.3px',
+          background: 'linear-gradient(135deg, #1e293b 0%, #3b82f6 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          whiteSpace: 'nowrap'
+        }}>
+          Easy Teaching
+        </span>
+      )}
     </div>
   );
 };

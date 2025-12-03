@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../apiService';
 import './SubscriptionsModal.css';
+import { ConfirmModal } from '../../shared/components';
 
 const SubscriptionsModal = ({ onClose }) => {
   const [subscriptions, setSubscriptions] = useState([]);
@@ -11,6 +12,21 @@ const SubscriptionsModal = ({ onClose }) => {
   const [filterPlan, setFilterPlan] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [busy, setBusy] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    variant: 'warning',
+    confirmText: 'Да',
+    cancelText: 'Отмена'
+  });
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'info'
+  });
 
   useEffect(() => {
     loadSubscriptions();
@@ -42,27 +58,57 @@ const SubscriptionsModal = ({ onClose }) => {
 
   const handleExtendTrial = async () => {
     // Эндпоинта для продления пробного периода в админке пока нет.
-    alert('Продление пробного периода пока недоступно: отсутствует API.');
+    setAlertModal({
+      isOpen: true,
+      title: 'Внимание',
+      message: 'Продление пробного периода пока недоступно: отсутствует API.',
+      variant: 'warning'
+    });
   };
 
   const handleCancelSubscription = async () => {
-    if (!window.confirm('Отменить автопродление? Доступ сохранится до окончания оплаченного периода.')) return;
-    setBusy(true);
-    try {
-      await api.post('subscription/cancel/');
-      await loadSubscriptions();
-      alert('Подписка отменена');
-    } catch (err) {
-      console.error('Failed to cancel subscription:', err);
-      alert('Не удалось отменить подписку');
-    } finally {
-      setBusy(false);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Отмена автопродления',
+      message: 'Отменить автопродление? Доступ сохранится до окончания оплаченного периода.',
+      variant: 'warning',
+      confirmText: 'Отменить',
+      cancelText: 'Назад',
+      onConfirm: async () => {
+        setBusy(true);
+        try {
+          await api.post('subscription/cancel/');
+          await loadSubscriptions();
+          setAlertModal({
+            isOpen: true,
+            title: 'Успех',
+            message: 'Подписка отменена',
+            variant: 'info'
+          });
+        } catch (err) {
+          console.error('Failed to cancel subscription:', err);
+          setAlertModal({
+            isOpen: true,
+            title: 'Ошибка',
+            message: 'Не удалось отменить подписку',
+            variant: 'danger'
+          });
+        } finally {
+          setBusy(false);
+        }
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      }
+    });
   };
 
   const handleActivateSubscription = async () => {
     // Эндпоинта для активации из админки пока нет.
-    alert('Активация подписки пока недоступна: отсутствует API.');
+    setAlertModal({
+      isOpen: true,
+      title: 'Внимание',
+      message: 'Активация подписки пока недоступна: отсутствует API.',
+      variant: 'warning'
+    });
   };
 
   const formatDate = (dateString) => {
@@ -123,9 +169,31 @@ const SubscriptionsModal = ({ onClose }) => {
       <div className="subscriptions-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="subscriptions-modal-header">
-          <h2>💳 Управление подписками</h2>
+          <h2>Управление подписками</h2>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+      />
+
+      <ConfirmModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        variant={alertModal.variant}
+        confirmText="OK"
+        cancelText=""
+      />
 
         <p className="subscriptions-modal-subtitle">
           Просмотр и управление подписками преподавателей
@@ -133,7 +201,7 @@ const SubscriptionsModal = ({ onClose }) => {
 
         {error && (
           <div className="subscriptions-error">
-            <span className="error-icon">⚠️</span>
+            <span className="error-icon"></span>
             {error}
             <button className="error-retry" onClick={loadSubscriptions}>
               Повторить
@@ -146,7 +214,7 @@ const SubscriptionsModal = ({ onClose }) => {
           <div className="search-box">
             <input
               type="text"
-              placeholder="🔍 Поиск по имени или email..."
+              placeholder="Поиск по имени или email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input"
@@ -178,7 +246,7 @@ const SubscriptionsModal = ({ onClose }) => {
             </select>
 
             <button onClick={loadSubscriptions} className="refresh-btn" disabled={loading}>
-              🔄 Обновить
+              Обновить
             </button>
           </div>
         </div>
@@ -194,7 +262,7 @@ const SubscriptionsModal = ({ onClose }) => {
               </div>
             ) : filteredSubscriptions.length === 0 ? (
               <div className="subscriptions-empty">
-                <span className="empty-icon">💳</span>
+                <span className="empty-icon"></span>
                 <p>Подписки не найдены</p>
                 {searchQuery && (
                   <button onClick={() => setSearchQuery('')} className="clear-search-btn">
@@ -218,7 +286,7 @@ const SubscriptionsModal = ({ onClose }) => {
                       <div className="subscription-item-header">
                         <div className="teacher-info">
                           <div className="teacher-avatar">
-                            {sub.teacher_name?.charAt(0) || '👤'}
+                            {sub.teacher_name?.charAt(0) || 'ET'}
                           </div>
                           <div className="teacher-details">
                             <div className="teacher-name">{sub.teacher_name || 'Без имени'}</div>
@@ -259,7 +327,7 @@ const SubscriptionsModal = ({ onClose }) => {
           <div className="subscriptions-details-panel">
             {!selectedSubscription ? (
               <div className="subscriptions-details-empty">
-                <span className="empty-icon">👈</span>
+                <span className="empty-icon"></span>
                 <p>Выберите подписку для просмотра деталей</p>
               </div>
             ) : (
@@ -308,7 +376,7 @@ const SubscriptionsModal = ({ onClose }) => {
                   )}
                   <div className="detail-row">
                     <span className="detail-label">Автопродление:</span>
-                    <span className="detail-value">{selectedSubscription.auto_renew ? '✅ Да' : '❌ Нет'}</span>
+                    <span className="detail-value">{selectedSubscription.auto_renew ? 'Да' : 'Нет'}</span>
                   </div>
                 </div>
 
@@ -340,10 +408,10 @@ const SubscriptionsModal = ({ onClose }) => {
                           </div>
                           <div className="payment-meta">
                             <span className={`payment-status status-${payment.status}`}>
-                              {payment.status === 'succeeded' && '✅ Успешно'}
-                              {payment.status === 'pending' && '⏳ Ожидает'}
-                              {payment.status === 'failed' && '❌ Ошибка'}
-                              {payment.status === 'refunded' && '↩️ Возврат'}
+                              {payment.status === 'succeeded' && 'Успешно'}
+                              {payment.status === 'pending' && 'Ожидает'}
+                              {payment.status === 'failed' && 'Ошибка'}
+                              {payment.status === 'refunded' && 'Возврат'}
                             </span>
                             <span className="payment-date">{formatDate(payment.created_at)}</span>
                           </div>
@@ -366,7 +434,7 @@ const SubscriptionsModal = ({ onClose }) => {
                       disabled={busy}
                       className="action-btn btn-primary"
                     >
-                      ⏱️ Продлить пробный период
+                      Продлить пробный период
                     </button>
                   )}
 
@@ -376,7 +444,7 @@ const SubscriptionsModal = ({ onClose }) => {
                       disabled={busy}
                       className="action-btn btn-warning"
                     >
-                      ❌ Отменить автопродление
+                      Отменить автопродление
                     </button>
                   )}
 
@@ -386,7 +454,7 @@ const SubscriptionsModal = ({ onClose }) => {
                       disabled={busy}
                       className="action-btn btn-success"
                     >
-                      ✅ Активировать подписку
+                      Активировать подписку
                     </button>
                   )}
                 </div>

@@ -1,3 +1,4 @@
+import copy
 from rest_framework import serializers
 from .models import Homework, Question, Choice, StudentSubmission, Answer
 from accounts.models import CustomUser
@@ -20,12 +21,53 @@ class ChoiceStudentSerializer(serializers.ModelSerializer):
         fields = ['id', 'text']
 
 
+def sanitize_question_config(question: Question):
+    """Remove teacher-only hints before returning config to ученикам."""
+    raw_config = question.config or {}
+    if not isinstance(raw_config, dict):
+        return {}
+
+    config = copy.deepcopy(raw_config)
+    q_type = question.question_type
+
+    if q_type == 'TEXT':
+        config.pop('correctAnswer', None)
+    elif q_type == 'SINGLE_CHOICE':
+        config.pop('correctOptionId', None)
+    elif q_type == 'MULTI_CHOICE':
+        config.pop('correctOptionIds', None)
+    elif q_type == 'LISTENING':
+        sub_questions = config.get('subQuestions') or []
+        if isinstance(sub_questions, list):
+            for item in sub_questions:
+                if isinstance(item, dict):
+                    item.pop('answer', None)
+    elif q_type == 'DRAG_DROP':
+        config.pop('correctOrder', None)
+    elif q_type == 'FILL_BLANKS':
+        answers = config.get('answers')
+        if isinstance(answers, list):
+            config['answers'] = ['' for _ in answers]
+    elif q_type == 'HOTSPOT':
+        hotspots = config.get('hotspots') or []
+        if isinstance(hotspots, list):
+            for hotspot in hotspots:
+                if isinstance(hotspot, dict):
+                    hotspot.pop('isCorrect', None)
+
+    return config
+
+
 class QuestionSerializer(serializers.ModelSerializer):
     choices = ChoiceSerializer(many=True, required=False)
+    config = serializers.JSONField(required=False)
 
     class Meta:
         model = Question
-        fields = ['id', 'prompt', 'question_type', 'points', 'order', 'choices']
+        fields = ['id', 'prompt', 'question_type', 'points', 'order', 'choices', 'config']
+        extra_kwargs = {
+            'config': {'default': dict},
+        }
 
     def create(self, validated_data):
         choices_data = validated_data.pop('choices', [])
@@ -49,10 +91,14 @@ class QuestionSerializer(serializers.ModelSerializer):
 class QuestionStudentSerializer(serializers.ModelSerializer):
     """Ученический сериализатор вопроса: без баллов и, конечно, без is_correct."""
     choices = ChoiceStudentSerializer(many=True, read_only=True)
+    config = serializers.SerializerMethodField()
 
     class Meta:
         model = Question
-        fields = ['id', 'prompt', 'question_type', 'order', 'choices']
+        fields = ['id', 'prompt', 'question_type', 'order', 'choices', 'config']
+
+    def get_config(self, obj):
+        return sanitize_question_config(obj)
 
 
 class HomeworkSerializer(serializers.ModelSerializer):
@@ -106,15 +152,28 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
     student_email = serializers.EmailField(source='student.email', read_only=True)
     student_name = serializers.SerializerMethodField()
     homework_title = serializers.CharField(source='homework.title', read_only=True)
+    max_score = serializers.SerializerMethodField()
+    group_id = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentSubmission
         fields = ['id', 'homework', 'homework_title', 'student', 'student_email', 'student_name',
-                  'status', 'total_score', 'answers', 'created_at', 'submitted_at', 'graded_at']
-        read_only_fields = ['student', 'total_score']
+                  'status', 'total_score', 'max_score', 'group_id', 'answers', 'teacher_feedback_summary',
+                  'created_at', 'submitted_at', 'graded_at']
+        read_only_fields = ['student', 'total_score', 'teacher_feedback_summary']
     
     def get_student_name(self, obj):
         return f"{obj.student.first_name} {obj.student.last_name}".strip() or obj.student.email
+    
+    def get_max_score(self, obj):
+        """Вычисляем максимальный балл для домашки"""
+        return sum(q.points for q in obj.homework.questions.all())
+    
+    def get_group_id(self, obj):
+        """Получаем ID группы из урока если есть"""
+        if obj.homework.lesson and hasattr(obj.homework.lesson, 'group'):
+            return obj.homework.lesson.group.id
+        return None
 
     def create(self, validated_data):
         answers_data = validated_data.pop('answers', [])

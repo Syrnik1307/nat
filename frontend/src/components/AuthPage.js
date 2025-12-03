@@ -464,7 +464,7 @@ const AuthPage = () => {
     showNotification(
       'info',
       'Откройте Telegram',
-      'Мы открыли бота Teaching Panel. Нажмите Start и выполните команду /reset.'
+      'Мы открыли бота Easy Teaching. Нажмите Start и выполните команду /reset.'
     );
   };
 

@@ -51,7 +51,7 @@ const NavBar = () => {
       <nav style={styles.nav}>
         <div style={styles.container}>
           <div style={styles.left}>
-            📚 Teaching Panel
+            📚 Easy Teaching
           </div>
           <div style={styles.center}>
             <Link style={styles.link} to="/">🏠 Главная</Link>

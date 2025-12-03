@@ -656,3 +656,427 @@ input[type="datetime-local"]::-moz-calendar-picker-indicator:hover {
 input[type="datetime-local"]:invalid {
   color: #9ca3af;
 }
+
+/* Новый компонент календаря */
+.dtp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.dtp-display {
+  position: relative;
+}
+
+.dtp-trigger {
+  width: 100%;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  border-radius: 16px;
+  padding: 0.9rem 1.1rem;
+  background: linear-gradient(135deg, #ffffff, #f8fafc);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+}
+
+.dtp-trigger:hover {
+  border-color: rgba(37, 99, 235, 0.4);
+  box-shadow: 0 14px 28px -20px rgba(37, 99, 235, 0.6);
+}
+
+.dtp-display.is-open .dtp-trigger {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.dtp-trigger-label {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #0f172a;
+  text-transform: capitalize;
+}
+
+.dtp-trigger-sub {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.dtp-trigger-time {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+}
+
+.dtp-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.85rem;
+  transform: translateY(-50%);
+  border: none;
+  background: rgba(148, 163, 184, 0.2);
+  color: #475569;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.dtp-clear:hover {
+  background: rgba(37, 99, 235, 0.25);
+  color: #1d4ed8;
+  transform: translateY(-50%) rotate(90deg);
+}
+
+.dtp-popover {
+  margin-top: 0.85rem;
+  padding: 1.25rem;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  box-shadow: 0 30px 60px -40px rgba(15, 23, 42, 0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  z-index: 20;
+}
+
+.dtp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.dtp-header button {
+  border: none;
+  background: rgba(148, 163, 184, 0.2);
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.dtp-header button:hover {
+  background: rgba(59, 130, 246, 0.2);
+  transform: translateY(-1px);
+}
+
+.dtp-header strong {
+  display: block;
+  font-size: 1.05rem;
+  color: #0f172a;
+}
+
+.dtp-header span {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.dtp-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  gap: 0.35rem;
+  color: #94a3b8;
+}
+
+.dtp-weekdays span {
+  text-align: center;
+  font-weight: 600;
+}
+
+.dtp-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.dtp-day {
+  border: none;
+  border-radius: 14px;
+  padding: 0.6rem 0;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 600;
+  color: #0f172a;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.dtp-day span {
+  display: inline-flex;
+  min-width: 26px;
+  justify-content: center;
+}
+
+.dtp-day.muted {
+  color: #cbd5f5;
+}
+
+.dtp-day.today {
+  border: 1px dashed rgba(37, 99, 235, 0.6);
+}
+
+.dtp-day.selected {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: #ffffff;
+  box-shadow: 0 12px 18px -12px rgba(37, 99, 235, 0.8);
+}
+
+.dtp-day.current:hover {
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.dtp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.dtp-chips button {
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  background: rgba(248, 250, 252, 0.8);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.dtp-chips button:hover {
+  border-color: rgba(37, 99, 235, 0.4);
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.dtp-time-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.dtp-time-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.dtp-spin-group {
+  margin-top: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(248, 250, 252, 0.9);
+  border-radius: 14px;
+  padding: 0.4rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.dtp-spin-group button {
+  border: none;
+  background: rgba(148, 163, 184, 0.25);
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.dtp-spin-group button:hover {
+  background: rgba(37, 99, 235, 0.25);
+  color: #2563eb;
+}
+
+.dtp-spin-group input {
+  width: 64px;
+  border: none;
+  background: transparent;
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dtp-spin-group input:focus {
+  outline: none;
+}
+
+.dtp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .dtp-popover {
+    width: 100%;
+  }
+  .dtp-time-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Новая обертка для выбора группы */
+.hc-fancy-select {
+  position: relative;
+}
+
+.hc-fancy-select-trigger {
+  width: 100%;
+  border: 2px solid rgba(37, 99, 235, 0.15);
+  border-radius: 18px;
+  padding: 0.95rem 1.15rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.hc-fancy-select-trigger:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.5);
+  box-shadow: 0 18px 30px -28px rgba(15, 23, 42, 0.95);
+}
+
+.hc-fancy-select.is-open .hc-fancy-select-trigger {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+.hc-fancy-select.is-disabled .hc-fancy-select-trigger {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.hc-fancy-select-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+}
+
+.hc-fancy-select-placeholder {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.hc-fancy-select-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.hc-fancy-select-value.is-set {
+  color: #1d4ed8;
+}
+
+.hc-fancy-select-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+}
+
+.hc-fancy-select-chevron {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-left: 2px solid #1d4ed8;
+  border-bottom: 2px solid #1d4ed8;
+  transform: rotate(-45deg);
+  transition: transform 0.2s ease;
+}
+
+.hc-fancy-select.is-open .hc-fancy-select-chevron {
+  transform: rotate(135deg);
+}
+
+.hc-fancy-select-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  box-shadow: 0 35px 65px -45px rgba(15, 23, 42, 0.85);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  z-index: 25;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.hc-fancy-option {
+  border: none;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  background: transparent;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #0f172a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.hc-fancy-option:hover,
+.hc-fancy-option.is-highlighted {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.hc-fancy-option.is-selected {
+  background: rgba(59, 130, 246, 0.15);
+  color: #1d4ed8;
+}
+
+.hc-fancy-check {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.1);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+.hc-fancy-select-loading,
+.hc-fancy-select-empty {
+  padding: 1rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.hc-fancy-select-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(248, 113, 113, 0.1);
+  color: #b91c1c;
+  font-size: 0.9rem;
+}

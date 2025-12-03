@@ -19,15 +19,15 @@ const Card = ({
   ...props 
 }) => {
   const paddings = {
-    small: '1rem',
-    medium: '1.5rem',
-    large: '2rem',
+    small: 'var(--space-lg)',
+    medium: 'var(--space-xl)',
+    large: 'var(--space-2xl)',
   };
 
   const baseStyles = {
-    backgroundColor: '#ffffff',
-    border: '1px solid var(--gray-200)',
-    borderRadius: 'var(--radius-2xl)',
+    backgroundColor: 'var(--bg-primary)',
+    border: '1px solid var(--border-color)',
+    borderRadius: 'var(--radius-xl)',
     padding: paddings[padding],
     transition: 'all var(--transition-base)',
     cursor: onClick ? 'pointer' : 'default',
@@ -38,7 +38,7 @@ const Card = ({
     if (hoverable || onClick) {
       e.currentTarget.style.transform = 'translateY(-4px)';
       e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-      e.currentTarget.style.borderColor = 'var(--accent-500)';
+      e.currentTarget.style.borderColor = 'var(--primary-500)';
     }
   };
 
@@ -46,15 +46,15 @@ const Card = ({
     if (hoverable || onClick) {
       e.currentTarget.style.transform = 'translateY(0)';
       e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-      e.currentTarget.style.borderColor = 'var(--gray-200)';
+      e.currentTarget.style.borderColor = 'var(--border-color)';
     }
   };
 
   const titleStyles = {
-    fontSize: '1.25rem',
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: '1rem',
+    fontSize: 'var(--text-xl)',
+    fontWeight: 'var(--font-semibold)',
+    color: 'var(--text-primary)',
+    marginBottom: 'var(--space-lg)',
     marginTop: 0,
   };
 

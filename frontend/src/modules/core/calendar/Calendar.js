@@ -4,7 +4,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import apiService from '../../../apiService';
-import { Button, Modal, Input, Badge } from '../../../shared/components';
+import { Button, Modal, Input, Badge, ConfirmModal } from '../../../shared/components';
 
 /**
  * Календарь занятий с тремя видами: месяц, неделя, день
@@ -19,6 +19,8 @@ const Calendar = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeGroup, setActiveGroup] = useState('all');
   const calendarRef = useRef(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmText: 'Да, удалить', cancelText: 'Отмена', variant: 'danger' });
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', confirmText: 'ОК', variant: 'info' });
 
   // Форма создания занятия
   const [newEvent, setNewEvent] = useState({
@@ -182,17 +184,27 @@ const Calendar = () => {
 
   // Удаление занятия
   const handleDeleteLesson = async (lessonId) => {
-    if (!window.confirm('Вы уверены, что хотите удалить это занятие?')) {
-      return;
-    }
-
-    try {
-      await apiService.delete(`/api/schedule/lessons/${lessonId}/`);
-      setShowEventModal(false);
-      loadLessons();
-    } catch (error) {
-      console.error('Ошибка удаления занятия:', error);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Удалить занятие',
+      message: 'Вы уверены, что хотите удалить это занятие? Это действие нельзя отменить.',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await apiService.delete(`/api/schedule/lessons/${lessonId}/`);
+          setShowEventModal(false);
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+          loadLessons();
+          setAlertModal({ isOpen: true, title: 'Занятие удалено', message: 'Занятие успешно удалено из календаря.', confirmText: 'ОК', variant: 'info' });
+        } catch (error) {
+          console.error('Ошибка удаления занятия:', error);
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+          setAlertModal({ isOpen: true, title: 'Ошибка', message: 'Не удалось удалить занятие. Попробуйте позже.', confirmText: 'Понятно', variant: 'danger' });
+        }
+      }
+    });
   };
 
   return (
@@ -427,6 +439,27 @@ const Calendar = () => {
           </Button>
         </div>
       </Modal>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        variant={confirmModal.variant}
+      />
+      <ConfirmModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+        title={alertModal.title}
+        message={alertModal.message}
+        confirmText={alertModal.confirmText}
+        hideCancel
+        variant={alertModal.variant}
+      />
 
       <style>
         {`

@@ -15,7 +15,7 @@
 }
 
 .materials-manager-modal {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: white;
     border-radius: 16px;
     max-width: 1200px;
     width: 90%;
@@ -38,9 +38,9 @@
 
 /* Заголовок */
 .materials-manager-header {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--primary-600);
     padding: 24px 32px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid var(--primary-700);
     position: relative;
 }
 
@@ -380,7 +380,7 @@
 }
 
 .views-modal {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: white;
     border-radius: 16px;
     max-width: 900px;
     width: 90%;
@@ -391,9 +391,9 @@
 }
 
 .views-modal-header {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--primary-600);
     padding: 24px 32px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid var(--primary-700);
     position: relative;
 }
 

@@ -15,7 +15,7 @@
 }
 
 .materials-viewer-modal {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: white;
     border-radius: 20px;
     max-width: 1000px;
     width: 90%;
@@ -43,9 +43,9 @@
 
 /* Заголовок */
 .materials-viewer-header {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--primary-600);
     padding: 32px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid var(--primary-700);
     position: relative;
     text-align: center;
 }
@@ -97,7 +97,7 @@
 .no-materials-message {
     text-align: center;
     padding: 64px 32px;
-    color: white;
+    color: var(--text-secondary);
 }
 
 .no-materials-message .icon {
@@ -115,7 +115,7 @@
 .no-materials-message p {
     margin: 0;
     font-size: 16px;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-secondary);
 }
 
 /* Секция материалов */
@@ -133,9 +133,8 @@
     align-items: center;
     margin-bottom: 24px;
     padding: 20px;
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--bg-tertiary);
     border-radius: 12px;
-    backdrop-filter: blur(10px);
 }
 
 .section-icon {
@@ -146,14 +145,14 @@
 
 .section-info h3 {
     margin: 0 0 4px 0;
-    color: white;
+    color: var(--text-primary);
     font-size: 24px;
     font-weight: 700;
 }
 
 .section-info p {
     margin: 0;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--text-secondary);
     font-size: 14px;
 }
 
@@ -178,14 +177,14 @@
 
 /* Карточка материала */
 .material-card {
-    background: rgba(255, 255, 255, 0.15);
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: white;
+    border: 2px solid var(--gray-200);
     border-radius: 16px;
     padding: 24px;
     transition: all 0.4s ease;
     position: relative;
     overflow: hidden;
-    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .material-card::before {
@@ -195,15 +194,15 @@
     left: 0;
     right: 0;
     height: 6px;
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    background: var(--primary-600);
     opacity: 0;
     transition: opacity 0.4s ease;
 }
 
 .material-card:hover {
     transform: translateY(-8px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    border-color: var(--primary-600);
 }
 
 .material-card:hover::before {
@@ -212,7 +211,7 @@
 
 /* Стили для просмотренных материалов */
 .material-card.viewed {
-    background: rgba(16, 185, 129, 0.1);
+    background: rgba(16, 185, 129, 0.05);
     border-color: rgba(16, 185, 129, 0.3);
 }
 
@@ -222,7 +221,7 @@
 
 /* Стили для непросмотренных материалов */
 .material-card.not-viewed {
-    background: rgba(255, 255, 255, 0.2);
+    background: white;
     border-color: rgba(255, 193, 7, 0.5);
     animation: pulse 2s infinite;
 }
@@ -275,7 +274,7 @@
 
 .material-card-content h4 {
     margin: 0 0 12px 0;
-    color: white;
+    color: var(--text-primary);
     font-size: 20px;
     font-weight: 700;
     line-height: 1.4;
@@ -283,7 +282,7 @@
 
 .material-description {
     margin: 0 0 16px 0;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--text-secondary);
     font-size: 14px;
     line-height: 1.6;
 }
@@ -306,7 +305,7 @@
 .btn-open-material {
     width: 100%;
     padding: 14px 24px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--primary-600);
     color: white;
     border: none;
     border-radius: 10px;
@@ -314,7 +313,7 @@
     font-weight: 700;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
 }
 
 .btn-open-material:hover {
@@ -339,7 +338,7 @@
 .loading {
     text-align: center;
     padding: 64px;
-    color: white;
+    color: var(--text-secondary);
     font-size: 20px;
 }
 
@@ -358,9 +357,9 @@
     display: block;
     margin: 20px auto 0;
     padding: 12px 32px;
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 2px solid var(--gray-300);
     border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
@@ -369,8 +368,8 @@
 }
 
 .btn-close:hover {
-    background: rgba(255, 255, 255, 0.3);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: var(--gray-200);
+    border-color: var(--gray-400);
 }
 
 /* Адаптивность */

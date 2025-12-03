@@ -58,9 +58,9 @@ function RecordingPlayer({ recording, onClose }) {
       : null;
 
   const chips = [
-    groupName && { icon: '👥', text: groupName },
-    recording.duration_display && { icon: '⏱', text: `${recording.duration_display} мин` },
-    availableDaysText && { icon: '⏳', text: `Еще ${availableDaysText}` }
+    groupName && { icon: '', text: groupName },
+    recording.duration_display && { icon: '', text: `${recording.duration_display} мин` },
+    availableDaysText && { icon: '', text: `Еще ${availableDaysText}` }
   ].filter(Boolean);
 
   const heroMeta = [
@@ -125,7 +125,7 @@ function RecordingPlayer({ recording, onClose }) {
 
   const heroSubtitle = formattedFullDate
     ? `Запись от ${formattedFullDate}`
-    : 'Плеер Teaching Panel';
+    : 'Плеер Easy Teaching';
 
   const mediaStats = [
     {
@@ -185,7 +185,7 @@ function RecordingPlayer({ recording, onClose }) {
                 />
               ) : (
                 <div className="player-video-placeholder">
-                  <span className="placeholder-icon">🎬</span>
+                  <span className="placeholder-icon"></span>
                   <p>Видео недоступно</p>
                 </div>
               )}
@@ -232,7 +232,7 @@ function RecordingPlayer({ recording, onClose }) {
                   onClick={handleOpenInNewTab}
                   disabled={!recording.play_url}
                 >
-                  ▶ Открыть плеер
+                  Открыть плеер
                 </button>
 
                 {recording.download_url && (
@@ -243,7 +243,7 @@ function RecordingPlayer({ recording, onClose }) {
                     rel="noopener noreferrer"
                     download
                   >
-                    ⬇ Скачать файл
+                    Скачать файл
                   </a>
                 )}
 
@@ -257,7 +257,7 @@ function RecordingPlayer({ recording, onClose }) {
                 </button>
               </div>
               <p className="player-hint">
-                Запись хранится в защищенном облаке Teaching Panel. Делитесь ссылкой только с участниками группы.
+                Запись хранится в защищенном облаке Easy Teaching. Делитесь ссылкой только с участниками группы.
               </p>
             </div>
           </aside>

@@ -5,25 +5,45 @@ import './SubmissionsList.css';
 
 /**
  * Компонент списка работ учеников для проверки учителем
+ * @param {string} filterStatus - Фильтр статуса ('submitted' для "на проверку", 'all' для всех)
  */
-const SubmissionsList = () => {
+const SubmissionsList = ({ filterStatus = 'submitted' }) => {
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [submissions, setSubmissions] = useState([]);
-  const [filter, setFilter] = useState('all'); // all, submitted, graded
   const [searchTerm, setSearchTerm] = useState('');
+  const [groups, setGroups] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState('');
 
   useEffect(() => {
     loadSubmissions();
-  }, []);
+    loadGroups();
+  }, [filterStatus]);
+
+  const loadGroups = async () => {
+    try {
+      const response = await apiClient.get('/groups/');
+      const data = Array.isArray(response.data) ? response.data : response.data.results || [];
+      setGroups(data);
+    } catch (err) {
+      console.error('Ошибка загрузки групп:', err);
+    }
+  };
 
   const loadSubmissions = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get('submissions/');
+      const params = {};
+      
+      // Применяем фильтр статуса
+      if (filterStatus !== 'all') {
+        params.status = filterStatus;
+      }
+      
+      const response = await apiClient.get('/homework/submissions/', { params });
       
       // Предполагаем, что API возвращает массив или объект с results
       const data = Array.isArray(response.data) 
@@ -53,8 +73,8 @@ const SubmissionsList = () => {
   };
 
   const filteredSubmissions = submissions.filter(sub => {
-    // Фильтр по статусу
-    if (filter !== 'all' && sub.status !== filter) return false;
+    // Фильтр по группе
+    if (selectedGroup && sub.group_id !== parseInt(selectedGroup)) return false;
     
     // Фильтр по поиску
     if (searchTerm) {
@@ -69,8 +89,7 @@ const SubmissionsList = () => {
     return true;
   });
 
-  const needsReview = submissions.filter(s => s.status === 'submitted').length;
-  const graded = submissions.filter(s => s.status === 'graded').length;
+  const needsReview = filteredSubmissions.length;
 
   if (loading) {
     return (
@@ -95,11 +114,11 @@ const SubmissionsList = () => {
     <div className="sl-container">
       <div className="sl-header">
         <div>
-          <h1 className="sl-title">Проверка работ</h1>
+          <h1 className="sl-title">
+            {filterStatus === 'submitted' ? 'Работы на проверку' : 'Все работы'}
+          </h1>
           <div className="sl-stats">
-            <span className="sl-stat">Всего работ: {submissions.length}</span>
-            <span className="sl-stat sl-stat-warning">На проверке: {needsReview}</span>
-            <span className="sl-stat sl-stat-success">Проверено: {graded}</span>
+            <span className="sl-stat sl-stat-warning">Найдено работ: {needsReview}</span>
           </div>
         </div>
         <button className="sl-btn-refresh" onClick={loadSubmissions}>
@@ -119,30 +138,24 @@ const SubmissionsList = () => {
         </div>
 
         <div className="sl-filters">
-          <button
-            className={`sl-filter-btn ${filter === 'all' ? 'active' : ''}`}
-            onClick={() => setFilter('all')}
+          <select
+            className="sl-filter-select"
+            value={selectedGroup}
+            onChange={(e) => setSelectedGroup(e.target.value)}
           >
-            Все
-          </button>
-          <button
-            className={`sl-filter-btn ${filter === 'submitted' ? 'active' : ''}`}
-            onClick={() => setFilter('submitted')}
-          >
-            На проверке
-          </button>
-          <button
-            className={`sl-filter-btn ${filter === 'graded' ? 'active' : ''}`}
-            onClick={() => setFilter('graded')}
-          >
-            Проверено
-          </button>
+            <option value="">Все группы</option>
+            {groups.map(group => (
+              <option key={group.id} value={group.id}>
+                {group.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
-
+      
       {filteredSubmissions.length === 0 ? (
         <div className="sl-empty">
-          {searchTerm || filter !== 'all' 
+          {searchTerm || selectedGroup 
             ? 'Работ по выбранным фильтрам не найдено'
             : 'Пока нет работ для проверки'}
         </div>

@@ -73,10 +73,10 @@ export const useHomeworkConstructor = () => {
 
       if (existingId) {
         await homeworkService.update(existingId, meta, questions);
-        return { saved: true, validation };
+        return { saved: true, validation, homeworkId: existingId };
       }
-      await homeworkService.create(meta, questions);
-      return { saved: true, validation };
+      const created = await homeworkService.create(meta, questions);
+      return { saved: true, validation, homeworkId: created?.id };
     },
     [checkBeforeSave]
   );

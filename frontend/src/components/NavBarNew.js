@@ -13,7 +13,7 @@ import './NavBar.css';
  * Меню для преподавателя:
  * - Главная
  * - Занятия (бывшее "Расписание")
- * - Конструктор ДЗ (бывшее "Шаблоны")
+ * - Домашние задания (бывшее "Конструктор ДЗ")
  * - Управление учениками (бывшее "Управление группами")
  * - Календарь
  * - Материалы
@@ -197,7 +197,7 @@ const NavBar = () => {
                 
                 {/* Правая часть - для учеников */}
                 <div className="status-half status-students">
-                  <div className="status-label">🎓 Ученикам</div>
+                  <div className="status-label">Ученикам</div>
                   {studentMessages.length > 0 ? (
                     <span className="status-message">{studentMessages[0].message}</span>
                   ) : (
@@ -230,9 +230,8 @@ const NavBar = () => {
       <nav className="navbar">
         <div className="navbar-container">
         {/* Логотип */}
-        <Link to={homePath} className="navbar-logo" aria-label="Teaching Panel">
-          <Logo size={34} />
-          <span className="logo-text">Teaching Panel</span>
+        <Link to={homePath} className="navbar-logo" aria-label="Easy Teaching">
+          <Logo size={40} withText={true} />
         </Link>
 
         {/* Навигационное меню */}
@@ -243,7 +242,7 @@ const NavBar = () => {
             className="nav-link"
             onClick={() => setShowMobileMenu(false)}
           >
-            <span className="nav-icon">🏠</span>
+            <span className="nav-icon"></span>
             <span>Главная</span>
           </Link>
 
@@ -262,7 +261,7 @@ const NavBar = () => {
                   aria-haspopup="true"
                   aria-expanded={showLessonsMenu}
                 >
-                  <span className="nav-icon">📅</span>
+                  <span className="nav-icon"></span>
                   <span>Занятия</span>
                   <span className={`caret ${showLessonsMenu ? 'open' : ''}`}>▾</span>
                 </button>
@@ -274,7 +273,7 @@ const NavBar = () => {
                       onClick={() => { setShowLessonsMenu(false); setShowMobileMenu(false); }}
                       role="menuitem"
                     >
-                      <span className="item-icon">📆</span>
+                      <span className="item-icon"></span>
                       <span>Календарь</span>
                     </Link>
                     <Link
@@ -283,7 +282,7 @@ const NavBar = () => {
                       onClick={() => { setShowLessonsMenu(false); setShowMobileMenu(false); }}
                       role="menuitem"
                     >
-                      <span className="item-icon">➕</span>
+                      <span className="item-icon"></span>
                       <span>Создать занятие</span>
                     </Link>
                   </div>
@@ -291,12 +290,12 @@ const NavBar = () => {
               </div>
               
               <Link 
-                to="/homework/manage" 
+                to="/homework/constructor" 
                 className="nav-link"
                 onClick={() => setShowMobileMenu(false)}
               >
-                <span className="nav-icon">📝</span>
-                <span>Конструктор ДЗ</span>
+                <span className="nav-icon"></span>
+                <span>ДЗ</span>
               </Link>
               
               <Link 
@@ -304,17 +303,8 @@ const NavBar = () => {
                 className="nav-link"
                 onClick={() => setShowMobileMenu(false)}
               >
-                <span className="nav-icon">👥</span>
-                <span>Управление учениками</span>
-              </Link>
-              
-              <Link 
-                to="/materials" 
-                className="nav-link"
-                onClick={() => setShowMobileMenu(false)}
-              >
-                <span className="nav-icon">📚</span>
-                <span>Материалы</span>
+                <span className="nav-icon"></span>
+                <span>Ученики</span>
               </Link>
               
               <Link 
@@ -322,8 +312,8 @@ const NavBar = () => {
                 className="nav-link"
                 onClick={() => setShowMobileMenu(false)}
               >
-                <span className="nav-icon">🎥</span>
-                <span>Записи уроков</span>
+                <span className="nav-icon"></span>
+                <span>Записи</span>
               </Link>
               
               <Link 
@@ -331,7 +321,7 @@ const NavBar = () => {
                 className="nav-link"
                 onClick={() => setShowMobileMenu(false)}
               >
-                <span className="nav-icon">💳</span>
+                <span className="nav-icon"></span>
                 <span>Подписка</span>
               </Link>
             </>
@@ -345,7 +335,7 @@ const NavBar = () => {
                 className="nav-link"
                 onClick={() => setShowMobileMenu(false)}
               >
-                <span className="nav-icon">📚</span>
+                <span className="nav-icon"></span>
                 <span>Мои курсы</span>
               </Link>
               
@@ -354,7 +344,7 @@ const NavBar = () => {
                 className="nav-link"
                 onClick={() => setShowMobileMenu(false)}
               >
-                <span className="nav-icon">📝</span>
+                <span className="nav-icon"></span>
                 <span>Домашние задания</span>
               </Link>
               
@@ -363,7 +353,7 @@ const NavBar = () => {
                 className="nav-link"
                 onClick={() => setShowMobileMenu(false)}
               >
-                <span className="nav-icon">📆</span>
+                <span className="nav-icon"></span>
                 <span>Календарь</span>
               </Link>
             </>
@@ -376,7 +366,7 @@ const NavBar = () => {
               className="nav-link nav-link-highlight"
               onClick={() => setShowMobileMenu(false)}
             >
-              <span className="nav-icon">🔧</span>
+              <span className="nav-icon"></span>
               <span>Админ-панель</span>
             </Link>
           )}
@@ -444,7 +434,7 @@ const NavBar = () => {
                     className="dropdown-item"
                     onClick={() => setShowProfileMenu(false)}
                   >
-                    <span>⚙️</span>
+                    <span></span>
                     <span>Настройки профиля</span>
                   </Link>
                   
@@ -452,7 +442,7 @@ const NavBar = () => {
                     className="dropdown-item"
                     onClick={handleLogout}
                   >
-                    <span>🚪</span>
+                    <span></span>
                     <span>Выйти</span>
                   </button>
                 </div>,

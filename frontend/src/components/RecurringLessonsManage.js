@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import './RecurringLessonsManage.css';
 import { getGroups, getRecurringLessons, createRecurringLesson, updateRecurringLesson, deleteRecurringLesson, generateLessonsFromRecurring, getLessons } from '../apiService';
 
 const initialForm = { title:'', group_id:'', day_of_week:'', week_type:'ALL', start_time:'', end_time:'', start_date:'', end_date:'', topics:'', location:'' };
@@ -103,21 +104,21 @@ const RecurringLessonsManage = () => {
     }
   };
 
-  if (loading) return <div style={styles.loading}>Загрузка...</div>;
-  if (error) return <div style={styles.error}>{error}</div>;
+  if (loading) return <div className="rl-loading">Загрузка...</div>;
+  if (error) return <div className="rl-error">{error}</div>;
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1 className="page-title">Регулярные уроки</h1>
-        <div className="filter-tabs">
-          <button className={`filter-tab ${activeFilter === 'all' ? 'active' : ''}`} onClick={() => setActiveFilter('all')}>Все</button>
-          <button className={`filter-tab ${activeFilter === 'upper' ? 'active' : ''}`} onClick={() => setActiveFilter('upper')}>Верхняя неделя</button>
-          <button className={`filter-tab ${activeFilter === 'lower' ? 'active' : ''}`} onClick={() => setActiveFilter('lower')}>Нижняя неделя</button>
+    <div className="rl-page">
+      <div className="rl-header">
+        <h1 className="rl-title">Регулярные уроки</h1>
+        <div className="rl-tabs">
+          <button className={`rl-tab ${activeFilter === 'all' ? 'active' : ''}`} onClick={() => setActiveFilter('all')}>Все</button>
+          <button className={`rl-tab ${activeFilter === 'upper' ? 'active' : ''}`} onClick={() => setActiveFilter('upper')}>Верхняя неделя</button>
+          <button className={`rl-tab ${activeFilter === 'lower' ? 'active' : ''}`} onClick={() => setActiveFilter('lower')}>Нижняя неделя</button>
         </div>
       </div>
       
-      <form onSubmit={handleSubmit} className="form-modern">
+      <form onSubmit={handleSubmit} className="rl-form">
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Название занятия</label>
@@ -172,19 +173,19 @@ const RecurringLessonsManage = () => {
         
         {/* Темы занятия удалены по запросу */}
         
-        <div style={styles.formActions}>
-          <button disabled={saving} type="submit" style={styles.btnPrimary}>
-            {saving ? 'Сохранение...' : editingId ? '✓ Сохранить изменения' : '+ Добавить урок'}
+        <div className="btn-group rl-actions">
+          <button disabled={saving} type="submit" className="btn btn-submit">
+            {saving ? 'Сохранение...' : editingId ? 'Сохранить изменения' : 'Добавить урок'}
           </button>
           {editingId && (
-            <button type="button" onClick={cancelEdit} style={styles.btnSecondary}>Отмена</button>
+            <button type="button" onClick={cancelEdit} className="btn btn-surface">Отмена</button>
           )}
         </div>
       </form>
       
-      <div style={{ marginTop:'2rem' }}>
-        <h2 style={styles.sectionTitle}>Список регулярных уроков</h2>
-        <table className="table-modern">
+      <div className="rl-list">
+        <h2 className="rl-subtitle">Список регулярных уроков</h2>
+        <table className="table-modern rl-table">
           <thead>
             <tr>
               <th>Название</th>
@@ -212,9 +213,9 @@ const RecurringLessonsManage = () => {
                 <td style={{ color:'#2563eb', fontWeight:600 }}>{item.start_time.slice(0,5)}–{item.end_time.slice(0,5)}</td>
                 <td style={{ fontSize:'0.85rem', color:'#6b7280' }}>{item.start_date} → {item.end_date}</td>
                 <td>
-                  <div style={{ display:'flex', gap:'0.5rem' }}>
-                    <button onClick={()=>startEdit(item)} className="btn-icon" title="Редактировать">✏️</button>
-                    <button onClick={()=>handleDelete(item.id)} className="btn-icon" title="Удалить">🗑️</button>
+                  <div className="btn-group rl-row-actions">
+                    <button onClick={()=>startEdit(item)} className="btn btn-outline btn-sm" title="Редактировать">Редактировать</button>
+                    <button onClick={()=>handleDelete(item.id)} className="btn btn-danger btn-sm" title="Удалить">Удалить</button>
                     <button onClick={()=>{
                       const until = window.prompt('Сгенерировать занятия до даты (YYYY-MM-DD):');
                       if (!until) return;
@@ -230,70 +231,19 @@ const RecurringLessonsManage = () => {
                         .catch(err=>{
                           alert(err.response?.data?.detail || 'Ошибка генерации');
                         });
-                    }} className="btn-icon" title="Сгенерировать занятия (без авто Zoom)">🔄</button>
+                    }} className="btn btn-refresh btn-sm" title="Сгенерировать занятия (без авто Zoom)">Сгенерировать</button>
                   </div>
                 </td>
               </tr>
             ))}
             {items.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign:'center', padding:'2rem', color:'#9ca3af' }}>Нет регулярных уроков</td></tr>
+              <tr><td colSpan={7} className="rl-empty">Нет регулярных уроков</td></tr>
             )}
           </tbody>
         </table>
       </div>
     </div>
   );
-};
-
-const styles = {
-  loading: {
-    textAlign:'center',
-    padding:'3rem',
-    color:'#6b7280'
-  },
-  error: {
-    textAlign:'center',
-    padding:'2rem',
-    color:'#dc2626',
-    background:'#fef2f2',
-    border:'1px solid #fecaca',
-    borderRadius:12,
-    margin:'2rem'
-  },
-  sectionTitle: {
-    fontSize:'1.25rem',
-    fontWeight:600,
-    color:'#111827',
-    marginBottom:'1rem'
-  },
-  formActions: {
-    display:'flex',
-    gap:'0.75rem',
-    alignItems:'center',
-    marginTop:'0.5rem'
-  },
-  btnPrimary: {
-    background:'#2563eb',
-    color:'#fff',
-    border:'none',
-    padding:'0.75rem 1.5rem',
-    borderRadius:8,
-    fontSize:'0.95rem',
-    cursor:'pointer',
-    fontWeight:600,
-    transition:'all 0.2s ease'
-  },
-  btnSecondary: {
-    background:'#f3f4f6',
-    color:'#374151',
-    border:'1px solid #e5e7eb',
-    padding:'0.75rem 1.5rem',
-    borderRadius:8,
-    fontSize:'0.95rem',
-    cursor:'pointer',
-    fontWeight:500,
-    transition:'all 0.2s ease'
-  }
 };
 
 export default RecurringLessonsManage;

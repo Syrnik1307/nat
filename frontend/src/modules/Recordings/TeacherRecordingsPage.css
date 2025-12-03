@@ -1,6 +1,6 @@
 .teacher-recordings-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-secondary);
   padding: 2rem;
 }
 
@@ -155,7 +155,7 @@
 
 .teacher-refresh-btn {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--primary-600);
   color: white;
   border: none;
   border-radius: 8px;
@@ -530,7 +530,7 @@
 }
 
 .teacher-submit-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--primary-600);
   color: white;
 }
 
@@ -591,7 +591,7 @@
 .teacher-file-input-btn {
   display: inline-block;
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--primary-600);
   color: white;
   border-radius: 8px;
   font-weight: 600;
@@ -688,8 +688,8 @@
 }
 
 .teacher-privacy-tab.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-color: #667eea;
+  background: var(--primary-600);
+  border-color: var(--primary-600);
   color: white;
 }
 
@@ -761,7 +761,7 @@
 
 .teacher-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: var(--primary-600);
   transition: width 0.3s ease;
   border-radius: 4px;
 }

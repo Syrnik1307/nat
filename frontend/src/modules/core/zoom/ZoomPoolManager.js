@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../../../apiService';
-import { Button, Modal, Input, Badge, Card } from '../../../shared/components';
+import { Button, Modal, Input, Badge, Card, ConfirmModal } from '../../../shared/components';
 
 /**
  * Административный интерфейс для управления пулом Zoom аккаунтов
@@ -16,6 +16,21 @@ const ZoomPoolManager = ({ onClose }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    variant: 'warning',
+    confirmText: 'Да',
+    cancelText: 'Отмена'
+  });
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'info'
+  });
 
   const [newAccount, setNewAccount] = useState({
     email: '',
@@ -94,7 +109,7 @@ const ZoomPoolManager = ({ onClose }) => {
       loadAccounts();
     } catch (error) {
       console.error('Ошибка добавления аккаунта:', error);
-      alert('Ошибка добавления аккаунта');
+      setAlertModal({ isOpen: true, title: 'Ошибка', message: 'Ошибка добавления аккаунта', variant: 'danger' });
     }
   };
 
@@ -107,23 +122,30 @@ const ZoomPoolManager = ({ onClose }) => {
       loadAccounts();
     } catch (error) {
       console.error('Ошибка редактирования аккаунта:', error);
-      alert('Ошибка редактирования аккаунта');
+      setAlertModal({ isOpen: true, title: 'Ошибка', message: 'Ошибка редактирования аккаунта', variant: 'danger' });
     }
   };
 
   // Удаление аккаунта
   const handleDeleteAccount = async (accountId) => {
-    if (!window.confirm('Вы уверены, что хотите удалить этот Zoom аккаунт?')) {
-      return;
-    }
-
-    try {
-      await apiService.delete(`zoom-pool/${accountId}/`);
-      loadAccounts();
-    } catch (error) {
-      console.error('Ошибка удаления аккаунта:', error);
-      alert('Ошибка удаления аккаунта');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Удаление Zoom аккаунта',
+      message: 'Вы уверены, что хотите удалить этот Zoom аккаунт?',
+      variant: 'danger',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена',
+      onConfirm: async () => {
+        try {
+          await apiService.delete(`zoom-pool/${accountId}/`);
+          loadAccounts();
+        } catch (error) {
+          console.error('Ошибка удаления аккаунта:', error);
+          setAlertModal({ isOpen: true, title: 'Ошибка', message: 'Ошибка удаления аккаунта', variant: 'danger' });
+        }
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      }
+    });
   };
 
   // Переключение активности аккаунта
@@ -146,7 +168,7 @@ const ZoomPoolManager = ({ onClose }) => {
       loadAccounts();
     } catch (error) {
       console.error('Ошибка освобождения аккаунта:', error);
-      alert('Ошибка освобождения аккаунта');
+      setAlertModal({ isOpen: true, title: 'Ошибка', message: 'Ошибка освобождения аккаунта', variant: 'danger' });
     }
   };
 
@@ -596,6 +618,26 @@ const ZoomPoolManager = ({ onClose }) => {
           </div>
         </Modal>
       )}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+      />
+      <ConfirmModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        variant={alertModal.variant}
+        confirmText="OK"
+        cancelText=""
+      />
     </div>
   );
 };

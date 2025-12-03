@@ -102,13 +102,13 @@ function RecordingsPage() {
   return (
     <div className="recordings-page">
       <div className="recordings-header">
-        <h1>📹 Записи уроков</h1>
+        <h1>Записи уроков</h1>
         <p className="subtitle">Все записи ваших занятий в одном месте</p>
       </div>
 
       {error && (
         <div className="error-message">
-          <span className="error-icon">⚠️</span>
+          <span className="error-icon"></span>
           {error}
         </div>
       )}
@@ -118,7 +118,7 @@ function RecordingsPage() {
         <div className="search-box">
           <input
             type="text"
-            placeholder="🔍 Поиск по названию или предмету..."
+            placeholder="Поиск по названию или предмету..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
@@ -145,7 +145,7 @@ function RecordingsPage() {
       {/* Список записей */}
       {filteredRecordings.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">🎥</div>
+          <div className="empty-icon"></div>
           <h3>Пока нет доступных записей</h3>
           <p>Записи появятся здесь после проведения уроков с включенной записью</p>
         </div>

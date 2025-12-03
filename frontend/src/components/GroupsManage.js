@@ -11,6 +11,7 @@ import {
 import { getAccessToken } from '../apiService';
 import GroupInviteModal from './GroupInviteModal';
 import './GroupsManage.css';
+import { ConfirmModal } from '../shared/components';
 
 const initialGroupForm = { name: '', description: '' };
 const initialStudentForm = {
@@ -50,6 +51,21 @@ const GroupsManage = () => {
   const [addIds, setAddIds] = useState('');
   const [removeIds, setRemoveIds] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+    const [confirmModal, setConfirmModal] = useState({
+      isOpen: false,
+      title: '',
+      message: '',
+      onConfirm: null,
+      variant: 'warning',
+      confirmText: 'Да',
+      cancelText: 'Отмена'
+    });
+    const [alertModal, setAlertModal] = useState({
+      isOpen: false,
+      title: '',
+      message: '',
+      variant: 'info'
+    });
   const [filterActive, setFilterActive] = useState('all'); // 'all' | 'with_students' | 'empty'
 
   const resetGroupForm = () => {
@@ -104,13 +120,23 @@ const GroupsManage = () => {
     event.preventDefault();
     const teacherId = getCurrentUserId();
     if (!teacherId) {
-      alert('Не удалось определить преподавателя из токена');
+      setAlertModal({
+        isOpen: true,
+        title: 'Ошибка',
+        message: 'Не удалось определить преподавателя из токена',
+        variant: 'danger'
+      });
       return;
     }
 
     const trimmedName = groupForm.name.trim();
     if (!trimmedName) {
-      alert('Введите название группы');
+      setAlertModal({
+        isOpen: true,
+        title: 'Внимание',
+        message: 'Введите название группы',
+        variant: 'warning'
+      });
       return;
     }
 
@@ -133,7 +159,12 @@ const GroupsManage = () => {
       resetGroupForm();
       setActivePanel('group');
     } catch (e) {
-      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка сохранения группы');
+      setAlertModal({
+        isOpen: true,
+        title: 'Ошибка',
+        message: e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка сохранения группы',
+        variant: 'danger'
+      });
     } finally {
       setCreating(false);
     }
@@ -144,7 +175,12 @@ const GroupsManage = () => {
 
     const email = studentForm.email.trim();
     if (!email) {
-      alert('Введите email ученика');
+      setAlertModal({
+        isOpen: true,
+        title: 'Внимание',
+        message: 'Введите email ученика',
+        variant: 'warning'
+      });
       return;
     }
 
@@ -158,13 +194,21 @@ const GroupsManage = () => {
         role: 'student',
       });
 
-      alert(
-        `Ученик ${studentForm.first_name} ${studentForm.last_name} создан! Email: ${email}, Пароль: ${studentForm.password}`
-      );
+      setAlertModal({
+        isOpen: true,
+        title: 'Успех',
+        message: `Ученик ${studentForm.first_name} ${studentForm.last_name} создан! Email: ${email}, Пароль: ${studentForm.password}`,
+        variant: 'info'
+      });
       resetStudentForm();
       setActivePanel('student');
     } catch (e) {
-      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка создания ученика');
+      setAlertModal({
+        isOpen: true,
+        title: 'Ошибка',
+        message: e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка создания ученика',
+        variant: 'danger'
+      });
     } finally {
       setCreating(false);
     }
@@ -180,13 +224,28 @@ const GroupsManage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Удалить группу?')) return;
-    try {
-      await deleteGroup(id);
-      await load();
-    } catch (e) {
-      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка удаления');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Удаление группы',
+      message: 'Удалить группу?',
+      variant: 'danger',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена',
+      onConfirm: async () => {
+        try {
+          await deleteGroup(id);
+          await load();
+        } catch (e) {
+          setAlertModal({
+            isOpen: true,
+            title: 'Ошибка',
+            message: e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка удаления',
+            variant: 'danger'
+          });
+        }
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      }
+    });
   };
 
   const openStudentOps = (group) => {
@@ -207,7 +266,12 @@ const GroupsManage = () => {
       await load();
       setAddIds('');
     } catch (e) {
-      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка добавления');
+      setAlertModal({
+        isOpen: true,
+        title: 'Ошибка',
+        message: e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка добавления',
+        variant: 'danger'
+      });
     }
   };
 
@@ -221,7 +285,12 @@ const GroupsManage = () => {
       await load();
       setRemoveIds('');
     } catch (e) {
-      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка удаления');
+      setAlertModal({
+        isOpen: true,
+        title: 'Ошибка',
+        message: e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка удаления',
+        variant: 'danger'
+      });
     }
   };
 
@@ -337,6 +406,28 @@ const GroupsManage = () => {
                       ✕ Отмена
                     </button>
                   )}
+
+                      <ConfirmModal
+                        isOpen={confirmModal.isOpen}
+                        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                        onConfirm={confirmModal.onConfirm}
+                        title={confirmModal.title}
+                        message={confirmModal.message}
+                        variant={confirmModal.variant}
+                        confirmText={confirmModal.confirmText}
+                        cancelText={confirmModal.cancelText}
+                      />
+
+                      <ConfirmModal
+                        isOpen={alertModal.isOpen}
+                        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+                        onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
+                        title={alertModal.title}
+                        message={alertModal.message}
+                        variant={alertModal.variant}
+                        confirmText="OK"
+                        cancelText=""
+                      />
                 </div>
               </form>
             </div>

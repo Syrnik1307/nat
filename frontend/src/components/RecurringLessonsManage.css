@@ -1,0 +1,79 @@
+/* Recurring Lessons Manage - Fresh styles in Design System spirit */
+
+.rl-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-2xl) var(--space-xl);
+}
+
+.rl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-xl);
+}
+
+.rl-title {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  background: linear-gradient(135deg, var(--gray-900) 0%, var(--primary-600) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.rl-tabs { display:flex; gap: var(--space-md); }
+
+.rl-tab {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.rl-tab:hover { border-color: var(--border-hover); box-shadow: var(--shadow-sm); }
+.rl-tab.active { background: var(--primary-500); color: #fff; border-color: transparent; }
+
+/* Form wrapper uses design-system form-modern semantics but with tweaks */
+.rl-form {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+}
+
+/* Actions */
+.rl-actions { margin-top: var(--space-md); }
+
+/* List section */
+.rl-list { margin-top: var(--space-2xl); }
+.rl-subtitle { font-size: var(--text-xl); font-weight: var(--font-semibold); color: var(--text-primary); margin-bottom: var(--space-lg); }
+
+/* Table extension */
+.rl-table { border: 1px solid var(--border-color); border-radius: var(--radius-xl); overflow: hidden; }
+.rl-row-actions { gap: var(--space-sm); }
+
+/* Empty state */
+.rl-empty { text-align:center; padding: var(--space-2xl); color: var(--text-tertiary); }
+
+/* Loading & Error */
+.rl-loading { text-align:center; padding: var(--space-2xl); color: var(--text-secondary); }
+.rl-error {
+  text-align:center;
+  padding: var(--space-xl);
+  color: var(--error-700);
+  background: var(--error-50);
+  border: 1px solid var(--error-200);
+  border-radius: var(--radius-lg);
+  margin: var(--space-xl);
+}
+
+@media (max-width: 768px){
+  .rl-header { flex-direction: column; align-items: flex-start; gap: var(--space-md); }
+  .rl-page { padding: var(--space-xl); }
+}

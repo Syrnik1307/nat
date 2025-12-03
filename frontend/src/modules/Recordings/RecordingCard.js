@@ -30,7 +30,7 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
       case 'ready':
         return <span className="status-badge ready">✓ Готово</span>;
       case 'processing':
-        return <span className="status-badge processing">⏳ Обработка...</span>;
+        return <span className="status-badge processing">Обработка...</span>;
       case 'failed':
         return <span className="status-badge failed">✗ Ошибка</span>;
       default:
@@ -56,11 +56,11 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
           <img src={recording.thumbnail_url} alt="Preview" />
         ) : (
           <div className="no-thumbnail">
-            <span className="thumbnail-icon">🎥</span>
+            <span className="thumbnail-icon"></span>
           </div>
         )}
         <div className="play-overlay" onClick={() => onPlay(recording)}>
-          <div className="play-button">▶</div>
+          <div className="play-button"></div>
         </div>
         {recording.duration_display && (
           <div className="duration-badge">
@@ -96,7 +96,7 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
 
         <div className="recording-meta">
           <div className="meta-row">
-            <span className="meta-icon">📅</span>
+            <span className="meta-icon"></span>
             <span>{formatDate(recording.lesson_info?.start_time)}</span>
           </div>
           <div className="meta-row">
@@ -114,14 +114,14 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
         {/* Статистика */}
         <div className="recording-stats">
           <div className="stat">
-            <span className="stat-icon">👁️</span>
+            <span className="stat-icon"></span>
             <span className="stat-value">{recording.views_count || 0}</span>
             <span className="stat-label">просмотров</span>
           </div>
           
           {recording.file_size_mb && (
             <div className="stat">
-              <span className="stat-icon">💾</span>
+              <span className="stat-icon"></span>
               <span className="stat-value">{recording.file_size_mb}</span>
               <span className="stat-label">МБ</span>
             </div>
@@ -149,7 +149,7 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
         >
           {recording.status === 'ready' ? (
             <>
-              <span className="button-icon">▶</span>
+              <span className="button-icon"></span>
               Смотреть запись
             </>
           ) : recording.status === 'processing' ? (
@@ -175,7 +175,7 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
             }}
             title="Удалить запись"
           >
-            <span className="button-icon">🗑️</span>
+            <span className="button-icon"></span>
             Удалить
           </button>
         )}

@@ -263,6 +263,79 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         send_telegram_notification(teacher, 'homework_submitted', message)
     
     @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
+    def feedback(self, request, pk=None):
+        """
+        Добавить общий комментарий преподавателя к работе (не к отдельному ответу).
+        
+        PATCH /api/homework/submissions/{id}/feedback/
+        {
+            "score": 85,  // optional: итоговый балл
+            "comment": "Хорошая работа! Обратите внимание на пункт 3.",
+            "attachments": []  // optional: список вложений
+        }
+        """
+        submission = self.get_object()
+        
+        # Проверяем права: только учитель этого задания
+        if request.user != submission.homework.teacher:
+            return Response(
+                {'error': 'Только учитель, создавший задание, может оставлять комментарии'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        comment = request.data.get('comment', '')
+        attachments = request.data.get('attachments', [])
+        score = request.data.get('score')
+        
+        # Сохраняем комментарий
+        submission.teacher_feedback_summary = {
+            'text': comment,
+            'attachments': attachments,
+            'updated_at': timezone.now().isoformat()
+        }
+        
+        # Обновляем балл если передан
+        if score is not None:
+            try:
+                submission.total_score = int(score)
+            except (ValueError, TypeError):
+                return Response(
+                    {'error': 'Некорректное значение score'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Обновляем статус на "проверено"
+        if submission.status == 'submitted':
+            submission.status = 'graded'
+            submission.graded_at = timezone.now()
+        
+        submission.save()
+        
+        # Логируем действие
+        AuditLog.log(
+            user=request.user,
+            action='feedback',
+            content_object=submission,
+            description=f'Оставлен комментарий к работе {submission.id}',
+            metadata={
+                'comment_length': len(comment),
+                'attachments_count': len(attachments),
+                'score': score,
+            },
+            request=request
+        )
+        
+        # Уведомляем ученика
+        try:
+            notify_student_graded.delay(submission.id)
+        except Exception:
+            pass
+        self._notify_student_graded(submission)
+        
+        serializer = self.get_serializer(submission)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
     def update_answer(self, request, pk=None):
         """
         Обновить оценку и комментарий учителя для конкретного ответа.
