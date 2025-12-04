@@ -332,6 +332,9 @@
   resize: vertical;
   min-height: 100px;
 }
+
+/* Mobile */
+@media (max-width: 768px) {
   .rl-page {
     padding: 1rem;
   }
