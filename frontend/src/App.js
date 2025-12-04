@@ -33,6 +33,8 @@ import ChatPage from './components/ChatPage';
 // Записи уроков
 import RecordingsPage from './modules/Recordings/RecordingsPage';
 import TeacherRecordingsPage from './modules/Recordings/TeacherRecordingsPage';
+// Журнал посещений
+import AttendanceLogPage from './components/AttendanceLogPage';
 // Админ - управление хранилищем
 
 const RoleRouter = () => {
@@ -79,6 +81,7 @@ const AppRoutes = () => {
         {/* Teacher */}
         <Route path="/home-new" element={<Protected allowRoles={['teacher', 'admin']}><TeacherHomePage /></Protected>} />
         <Route path="/teacher" element={<Navigate to="/home-new" replace />} />
+        <Route path="/attendance/:groupId" element={<Protected allowRoles={['teacher', 'admin']}><AttendanceLogPage /></Protected>} />
         <Route path="/teacher/recordings" element={<Protected allowRoles={['teacher']}><TeacherRecordingsPage /></Protected>} />
         <Route path="/homework/manage" element={<Protected allowRoles={['teacher']}><HomeworkManage /></Protected>} />
         <Route

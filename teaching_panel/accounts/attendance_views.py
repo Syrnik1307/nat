@@ -6,7 +6,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch, Q, Max
 from django.utils import timezone
 
 from accounts.models import (
@@ -256,9 +256,90 @@ class GroupAttendanceLogViewSet(viewsets.ViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
+        lessons = list(
+            Lesson.objects.filter(group=group)
+            .only('id', 'title', 'start_time', 'end_time')
+            .order_by('start_time')
+        )
+        students = list(
+            group.students.all()
+            .only('id', 'first_name', 'last_name', 'email')
+            .order_by('last_name', 'first_name')
+        )
+
+        lessons_data = [
+            {
+                'id': lesson.id,
+                'title': lesson.title,
+                'start_time': lesson.start_time,
+                'end_time': lesson.end_time,
+            }
+            for lesson in lessons
+        ]
+
+        students_data = [
+            {
+                'id': student.id,
+                'name': student.get_full_name() or student.email,
+                'email': student.email,
+            }
+            for student in students
+        ]
+
+        attendance_records = AttendanceRecord.objects.filter(lesson__group=group).only(
+            'lesson_id', 'student_id', 'status', 'auto_recorded', 'updated_at'
+        )
+        records_map = {}
+        attendance_counters = {student['id']: 0 for student in students_data}
+        watched_total = 0
+        absences_total = 0
+
+        for record in attendance_records:
+            key = f"{record.student_id}_{record.lesson_id}"
+            records_map[key] = {
+                'status': record.status,
+                'auto_recorded': record.auto_recorded,
+            }
+
+            if record.status == AttendanceRecord.STATUS_ATTENDED:
+                attendance_counters[record.student_id] = attendance_counters.get(record.student_id, 0) + 1
+            elif record.status == AttendanceRecord.STATUS_WATCHED_RECORDING:
+                watched_total += 1
+            elif record.status == AttendanceRecord.STATUS_ABSENT:
+                absences_total += 1
+
+        lessons_count = len(lessons_data)
+        students_count = len(students_data)
+        avg_attendance_percent = 0
+        if lessons_count and students_count:
+            total_percent = sum(
+                (attendance_counters.get(student['id'], 0) / lessons_count) * 100
+                for student in students_data
+            )
+            avg_attendance_percent = round(total_percent / students_count)
+
+        last_updated = attendance_records.aggregate(last=Max('updated_at'))['last']
+        meta = {
+            'records_count': len(records_map),
+            'updated_at': last_updated,
+            'stats': {
+                'avg_attendance_percent': avg_attendance_percent,
+                'watched_total': watched_total,
+                'absences_total': absences_total,
+                'lessons_count': lessons_count,
+                'students_count': students_count,
+            }
+        }
+
         serializer = AttendanceLogSerializer(
             {},
-            context={'group_id': group_id}
+            context={
+                'group_id': group_id,
+                'lessons_data': lessons_data,
+                'students_data': students_data,
+                'records_data': records_map,
+                'meta': meta,
+            }
         )
         return Response(serializer.data)
     

@@ -5,21 +5,21 @@
 ### Шаг 1: Подключение к серверу
 
 ```bash
-ssh nat@89.169.42.70
-# Пароль: Syrnik13
+ssh tp
 ```
 
 ### Шаг 2: Обновление кода
 
 ```bash
-cd /home/nat/teaching_panel
-git pull origin main
+cd /var/www/teaching_panel
+sudo -u www-data git pull origin main
 ```
 
 ### Шаг 3: Установка зависимостей
 
 ```bash
-source venv/bin/activate
+cd teaching_panel
+source ../venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -34,15 +34,16 @@ python manage.py collectstatic --noinput
 
 ```bash
 sudo systemctl restart teaching_panel
-sudo systemctl restart celery
 sudo systemctl restart nginx
+# при необходимости:
+sudo systemctl restart redis-server celery celery-beat
 ```
 
 ### Шаг 6: Проверка статуса
 
 ```bash
 sudo systemctl status teaching_panel
-sudo systemctl status celery
+sudo systemctl status nginx
 sudo journalctl -u teaching_panel -n 50  # Последние 50 логов
 ```
 
@@ -53,14 +54,14 @@ sudo journalctl -u teaching_panel -n 50  # Последние 50 логов
 Скопируйте и вставьте эту команду целиком в терминале после SSH:
 
 ```bash
-cd /home/nat/teaching_panel && \
-git pull origin main && \
-source venv/bin/activate && \
+cd /var/www/teaching_panel && \
+sudo -u www-data git pull origin main && \
+cd teaching_panel && \
+source ../venv/bin/activate && \
 pip install -r requirements.txt --quiet && \
 python manage.py migrate && \
 python manage.py collectstatic --noinput && \
 sudo systemctl restart teaching_panel && \
-sudo systemctl restart celery && \
 sudo systemctl restart nginx && \
 echo "✅ Deployment completed!" && \
 sudo systemctl status teaching_panel --no-pager | head -10
@@ -101,7 +102,7 @@ sudo systemctl status teaching_panel --no-pager | head -10
 
 ```bash
 # На локальной машине (Windows PowerShell)
-scp C:\path\to\downloaded-credentials.json nat@89.169.42.70:/home/nat/teaching_panel/gdrive-credentials.json
+scp C:\path\to\downloaded-credentials.json tp:/var/www/teaching_panel/gdrive-credentials.json
 ```
 
 Или вручную:
@@ -109,7 +110,7 @@ scp C:\path\to\downloaded-credentials.json nat@89.169.42.70:/home/nat/teaching_p
 2. Скопируйте содержимое
 3. На сервере:
    ```bash
-   nano /home/nat/teaching_panel/gdrive-credentials.json
+   nano /var/www/teaching_panel/gdrive-credentials.json
    # Вставьте содержимое
    # Ctrl+O (сохранить), Enter, Ctrl+X (выход)
    ```
@@ -123,7 +124,7 @@ sudo nano /etc/systemd/system/teaching_panel.service
 Добавьте в секцию `[Service]`:
 
 ```ini
-Environment="GDRIVE_CREDENTIALS_FILE=/home/nat/teaching_panel/gdrive-credentials.json"
+Environment="GDRIVE_CREDENTIALS_FILE=/var/www/teaching_panel/gdrive-credentials.json"
 Environment="GDRIVE_RECORDINGS_FOLDER_ID=ваш_id_папки_из_шага_2.6"
 Environment="VIDEO_COMPRESSION_ENABLED=1"
 ```
@@ -154,8 +155,8 @@ ffmpeg -version  # Проверка
 ### 1. Проверка Google Drive интеграции
 
 ```bash
-cd /home/nat/teaching_panel
-source venv/bin/activate
+cd /var/www/teaching_panel/teaching_panel
+source ../venv/bin/activate
 python manage.py shell
 ```
 
@@ -239,10 +240,11 @@ for rec in recordings:
 ## Откат изменений (если что-то сломалось)
 
 ```bash
-cd /home/nat/teaching_panel
-git log --oneline -10  # Посмотреть последние коммиты
-git checkout <commit_hash>  # Откатиться на нужный коммит
+cd /var/www/teaching_panel
+sudo -u www-data git log --oneline -10  # Посмотреть последние коммиты
+sudo -u www-data git checkout <commit_hash>  # Откатиться на нужный коммит
 sudo systemctl restart teaching_panel
+sudo systemctl restart nginx
 ```
 
 ---
@@ -260,7 +262,7 @@ python manage.py shell -c "from schedule.tasks import cleanup_old_recordings; cl
 redis-cli FLUSHALL
 
 # Перезапуск всех сервисов
-sudo systemctl restart teaching_panel celery nginx
+sudo systemctl restart teaching_panel nginx
 
 # Проверка портов
 sudo netstat -tulpn | grep LISTEN
@@ -275,4 +277,4 @@ sudo netstat -tulpn | grep LISTEN
 
 ---
 
-**Last Updated**: 2 декабря 2025
+**Last Updated**: 4 декабря 2025

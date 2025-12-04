@@ -1,17 +1,18 @@
 /**
- * AttendanceLogTab.js
- * Таб журнала посещений в модале группы
- * Матрица: Ученик x Занятие с возможностью быстрого редактирования
+ * AttendanceLogPage.js
+ * Отдельная страница журнала посещений для группы
+ * Полноценная страница вместо скачивания CSV
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   getGroupAttendanceLog,
   updateGroupAttendanceLog,
-} from '../../apiService';
-import AttendanceStatusPicker from '../AttendanceStatusPicker';
-import './AttendanceLogTab.css';
+  getGroup,
+} from '../apiService';
+import AttendanceStatusPicker from './AttendanceStatusPicker';
+import './AttendanceLogPage.css';
 
 const STATUS_META = {
   attended: { label: 'Был на занятии', short: '✓', className: 'status-attended' },
@@ -21,19 +22,18 @@ const STATUS_META = {
 };
 
 const formatDate = (value) => {
-  if (!value) {
-    return '—';
-  }
+  if (!value) return '—';
   const date = new Date(value);
   return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
 };
 
 const getStatusMeta = (status) => STATUS_META[status] || STATUS_META.default;
-
 const formatPercent = (value) => `${Math.max(0, Math.min(100, Math.round(value || 0)))}%`;
 
-const AttendanceLogTab = ({ groupId, onStudentClick }) => {
+const AttendanceLogPage = () => {
+  const { groupId } = useParams();
   const navigate = useNavigate();
+  const [group, setGroup] = useState(null);
   const [log, setLog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -43,25 +43,24 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
   const tableWrapperRef = useRef(null);
 
   useEffect(() => {
-    loadAttendanceLog();
+    loadData();
   }, [groupId]);
 
-  useEffect(() => {
-    setSelectedCell(null);
-  }, [groupId]);
-
-  const loadAttendanceLog = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getGroupAttendanceLog(groupId);
-      const payload = response.data;
-      setLog(payload);
-      const updatedAt = payload?.meta?.updated_at;
+      const [groupResponse, logResponse] = await Promise.all([
+        getGroup(groupId),
+        getGroupAttendanceLog(groupId),
+      ]);
+      setGroup(groupResponse.data);
+      setLog(logResponse.data);
+      const updatedAt = logResponse.data?.meta?.updated_at;
       setLastUpdated(updatedAt ? new Date(updatedAt) : new Date());
     } catch (err) {
-      console.error('Ошибка загрузки журнала посещений:', err);
-      setError('Не удалось загрузить журнал посещений');
+      console.error('Ошибка загрузки данных:', err);
+      setError('Не удалось загрузить данные');
     } finally {
       setLoading(false);
     }
@@ -75,12 +74,7 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
     if (!log || !students.length || !lessons.length) {
       return {
         rows: [],
-        stats: {
-          avgAttendance: 0,
-          watched: 0,
-          absences: 0,
-          lessonsCount: lessons.length,
-        },
+        stats: { avgAttendance: 0, watched: 0, absences: 0, lessonsCount: lessons.length },
       };
     }
 
@@ -108,12 +102,7 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
         ? Math.round((stats.attended / lessons.length) * 100)
         : 0;
 
-      return {
-        student,
-        stats,
-        lessonStatuses,
-        attendancePercent,
-      };
+      return { student, stats, lessonStatuses, attendancePercent };
     });
 
     const totalStudents = rows.length;
@@ -126,12 +115,7 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
 
     return {
       rows,
-      stats: {
-        avgAttendance,
-        watched,
-        absences,
-        lessonsCount: lessons.length,
-      },
+      stats: { avgAttendance, watched, absences, lessonsCount: lessons.length },
     };
   }, [log, students, lessons, records]);
 
@@ -151,18 +135,14 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
         selectedCell.studentId,
         status
       );
-      await loadAttendanceLog();
+      await loadData();
       setSelectedCell(null);
     } catch (err) {
-      console.error('Ошибка обновления посещения:', err);
+      console.error('Ошибка обновления:', err);
       setError('Не удалось сохранить изменения');
     } finally {
       setUpdating(false);
     }
-  };
-
-  const handleOpenFullPage = () => {
-    navigate(`/attendance/${groupId}`);
   };
 
   const scrollTable = (direction) => {
@@ -172,12 +152,22 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
   };
 
   if (loading) {
-    return <div className="tab-loading">⏳ Загрузка журнала...</div>;
+    return (
+      <div className="attendance-log-page">
+        <div className="page-loading">Загрузка журнала...</div>
+      </div>
+    );
   }
 
-
   if (error) {
-    return <div className="tab-error">⚠️ {error}</div>;
+    return (
+      <div className="attendance-log-page">
+        <div className="page-error">
+          <p>{error}</p>
+          <button onClick={() => navigate(-1)}>Назад</button>
+        </div>
+      </div>
+    );
   }
 
   const { rows, stats: computedStats } = computedData;
@@ -190,54 +180,92 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
         lessonsCount: backendStats.lessons_count ?? lessons.length,
       }
     : computedStats;
+
   const hasData = Boolean(rows.length && lessons.length);
   const updatedAtLabel = lastUpdated
-    ? lastUpdated.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    ? lastUpdated.toLocaleString('ru-RU', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      })
     : 'только что';
 
   return (
-    <div className="attendance-log-tab">
-      <div className="attendance-log-toolbar">
-        <div>
-          <p className="toolbar-title">Данные посещений</p>
-          <p className="toolbar-subtitle">Обновлено {updatedAtLabel}</p>
-        </div>
-        <div className="toolbar-actions">
-          <button type="button" className="toolbar-icon-btn" onClick={() => scrollTable('left')} aria-label="Прокрутить влево">‹</button>
-          <button type="button" className="toolbar-icon-btn" onClick={() => scrollTable('right')} aria-label="Прокрутить вправо">›</button>
-          <button type="button" className="toolbar-btn ghost" onClick={loadAttendanceLog} disabled={loading}>
-            Обновить
+    <div className="attendance-log-page">
+      <div className="page-header">
+        <div className="header-left">
+          <button className="back-button" onClick={() => navigate(-1)}>
+            ← Назад
           </button>
-          <button type="button" className="toolbar-btn" onClick={handleExportCsv} disabled={!hasData}>
-            Скачать CSV
+          <div className="header-info">
+            <h1 className="page-title">Журнал посещений</h1>
+            <p className="page-subtitle">{group?.name || 'Группа'}</p>
+          </div>
+        </div>
+        <div className="header-actions">
+          <button 
+            className="action-button secondary" 
+            onClick={loadData}
+            disabled={loading}
+          >
+            Обновить
           </button>
         </div>
       </div>
 
       <div className="attendance-stats-grid">
-        <div className="attendance-stat-card">
-          <span className="stat-label">Средняя посещаемость</span>
-          <span className="stat-value">{formatPercent(cardsStats.avgAttendance)}</span>
-          <span className="stat-hint">по {cardsStats.lessonsCount} занятиям</span>
+        <div className="stat-card">
+          <div className="stat-content">
+            <span className="stat-label">Средняя посещаемость</span>
+            <span className="stat-value">{formatPercent(cardsStats.avgAttendance)}</span>
+            <span className="stat-hint">по {cardsStats.lessonsCount} занятиям</span>
+          </div>
         </div>
-        <div className="attendance-stat-card">
-          <span className="stat-label">Просмотрели запись</span>
-          <span className="stat-value accent">{cardsStats.watched}</span>
-          <span className="stat-hint">учеников вместо онлайн</span>
-          <button type="button" className="toolbar-btn ghost" onClick={loadAttendanceLog} disabled={loading}>
-            Обновить
-          </button>
-          <button type="button" className="toolbar-btn" onClick={handleOpenFullPage} disabled={!hasData}>
-            Открыть полный журнал
-          </button>
+        <div className="stat-card">
+          <div className="stat-content">
+            <span className="stat-label">Просмотрели запись</span>
+            <span className="stat-value accent">{cardsStats.watched}</span>
+            <span className="stat-hint">учеников вместо онлайн</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-content">
+            <span className="stat-label">Пропуски</span>
+            <span className="stat-value danger">{cardsStats.absences}</span>
+            <span className="stat-hint">требуют внимания</span>
+          </div>
+        </div>
       </div>
 
       {!hasData ? (
-        <div className="tab-empty">📋 Пока нет данных по посещениям</div>
+        <div className="page-empty">
+          <p>Пока нет данных по посещениям</p>
+        </div>
       ) : (
-        <>
+        <div className="attendance-content">
+          <div className="table-toolbar">
+            <p className="table-info">Обновлено {updatedAtLabel}</p>
+            <div className="table-controls">
+              <button 
+                className="control-button" 
+                onClick={() => scrollTable('left')}
+                aria-label="Прокрутить влево"
+              >
+                ‹
+              </button>
+              <button 
+                className="control-button" 
+                onClick={() => scrollTable('right')}
+                aria-label="Прокрутить вправо"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+
           <div className="table-wrapper" ref={tableWrapperRef}>
-            <table className="attendance-table modern">
+            <table className="attendance-table">
               <thead>
                 <tr>
                   <th className="student-col">Ученик</th>
@@ -254,20 +282,23 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
                 {rows.map((row) => (
                   <tr key={row.student.id} className="student-row">
                     <td className="student-col">
-                      <button
-                        className="student-summary"
-                        onClick={() => onStudentClick && onStudentClick(row.student.id, groupId)}
-                      >
-                        <span className="avatar-circle">{row.student.name?.[0] || '👤'}</span>
-                        <span className="student-info">
+                      <div className="student-info-cell">
+                        <span className="avatar-circle">
+                          {row.student.name?.[0] || '👤'}
+                        </span>
+                        <div className="student-details">
                           <span className="student-name">{row.student.name}</span>
                           <span className="student-email">{row.student.email}</span>
-                        </span>
-                      </button>
+                        </div>
+                      </div>
                     </td>
                     <td className="presence-col">
-                      <span className="presence-chip">{formatPercent(row.attendancePercent)}</span>
-                      <span className="presence-meta">{row.stats.attended} из {lessons.length} занятий</span>
+                      <span className="presence-chip">
+                        {formatPercent(row.attendancePercent)}
+                      </span>
+                      <span className="presence-meta">
+                        {row.stats.attended} из {lessons.length}
+                      </span>
                     </td>
                     {row.lessonStatuses.map(({ lessonId, status, autoRecorded }) => {
                       const cellMeta = getStatusMeta(status);
@@ -278,11 +309,12 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
                       return (
                         <td
                           key={`${row.student.id}_${lessonId}`}
-                          className={`attendance-cell-modern ${cellMeta.className} ${isSelected ? 'selected' : ''}`}
+                          className={`attendance-cell ${cellMeta.className} ${
+                            isSelected ? 'selected' : ''
+                          }`}
                           onClick={(e) => handleCellClick(row.student.id, lessonId, e)}
                         >
                           <span className="status-pill">{cellMeta.short}</span>
-                          <span className="status-caption">{cellMeta.label}</span>
                           {autoRecorded && <span className="auto-badge">auto</span>}
 
                           {isSelected && (
@@ -302,25 +334,26 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
             </table>
           </div>
 
-          <div className="attendance-footer-note">
-            <span>✔ Ответы автосохраняются после изменения статуса</span>
-          </div>
-
           <div className="attendance-legend">
-            {['attended', 'absent', 'watched_recording', null].map((statusKey) => {
-              const meta = getStatusMeta(statusKey);
-              return (
-                <div key={meta.className} className="legend-item">
-                  <span className={`status-pill small ${meta.className}`}>{meta.short}</span>
-                  <span>{meta.label}</span>
-                </div>
-              );
-            })}
+            <p className="legend-title">Обозначения:</p>
+            <div className="legend-items">
+              {['attended', 'absent', 'watched_recording', null].map((statusKey) => {
+                const meta = getStatusMeta(statusKey);
+                return (
+                  <div key={meta.className} className="legend-item">
+                    <span className={`status-pill small ${meta.className}`}>
+                      {meta.short}
+                    </span>
+                    <span className="legend-label">{meta.label}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
 };
 
-export default AttendanceLogTab;
+export default AttendanceLogPage;

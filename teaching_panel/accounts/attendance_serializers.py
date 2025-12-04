@@ -74,20 +74,22 @@ class IndividualStudentSerializer(serializers.ModelSerializer):
 
 
 class AttendanceLogSerializer(serializers.Serializer):
-    """
-    Сериализатор для журнала посещений группы.
-    Содержит матрицу: ученик x занятия
-    """
-    
+    """Сериализатор для журнала посещений группы."""
+
     lessons = serializers.SerializerMethodField()
     students = serializers.SerializerMethodField()
     records = serializers.SerializerMethodField()
-    
+    meta = serializers.SerializerMethodField()
+
     def get_lessons(self, obj):
         """Получить список занятий группы"""
+        precomputed = self.context.get('lessons_data')
+        if precomputed is not None:
+            return precomputed
+
         group_id = self.context.get('group_id')
         lessons = Lesson.objects.filter(group_id=group_id).order_by('start_time')
-        
+
         return [
             {
                 'id': lesson.id,
@@ -97,13 +99,17 @@ class AttendanceLogSerializer(serializers.Serializer):
             }
             for lesson in lessons
         ]
-    
+
     def get_students(self, obj):
         """Получить список учеников группы"""
+        precomputed = self.context.get('students_data')
+        if precomputed is not None:
+            return precomputed
+
         group_id = self.context.get('group_id')
         group = Group.objects.get(id=group_id)
         students = group.students.all()
-        
+
         return [
             {
                 'id': student.id,
@@ -112,27 +118,29 @@ class AttendanceLogSerializer(serializers.Serializer):
             }
             for student in students
         ]
-    
+
     def get_records(self, obj):
         """Получить записи посещений"""
+        precomputed = self.context.get('records_data')
+        if precomputed is not None:
+            return precomputed
+
         group_id = self.context.get('group_id')
-        group = Group.objects.get(id=group_id)
-        
         records_data = {}
-        for lesson in group.lessons.all():
-            for student in group.students.all():
-                key = f"{student.id}_{lesson.id}"
-                record = AttendanceRecord.objects.filter(
-                    lesson=lesson,
-                    student=student
-                ).first()
-                
-                records_data[key] = {
-                    'status': record.status if record else None,
-                    'auto_recorded': record.auto_recorded if record else False,
-                }
-        
+        records = AttendanceRecord.objects.filter(lesson__group_id=group_id)
+
+        for record in records:
+            key = f"{record.student_id}_{record.lesson_id}"
+            records_data[key] = {
+                'status': record.status,
+                'auto_recorded': record.auto_recorded,
+            }
+
         return records_data
+
+    def get_meta(self, obj):
+        """Дополнительная мета-информация по журналу"""
+        return self.context.get('meta', {})
 
 
 class GroupRatingSerializer(serializers.Serializer):

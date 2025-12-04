@@ -1,10 +1,8 @@
 # Manual Deployment Script for Teaching Panel
 # Использование: .\manual_deploy.ps1
 
-$SERVER = "89.169.42.70"
-$USER = "nat"
-$PASSWORD = "Syrnik13"
-$REMOTE_PATH = "/home/nat/teaching_panel"
+$TARGET = "tp"  # SSH alias configured in ~/.ssh/config
+$REMOTE_PATH = "/var/www/teaching_panel"
 
 Write-Host "=== Teaching Panel Manual Deployment ===" -ForegroundColor Cyan
 Write-Host ""
@@ -13,10 +11,11 @@ Write-Host ""
 $commands = @"
 cd $REMOTE_PATH &&
 echo '=== Pulling latest changes ===' &&
-git pull origin main &&
+sudo -u www-data git pull origin main &&
 echo '' &&
 echo '=== Activating virtual environment ===' &&
-source venv/bin/activate &&
+cd teaching_panel &&
+source ../venv/bin/activate &&
 echo '' &&
 echo '=== Installing/updating Python dependencies ===' &&
 pip install -r requirements.txt --quiet &&
@@ -29,7 +28,6 @@ python manage.py collectstatic --noinput &&
 echo '' &&
 echo '=== Restarting services ===' &&
 sudo systemctl restart teaching_panel &&
-sudo systemctl restart celery &&
 sudo systemctl restart nginx &&
 echo '' &&
 echo '=== Checking service status ===' &&
@@ -38,7 +36,7 @@ echo '' &&
 echo '✅ Deployment completed!'
 "@
 
-Write-Host "Connecting to server: $USER@$SERVER" -ForegroundColor Yellow
+Write-Host "Connecting to server via alias: $TARGET" -ForegroundColor Yellow
 Write-Host ""
 
 # Попытка подключиться через SSH
@@ -58,32 +56,14 @@ $commands
     Write-Host ""
     Write-Host "Manual steps:" -ForegroundColor Yellow
     Write-Host "1. Copy script to server:" -ForegroundColor White
-    Write-Host "   scp $scriptPath ${USER}@${SERVER}:~/deploy.sh" -ForegroundColor Gray
-    Write-Host ""
+    Write-Host "   scp $scriptPath ${TARGET}:~/deploy.sh" -ForegroundColor Gray
+    Write-Host "" 
     Write-Host "2. SSH to server:" -ForegroundColor White
-    Write-Host "   ssh ${USER}@${SERVER}" -ForegroundColor Gray
-    Write-Host "   Password: $PASSWORD" -ForegroundColor Gray
-    Write-Host ""
+    Write-Host "   ssh ${TARGET}" -ForegroundColor Gray
+    Write-Host "" 
     Write-Host "3. Run deployment:" -ForegroundColor White
     Write-Host "   bash ~/deploy.sh" -ForegroundColor Gray
-    Write-Host ""
-    
-    # Альтернативный способ: использовать pscp.exe если доступен
-    $pscpPath = "C:\Program Files\PuTTY\pscp.exe"
-    if (Test-Path $pscpPath) {
-        Write-Host "Found PuTTY pscp. Attempting automatic deployment..." -ForegroundColor Green
-        
-        # Копируем скрипт на сервер
-        & $pscpPath -pw $PASSWORD $scriptPath "${USER}@${SERVER}:~/deploy.sh"
-        
-        # Выполняем скрипт
-        $plinkPath = "C:\Program Files\PuTTY\plink.exe"
-        if (Test-Path $plinkPath) {
-            & $plinkPath -pw $PASSWORD "${USER}@${SERVER}" "bash ~/deploy.sh"
-        }
-    } else {
-        Write-Host "PuTTY tools not found. Please follow manual steps above." -ForegroundColor Yellow
-    }
+    Write-Host "" 
     
 } catch {
     Write-Host "Error: $_" -ForegroundColor Red
