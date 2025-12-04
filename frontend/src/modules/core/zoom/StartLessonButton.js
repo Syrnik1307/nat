@@ -114,7 +114,7 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
 
       {showRecordingOption && !loading && (
         <>
-          {/* Overlay для закрытия при клике снаружи */}
+          {/* Overlay */}
           <div 
             style={{
               position: 'fixed',
@@ -123,136 +123,155 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
               right: 0,
               bottom: 0,
               zIndex: 999,
+              backgroundColor: 'rgba(0, 0, 0, 0.3)',
+              backdropFilter: 'blur(2px)',
             }}
             onClick={() => setShowRecordingOption(false)}
           />
+          {/* Modal */}
           <div style={{
-            position: 'absolute',
-            top: 0,
-            left: '100%',
-            marginLeft: '0.5rem',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
             backgroundColor: 'white',
             border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            padding: '1rem',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            borderRadius: '12px',
+            padding: '1.5rem',
+            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
             zIndex: 1000,
-            minWidth: '280px',
-          }}>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.75rem',
+            minWidth: '320px',
+            maxWidth: '90vw',
+            animation: 'slideUp 0.25s ease-out',
           }}>
             <div style={{
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              color: '#111827',
-            }}>
-              ⚙️ Настройки записи
-            </div>
-            
-            <label style={{
               display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              cursor: 'pointer',
-              padding: '0.5rem',
-              borderRadius: '6px',
-              backgroundColor: recordLesson ? '#f0fdf4' : 'transparent',
-              border: recordLesson ? '1px solid #86efac' : '1px solid transparent',
-              transition: 'all 0.2s ease',
+              flexDirection: 'column',
+              gap: '1rem',
             }}>
-              <input
-                type="checkbox"
-                checked={recordLesson}
-                onChange={(e) => setRecordLesson(e.target.checked)}
-                style={{
-                  width: '1.125rem',
-                  height: '1.125rem',
-                  cursor: 'pointer',
-                }}
-              />
-              <span style={{
-                fontSize: '0.875rem',
-                color: '#374151',
-              }}>
-                🎥 Записывать урок в Zoom
-              </span>
-            </label>
-
-            {recordLesson && (
               <div style={{
-                fontSize: '0.75rem',
-                color: '#6b7280',
-                padding: '0.5rem',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '6px',
+                fontSize: '1rem',
+                fontWeight: '600',
+                color: '#1f2937',
               }}>
-                ℹ️ Запись появится в разделе "Записи" после окончания урока и будет доступна вашей группе.
+                🎥 Записать урок?
               </div>
-            )}
+              
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                cursor: 'pointer',
+                padding: '0.75rem',
+                borderRadius: '8px',
+                backgroundColor: recordLesson ? '#f0fdf4' : '#f9fafb',
+                border: recordLesson ? '1px solid #d1fae5' : '1px solid #e5e7eb',
+                transition: 'all 0.2s ease',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={recordLesson}
+                  onChange={(e) => setRecordLesson(e.target.checked)}
+                  style={{
+                    width: '1.25rem',
+                    height: '1.25rem',
+                    cursor: 'pointer',
+                    accentColor: '#2563eb',
+                  }}
+                />
+                <span style={{
+                  fontSize: '0.9rem',
+                  color: '#1f2937',
+                  fontWeight: '500',
+                }}>
+                  Записывать в Zoom
+                </span>
+              </label>
 
-            <div style={{
-              display: 'flex',
-              gap: '0.5rem',
-              marginTop: '0.25rem',
-            }}>
-              <button
-                type="button"
-                onClick={handleStartLesson}
-                style={{
-                  flex: 1,
-                  padding: '0.55rem 1rem',
-                  background: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.transform = 'translateY(-1px)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.2)';
-                }}
-              >
-                ▶ Начать
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowRecordingOption(false)}
-                style={{
-                  padding: '0.55rem 1rem',
-                  backgroundColor: '#f3f4f6',
+              {recordLesson && (
+                <div style={{
+                  fontSize: '0.8rem',
                   color: '#6b7280',
+                  padding: '0.75rem',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '8px',
                   border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#e5e7eb';
-                  e.target.style.color = '#374151';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#f3f4f6';
-                  e.target.style.color = '#6b7280';
-                }}
-              >
-                Отмена
-              </button>
+                }}>
+                  ℹ️ Запись будет доступна в разделе "Записи" после окончания урока
+                </div>
+              )}
+
+              <div style={{
+                display: 'flex',
+                gap: '0.75rem',
+              }}>
+                <button
+                  type="button"
+                  onClick={handleStartLesson}
+                  style={{
+                    flex: 1,
+                    padding: '0.65rem 1rem',
+                    background: '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-1px)';
+                    e.target.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.2)';
+                  }}
+                >
+                  ▶ Начать
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRecordingOption(false)}
+                  style={{
+                    padding: '0.65rem 1rem',
+                    backgroundColor: '#f3f4f6',
+                    color: '#6b7280',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#e5e7eb';
+                    e.target.style.color = '#374151';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = '#f3f4f6';
+                    e.target.style.color = '#6b7280';
+                  }}
+                >
+                  Отмена
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+          <style>{`
+            @keyframes slideUp {
+              from {
+                opacity: 0;
+                transform: translate(-50%, -48%);
+              }
+              to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+              }
+            }
+          `}</style>
         </>
       )}
 
