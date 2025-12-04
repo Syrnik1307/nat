@@ -20,14 +20,19 @@ class GoogleDriveStorage(Storage):
     """
     Django Storage Backend для Google Drive
     Автоматически загружает файлы в Google Drive вместо локального хранилища
+    Поддерживает иерархию: Teacher → Type (Recordings/Homework/Materials) → Student (опционально)
     """
     
-    def __init__(self, folder_type='homework'):
+    def __init__(self, folder_type='homework', teacher=None, student=None):
         """
         Args:
             folder_type: Тип папки ('homework', 'materials', 'recordings', 'attachments')
+            teacher: Объект User (преподаватель) - для привязки к папке учителя
+            student: Объект User (ученик) - для привязки к папке ученика внутри папки учителя
         """
         self.folder_type = folder_type
+        self.teacher = teacher
+        self.student = student
         self._gdrive = None
         self._folder_id = None
     
@@ -44,27 +49,58 @@ class GoogleDriveStorage(Storage):
     
     @property
     def folder_id(self):
-        """Получить ID папки для текущего типа файлов"""
+        """Получить ID папки для текущего типа файлов с учётом иерархии"""
         if self._folder_id is None:
-            folder_mapping = {
-                'homework': getattr(settings, 'GDRIVE_HOMEWORK_FOLDER_ID', None),
-                'materials': getattr(settings, 'GDRIVE_MATERIALS_FOLDER_ID', None),
-                'recordings': getattr(settings, 'GDRIVE_RECORDINGS_FOLDER_ID', None),
-                'attachments': getattr(settings, 'GDRIVE_ATTACHMENTS_FOLDER_ID', None),
-            }
-            self._folder_id = folder_mapping.get(self.folder_type)
-            
-            if not self._folder_id:
-                # Если папка не настроена, создаем её
-                root_id = getattr(settings, 'GDRIVE_ROOT_FOLDER_ID', None)
-                if root_id:
-                    folder_name = f"TeachingPanel_{self.folder_type.title()}"
-                    try:
-                        self._folder_id = self.gdrive.create_folder(folder_name, root_id)
-                        logger.info(f"Created {self.folder_type} folder: {folder_name}")
-                    except Exception as e:
-                        logger.error(f"Failed to create folder: {e}")
-                        self._folder_id = root_id
+            # Если указан учитель, используем его папку
+            if self.teacher:
+                try:
+                    teacher_folders = self.gdrive.get_or_create_teacher_folder(self.teacher)
+                    
+                    # Определяем целевую папку в зависимости от типа
+                    folder_mapping = {
+                        'homework': teacher_folders['homework'],
+                        'materials': teacher_folders['materials'],
+                        'recordings': teacher_folders['recordings'],
+                        'attachments': teacher_folders['root'],  # Attachments в корне папки учителя
+                    }
+                    
+                    base_folder_id = folder_mapping.get(self.folder_type, teacher_folders['root'])
+                    
+                    # Если указан ученик, создаём его подпапку
+                    if self.student and self.folder_type in ['homework']:
+                        # Для ДЗ создаём папку ученика внутри Students
+                        students_folder_id = teacher_folders['students']
+                        self._folder_id = self.gdrive.get_or_create_student_folder(
+                            self.student, 
+                            students_folder_id
+                        )
+                    else:
+                        self._folder_id = base_folder_id
+                        
+                except Exception as e:
+                    logger.error(f"Failed to get teacher folder structure: {e}")
+                    self._folder_id = getattr(settings, 'GDRIVE_ROOT_FOLDER_ID', None)
+            else:
+                # Fallback на старую логику без привязки к учителю
+                folder_mapping = {
+                    'homework': getattr(settings, 'GDRIVE_HOMEWORK_FOLDER_ID', None),
+                    'materials': getattr(settings, 'GDRIVE_MATERIALS_FOLDER_ID', None),
+                    'recordings': getattr(settings, 'GDRIVE_RECORDINGS_FOLDER_ID', None),
+                    'attachments': getattr(settings, 'GDRIVE_ATTACHMENTS_FOLDER_ID', None),
+                }
+                self._folder_id = folder_mapping.get(self.folder_type)
+                
+                if not self._folder_id:
+                    # Если папка не настроена, создаем её
+                    root_id = getattr(settings, 'GDRIVE_ROOT_FOLDER_ID', None)
+                    if root_id:
+                        folder_name = f"TeachingPanel_{self.folder_type.title()}"
+                        try:
+                            self._folder_id = self.gdrive.create_folder(folder_name, root_id)
+                            logger.info(f"Created {self.folder_type} folder: {folder_name}")
+                        except Exception as e:
+                            logger.error(f"Failed to create folder: {e}")
+                            self._folder_id = root_id
         
         return self._folder_id
     

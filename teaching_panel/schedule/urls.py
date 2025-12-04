@@ -51,6 +51,10 @@ urlpatterns = [
     path('api/storage/teachers/<int:teacher_id>/recordings/', storage_views.teacher_recordings_list, name='admin_teacher_recordings'),
     path('api/storage/quotas/create/', storage_views.create_teacher_quota, name='create_teacher_quota'),
     
+    # Google Drive Storage Stats
+    path('api/storage/gdrive-stats/all/', storage_views.gdrive_stats_all_teachers, name='gdrive_stats_all_teachers'),
+    path('api/storage/gdrive-stats/my/', storage_views.gdrive_stats_my_storage, name='gdrive_stats_my_storage'),
+    
     # API endpoints для учебных материалов
     path('api/lessons/<int:lesson_id>/materials/upload/', material_views.upload_material, name='upload_material'),
     path('api/lessons/<int:lesson_id>/materials/', material_views.list_materials, name='list_materials'),

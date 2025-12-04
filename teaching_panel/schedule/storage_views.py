@@ -341,3 +341,147 @@ def create_teacher_quota(request):
     
     serializer = TeacherStorageQuotaSerializer(quota)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+# ==================== Google Drive Storage Stats ====================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def gdrive_stats_all_teachers(request):
+    """
+    Статистика Google Drive по всем учителям (только для админа)
+    GET /api/storage/gdrive-stats/all/
+    """
+    if request.user.role != 'admin':
+        return Response(
+            {'error': 'Доступ запрещен'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        from schedule.gdrive_utils import get_gdrive_manager
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        gdrive = get_gdrive_manager()
+        
+        # Получаем всех учителей
+        teachers = CustomUser.objects.filter(role='teacher')
+        
+        stats_list = []
+        total_size = 0
+        total_files = 0
+        
+        for teacher in teachers:
+            try:
+                teacher_stats = gdrive.get_teacher_storage_stats(teacher)
+                
+                stats_list.append({
+                    'teacher_id': teacher.id,
+                    'teacher_name': f"{teacher.first_name} {teacher.last_name}",
+                    'teacher_email': teacher.email,
+                    'total_size': teacher_stats['total_size'],
+                    'total_size_mb': round(teacher_stats['total_size'] / (1024 * 1024), 2),
+                    'total_size_gb': round(teacher_stats['total_size'] / (1024 * 1024 * 1024), 2),
+                    'total_files': teacher_stats['total_files'],
+                    'recordings': {
+                        'size_mb': round(teacher_stats['recordings']['total_size'] / (1024 * 1024), 2),
+                        'files': teacher_stats['recordings']['file_count']
+                    },
+                    'homework': {
+                        'size_mb': round(teacher_stats['homework']['total_size'] / (1024 * 1024), 2),
+                        'files': teacher_stats['homework']['file_count']
+                    },
+                    'materials': {
+                        'size_mb': round(teacher_stats['materials']['total_size'] / (1024 * 1024), 2),
+                        'files': teacher_stats['materials']['file_count']
+                    },
+                    'students_data': {
+                        'size_mb': round(teacher_stats['students']['total_size'] / (1024 * 1024), 2),
+                        'files': teacher_stats['students']['file_count']
+                    }
+                })
+                
+                total_size += teacher_stats['total_size']
+                total_files += teacher_stats['total_files']
+                
+            except Exception as e:
+                logger.error(f"Failed to get stats for teacher {teacher.id}: {e}")
+                continue
+        
+        # Сортировка по размеру
+        stats_list.sort(key=lambda x: x['total_size'], reverse=True)
+        
+        return Response({
+            'teachers': stats_list,
+            'summary': {
+                'total_teachers': len(stats_list),
+                'total_size': total_size,
+                'total_size_gb': round(total_size / (1024 * 1024 * 1024), 2),
+                'total_files': total_files
+            }
+        })
+        
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to retrieve storage statistics: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def gdrive_stats_my_storage(request):
+    """
+    Статистика Google Drive текущего учителя
+    GET /api/storage/gdrive-stats/my/
+    """
+    if request.user.role != 'teacher':
+        return Response(
+            {'error': 'Только преподаватели могут просматривать статистику'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        from schedule.gdrive_utils import get_gdrive_manager
+        
+        gdrive = get_gdrive_manager()
+        stats = gdrive.get_teacher_storage_stats(request.user)
+        
+        return Response({
+            'teacher_id': request.user.id,
+            'teacher_name': f"{request.user.first_name} {request.user.last_name}",
+            'total_size': stats['total_size'],
+            'total_size_mb': round(stats['total_size'] / (1024 * 1024), 2),
+            'total_size_gb': round(stats['total_size'] / (1024 * 1024 * 1024), 2),
+            'total_files': stats['total_files'],
+            'total_folders': stats['total_folders'],
+            'breakdown': {
+                'recordings': {
+                    'size_mb': round(stats['recordings']['total_size'] / (1024 * 1024), 2),
+                    'files': stats['recordings']['file_count'],
+                    'percentage': round((stats['recordings']['total_size'] / stats['total_size'] * 100) if stats['total_size'] > 0 else 0, 1)
+                },
+                'homework': {
+                    'size_mb': round(stats['homework']['total_size'] / (1024 * 1024), 2),
+                    'files': stats['homework']['file_count'],
+                    'percentage': round((stats['homework']['total_size'] / stats['total_size'] * 100) if stats['total_size'] > 0 else 0, 1)
+                },
+                'materials': {
+                    'size_mb': round(stats['materials']['total_size'] / (1024 * 1024), 2),
+                    'files': stats['materials']['file_count'],
+                    'percentage': round((stats['materials']['total_size'] / stats['total_size'] * 100) if stats['total_size'] > 0 else 0, 1)
+                },
+                'students_data': {
+                    'size_mb': round(stats['students']['total_size'] / (1024 * 1024), 2),
+                    'files': stats['students']['file_count'],
+                    'percentage': round((stats['students']['total_size'] / stats['total_size'] * 100) if stats['total_size'] > 0 else 0, 1)
+                }
+            }
+        })
+        
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to retrieve storage statistics: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

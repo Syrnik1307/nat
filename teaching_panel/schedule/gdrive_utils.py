@@ -107,17 +107,17 @@ class GoogleDriveManager:
     
     def get_or_create_teacher_folder(self, teacher):
         """
-        Получить или создать подпапку для преподавателя
+        Получить или создать подпапку для преподавателя с подструктурой
         
         Args:
             teacher: Объект CustomUser (преподаватель)
             
         Returns:
-            str: ID папки преподавателя
+            dict: {'root': folder_id, 'recordings': rec_id, 'homework': hw_id, 'materials': mat_id, 'students': st_id}
         """
         try:
-            # Формируем название папки: teacher_123_Ivan_Petrov
-            folder_name = f"teacher_{teacher.id}_{teacher.first_name}_{teacher.last_name}".replace(' ', '_')
+            # Формируем название папки: Teacher_123_Ivan_Petrov
+            folder_name = f"Teacher_{teacher.id}_{teacher.first_name}_{teacher.last_name}".replace(' ', '_')
             
             # Ищем существующую папку
             query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
@@ -134,19 +134,85 @@ class GoogleDriveManager:
             
             if items:
                 # Папка уже существует
-                folder_id = items[0]['id']
-                logger.info(f"Found existing teacher folder: {folder_name} (ID: {folder_id})")
-                return folder_id
+                teacher_folder_id = items[0]['id']
+                logger.info(f"Found existing teacher folder: {folder_name} (ID: {teacher_folder_id})")
             else:
                 # Создаём новую папку
-                folder_id = self.create_folder(folder_name, self.root_folder_id)
-                logger.info(f"Created new teacher folder: {folder_name} (ID: {folder_id})")
-                return folder_id
+                teacher_folder_id = self.create_folder(folder_name, self.root_folder_id)
+                logger.info(f"Created new teacher folder: {folder_name} (ID: {teacher_folder_id})")
+            
+            # Создаём подпапки внутри папки учителя
+            subfolders = {}
+            subfolder_names = ['Recordings', 'Homework', 'Materials', 'Students']
+            
+            for subfolder_name in subfolder_names:
+                subfolder_id = self._get_or_create_subfolder(subfolder_name, teacher_folder_id)
+                subfolders[subfolder_name.lower()] = subfolder_id
+            
+            subfolders['root'] = teacher_folder_id
+            return subfolders
                 
         except Exception as e:
             logger.error(f"Failed to get/create teacher folder: {e}")
             # Если не удалось создать подпапку, используем root
-            return self.root_folder_id
+            return {'root': self.root_folder_id, 'recordings': self.root_folder_id, 
+                    'homework': self.root_folder_id, 'materials': self.root_folder_id,
+                    'students': self.root_folder_id}
+    
+    def _get_or_create_subfolder(self, folder_name, parent_id):
+        """Получить или создать подпапку"""
+        try:
+            query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+            query += f" and '{parent_id}' in parents"
+            
+            results = self.service.files().list(
+                q=query,
+                spaces='drive',
+                fields='files(id, name)'
+            ).execute()
+            
+            items = results.get('files', [])
+            
+            if items:
+                return items[0]['id']
+            else:
+                return self.create_folder(folder_name, parent_id)
+        except:
+            return parent_id
+    
+    def get_or_create_student_folder(self, student, teacher_students_folder_id):
+        """
+        Создать папку для конкретного ученика внутри папки Students учителя
+        
+        Args:
+            student: Объект User (ученик)
+            teacher_students_folder_id: ID папки Students учителя
+            
+        Returns:
+            str: ID папки ученика
+        """
+        try:
+            folder_name = f"Student_{student.id}_{student.first_name}_{student.last_name}".replace(' ', '_')
+            
+            query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+            query += f" and '{teacher_students_folder_id}' in parents"
+            
+            results = self.service.files().list(
+                q=query,
+                spaces='drive',
+                fields='files(id, name)'
+            ).execute()
+            
+            items = results.get('files', [])
+            
+            if items:
+                return items[0]['id']
+            else:
+                return self.create_folder(folder_name, teacher_students_folder_id)
+                
+        except Exception as e:
+            logger.error(f"Failed to create student folder: {e}")
+            return teacher_students_folder_id
     
     def upload_file(self, file_path_or_object, file_name, folder_id=None, mime_type='video/mp4', teacher=None):
         """
@@ -319,6 +385,106 @@ class GoogleDriveManager:
         except Exception as e:
             logger.error(f"Failed to get file info: {e}")
             raise
+    
+    def calculate_folder_size(self, folder_id):
+        """
+        Рекурсивно посчитать размер папки и всех вложенных файлов
+        
+        Args:
+            folder_id: ID папки
+            
+        Returns:
+            dict: {'total_size': bytes, 'file_count': count, 'folder_count': count}
+        """
+        try:
+            total_size = 0
+            file_count = 0
+            folder_count = 0
+            
+            # Получаем все файлы в папке
+            page_token = None
+            while True:
+                query = f"'{folder_id}' in parents and trashed=false"
+                results = self.service.files().list(
+                    q=query,
+                    spaces='drive',
+                    fields='nextPageToken, files(id, name, mimeType, size)',
+                    pageToken=page_token
+                ).execute()
+                
+                items = results.get('files', [])
+                
+                for item in items:
+                    mime_type = item.get('mimeType', '')
+                    
+                    if mime_type == 'application/vnd.google-apps.folder':
+                        # Рекурсивно считаем размер подпапки
+                        folder_count += 1
+                        subfolder_stats = self.calculate_folder_size(item['id'])
+                        total_size += subfolder_stats['total_size']
+                        file_count += subfolder_stats['file_count']
+                        folder_count += subfolder_stats['folder_count']
+                    else:
+                        # Обычный файл
+                        file_size = int(item.get('size', 0))
+                        total_size += file_size
+                        file_count += 1
+                
+                page_token = results.get('nextPageToken')
+                if not page_token:
+                    break
+            
+            return {
+                'total_size': total_size,
+                'file_count': file_count,
+                'folder_count': folder_count
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to calculate folder size: {e}")
+            return {'total_size': 0, 'file_count': 0, 'folder_count': 0}
+    
+    def get_teacher_storage_stats(self, teacher):
+        """
+        Получить статистику использования хранилища учителем
+        
+        Args:
+            teacher: Объект User (учитель)
+            
+        Returns:
+            dict: Статистика по папкам учителя
+        """
+        try:
+            folders = self.get_or_create_teacher_folder(teacher)
+            teacher_folder_id = folders['root']
+            
+            # Считаем размер всей папки учителя
+            stats = self.calculate_folder_size(teacher_folder_id)
+            
+            # Добавляем детализацию по подпапкам
+            detailed_stats = {
+                'total_size': stats['total_size'],
+                'total_files': stats['file_count'],
+                'total_folders': stats['folder_count'],
+                'recordings': self.calculate_folder_size(folders['recordings']),
+                'homework': self.calculate_folder_size(folders['homework']),
+                'materials': self.calculate_folder_size(folders['materials']),
+                'students': self.calculate_folder_size(folders['students']),
+            }
+            
+            return detailed_stats
+            
+        except Exception as e:
+            logger.error(f"Failed to get teacher storage stats: {e}")
+            return {
+                'total_size': 0,
+                'total_files': 0,
+                'total_folders': 0,
+                'recordings': {'total_size': 0, 'file_count': 0},
+                'homework': {'total_size': 0, 'file_count': 0},
+                'materials': {'total_size': 0, 'file_count': 0},
+                'students': {'total_size': 0, 'file_count': 0},
+            }
 
 
 # Singleton instance
