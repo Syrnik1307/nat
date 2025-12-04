@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import './RecurringLessonsManage.css';
+import './RecurringLessonsManage.css'; // v2: minimalist design
 import {
   getGroups,
   getRecurringLessons,

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import '../styles/fancy-select.css';
+import '../styles/fancy-select.css'; // v2: minimalist design
 
 const FancySelectField = ({
   label,
