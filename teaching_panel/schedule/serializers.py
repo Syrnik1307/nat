@@ -34,7 +34,7 @@ class GroupSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
-    student_count = serializers.IntegerField(read_only=True)
+    student_count = serializers.SerializerMethodField()
     invite_code = serializers.CharField(read_only=True)
     
     class Meta:
@@ -46,6 +46,10 @@ class GroupSerializer(serializers.ModelSerializer):
             'invite_code',
             'created_at', 'updated_at'
         ]
+    
+    def get_student_count(self, obj):
+        """Получить количество студентов в группе"""
+        return obj.students.count()
 
 
 class LessonSerializer(serializers.ModelSerializer):

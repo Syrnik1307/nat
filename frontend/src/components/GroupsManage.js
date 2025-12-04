@@ -523,7 +523,7 @@ const GroupsManage = () => {
               {groups.map((group) => {
                 const studentCount = Array.isArray(group.students)
                   ? group.students.length
-                  : group.students_count || 0;
+                  : group.student_count || 0;
 
                 return (
                   <article

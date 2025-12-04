@@ -344,7 +344,6 @@ def create_teacher_quota(request):
 
 
 # ==================== Google Drive Storage Stats ====================
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def gdrive_stats_all_teachers(request):
@@ -359,10 +358,24 @@ def gdrive_stats_all_teachers(request):
         )
     
     try:
-        from schedule.gdrive_utils import get_gdrive_manager
         import logging
-        
         logger = logging.getLogger(__name__)
+        
+        # Проверяем, что Google Drive включен
+        from django.conf import settings
+        if not settings.USE_GDRIVE_STORAGE or not settings.GDRIVE_ROOT_FOLDER_ID:
+            return Response({
+                'error': 'Google Drive storage is not configured',
+                'teachers': [],
+                'summary': {
+                    'total_teachers': 0,
+                    'total_size': 0,
+                    'total_size_gb': 0,
+                    'total_files': 0
+                }
+            })
+        
+        from schedule.gdrive_utils import get_gdrive_manager
         gdrive = get_gdrive_manager()
         
         # Получаем всех учителей
@@ -406,7 +419,7 @@ def gdrive_stats_all_teachers(request):
                 total_files += teacher_stats['total_files']
                 
             except Exception as e:
-                logger.error(f"Failed to get stats for teacher {teacher.id}: {e}")
+                logger.error(f"Failed to get stats for teacher {teacher.id}: {e}", exc_info=True)
                 continue
         
         # Сортировка по размеру
@@ -417,12 +430,17 @@ def gdrive_stats_all_teachers(request):
             'summary': {
                 'total_teachers': len(stats_list),
                 'total_size': total_size,
-                'total_size_gb': round(total_size / (1024 * 1024 * 1024), 2),
+                'total_size_gb': round(total_size / (1024 * 1024 * 1024), 2) if total_size > 0 else 0,
                 'total_files': total_files
             }
         })
         
     except Exception as e:
+        import logging
+        import traceback
+        logger = logging.getLogger(__name__)
+        logger.error(f'Failed to retrieve storage statistics: {str(e)}', exc_info=True)
+        
         return Response(
             {'error': f'Failed to retrieve storage statistics: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR

@@ -10,6 +10,7 @@ import SystemSettings from './SystemSettings';
 import './AdminHomePage.css';
 import StorageQuotaModal from '../modules/Admin/StorageQuotaModal';
 import SubscriptionsModal from '../modules/Admin/SubscriptionsModal';
+import StorageStats from './StorageStats';
 
 const AdminHomePage = () => {
   const { user } = useAuth();
@@ -34,6 +35,7 @@ const AdminHomePage = () => {
   const [showSystemSettings, setShowSystemSettings] = useState(false);
   const [showStorageModal, setShowStorageModal] = useState(false);
   const [showSubscriptionsModal, setShowSubscriptionsModal] = useState(false);
+  const [showStorageStats, setShowStorageStats] = useState(false);
   const [userRole, setUserRole] = useState('teacher');
   const [teacherForm, setTeacherForm] = useState({
     email: '',
@@ -291,6 +293,12 @@ const AdminHomePage = () => {
             onClick={() => setShowZoomStats(true)}
             color="#6366f1"
           />
+          <QuickAction
+            icon="📊"
+            label="Статистика Google Drive"
+            onClick={() => setShowStorageStats(true)}
+            color="#ea4335"
+          />
         </div>
       </div>
 
@@ -528,6 +536,10 @@ const AdminHomePage = () => {
 
       {showStorageModal && (
         <StorageQuotaModal onClose={() => setShowStorageModal(false)} />
+      )}
+
+      {showStorageStats && (
+        <StorageStats onClose={() => setShowStorageStats(false)} />
       )}
 
       {showSubscriptionsModal && (
