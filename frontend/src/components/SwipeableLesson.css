@@ -21,34 +21,25 @@
   transition: all 0.2s ease;
 }
 
-.lesson-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border-color: #d1d5db;
-}
-
 /* Time block */
 .lesson-time {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.75rem 1rem;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  color: white;
-  border-radius: 10px;
-  min-width: 90px;
+  gap: 0.2rem;
 }
 
 .lesson-time .time {
-  font-size: 1.35rem;
+  font-size: 1.1rem;
   font-weight: 700;
+  color: #2563eb;
   letter-spacing: -0.5px;
 }
 
 .lesson-time .duration {
   font-size: 0.75rem;
-  opacity: 0.9;
-  margin-top: 0.2rem;
+  color: #9ca3af;
   font-weight: 500;
 }
 
