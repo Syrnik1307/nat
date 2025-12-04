@@ -18,7 +18,14 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env file
-load_dotenv(os.path.join(BASE_DIR, '.env'))
+# Try to load from project root first, then from BASE_DIR
+for env_path in [
+    Path(__file__).resolve().parent.parent.parent / '.env',  # Project root
+    os.path.join(BASE_DIR, '.env'),  # teaching_panel/.env
+]:
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+        break
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
