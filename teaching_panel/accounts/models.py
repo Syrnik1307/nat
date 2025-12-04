@@ -162,6 +162,15 @@ class CustomUser(AbstractUser):
         help_text=_('User ID в Zoom (обычно email или ID пользователя)')
     )
     
+    # Google Drive для хранения файлов
+    gdrive_folder_id = models.CharField(
+        _('Google Drive Folder ID'),
+        max_length=255,
+        blank=True,
+        default='',
+        help_text=_('ID главной папки учителя в Google Drive (только для учителей)')
+    )
+    
     # Username для чатов (как в Telegram)
     username_handle = models.CharField(
         _('короткое имя'),
