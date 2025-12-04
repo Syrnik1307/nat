@@ -10,6 +10,7 @@ import {
   getGroupAttendanceLog,
   updateGroupAttendanceLog,
   getGroup,
+  getLessons,
 } from '../apiService';
 import AttendanceStatusPicker from './AttendanceStatusPicker';
 import './AttendanceLogPage.css';
@@ -35,6 +36,7 @@ const AttendanceLogPage = () => {
   const navigate = useNavigate();
   const [group, setGroup] = useState(null);
   const [log, setLog] = useState(null);
+  const [lessonColumns, setLessonColumns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCell, setSelectedCell] = useState(null);
@@ -50,12 +52,48 @@ const AttendanceLogPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const [groupResponse, logResponse] = await Promise.all([
+      const [groupResponse, logResponse, lessonsResponse] = await Promise.all([
         getGroup(groupId),
         getGroupAttendanceLog(groupId),
+        getLessons({ group: groupId }),
       ]);
+
+      const lessonsFromLog = logResponse.data?.lessons || [];
+      const lessonsPayload = Array.isArray(lessonsResponse.data)
+        ? lessonsResponse.data
+        : lessonsResponse.data?.results || [];
+
+      const lessonsMap = new Map();
+      lessonsPayload.forEach((lesson) => {
+        lessonsMap.set(lesson.id, {
+          id: lesson.id,
+          title: lesson.title,
+          start_time: lesson.start_time,
+          end_time: lesson.end_time,
+        });
+      });
+      lessonsFromLog.forEach((lesson) => {
+        const existing = lessonsMap.get(lesson.id) || {};
+        lessonsMap.set(lesson.id, {
+          id: lesson.id,
+          title: lesson.title || existing.title,
+          start_time: lesson.start_time || existing.start_time,
+          end_time: lesson.end_time || existing.end_time,
+        });
+      });
+
+      const mergedLessons = Array.from(lessonsMap.values()).sort((a, b) => {
+        const aTime = a.start_time ? new Date(a.start_time).getTime() : 0;
+        const bTime = b.start_time ? new Date(b.start_time).getTime() : 0;
+        return aTime - bTime;
+      });
+
+      setLessonColumns(mergedLessons);
       setGroup(groupResponse.data);
-      setLog(logResponse.data);
+      setLog({
+        ...logResponse.data,
+        lessons: mergedLessons,
+      });
       const updatedAt = logResponse.data?.meta?.updated_at;
       setLastUpdated(updatedAt ? new Date(updatedAt) : new Date());
     } catch (err) {
@@ -66,15 +104,34 @@ const AttendanceLogPage = () => {
     }
   };
 
-  const lessons = log?.lessons || [];
+  const MIN_COLUMNS = 6;
+  const actualLessons = lessonColumns.length ? lessonColumns : log?.lessons || [];
+  const displayLessons = useMemo(() => {
+    const base = actualLessons.length ? actualLessons : [];
+    if (base.length >= MIN_COLUMNS) {
+      return base;
+    }
+    const placeholdersNeeded = MIN_COLUMNS - base.length;
+    const placeholders = Array.from({ length: placeholdersNeeded }, (_, idx) => ({
+      id: `placeholder-${idx}`,
+      title: `Занятие ${base.length + idx + 1}`,
+      start_time: null,
+      isPlaceholder: true,
+    }));
+    return [...base, ...placeholders];
+  }, [actualLessons]);
+
+  const lessons = displayLessons;
   const students = log?.students || [];
   const records = log?.records || {};
+  const actualLessonCount = actualLessons.length;
+  const displayedLessonCount = actualLessonCount || lessons.length;
 
   const computedData = useMemo(() => {
     if (!log || !students.length || !lessons.length) {
       return {
         rows: [],
-        stats: { avgAttendance: 0, watched: 0, absences: 0, lessonsCount: lessons.length },
+        stats: { avgAttendance: 0, watched: 0, absences: 0, lessonsCount: displayedLessonCount },
       };
     }
 
@@ -98,8 +155,8 @@ const AttendanceLogPage = () => {
         };
       });
 
-      const attendancePercent = lessons.length
-        ? Math.round((stats.attended / lessons.length) * 100)
+      const attendancePercent = actualLessonCount
+        ? Math.round((stats.attended / actualLessonCount) * 100)
         : 0;
 
       return { student, stats, lessonStatuses, attendancePercent };
@@ -115,9 +172,9 @@ const AttendanceLogPage = () => {
 
     return {
       rows,
-      stats: { avgAttendance, watched, absences, lessonsCount: lessons.length },
+          stats: { avgAttendance, watched, absences, lessonsCount: displayedLessonCount },
     };
-  }, [log, students, lessons, records]);
+        }, [log, students, lessons, records, actualLessonCount, displayedLessonCount]);
 
   const handleCellClick = (studentId, lessonId, e) => {
     e.stopPropagation();
@@ -170,18 +227,10 @@ const AttendanceLogPage = () => {
     );
   }
 
-  const { rows, stats: computedStats } = computedData;
-  const backendStats = log?.meta?.stats;
-  const cardsStats = backendStats
-    ? {
-        avgAttendance: backendStats.avg_attendance_percent ?? 0,
-        watched: backendStats.watched_total ?? 0,
-        absences: backendStats.absences_total ?? 0,
-        lessonsCount: backendStats.lessons_count ?? lessons.length,
-      }
-    : computedStats;
-
-  const hasData = Boolean(rows.length && lessons.length);
+  const { rows } = computedData;
+  const hasStudents = Boolean(rows.length);
+  const hasLessons = Boolean(lessons.length);
+  const showEmptyMessage = !hasStudents || !hasLessons;
   const updatedAtLabel = lastUpdated
     ? lastUpdated.toLocaleString('ru-RU', { 
         day: '2-digit', 
@@ -214,144 +263,117 @@ const AttendanceLogPage = () => {
         </div>
       </div>
 
-      <div className="attendance-stats-grid">
-        <div className="stat-card">
-          <div className="stat-content">
-            <span className="stat-label">Средняя посещаемость</span>
-            <span className="stat-value">{formatPercent(cardsStats.avgAttendance)}</span>
-            <span className="stat-hint">по {cardsStats.lessonsCount} занятиям</span>
+      <div className="attendance-board">
+        <div className="board-toolbar">
+          <div className="board-meta">
+            <p className="board-updated">Обновлено {updatedAtLabel}</p>
+          </div>
+          <div className="table-controls">
+            <button
+              className="control-button"
+              onClick={() => scrollTable('left')}
+              aria-label="Прокрутить влево"
+            >
+              ‹
+            </button>
+            <button
+              className="control-button"
+              onClick={() => scrollTable('right')}
+              aria-label="Прокрутить вправо"
+            >
+              ›
+            </button>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-content">
-            <span className="stat-label">Просмотрели запись</span>
-            <span className="stat-value accent">{cardsStats.watched}</span>
-            <span className="stat-hint">учеников вместо онлайн</span>
-          </div>
+
+        <div className="table-wrapper" ref={tableWrapperRef}>
+          <table className="attendance-table compact">
+            <thead>
+              <tr>
+                <th className="student-col">Ученик</th>
+                <th className="presence-col">Посещаемость</th>
+                {lessons.map((lesson, idx) => (
+                  <th key={lesson.id} className="lesson-col" title={lesson.title}>
+                    <div className="lesson-index">Занятие {idx + 1}</div>
+                    <div className="lesson-date">{formatDate(lesson.start_time)}</div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.student.id} className="student-row">
+                  <td className="student-col">
+                    <div className="student-info-cell">
+                      <span className="avatar-circle">
+                        {row.student.name?.[0] || '👤'}
+                      </span>
+                      <div className="student-details">
+                        <span className="student-name">{row.student.name}</span>
+                        <span className="student-email">{row.student.email}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="presence-col">
+                    <span className="presence-chip">
+                      {formatPercent(row.attendancePercent)}
+                    </span>
+                    <span className="presence-meta">
+                      {row.stats.attended} из {displayedLessonCount}
+                    </span>
+                  </td>
+                  {row.lessonStatuses.map(({ lessonId, status, autoRecorded }) => {
+                    const cellMeta = getStatusMeta(status);
+                    const isSelected =
+                      selectedCell?.studentId === row.student.id &&
+                      selectedCell?.lessonId === lessonId;
+
+                    return (
+                      <td
+                        key={`${row.student.id}_${lessonId}`}
+                        className={`attendance-cell ${cellMeta.className} ${
+                          isSelected ? 'selected' : ''
+                        }`}
+                        onClick={(e) => handleCellClick(row.student.id, lessonId, e)}
+                      >
+                        <span className="status-pill">{cellMeta.short}</span>
+                        {autoRecorded && <span className="auto-badge">auto</span>}
+
+                        {isSelected && (
+                          <AttendanceStatusPicker
+                            currentStatus={status}
+                            onStatusSelect={handleStatusChange}
+                            onClose={() => setSelectedCell(null)}
+                            isLoading={updating}
+                          />
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div className="stat-card">
-          <div className="stat-content">
-            <span className="stat-label">Пропуски</span>
-            <span className="stat-value danger">{cardsStats.absences}</span>
-            <span className="stat-hint">требуют внимания</span>
-          </div>
+
+        {showEmptyMessage && (
+          <div className="board-empty">Пока нет данных по посещениям</div>
+        )}
+
+        <div className="attendance-legend">
+          {['attended', 'absent', 'watched_recording', null].map((statusKey) => {
+            const meta = getStatusMeta(statusKey);
+            return (
+              <div key={meta.className} className="legend-item">
+                <span className={`status-pill small ${meta.className}`}>
+                  {meta.short}
+                </span>
+                <span className="legend-label">{meta.label}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
-
-      {!hasData ? (
-        <div className="page-empty">
-          <p>Пока нет данных по посещениям</p>
-        </div>
-      ) : (
-        <div className="attendance-content">
-          <div className="table-toolbar">
-            <p className="table-info">Обновлено {updatedAtLabel}</p>
-            <div className="table-controls">
-              <button 
-                className="control-button" 
-                onClick={() => scrollTable('left')}
-                aria-label="Прокрутить влево"
-              >
-                ‹
-              </button>
-              <button 
-                className="control-button" 
-                onClick={() => scrollTable('right')}
-                aria-label="Прокрутить вправо"
-              >
-                ›
-              </button>
-            </div>
-          </div>
-
-          <div className="table-wrapper" ref={tableWrapperRef}>
-            <table className="attendance-table">
-              <thead>
-                <tr>
-                  <th className="student-col">Ученик</th>
-                  <th className="presence-col">Посещаемость</th>
-                  {lessons.map((lesson, idx) => (
-                    <th key={lesson.id} className="lesson-col" title={lesson.title}>
-                      <div className="lesson-index">Занятие {idx + 1}</div>
-                      <div className="lesson-date">{formatDate(lesson.start_time)}</div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.student.id} className="student-row">
-                    <td className="student-col">
-                      <div className="student-info-cell">
-                        <span className="avatar-circle">
-                          {row.student.name?.[0] || '👤'}
-                        </span>
-                        <div className="student-details">
-                          <span className="student-name">{row.student.name}</span>
-                          <span className="student-email">{row.student.email}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="presence-col">
-                      <span className="presence-chip">
-                        {formatPercent(row.attendancePercent)}
-                      </span>
-                      <span className="presence-meta">
-                        {row.stats.attended} из {lessons.length}
-                      </span>
-                    </td>
-                    {row.lessonStatuses.map(({ lessonId, status, autoRecorded }) => {
-                      const cellMeta = getStatusMeta(status);
-                      const isSelected =
-                        selectedCell?.studentId === row.student.id &&
-                        selectedCell?.lessonId === lessonId;
-
-                      return (
-                        <td
-                          key={`${row.student.id}_${lessonId}`}
-                          className={`attendance-cell ${cellMeta.className} ${
-                            isSelected ? 'selected' : ''
-                          }`}
-                          onClick={(e) => handleCellClick(row.student.id, lessonId, e)}
-                        >
-                          <span className="status-pill">{cellMeta.short}</span>
-                          {autoRecorded && <span className="auto-badge">auto</span>}
-
-                          {isSelected && (
-                            <AttendanceStatusPicker
-                              currentStatus={status}
-                              onStatusSelect={handleStatusChange}
-                              onClose={() => setSelectedCell(null)}
-                              isLoading={updating}
-                            />
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="attendance-legend">
-            <p className="legend-title">Обозначения:</p>
-            <div className="legend-items">
-              {['attended', 'absent', 'watched_recording', null].map((statusKey) => {
-                const meta = getStatusMeta(statusKey);
-                return (
-                  <div key={meta.className} className="legend-item">
-                    <span className={`status-pill small ${meta.className}`}>
-                      {meta.short}
-                    </span>
-                    <span className="legend-label">{meta.label}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
