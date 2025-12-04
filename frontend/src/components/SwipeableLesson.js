@@ -1,189 +1,192 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import StartLessonButton from '../modules/core/zoom/StartLessonButton';
+import { ConfirmModal } from '../shared/components';
 import './SwipeableLesson.css';
 
-/**
- * Карточка урока с поддержкой swipe-to-delete
- */
 const SwipeableLesson = ({ lesson, onDelete, formatTime, getLessonDuration }) => {
   const [translateX, setTranslateX] = useState(0);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteType, setDeleteType] = useState('single'); // 'single' или 'recurring'
+  const [showActions, setShowActions] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  
-  const touchStartX = useRef(0);
-  const touchCurrentX = useRef(0);
-  const isDragging = useRef(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [confirmState, setConfirmState] = useState({ open: false, type: null });
+  const [deleteMessage, setDeleteMessage] = useState('');
 
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.touches[0].clientX;
+  const startX = useRef(0);
+  const isDragging = useRef(false);
+  const pendingDeleteType = useRef(null);
+
+  const handleStart = (clientX) => {
+    startX.current = clientX;
     isDragging.current = true;
   };
 
-  const handleTouchMove = (e) => {
+  const handleMove = (clientX) => {
     if (!isDragging.current) return;
-    
-    touchCurrentX.current = e.touches[0].clientX;
-    const diff = touchCurrentX.current - touchStartX.current;
-    
-    // Только свайп влево (diff < 0)
-    if (diff < 0 && diff > -120) {
-      setTranslateX(diff);
+    const diff = clientX - startX.current;
+    if (diff < 0) {
+      const clamped = Math.max(diff, -200);
+      setTranslateX(clamped);
     }
   };
 
-  const handleTouchEnd = () => {
+  const resetPosition = () => {
+    setTranslateX(0);
+    setShowActions(false);
     isDragging.current = false;
-    
-    // Если свайпнули больше 60px - показываем кнопку удаления
-    if (translateX < -60) {
-      setTranslateX(-100);
+  };
+
+  const handleEnd = () => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    if (translateX < -110) {
+      setTranslateX(-190);
+      setShowActions(true);
     } else {
-      setTranslateX(0);
+      resetPosition();
     }
   };
 
-  const handleDeleteClick = () => {
-    setShowDeleteModal(true);
-    setTranslateX(0); // Возвращаем карточку на место
+  const openConfirm = (type) => {
+    pendingDeleteType.current = type;
+    setConfirmState({ open: true, type });
+  };
+
+  const closeConfirm = () => {
+    setConfirmState({ open: false, type: null });
+    pendingDeleteType.current = null;
   };
 
   const handleConfirmDelete = async () => {
+    const deleteType = pendingDeleteType.current;
+    if (!deleteType || deleting) {
+      return;
+    }
+
     setDeleting(true);
+    setErrorMessage('');
+    setDeleteMessage('');
+
     try {
       await onDelete(lesson.id, deleteType);
-      setShowDeleteModal(false);
+      setDeleteMessage(deleteType === 'recurring' ? '✓ Серия удалена' : '✓ Урок удалён');
+      setTimeout(() => {
+        resetPosition();
+        closeConfirm();
+        setDeleteMessage('');
+      }, 800);
     } catch (error) {
-      console.error('Ошибка удаления:', error);
-      alert('Не удалось удалить урок');
+      const detail = error.response?.data?.detail || error.message || 'Не удалось удалить урок';
+      setErrorMessage(detail);
     } finally {
       setDeleting(false);
+      pendingDeleteType.current = null;
     }
   };
 
+  const confirmMessage = confirmState.type === 'recurring'
+    ? `Удалить все занятия "${lesson.title}" в группе "${lesson.group_name || 'группа'}"?`
+    : `Удалить занятие "${lesson.title}"?`;
+
   return (
-    <>
-      <div 
+    <div className="swipeable-lesson-wrapper">
+      <div
         className="swipeable-lesson-container"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+        onTouchMove={(e) => handleMove(e.touches[0].clientX)}
+        onTouchEnd={handleEnd}
+        onTouchCancel={handleEnd}
+        onMouseDown={(e) => handleStart(e.clientX)}
+        onMouseMove={(e) => isDragging.current && handleMove(e.clientX)}
+        onMouseUp={handleEnd}
+        onMouseLeave={() => isDragging.current && handleEnd()}
       >
-        {/* Фон с кнопкой удаления */}
-        <div className="swipe-background">
-          <button 
-            className="delete-trigger"
-            onClick={handleDeleteClick}
-            aria-label="Удалить урок"
+        <div className={`swipe-actions ${showActions ? 'visible' : ''}`}>
+          <button
+            type="button"
+            className="action-btn subtle"
+            onClick={() => openConfirm('single')}
+            disabled={deleting}
           >
-            🗑️
+            Удалить
+          </button>
+          <button
+            type="button"
+            className="action-btn solid"
+            onClick={() => openConfirm('recurring')}
+            disabled={deleting}
+          >
+            Удалить серию
           </button>
         </div>
 
-        {/* Карточка урока */}
-        <div 
-          className="lesson-card"
-          style={{
+        <article
+          className="lesson-card swipeable-card"
+          style={ {
             transform: `translateX(${translateX}px)`,
-            transition: isDragging.current ? 'none' : 'transform 0.3s ease',
-          }}
+            transition: isDragging.current ? 'none' : 'transform 0.25s ease',
+            cursor: isDragging.current ? 'grabbing' : 'grab',
+          } }
         >
           <div className="lesson-time">
             <span className="time">{formatTime(lesson.start_time)}</span>
-            <span className="duration">
-              {getLessonDuration(lesson)} мин
-            </span>
+            <span className="duration">↔ {getLessonDuration(lesson)} мин</span>
           </div>
+
           <div className="lesson-info">
-            <h3 className="lesson-title">{lesson.title}</h3>
+            <div className="lesson-title-row">
+              <h3 className="lesson-title">{lesson.title}</h3>
+              {lesson.topics && <span className="lesson-topic">{lesson.topics}</span>}
+            </div>
             <div className="lesson-meta">
-              <span className="group">
-                👥 {lesson.group_name || 'Группа'}
-              </span>
-              {lesson.zoom_link && (
-                <a 
-                  href={lesson.zoom_link} 
-                  target="_blank" 
+              <span className="meta-pill">{lesson.group_name || 'Группа'}</span>
+              {lesson.location && <span className="meta-text">{lesson.location}</span>}
+              {lesson.zoom_start_url && (
+                <a
+                  href={lesson.zoom_start_url}
+                  target="_blank"
                   rel="noopener noreferrer"
-                  className="zoom-link"
+                  className="meta-link"
                 >
-                  🎥 Zoom
+                  Zoom
                 </a>
               )}
             </div>
           </div>
+
           <div className="lesson-actions">
-            <StartLessonButton 
+            <StartLessonButton
               lessonId={lesson.id}
               lesson={lesson}
               groupName={lesson.group_name || 'Группа'}
-              onSuccess={() => {
-                console.log('Занятие успешно начато!');
-              }}
+              onSuccess={() => setErrorMessage('')}
             />
           </div>
-        </div>
+        </article>
       </div>
 
-      {/* Модальное окно подтверждения удаления */}
-      {showDeleteModal && (
-        <div className="delete-modal-overlay" onClick={() => !deleting && setShowDeleteModal(false)}>
-          <div className="delete-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Удалить занятие?</h3>
-            <p className="lesson-title-display">{lesson.title}</p>
-            
-            <div className="delete-options">
-              <label className="delete-option">
-                <input
-                  type="radio"
-                  name="deleteType"
-                  value="single"
-                  checked={deleteType === 'single'}
-                  onChange={(e) => setDeleteType(e.target.value)}
-                  disabled={deleting}
-                />
-                <div>
-                  <strong>Только это занятие</strong>
-                  <p>Удалить урок от {new Date(lesson.start_time).toLocaleDateString('ru-RU')}</p>
-                </div>
-              </label>
-
-              <label className="delete-option">
-                <input
-                  type="radio"
-                  name="deleteType"
-                  value="recurring"
-                  checked={deleteType === 'recurring'}
-                  onChange={(e) => setDeleteType(e.target.value)}
-                  disabled={deleting}
-                />
-                <div>
-                  <strong>Все похожие занятия</strong>
-                  <p>Удалить все уроки "{lesson.title}" в группе {lesson.group_name}</p>
-                </div>
-              </label>
-            </div>
-
-            <div className="modal-actions">
-              <button
-                className="btn-cancel"
-                onClick={() => setShowDeleteModal(false)}
-                disabled={deleting}
-              >
-                Отмена
-              </button>
-              <button
-                className="btn-delete"
-                onClick={handleConfirmDelete}
-                disabled={deleting}
-              >
-                {deleting ? 'Удаление...' : 'Удалить'}
-              </button>
-            </div>
-          </div>
+      {errorMessage && (
+        <div className="swipeable-lesson-message error" role="alert">
+          {errorMessage}
         </div>
       )}
-    </>
+
+      {deleteMessage && (
+        <div className="swipeable-lesson-message success">
+          {deleteMessage}
+        </div>
+      )}
+
+      <ConfirmModal
+        isOpen={confirmState.open}
+        onClose={closeConfirm}
+        onConfirm={handleConfirmDelete}
+        title="Удаление урока"
+        message={confirmMessage}
+        confirmText={confirmState.type === 'recurring' ? 'Удалить все' : 'Удалить'}
+        cancelText="Отмена"
+        variant="danger"
+      />
+    </div>
   );
 };
 

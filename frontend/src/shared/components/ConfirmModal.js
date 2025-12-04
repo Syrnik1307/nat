@@ -9,7 +9,7 @@ const ConfirmModal = ({
   message,
   confirmText = 'Подтвердить',
   cancelText = 'Отмена',
-  variant = 'warning' // 'warning', 'danger', 'info'
+  variant = 'warning'
 }) => {
   if (!isOpen) return null;
 
@@ -21,10 +21,8 @@ const ConfirmModal = ({
   return (
     <div className="confirm-modal-overlay" onClick={onClose}>
       <div className="confirm-modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className={`confirm-modal-icon confirm-modal-icon-${variant}`}>
-          {variant === 'warning' && '⚠️'}
-          {variant === 'danger' && '🗑️'}
-          {variant === 'info' && 'ℹ️'}
+        <div className={`confirm-modal-indicator confirm-modal-indicator-${variant}`} aria-hidden="true">
+          <span />
         </div>
         
         <h2 className="confirm-modal-title">{title}</h2>

@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../auth';
 import { getTeacherStatsSummary, getTeacherStatsBreakdown, getLessons, getGroups, startQuickLesson, getIndividualStudents, apiClient } from '../apiService';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import StartLessonButton from '../modules/core/zoom/StartLessonButton';
 import SwipeableLesson from './SwipeableLesson';
 import SupportWidget from './SupportWidget';
 import SubscriptionBanner from './SubscriptionBanner';
@@ -199,21 +198,31 @@ const TeacherHomePage = () => {
 
   const handleDeleteLesson = async (lessonId, deleteType) => {
     try {
-      if (deleteType === 'single') {
-        // Удаляем только этот урок
-        await apiClient.delete(`/schedule/api/lessons/${lessonId}/`);
-      } else if (deleteType === 'recurring') {
-        // Удаляем все похожие уроки
-        const lesson = todayLessons.find(l => l.id === lessonId);
-        if (lesson) {
-          await apiClient.post(`/schedule/api/lessons/delete_recurring/`, {
-            title: lesson.title,
-            group_id: lesson.group
-          });
-        }
+      const lesson = todayLessons.find(l => l.id === lessonId);
+      if (!lesson) {
+        throw new Error('Урок не найден в расписании. Обновите страницу и попробуйте ещё раз.');
       }
-      // Обновляем список уроков
-      loadData();
+
+      if (deleteType === 'single') {
+        await apiClient.delete(`schedule/lessons/${lessonId}/`);
+        await loadData();
+        return { status: 'deleted', message: `Урок «${lesson.title}» удалён` };
+      }
+
+      if (deleteType === 'recurring') {
+        const response = await apiClient.post('schedule/lessons/delete_recurring/', {
+          title: lesson.title,
+          group_id: lesson.group || lesson.group_id,
+        });
+        await loadData();
+        return {
+          status: 'deleted',
+          count: response?.data?.count,
+          message: response?.data?.message || 'Похожие уроки удалены',
+        };
+      }
+
+      throw new Error('Неизвестный тип удаления');
     } catch (error) {
       console.error('Ошибка удаления урока:', error);
       throw error;

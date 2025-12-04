@@ -84,30 +84,34 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
         onClick={handleButtonClick}
         style={{
           fontWeight: '600',
-          backgroundColor: loading ? '#9ca3af' : 'rgb(5, 150, 105)',
+          backgroundColor: loading ? '#9ca3af' : 'linear-gradient(135deg, #059669 0%, #047857 100%)',
           color: 'white',
           border: 'none',
           borderRadius: '8px',
-          padding: '0.625rem 1.25rem',
-          fontSize: '0.9375rem',
+          padding: '0.65rem 1.35rem',
+          fontSize: '0.9rem',
           cursor: loading ? 'not-allowed' : 'pointer',
           transition: 'all 0.2s ease',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '0.5rem',
-          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+          boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)',
+          fontWeight: '600',
+          letterSpacing: '-0.3px',
         }}
         onMouseEnter={(e) => {
           if (!loading) {
-            e.target.style.transform = 'scale(1.02)';
+            e.target.style.transform = 'translateY(-2px)';
+            e.target.style.boxShadow = '0 6px 16px rgba(5, 150, 105, 0.35)';
           }
         }}
         onMouseLeave={(e) => {
-          e.target.style.transform = 'scale(1)';
+          e.target.style.transform = 'translateY(0)';
+          e.target.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.25)';
         }}
       >
-        {loading ? '⏳ Создание встречи...' : '▶️ Начать занятие'}
+        {loading ? '⏳ Начинаем...' : '▶ Начать занятие'}
       </button>
 
       {showRecordingOption && !loading && (
@@ -201,30 +205,49 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
                 onClick={handleStartLesson}
                 style={{
                   flex: 1,
-                  padding: '0.5rem 1rem',
-                  backgroundColor: 'rgb(5, 150, 105)',
+                  padding: '0.55rem 1rem',
+                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
                   fontSize: '0.875rem',
                   fontWeight: '600',
                   cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 8px rgba(5, 150, 105, 0.2)',
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-1px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 2px 8px rgba(5, 150, 105, 0.2)';
                 }}
               >
-                Начать →
+                ▶ Начать
               </button>
               <button
                 type="button"
                 onClick={() => setShowRecordingOption(false)}
                 style={{
-                  padding: '0.5rem 1rem',
+                  padding: '0.55rem 1rem',
                   backgroundColor: '#f3f4f6',
-                  color: '#374151',
-                  border: 'none',
+                  color: '#6b7280',
+                  border: '1px solid #e5e7eb',
                   borderRadius: '6px',
                   fontSize: '0.875rem',
-                  fontWeight: '500',
+                  fontWeight: '600',
                   cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#e5e7eb';
+                  e.target.style.color = '#374151';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#f3f4f6';
+                  e.target.style.color = '#6b7280';
                 }}
               >
                 Отмена
