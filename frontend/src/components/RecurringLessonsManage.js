@@ -8,9 +8,9 @@ import {
   deleteRecurringLesson,
   generateLessonsFromRecurring,
 } from '../apiService';
-import { Button } from '../shared/components/Button';
-import { Input } from '../shared/components/Input';
-import { Badge } from '../shared/components/Badge';
+import Button from '../shared/components/Button';
+import Input from '../shared/components/Input';
+import Badge from '../shared/components/Badge';
 
 const initialForm = {
   title: '',
