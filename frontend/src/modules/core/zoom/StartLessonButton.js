@@ -84,7 +84,7 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
         onClick={handleButtonClick}
         style={{
           fontWeight: '600',
-          backgroundColor: loading ? '#9ca3af' : 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+          backgroundColor: loading ? '#9ca3af' : '#2563eb',
           color: 'white',
           border: 'none',
           borderRadius: '8px',
@@ -96,19 +96,17 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
           alignItems: 'center',
           justifyContent: 'center',
           gap: '0.5rem',
-          boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)',
-          fontWeight: '600',
-          letterSpacing: '-0.3px',
+          boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
         }}
         onMouseEnter={(e) => {
           if (!loading) {
             e.target.style.transform = 'translateY(-2px)';
-            e.target.style.boxShadow = '0 6px 16px rgba(5, 150, 105, 0.35)';
+            e.target.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.35)';
           }
         }}
         onMouseLeave={(e) => {
           e.target.style.transform = 'translateY(0)';
-          e.target.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.25)';
+          e.target.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.25)';
         }}
       >
         {loading ? '⏳ Начинаем...' : '▶ Начать занятие'}
@@ -206,7 +204,7 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
                 style={{
                   flex: 1,
                   padding: '0.55rem 1rem',
-                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                  background: '#2563eb',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
@@ -214,15 +212,15 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
                   fontWeight: '600',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  boxShadow: '0 2px 8px rgba(5, 150, 105, 0.2)',
+                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
                 }}
                 onMouseEnter={(e) => {
                   e.target.style.transform = 'translateY(-1px)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.3)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)';
                 }}
                 onMouseLeave={(e) => {
                   e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 2px 8px rgba(5, 150, 105, 0.2)';
+                  e.target.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.2)';
                 }}
               >
                 ▶ Начать

@@ -1,4 +1,4 @@
-/* 🎨 Минималистичный дизайн в цветах Teaching Panel */
+/* 🎨 Clean Minimalist Design */
 
 .swipeable-lesson-wrapper {
   display: flex;
@@ -7,73 +7,8 @@
   margin-bottom: 1rem;
 }
 
-.swipeable-lesson-container {
-  position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  user-select: none;
-}
-
-/* Delete actions panel */
-.swipe-actions {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 180px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 1rem;
-  background: linear-gradient(90deg, rgba(239, 68, 68, 0), rgba(239, 68, 68, 0.92));
-  opacity: 0;
-  transition: opacity 0.25s ease;
-  pointer-events: none;
-}
-
-.swipe-actions.visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.action-btn {
-  width: 100%;
-  min-height: 44px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.95);
-  color: #991b1b;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
-}
-
-.action-btn.subtle {
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.action-btn.solid {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  border-color: transparent;
-  color: #fff;
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
-}
-
-.action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.action-btn:not(:disabled):active {
-  transform: scale(0.95);
-}
-
 /* Card */
-.lesson-card.swipeable-card {
+.lesson-card {
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 1.25rem;
@@ -86,12 +21,12 @@
   transition: all 0.2s ease;
 }
 
-.lesson-card.swipeable-card:hover {
+.lesson-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   border-color: #d1d5db;
 }
 
-/* Time block - минималистичный */
+/* Time block */
 .lesson-time {
   display: flex;
   flex-direction: column;
@@ -187,18 +122,113 @@
   color: #1d4ed8;
 }
 
-/* Start lesson button */
+/* Actions */
 .lesson-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* Delete button (gear icon) */
+.delete-menu-container {
+  position: relative;
+}
+
+.delete-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.delete-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  transform: rotate(15deg);
+}
+
+.delete-btn:active {
+  transform: rotate(15deg) scale(0.95);
+}
+
+/* Delete menu */
+.delete-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99;
+}
+
+.delete-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.delete-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: white;
+  color: #1f2937;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.delete-menu-item:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.delete-menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.delete-menu-item.single {
+  border-bottom: 1px solid #f3f4f6;
+  color: #6b7280;
+}
+
+.delete-menu-item.single:hover:not(:disabled) {
+  color: #374151;
+}
+
+.delete-menu-item.recurring {
+  color: #dc2626;
+}
+
+.delete-menu-item.recurring:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 /* Messages */
-.swipeable-lesson-message {
+.lesson-message {
   font-size: 0.9rem;
   padding: 0.75rem 1rem;
-  border-radius: 10px;
+  border-radius: 8px;
   font-weight: 500;
   animation: slideIn 0.3s ease-out;
 }
@@ -214,13 +244,13 @@
   }
 }
 
-.swipeable-lesson-message.error {
+.lesson-message.error {
   color: #991b1b;
   background: #fee2e2;
   border: 1px solid #fecaca;
 }
 
-.swipeable-lesson-message.success {
+.lesson-message.success {
   color: #166534;
   background: #dcfce7;
   border: 1px solid #bbf7d0;
@@ -228,7 +258,7 @@
 
 /* Mobile */
 @media (max-width: 768px) {
-  .lesson-card.swipeable-card {
+  .lesson-card {
     grid-template-columns: auto 1fr;
     gap: 1rem;
   }
@@ -236,10 +266,6 @@
   .lesson-actions {
     grid-column: 1 / -1;
     justify-content: flex-start;
-  }
-
-  .swipe-actions {
-    width: 150px;
   }
 
   .lesson-time {
@@ -261,7 +287,7 @@
 }
 
 @media (max-width: 480px) {
-  .lesson-card.swipeable-card {
+  .lesson-card {
     padding: 0.9rem;
     gap: 0.8rem;
   }
@@ -274,5 +300,10 @@
   .meta-link {
     font-size: 0.75rem;
     padding: 0.3rem 0.6rem;
+  }
+
+  .delete-btn {
+    width: 36px;
+    height: 36px;
   }
 }
