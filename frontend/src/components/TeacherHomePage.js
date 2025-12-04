@@ -180,6 +180,22 @@ const TeacherHomePage = () => {
     });
   };
 
+  const getLessonDuration = (lesson) => {
+    // Используем duration_minutes с бэкенда если есть
+    if (lesson.duration_minutes && lesson.duration_minutes > 0) {
+      return lesson.duration_minutes;
+    }
+    // Fallback: расчет из времен
+    if (lesson.start_time && lesson.end_time) {
+      const start = new Date(lesson.start_time);
+      const end = new Date(lesson.end_time);
+      const durationMinutes = Math.round((end - start) / (1000 * 60));
+      if (durationMinutes > 0) return durationMinutes;
+    }
+    // Дефолт 60 минут
+    return 60;
+  };
+
   const derivedStats = useMemo(() => {
     const totalGroupsStudents = groups.reduce((acc, group) => acc + (group.students_count || 0), 0);
     const totalStudents = stats?.total_students || totalGroupsStudents;
@@ -437,7 +453,7 @@ const TeacherHomePage = () => {
                     <div className="lesson-time">
                       <span className="time">{formatTime(lesson.start_time)}</span>
                       <span className="duration">
-                        {lesson.duration || '60'} мин
+                        {getLessonDuration(lesson)} мин
                       </span>
                     </div>
                     <div className="lesson-info">

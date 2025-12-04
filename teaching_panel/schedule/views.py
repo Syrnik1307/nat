@@ -285,25 +285,10 @@ class LessonViewSet(viewsets.ModelViewSet):
         file_path = os.path.join(upload_dir, safe_filename)
         saved_path = default_storage.save(file_path, video_file)
         
-        # Создаём фиктивный урок для хранения самостоятельного видео
-        # Или создаём запись без lesson (нужно сделать lesson nullable в модели)
-        # Пока создадим с текущим временем как "урок"
-        dummy_lesson = Lesson.objects.create(
-            title=title,
-            teacher=request.user,
-            group=request.user.teaching_groups.first() or Group.objects.create(
-                name=f'Материалы • {request.user.get_full_name()}',
-                teacher=request.user,
-                description='Автоматически созданная группа для самостоятельных материалов'
-            ),
-            start_time=timezone.now(),
-            end_time=timezone.now() + timezone.timedelta(hours=1),
-            notes='Самостоятельное видео (не привязано к уроку)'
-        )
-        
-        # Создаём запись
+        # Создаём запись БЕЗ урока (standalone recording)
+        # lesson уже nullable в модели LessonRecording
         recording = LessonRecording.objects.create(
-            lesson=dummy_lesson,
+            lesson=None,
             play_url=f'/media/{saved_path}',
             download_url=f'/media/{saved_path}',
             status='ready',

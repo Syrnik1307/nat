@@ -113,9 +113,9 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
       {showRecordingOption && !loading && (
         <div style={{
           position: 'absolute',
-          top: '100%',
-          left: 0,
-          marginTop: '0.5rem',
+          top: 0,
+          left: '100%',
+          marginLeft: '0.5rem',
           backgroundColor: 'white',
           border: '1px solid #e5e7eb',
           borderRadius: '8px',

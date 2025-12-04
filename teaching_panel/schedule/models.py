@@ -224,7 +224,10 @@ class LessonRecording(models.Model):
         Lesson,
         on_delete=models.CASCADE,
         related_name='recordings',
-        verbose_name=_('урок')
+        verbose_name=_('урок'),
+        null=True,
+        blank=True,
+        help_text=_('Урок, к которому привязана запись (может быть пустым для standalone записей)')
     )
     
     zoom_recording_id = models.CharField(_('ID записи Zoom'), max_length=100, blank=True, default='')
