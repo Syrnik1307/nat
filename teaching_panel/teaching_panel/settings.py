@@ -279,7 +279,14 @@ ZOOM_API_SECRET = os.environ.get('ZOOM_API_SECRET', '')
 
 # Google Drive API settings (OAuth2)
 GDRIVE_TOKEN_FILE = os.environ.get('GDRIVE_TOKEN_FILE', os.path.join(BASE_DIR, 'gdrive_token.json'))
-GDRIVE_RECORDINGS_FOLDER_ID = os.environ.get('GDRIVE_RECORDINGS_FOLDER_ID', '')  # ID корневой папки в Google Drive
+GDRIVE_ROOT_FOLDER_ID = os.environ.get('GDRIVE_ROOT_FOLDER_ID', '')  # ID корневой папки Teaching Panel
+GDRIVE_RECORDINGS_FOLDER_ID = os.environ.get('GDRIVE_RECORDINGS_FOLDER_ID', '')  # Записи уроков
+GDRIVE_HOMEWORK_FOLDER_ID = os.environ.get('GDRIVE_HOMEWORK_FOLDER_ID', '')  # Домашние задания
+GDRIVE_MATERIALS_FOLDER_ID = os.environ.get('GDRIVE_MATERIALS_FOLDER_ID', '')  # Материалы уроков
+GDRIVE_ATTACHMENTS_FOLDER_ID = os.environ.get('GDRIVE_ATTACHMENTS_FOLDER_ID', '')  # Вложения
+
+# Storage backends
+USE_GDRIVE_STORAGE = os.environ.get('USE_GDRIVE_STORAGE', '0') == '1'  # Включить хранение на Google Drive
 
 # Video compression settings
 VIDEO_COMPRESSION_ENABLED = os.environ.get('VIDEO_COMPRESSION_ENABLED', '1') == '1'
