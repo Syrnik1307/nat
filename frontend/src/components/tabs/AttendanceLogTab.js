@@ -208,7 +208,7 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
           <button type="button" className="toolbar-btn ghost" onClick={loadAttendanceLog} disabled={loading}>
             Обновить
           </button>
-          <button type="button" className="toolbar-btn" onClick={handleOpenFullPage} disabled={!hasData}>
+          <button type="button" className="toolbar-btn" onClick={handleOpenFullPage}>
             Открыть полный журнал
           </button>
         </div>
