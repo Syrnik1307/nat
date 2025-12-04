@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { apiClient } from '../../apiService';
+import { apiClient } from '../apiService';
 import './StorageStats.css';
 
 const StorageStats = ({ onClose }) => {
