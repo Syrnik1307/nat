@@ -1492,15 +1492,83 @@ def teacher_recordings_list(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def recording_detail(request, recording_id):
     """
     Детальная информация о записи урока
     GET /schedule/api/recordings/<id>/
+    DELETE /schedule/api/recordings/<id>/
     """
     user = request.user
     
+    if request.method == 'DELETE':
+        # Удаление записи (только преподаватель-владелец)
+        if getattr(user, 'role', None) != 'teacher':
+            return Response({
+                'error': 'Только преподаватели могут удалять записи'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Требуем активную подписку
+        try:
+            require_active_subscription(user)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            recording = LessonRecording.objects.select_related(
+                'lesson__group__teacher'
+            ).get(id=recording_id)
+            
+            # Проверка что запись принадлежит преподавателю
+            if recording.lesson.teacher_id != user.id:
+                return Response({
+                    'error': 'У вас нет прав на удаление этой записи'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Удаляем файл из Google Drive
+            if recording.gdrive_file_id:
+                try:
+                    from .gdrive_utils import get_gdrive_manager
+                    gdrive = get_gdrive_manager()
+                    gdrive.delete_file(recording.gdrive_file_id)
+                    logger.info(f"Deleted file {recording.gdrive_file_id} from Google Drive")
+                except Exception as e:
+                    logger.error(f"Failed to delete file from Google Drive: {e}")
+                    # Продолжаем удаление записи из БД даже если не удалось из Drive
+            
+            # Освобождаем квоту преподавателя
+            if recording.file_size:
+                try:
+                    quota = user.storage_quota
+                    quota.remove_recording(recording.file_size)
+                    logger.info(f"Freed {recording.file_size} bytes for teacher {user.id}")
+                except Exception as e:
+                    logger.error(f"Failed to update quota: {e}")
+            
+            # Удаляем запись из БД
+            recording_id_str = str(recording.id)
+            lesson_title = recording.lesson.title
+            recording.delete()
+            
+            logger.info(f"Teacher {user.id} deleted recording {recording_id_str} ({lesson_title})")
+            
+            return Response({
+                'message': 'Запись успешно удалена',
+                'recording_id': recording_id_str
+            }, status=status.HTTP_200_OK)
+        
+        except LessonRecording.DoesNotExist:
+            return Response({
+                'error': 'Запись не найдена'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(f"Error deleting recording: {e}")
+            return Response({
+                'error': 'Ошибка удаления записи'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    # GET method
     try:
         recording = LessonRecording.objects.select_related(
             'lesson',
