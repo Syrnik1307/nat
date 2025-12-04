@@ -123,52 +123,7 @@ const GroupReportsTab = ({ groupId }) => {
         </div>
       </div>
 
-      {/* Рекомендации */}
-      <div className="recommendations-section">
-        <h4 className="section-title">💡 Рекомендации</h4>
-
-        <div className="recommendations-list">
-          {report.attendance_percent < 70 && (
-            <div className="recommendation-item warning">
-              <span className="recommendation-icon">⚠️</span>
-              <span className="recommendation-text">
-                Низкая посещаемость. Рекомендуется связаться с отсутствующими учениками.
-              </span>
-            </div>
-          )}
-
-          {report.homework_percent < 60 && (
-            <div className="recommendation-item warning">
-              <span className="recommendation-icon">⚠️</span>
-              <span className="recommendation-text">
-                Много учеников не выполняют ДЗ. Требуется дополнительный контроль.
-              </span>
-            </div>
-          )}
-
-          {report.control_points_percent < 50 && (
-            <div className="recommendation-item warning">
-              <span className="recommendation-icon">⚠️</span>
-              <span className="recommendation-text">
-                Низкие результаты по контрольным точкам. Рекомендуется повторение материала.
-              </span>
-            </div>
-          )}
-
-          {report.attendance_percent >= 85 &&
-            report.homework_percent >= 80 &&
-            report.control_points_percent >= 75 && (
-              <div className="recommendation-item success">
-                <span className="recommendation-icon">✨</span>
-                <span className="recommendation-text">
-                  Отличные результаты по всем показателям! Группа на правильном пути.
-                </span>
-              </div>
-            )}
-        </div>
-      </div>
-
-      {/* Легенда */}
+      {/* Примечание */}
       <div className="report-note">
         <strong>Примечание:</strong> Отчет основан на данных о посещениях, выполнении ДЗ и результатах контрольных точек.
         Обновляется в реальном времени при изменении данных.

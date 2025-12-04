@@ -1,7 +1,7 @@
 /**
  * GroupDetailModal.js
  * Модальное окно с подробной информацией о группе
- * Содержит табы: Журнал посещений, Тесты, ДЗ, Контроль, Рейтинг, Отчеты
+ * Содержит табы: Журнал посещений, ДЗ, Контроль, Рейтинг, Отчеты
  */
 
 import React, { useState } from 'react';
@@ -21,7 +21,6 @@ const GroupDetailModal = ({ group, isOpen, onClose, onStudentClick }) => {
 
   const tabs = [
     { id: 'attendance', label: 'Журнал посещений', icon: '📋' },
-    { id: 'tests', label: 'Тесты на проверку', icon: '✓' },
     { id: 'homework', label: 'Домашние задания', icon: '📝' },
     { id: 'control', label: 'Контрольные точки', icon: '🎯' },
     { id: 'rating', label: 'Рейтинг группы', icon: '⭐' },
@@ -48,19 +47,11 @@ const GroupDetailModal = ({ group, isOpen, onClose, onStudentClick }) => {
         return (
           <GroupReportsTab groupId={group.id} />
         );
-      case 'tests':
-        return (
-          <div className="tab-content">
-            <div className="placeholder">
-              📌 Тесты на проверку (интеграция с модулем ДЗ)
-            </div>
-          </div>
-        );
       case 'homework':
         return (
           <div className="tab-content">
             <div className="placeholder">
-              📌 Домашние задания (интеграция с модулем ДЗ)
+              📌 Домашние задания и контрольные работы (интеграция с модулем ДЗ)
             </div>
           </div>
         );

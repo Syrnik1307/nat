@@ -76,13 +76,13 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'attended':
-        return '✅';
+        return '✓';
       case 'absent':
-        return '❌';
+        return '✗';
       case 'watched_recording':
-        return '👁️';
+        return '👁';
       default:
-        return '—';
+        return '–';
     }
   };
 
@@ -93,9 +93,9 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
       case 'absent':
         return 'Не был';
       case 'watched_recording':
-        return 'Посмотрел';
+        return 'Запись';
       default:
-        return 'Не указано';
+        return '—';
     }
   };
 
@@ -172,19 +172,19 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
       {/* Легенда */}
       <div className="attendance-legend">
         <div className="legend-item">
-          <span className="legend-icon">✅</span>
+          <span className="legend-icon status-icon-legend attended">✓</span>
           <span>Был на занятии</span>
         </div>
         <div className="legend-item">
-          <span className="legend-icon">❌</span>
+          <span className="legend-icon status-icon-legend absent">✗</span>
           <span>Не был</span>
         </div>
         <div className="legend-item">
-          <span className="legend-icon">👁️</span>
+          <span className="legend-icon status-icon-legend watched">👁</span>
           <span>Посмотрел запись</span>
         </div>
         <div className="legend-item">
-          <span className="legend-icon">—</span>
+          <span className="legend-icon status-icon-legend empty">–</span>
           <span>Нет статуса</span>
         </div>
       </div>

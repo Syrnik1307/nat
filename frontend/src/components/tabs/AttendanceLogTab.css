@@ -145,9 +145,46 @@
 }
 
 .status-icon {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
+  font-weight: bold;
   display: block;
   line-height: 1;
+}
+
+.attendance-cell.status-attended .status-icon {
+  color: #10b981;
+}
+
+.attendance-cell.status-absent .status-icon {
+  color: #ef4444;
+}
+
+.attendance-cell.status-watched_recording .status-icon {
+  color: #3b82f6;
+}
+
+.status-icon-legend {
+  display: inline-block;
+  min-width: 1.5rem;
+  text-align: center;
+  font-size: 1.125rem;
+  font-weight: bold;
+}
+
+.status-icon-legend.attended {
+  color: #10b981;
+}
+
+.status-icon-legend.absent {
+  color: #ef4444;
+}
+
+.status-icon-legend.watched {
+  color: #3b82f6;
+}
+
+.status-icon-legend.empty {
+  color: #9ca3af;
 }
 
 .status-label {
