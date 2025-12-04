@@ -68,6 +68,7 @@ class LessonSerializer(serializers.ModelSerializer):
             'start_time', 'end_time', 'duration_minutes',
             'topics', 'location',
             'zoom_meeting_id', 'zoom_start_url', 'zoom_join_url', 'zoom_password',
+            'record_lesson', 'recording_available_for_days',  # Добавили поля записи
             'notes', 'created_at', 'updated_at'
         ]
 

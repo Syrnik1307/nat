@@ -460,7 +460,8 @@ const TeacherHomePage = () => {
                     </div>
                     <div className="lesson-actions">
                       <StartLessonButton 
-                        lessonId={lesson.id} 
+                        lessonId={lesson.id}
+                        lesson={lesson}
                         groupName={lesson.group_name || 'Группа'}
                         onSuccess={() => {
                           // Можно добавить обновление данных после старта

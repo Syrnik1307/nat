@@ -75,7 +75,7 @@ class ZoomAPIClient:
             logger.error(f"Failed to get Zoom OAuth token: {e}")
             raise Exception(f"Zoom authentication failed: {str(e)}")
     
-    def create_meeting(self, user_id='me', topic='Meeting', start_time=None, duration=60):
+    def create_meeting(self, user_id='me', topic='Meeting', start_time=None, duration=60, auto_record=False):
         """
         Создание встречи Zoom
         
@@ -84,6 +84,7 @@ class ZoomAPIClient:
             topic: Тема встречи
             start_time: Время начала (datetime или str ISO)
             duration: Длительность в минутах
+            auto_record: Автоматически записывать встречу (True/False)
         
         Returns:
             dict: {
@@ -104,6 +105,12 @@ class ZoomAPIClient:
             else:
                 start_time_str = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
             
+            # Определяем настройку записи
+            # 'none' - не записывать
+            # 'cloud' - записывать в облако Zoom (требуется Pro+ аккаунт)
+            # 'local' - записывать локально на компьютер хоста
+            recording_type = 'cloud' if auto_record else 'none'
+            
             # Данные встречи
             meeting_data = {
                 'topic': topic,
@@ -118,7 +125,7 @@ class ZoomAPIClient:
                     'mute_upon_entry': True,
                     'waiting_room': False,
                     'audio': 'both',
-                    'auto_recording': 'none'
+                    'auto_recording': recording_type  # 'cloud' если auto_record=True
                 }
             }
             
