@@ -490,8 +490,8 @@ const AuthPage = () => {
         <div className="auth-container">
           <div className="auth-content">
             <div className="auth-header">
-              <h1 className="auth-title">Добро пожаловать</h1>
-              <p className="auth-subtitle">Выберите вашу роль для продолжения</p>
+              <h1 className="auth-title">Вход</h1>
+              <p className="auth-subtitle">Выберите вашу роль</p>
             </div>
 
             <div className="role-selection">
@@ -503,9 +503,9 @@ const AuthPage = () => {
                 onKeyDown={(e) => e.key === 'Enter' && selectRole('student')}
               >
                 <div className="role-icon">🎓</div>
-                <h3 className="role-title">Я Ученик</h3>
+                <h3 className="role-title">Ученик</h3>
                 <p className="role-description">
-                  Доступ к расписанию, заданиям и материалам
+                  Доступ к урокам и заданиям
                 </p>
               </div>
 
@@ -517,9 +517,9 @@ const AuthPage = () => {
                 onKeyDown={(e) => e.key === 'Enter' && selectRole('teacher')}
               >
                 <div className="role-icon">👨‍🏫</div>
-                <h3 className="role-title">Я Учитель</h3>
+                <h3 className="role-title">Учитель</h3>
                 <p className="role-description">
-                  Управление группами, уроками и домашними заданиями
+                  Управление группами и уроками
                 </p>
               </div>
             </div>
@@ -537,12 +537,12 @@ const AuthPage = () => {
         <div className="auth-content">
           <div className="auth-header">
             <h1 className="auth-title">
-              {mode === 'login' ? 'Вход в систему' : 'Регистрация'}
+              {mode === 'login' ? 'Вход' : 'Регистрация'}
             </h1>
             <p className="auth-subtitle">
               {mode === 'login' 
-                ? `Войдите как ${role === 'student' ? 'ученик' : 'учитель'}`
-                : `Зарегистрируйтесь как ${role === 'student' ? 'ученик' : 'учитель'}`
+                ? `как ${role === 'student' ? 'ученик' : 'учитель'}`
+                : `как ${role === 'student' ? 'ученик' : 'учитель'}`
               }
             </p>
           </div>
@@ -732,15 +732,14 @@ const AuthPage = () => {
 
             <div className="auth-switch">
               <p>
-                {mode === 'login' ? 'Нет аккаунта?' : 'Уже есть аккаунт?'}
-                {' '}
+                {mode === 'login' ? 'Нет аккаунта? ' : 'Уже есть аккаунт? '}
                 <button
                   type="button"
                   className="link-button"
                   onClick={toggleMode}
                   disabled={loading || blocked}
                 >
-                  {mode === 'login' ? 'Зарегистрироваться' : 'Войти'}
+                  {mode === 'login' ? 'Создать' : 'Войти'}
                 </button>
               </p>
             </div>

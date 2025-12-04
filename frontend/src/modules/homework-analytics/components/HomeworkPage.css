@@ -1,7 +1,8 @@
+/* Минималистичный дизайн страницы домашних заданий */
 .homework-page {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 2rem 1.5rem;
 }
 
 .homework-header {
@@ -9,15 +10,16 @@
 }
 
 .homework-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #0F172A;
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #111827;
   margin: 0 0 0.5rem 0;
+  letter-spacing: -0.02em;
 }
 
 .homework-subtitle {
-  font-size: 1rem;
-  color: #64748B;
+  font-size: 0.875rem;
+  color: #6b7280;
   margin: 0;
 }
 
@@ -26,59 +28,61 @@
   display: flex;
   gap: 0.5rem;
   margin-bottom: 2rem;
-  border-bottom: 2px solid #E2E8F0;
-  padding-bottom: 0;
+  flex-wrap: wrap;
 }
 
 .homework-tab {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: transparent;
-  border: none;
-  border-bottom: 3px solid transparent;
+  padding: 0.625rem 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  color: #64748B;
+  color: #6b7280;
   transition: all 0.2s ease;
-  position: relative;
-  bottom: -2px;
 }
 
 .homework-tab:hover {
-  color: #FF6B35;
-  background: rgba(255, 107, 53, 0.05);
+  background: #f3f4f6;
+  color: #374151;
 }
 
 .homework-tab.active {
-  color: #FF6B35;
-  border-bottom-color: #FF6B35;
-  font-weight: 600;
+  background: #111827;
+  color: white;
+  border-color: #111827;
 }
 
 .tab-icon {
-  font-size: 1.25rem;
+  font-size: 1rem;
 }
 
 .tab-label {
-  font-size: 1rem;
+  font-size: 0.875rem;
 }
 
 /* Контент */
 .homework-content {
   background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   min-height: 400px;
 }
 
 /* Адаптивность */
 @media (max-width: 768px) {
   .homework-page {
-    padding: 1rem;
+    padding: 1.5rem 1rem;
+  }
+
+  .homework-title {
+    font-size: 1.5rem;
   }
 
   .homework-tabs {
@@ -87,13 +91,12 @@
   }
 
   .homework-tab {
-    padding: 0.625rem 1rem;
-    font-size: 0.875rem;
+    padding: 0.5rem 0.875rem;
     white-space: nowrap;
   }
 
   .tab-icon {
-    font-size: 1rem;
+    font-size: 0.875rem;
   }
 
   .homework-content {
