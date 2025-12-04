@@ -368,7 +368,7 @@ export const getStudentCard = (studentId, groupId = null) => {
 
 // Individual students
 export const getIndividualStudents = () =>
-  apiClient.get('students/individual/');
+  apiClient.get('individual-students/');
 export const getIndividualStudent = (id) =>
   apiClient.get(`individual-students/${id}/`);
 export const createIndividualStudent = (data) =>
