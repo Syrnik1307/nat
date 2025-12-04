@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import './RecurringLessonsManage.css'; // v2: minimalist design
+import './RecurringLessonsManage.css'; // v3: all input types styled blue minimalist
 import {
   getGroups,
   getRecurringLessons,
