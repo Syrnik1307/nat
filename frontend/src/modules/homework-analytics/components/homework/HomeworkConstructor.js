@@ -403,9 +403,9 @@ const HomeworkConstructor = () => {
   return (
     <div className="homework-constructor-page">
       <div className="hc-header">
-        <h1 className="hc-header-title">📝 Конструктор домашних заданий</h1>
+        <h1 className="hc-header-title">Конструктор домашних заданий</h1>
         <p className="hc-header-subtitle">
-          Соберите идеальное ДЗ с разными типами вопросов, настройте дедлайны и включите геймификацию.
+          Создавайте, назначайте и проверяйте работы учеников
         </p>
       </div>
 
@@ -476,40 +476,18 @@ const HomeworkConstructor = () => {
               </div>
             </div>
 
-            <div className="hc-inline-fields">
-              <div className="form-group">
-                <label className="form-label">Максимальный балл</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  min={1}
-                  value={assignmentMeta.maxScore}
-                  onChange={(event) => handleMaxScoreChange(event.target.value)}
-                />
-                <button type="button" className="gm-btn-surface" onClick={handleAutoMaxScore}>
-                  Рассчитать по сумме вопросов
-                </button>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Геймификация</label>
-                <div className="gm-tab-switch">
-                  <button
-                    type="button"
-                    className={`gm-tab-button ${assignmentMeta.gamificationEnabled ? 'active' : ''}`}
-                    onClick={() => handleMetaChange('gamificationEnabled', true)}
-                  >
-                    Включено
-                  </button>
-                  <button
-                    type="button"
-                    className={`gm-tab-button ${!assignmentMeta.gamificationEnabled ? 'active' : ''}`}
-                    onClick={() => handleMetaChange('gamificationEnabled', false)}
-                  >
-                    Выключено
-                  </button>
-                </div>
-              </div>
+            <div className="form-group">
+              <label className="form-label">Максимальный балл</label>
+              <input
+                className="form-input"
+                type="number"
+                min={1}
+                value={assignmentMeta.maxScore}
+                onChange={(event) => handleMaxScoreChange(event.target.value)}
+              />
+              <button type="button" className="gm-btn-surface" onClick={handleAutoMaxScore}>
+                Рассчитать по сумме вопросов
+              </button>
             </div>
 
             <div className="gm-actions hc-action-buttons">
@@ -519,7 +497,7 @@ const HomeworkConstructor = () => {
                 onClick={() => setShowPublishModal(true)}
                 disabled={saving || questions.length === 0}
               >
-                📢 Опубликовать
+                Опубликовать
               </button>
               <button
                 type="button"
@@ -527,7 +505,7 @@ const HomeworkConstructor = () => {
                 onClick={handleSaveDraft}
                 disabled={saving}
               >
-                {saving ? 'Сохранение...' : '💾 Сохранить черновик'}
+                {saving ? 'Сохранение...' : 'Сохранить черновик'}
               </button>
               <button
                 type="button"
