@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../auth';
-import { getTeacherStatsSummary, getTeacherStatsBreakdown, getLessons, getGroups, startQuickLesson } from '../apiService';
+import { getTeacherStatsSummary, getTeacherStatsBreakdown, getLessons, getGroups, startQuickLesson, getIndividualStudents } from '../apiService';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import StartLessonButton from '../modules/core/zoom/StartLessonButton';
 import SupportWidget from './SupportWidget';
@@ -97,11 +97,12 @@ const TeacherHomePage = () => {
     
     try {
       const todayDate = new Date().toISOString().split('T')[0];
-      const [groupsRes, lessonsRes, statsRes, breakdownRes] = await Promise.all([
+      const [groupsRes, lessonsRes, statsRes, breakdownRes, individualStudentsRes] = await Promise.all([
         getGroups(),
         getLessons({ date: todayDate }),
         getTeacherStatsSummary(),
         getTeacherStatsBreakdown(),
+        getIndividualStudents(),
       ]);
 
       const groupsList = Array.isArray(groupsRes.data) 
@@ -115,7 +116,26 @@ const TeacherHomePage = () => {
       setGroups(groupsList);
       setTodayLessons(lessonsList);
       setStats(statsRes.data);
-      setBreakdown(breakdownRes.data || { groups: [], students: [] });
+      
+      // Получаем индивидуальных студентов и преобразуем их для отображения
+      const individualStudents = Array.isArray(individualStudentsRes.data)
+        ? individualStudentsRes.data
+        : individualStudentsRes.data.results || [];
+      
+      const individualStudentsForDisplay = individualStudents.map(st => ({
+        id: st.student_id,
+        name: st.student_name || `${st.first_name} ${st.last_name}`,
+        email: st.email,
+        group_id: null,
+        group_name: 'Индивидуальный',
+        attendance_percent: 0,
+        homework_percent: 0
+      }));
+      
+      setBreakdown({
+        groups: breakdownRes.data?.groups || [],
+        students: individualStudentsForDisplay
+      });
     } catch (err) {
       console.error('Ошибка загрузки данных:', err);
       setError('Не удалось загрузить данные. Попробуйте обновить страницу.');
@@ -500,9 +520,9 @@ const TeacherHomePage = () => {
               ))}
             </div>
             <div className="students-breakdown">
-              <h3 className="gb-title">Ученики</h3>
+              <h3 className="gb-title">Индивидуальные ученики</h3>
               {(!breakdown?.students || breakdown.students.length === 0) && (
-                <div className="gb-empty">Нет данных по ученикам</div>
+                <div className="gb-empty">Нет индивидуальных учеников</div>
               )}
               {breakdown?.students && breakdown.students.map(st => (
                 <div 
