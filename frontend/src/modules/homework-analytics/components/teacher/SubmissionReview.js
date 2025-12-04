@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../../../apiService';
+import { Notification } from '../../../../shared/components';
+import useNotification from '../../../../shared/hooks/useNotification';
 import './SubmissionReview.css';
 
 /**
@@ -8,6 +10,7 @@ import './SubmissionReview.css';
  * Позволяет просматривать ответы, выставлять оценки и оставлять комментарии
  */
 const SubmissionReview = () => {
+  const { notification, showNotification, closeNotification } = useNotification();
   const { submissionId } = useParams();
   const navigate = useNavigate();
   
@@ -67,7 +70,7 @@ const SubmissionReview = () => {
       setEditValues({});
     } catch (err) {
       console.error('Ошибка сохранения оценки:', err);
-      alert(err.response?.data?.error || 'Не удалось сохранить оценку');
+      showNotification('error', 'Ошибка', err.response?.data?.error || 'Не удалось сохранить оценку');
     } finally {
       setSaving(false);
     }
@@ -252,6 +255,14 @@ const SubmissionReview = () => {
           Завершить проверку
         </button>
       </div>
+
+      <Notification
+        isOpen={notification.isOpen}
+        onClose={closeNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
     </div>
   );
 };

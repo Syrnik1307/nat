@@ -164,7 +164,7 @@ const ZoomPoolManager = ({ onClose }) => {
   const handleReleaseAccount = async (accountId) => {
     try {
       await apiService.post(`zoom-pool/${accountId}/release/`);
-      alert('Аккаунт освобожден');
+      setAlertModal({ isOpen: true, title: 'Успешно', message: 'Аккаунт освобожден', variant: 'success' });
       loadAccounts();
     } catch (error) {
       console.error('Ошибка освобождения аккаунта:', error);

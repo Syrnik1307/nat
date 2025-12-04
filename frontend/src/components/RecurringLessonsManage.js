@@ -14,6 +14,8 @@ import Badge from '../shared/components/Badge';
 import Select from '../shared/components/Select';
 import TimePicker from '../shared/components/TimePicker';
 import DatePicker from '../shared/components/DatePicker';
+import { Notification, ConfirmModal } from '../shared/components';
+import useNotification from '../shared/hooks/useNotification';
 
 const initialForm = {
   title: '',
@@ -43,6 +45,7 @@ const weekTypeOptions = [
 ];
 
 const RecurringLessonsManage = () => {
+  const { notification, confirm, showNotification, closeNotification, showConfirm, closeConfirm } = useNotification();
   const [groups, setGroups] = useState([]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +55,9 @@ const RecurringLessonsManage = () => {
   const [editingId, setEditingId] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
+  const [generateInput, setGenerateInput] = useState('');
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [generatingItem, setGeneratingItem] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -79,7 +85,7 @@ const RecurringLessonsManage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.group_id || form.day_of_week === '') {
-      alert('Заполните все обязательные поля');
+      showNotification('warning', 'Внимание', 'Заполните все обязательные поля');
       return;
     }
     setSaving(true);
@@ -87,15 +93,17 @@ const RecurringLessonsManage = () => {
       const payload = { ...form, day_of_week: parseInt(form.day_of_week, 10) };
       if (editingId) {
         await updateRecurringLesson(editingId, payload);
+        showNotification('success', 'Успешно', 'Регулярный урок обновлен');
       } else {
         await createRecurringLesson(payload);
+        showNotification('success', 'Успешно', 'Регулярный урок создан');
       }
       await refresh();
       setForm({ ...initialForm });
       setEditingId(null);
       setShowForm(false);
     } catch (e) {
-      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка сохранения');
+      showNotification('error', 'Ошибка', e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка сохранения');
     } finally {
       setSaving(false);
     }
@@ -124,27 +132,44 @@ const RecurringLessonsManage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Вы уверены, что хотите удалить регулярный урок?')) return;
+    const confirmed = await showConfirm({
+      title: 'Удаление регулярного урока',
+      message: 'Вы уверены, что хотите удалить регулярный урок?',
+      variant: 'danger',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена'
+    });
+    if (!confirmed) return;
     try {
       await deleteRecurringLesson(id);
       await refresh();
+      showNotification('success', 'Успешно', 'Регулярный урок удален');
     } catch (e) {
-      alert('Ошибка удаления');
+      showNotification('error', 'Ошибка', 'Не удалось удалить регулярный урок');
     }
   };
 
-  const handleGenerate = async (item) => {
-    const until = window.prompt('Сгенерировать уроки до даты (ГГГГ-ММ-ДД):');
-    if (!until) return;
+  const handleGenerate = (item) => {
+    setGeneratingItem(item);
+    setGenerateInput('');
+    setShowGenerateModal(true);
+  };
+
+  const executeGenerate = async () => {
+    if (!generateInput) {
+      showNotification('warning', 'Внимание', 'Укажите дату');
+      return;
+    }
     try {
-      const res = await generateLessonsFromRecurring(item.id, { 
-        until_date: until, 
+      const res = await generateLessonsFromRecurring(generatingItem.id, { 
+        until_date: generateInput, 
         dry_run: false 
       });
-      alert(`Создано уроков: ${res.data.created_count}`);
+      setShowGenerateModal(false);
+      showNotification('success', 'Успешно', `Создано уроков: ${res.data.created_count}`);
       await refresh();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Ошибка генерации');
+      showNotification('error', 'Ошибка', err.response?.data?.detail || 'Ошибка генерации');
     }
   };
 
@@ -359,6 +384,76 @@ const RecurringLessonsManage = () => {
           </div>
         )}
       </div>
+
+      {/* Generate Modal */}
+      {showGenerateModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 'var(--z-modal-backdrop)',
+          }}
+          onClick={() => setShowGenerateModal(false)}
+        >
+          <div
+            style={{
+              background: 'var(--bg-primary)',
+              borderRadius: 'var(--radius-xl)',
+              boxShadow: 'var(--shadow-2xl)',
+              maxWidth: '500px',
+              width: '90%',
+              padding: 'var(--space-xl)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ marginBottom: 'var(--space-lg)' }}>Генерация уроков</h2>
+            <p style={{ marginBottom: 'var(--space-md)', color: 'var(--text-secondary)' }}>
+              Укажите дату, до которой нужно сгенерировать уроки:
+            </p>
+            <Input
+              type="date"
+              value={generateInput}
+              onChange={(e) => setGenerateInput(e.target.value)}
+              placeholder="ГГГГ-ММ-ДД"
+            />
+            <div style={{ display: 'flex', gap: 'var(--space-md)', marginTop: 'var(--space-lg)' }}>
+              <Button variant="secondary" onClick={() => setShowGenerateModal(false)}>
+                Отмена
+              </Button>
+              <Button variant="primary" onClick={executeGenerate}>
+                Сгенерировать
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Notification
+        isOpen={notification.isOpen}
+        onClose={closeNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
+
+      <ConfirmModal
+        isOpen={confirm.isOpen}
+        onClose={closeConfirm}
+        onConfirm={confirm.onConfirm}
+        title={confirm.title}
+        message={confirm.message}
+        variant={confirm.variant}
+        confirmText={confirm.confirmText}
+        cancelText={confirm.cancelText}
+      />
     </div>
   );
 };

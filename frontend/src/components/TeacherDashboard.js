@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { getTeacherStatsSummary, getGroups, getLessons, startLesson, startLessonNew, createLesson } from '../apiService';
 import LessonAttendance from './LessonAttendance';
+import { Notification } from '../shared/components';
+import useNotification from '../shared/hooks/useNotification';
 import { useAuth } from '../auth';
 
 const TeacherDashboard = () => {
+  const { notification, showNotification, closeNotification } = useNotification();
   const { logout } = useAuth();
   const [stats, setStats] = useState(null);
   const [groups, setGroups] = useState([]);
@@ -40,17 +43,17 @@ const TeacherDashboard = () => {
       let res;
       try {
         res = await startLessonNew(id);
-        alert('Урок запущен (new pool)\nStart URL: ' + (res.data.zoom_start_url || res.data.start_url));
+        showNotification('success', 'Урок запущен', 'Start URL: ' + (res.data.zoom_start_url || res.data.start_url));
       } catch (e) {
         // Fallback legacy
         res = await startLesson(id);
-        alert(res.data.message + '\nStart URL: ' + res.data.start_url);
+        showNotification('success', 'Урок запущен', res.data.message + '\nStart URL: ' + res.data.start_url);
       }
       // Refresh lessons to reflect zoom links
       const newLessons = await getLessons({});
       setLessons(Array.isArray(newLessons.data) ? newLessons.data : newLessons.data.results || []);
     } catch (e) {
-      alert(e.response?.data?.message || 'Ошибка запуска');
+      showNotification('error', 'Ошибка', e.response?.data?.message || 'Ошибка запуска');
     } finally {
       setStartingLessonId(null);
     }
@@ -198,6 +201,14 @@ const TeacherDashboard = () => {
       {attendanceLessonId && (
         <LessonAttendance lessonId={attendanceLessonId} onClose={closeAttendance} />
       )}
+
+      <Notification
+        isOpen={notification.isOpen}
+        onClose={closeNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
     </div>
   );
 };

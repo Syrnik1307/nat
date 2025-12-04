@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../../apiService';
+import { Notification, ConfirmModal } from '../../shared/components';
+import useNotification from '../../shared/hooks/useNotification';
 import './StorageQuotaModal.css';
 
 const formatBytes = (bytes) => {
@@ -14,6 +16,7 @@ const usagePercent = (quota) => {
 };
 
 const StorageQuotaModal = ({ onClose }) => {
+  const { notification, confirm, showNotification, closeNotification, showConfirm, closeConfirm } = useNotification();
   const [quotas, setQuotas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -77,24 +80,32 @@ const StorageQuotaModal = ({ onClose }) => {
         additional_gb: Number(increaseAmount)
       });
       await loadQuotas();
-      alert(`Квота увеличена на ${increaseAmount} ГБ`);
+      showNotification('success', 'Успешно', `Квота увеличена на ${increaseAmount} ГБ`);
     } catch (err) {
       console.error('Failed to increase quota', err);
-      alert('Не удалось увеличить квоту');
+      showNotification('error', 'Ошибка', 'Не удалось увеличить квоту');
     } finally {
       setBusy(false);
     }
   };
 
   const handleResetWarnings = async (quotaId) => {
-    if (!window.confirm('Сбросить предупреждения?')) return;
+    const confirmed = await showConfirm({
+      title: 'Сброс предупреждений',
+      message: 'Вы уверены, что хотите сбросить предупреждения?',
+      variant: 'warning',
+      confirmText: 'Сбросить',
+      cancelText: 'Отмена'
+    });
+    if (!confirmed) return;
     setBusy(true);
     try {
       await api.post(`/storage/quotas/${quotaId}/reset-warnings/`);
       await loadQuotas();
+      showNotification('success', 'Успешно', 'Предупреждения сброшены');
     } catch (err) {
       console.error('Failed to reset warnings', err);
-      alert('Не удалось сбросить предупреждения');
+      showNotification('error', 'Ошибка', 'Не удалось сбросить предупреждения');
     } finally {
       setBusy(false);
     }
@@ -262,6 +273,25 @@ const StorageQuotaModal = ({ onClose }) => {
           </div>
         </div>
       </div>
+
+      <Notification
+        isOpen={notification.isOpen}
+        onClose={closeNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
+
+      <ConfirmModal
+        isOpen={confirm.isOpen}
+        onClose={closeConfirm}
+        onConfirm={confirm.onConfirm}
+        title={confirm.title}
+        message={confirm.message}
+        variant={confirm.variant}
+        confirmText={confirm.confirmText}
+        cancelText={confirm.cancelText}
+      />
     </div>
   );
 };

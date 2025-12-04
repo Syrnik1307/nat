@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth';
+import { Notification, ConfirmModal } from '../shared/components';
+import useNotification from '../shared/hooks/useNotification';
 import './StudentsManage.css';
 
 const StudentsManage = ({ onClose }) => {
+  const { notification, confirm, showNotification, closeNotification, showConfirm, closeConfirm } = useNotification();
   const { user } = useAuth();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,9 +86,14 @@ const StudentsManage = ({ onClose }) => {
   };
 
   const handleDeleteStudent = async (studentId, studentName) => {
-    if (!window.confirm(`Вы уверены, что хотите удалить ученика ${studentName}? Это действие нельзя отменить.`)) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: 'Удаление ученика',
+      message: `Вы уверены, что хотите удалить ученика ${studentName}? Это действие нельзя отменить.`,
+      variant: 'danger',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена'
+    });
+    if (!confirmed) return;
 
     try {
       const token = localStorage.getItem('tp_access_token');
@@ -105,8 +113,9 @@ const StudentsManage = ({ onClose }) => {
         setShowEditForm(false);
         setSelectedStudent(null);
       }
+      showNotification('success', 'Успешно', 'Ученик удален');
     } catch (error) {
-      alert('Ошибка удаления ученика: ' + (error.message || 'Неизвестная ошибка'));
+      showNotification('error', 'Ошибка', 'Ошибка удаления ученика: ' + (error.message || 'Неизвестная ошибка'));
     }
   };
 
@@ -250,6 +259,25 @@ const StudentsManage = ({ onClose }) => {
             </div>
           )}
         </div>
+
+        <Notification
+          isOpen={notification.isOpen}
+          onClose={closeNotification}
+          type={notification.type}
+          title={notification.title}
+          message={notification.message}
+        />
+
+        <ConfirmModal
+          isOpen={confirm.isOpen}
+          onClose={closeConfirm}
+          onConfirm={confirm.onConfirm}
+          title={confirm.title}
+          message={confirm.message}
+          variant={confirm.variant}
+          confirmText={confirm.confirmText}
+          cancelText={confirm.cancelText}
+        />
       </div>
     </div>
   );

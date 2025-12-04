@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Confetti from '../gamification/Confetti';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Notification, ConfirmModal } from '../../../../shared/components';
+import useNotification from '../../../../shared/hooks/useNotification';
 import useHomeworkSession from '../../hooks/useHomeworkSession';
 import QuestionRenderer from '../student/QuestionRenderer';
 import ProgressBar from '../student/ProgressBar';
@@ -8,6 +10,7 @@ import QuestionNav from '../student/QuestionNav';
 import './HomeworkTake.css';
 
 const HomeworkTake = () => {
+  const { notification, confirm, closeNotification, showConfirm, closeConfirm } = useNotification();
   const { id } = useParams();
   const navigate = useNavigate();
   const {
@@ -48,9 +51,14 @@ const HomeworkTake = () => {
   }, [savingState.status]);
 
   const handleSubmit = async () => {
-    if (!window.confirm('Отправить домашнее задание? После отправки редактирование будет недоступно.')) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: 'Отправить домашнее задание?',
+      message: 'После отправки редактирование будет недоступно.',
+      variant: 'warning',
+      confirmText: 'Отправить',
+      cancelText: 'Отмена'
+    });
+    if (!confirmed) return;
     try {
       setSubmitting(true);
       setSubmitMessage(null);
@@ -220,6 +228,25 @@ const HomeworkTake = () => {
           </footer>
         </main>
       </div>
+
+      <Notification
+        isOpen={notification.isOpen}
+        onClose={closeNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
+
+      <ConfirmModal
+        isOpen={confirm.isOpen}
+        onClose={closeConfirm}
+        onConfirm={confirm.onConfirm}
+        title={confirm.title}
+        message={confirm.message}
+        variant={confirm.variant}
+        confirmText={confirm.confirmText}
+        cancelText={confirm.cancelText}
+      />
     </div>
   );
 };

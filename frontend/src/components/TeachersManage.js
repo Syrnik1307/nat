@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Notification, ConfirmModal } from '../shared/components';
+import useNotification from '../shared/hooks/useNotification';
 import './TeachersManage.css';
 
 const statusLabels = {
@@ -11,6 +13,7 @@ const statusLabels = {
 };
 
 const TeachersManage = ({ onClose }) => {
+  const { notification, confirm, closeNotification, showConfirm, closeConfirm } = useNotification();
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTeacherId, setSelectedTeacherId] = useState(null);
@@ -132,9 +135,14 @@ const TeachersManage = ({ onClose }) => {
   };
 
   const handleDeleteTeacher = async (teacherId, teacherName) => {
-    if (!window.confirm(`Удалить учителя ${teacherName}?`)) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: 'Удаление учителя',
+      message: `Удалить учителя ${teacherName}?`,
+      variant: 'danger',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена'
+    });
+    if (!confirmed) return;
     try {
       const token = localStorage.getItem('tp_access_token');
       const response = await fetch(`/accounts/api/admin/teachers/${teacherId}/delete/`, {
@@ -509,6 +517,25 @@ const TeachersManage = ({ onClose }) => {
             )}
           </div>
         </div>
+
+        <Notification
+          isOpen={notification.isOpen}
+          onClose={closeNotification}
+          type={notification.type}
+          title={notification.title}
+          message={notification.message}
+        />
+
+        <ConfirmModal
+          isOpen={confirm.isOpen}
+          onClose={closeConfirm}
+          onConfirm={confirm.onConfirm}
+          title={confirm.title}
+          message={confirm.message}
+          variant={confirm.variant}
+          confirmText={confirm.confirmText}
+          cancelText={confirm.cancelText}
+        />
       </div>
     </div>
   );
