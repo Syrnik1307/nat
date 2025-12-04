@@ -122,12 +122,6 @@
   display: flex;
   gap: 0.5rem;
 }
-}
-
-.table-controls {
-  display: flex;
-  gap: 0.5rem;
-}
 
 .control-button {
   width: 2rem;
