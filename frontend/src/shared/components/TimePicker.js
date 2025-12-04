@@ -165,7 +165,7 @@ const TimePicker = ({
         }}
       >
         <span>{value || '--:--'}</span>
-        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>🕐</span>
+        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>⏰</span>
       </div>
 
       {isOpen && !disabled && (

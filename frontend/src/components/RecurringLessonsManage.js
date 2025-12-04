@@ -267,16 +267,6 @@ const RecurringLessonsManage = () => {
                 value={form.end_date}
                 onChange={(e) => setForm({ ...form, end_date: e.target.value })}
               />
-                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-              />
-
-              <Input
-                label="Дата окончания"
-                type="date"
-                required
-                value={form.end_date}
-                onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-              />
             </div>
 
             <div className="rl-form-actions">
