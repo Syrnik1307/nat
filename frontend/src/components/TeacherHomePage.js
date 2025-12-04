@@ -6,6 +6,8 @@ import StartLessonButton from '../modules/core/zoom/StartLessonButton';
 import SupportWidget from './SupportWidget';
 import SubscriptionBanner from './SubscriptionBanner';
 import TelegramWarningBanner from './TelegramWarningBanner';
+import GroupDetailModal from './GroupDetailModal';
+import StudentCardModal from './StudentCardModal';
 import './TeacherHomePage.css';
 
 const TreeGrowth = ({ stage, progress }) => {
@@ -69,6 +71,10 @@ const TeacherHomePage = () => {
   const [quickLessonLoading, setQuickLessonLoading] = useState(false);
   const [quickLessonError, setQuickLessonError] = useState(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  
+  // Состояние для модальных окон
+  const [groupDetailModal, setGroupDetailModal] = useState({ isOpen: false, group: null });
+  const [studentCardModal, setStudentCardModal] = useState({ isOpen: false, studentId: null, groupId: null, isIndividual: false });
 
   // Проверяем успешную оплату
   useEffect(() => {
@@ -457,7 +463,22 @@ const TeacherHomePage = () => {
                 <div className="gb-empty">Нет данных по группам</div>
               )}
               {breakdown?.groups && breakdown.groups.map(g => (
-                <div key={g.id} className="group-row">
+                <div 
+                  key={g.id} 
+                  className="group-row"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setGroupDetailModal({ isOpen: true, group: g });
+                    }
+                  }}
+                  onClick={() => setGroupDetailModal({ isOpen: true, group: g })}
+                  style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
                   <div className="group-meta">
                     <div className="group-avatar" aria-hidden="true">👥</div>
                     <div className="group-info">
@@ -484,12 +505,37 @@ const TeacherHomePage = () => {
                 <div className="gb-empty">Нет данных по ученикам</div>
               )}
               {breakdown?.students && breakdown.students.map(st => (
-                <div key={st.id} className="student-row">
+                <div 
+                  key={st.id} 
+                  className="student-row"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setStudentCardModal({ 
+                        isOpen: true, 
+                        studentId: st.id, 
+                        groupId: st.group_id || null,
+                        isIndividual: !st.group_id
+                      });
+                    }
+                  }}
+                  onClick={() => setStudentCardModal({ 
+                    isOpen: true, 
+                    studentId: st.id, 
+                    groupId: st.group_id || null,
+                    isIndividual: !st.group_id
+                  })}
+                  style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
                   <div className="student-meta">
                     <div className="student-avatar" aria-hidden="true">🎓</div>
                     <div className="student-info">
                       <div className="student-name">{st.name}</div>
-                      <div className="student-sub">{st.group_name}</div>
+                      <div className="student-sub">{st.group_name || 'Индивидуальный'}</div>
                     </div>
                   </div>
                   <div className="metric-block">
@@ -572,6 +618,32 @@ const TeacherHomePage = () => {
 
         </aside>
       </div>
+      
+      {/* Модальное окно с детальной информацией о группе */}
+      <GroupDetailModal
+        group={groupDetailModal.group}
+        isOpen={groupDetailModal.isOpen}
+        onClose={() => setGroupDetailModal({ isOpen: false, group: null })}
+        onStudentClick={(studentId, groupId) => {
+          setGroupDetailModal({ isOpen: false, group: null });
+          setStudentCardModal({ 
+            isOpen: true, 
+            studentId, 
+            groupId,
+            isIndividual: false
+          });
+        }}
+      />
+      
+      {/* Модальное окно с карточкой ученика */}
+      <StudentCardModal
+        studentId={studentCardModal.studentId}
+        groupId={studentCardModal.groupId}
+        isIndividual={studentCardModal.isIndividual}
+        isOpen={studentCardModal.isOpen}
+        onClose={() => setStudentCardModal({ isOpen: false, studentId: null, groupId: null, isIndividual: false })}
+      />
+      
       <SupportWidget />
     </div>
   );

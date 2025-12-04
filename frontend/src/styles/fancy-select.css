@@ -1,0 +1,151 @@
+/* Shared fancy select styles used across LMS forms */
+.hc-fancy-select {
+  position: relative;
+}
+
+.hc-fancy-select-trigger {
+  width: 100%;
+  border: 2px solid rgba(37, 99, 235, 0.15);
+  border-radius: 18px;
+  padding: 0.95rem 1.15rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.hc-fancy-select-trigger:hover:not(:disabled) {
+  border-color: rgba(37, 99, 235, 0.5);
+  box-shadow: 0 18px 30px -28px rgba(15, 23, 42, 0.95);
+}
+
+.hc-fancy-select.is-open .hc-fancy-select-trigger {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+.hc-fancy-select.is-disabled .hc-fancy-select-trigger {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hc-fancy-select-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+}
+
+.hc-fancy-select-placeholder {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.hc-fancy-select-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.hc-fancy-select-value.is-set {
+  color: #1d4ed8;
+}
+
+.hc-fancy-select-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+}
+
+.hc-fancy-select-chevron {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-left: 2px solid #1d4ed8;
+  border-bottom: 2px solid #1d4ed8;
+  transform: rotate(-45deg);
+  transition: transform 0.2s ease;
+}
+
+.hc-fancy-select.is-open .hc-fancy-select-chevron {
+  transform: rotate(135deg);
+}
+
+.hc-fancy-select-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  box-shadow: 0 35px 65px -45px rgba(15, 23, 42, 0.85);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  z-index: 25;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.hc-fancy-option {
+  border: none;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  background: transparent;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #0f172a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.hc-fancy-option:hover,
+.hc-fancy-option.is-highlighted {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.hc-fancy-option.is-selected {
+  background: rgba(59, 130, 246, 0.15);
+  color: #1d4ed8;
+}
+
+.hc-fancy-check {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.1);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+.hc-fancy-select-loading,
+.hc-fancy-select-empty {
+  padding: 1rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.hc-fancy-select-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(248, 113, 113, 0.1);
+  color: #b91c1c;
+  font-size: 0.9rem;
+}

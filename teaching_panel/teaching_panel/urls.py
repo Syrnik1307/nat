@@ -27,6 +27,11 @@ from analytics.views import GradebookViewSet
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from accounts.jwt_views import LogoutView, RegisterView, CaseInsensitiveTokenObtainPairView, DirectTokenView
 from accounts.api_views import MeView
+from accounts.attendance_views import (
+    AttendanceRecordViewSet,
+    UserRatingViewSet,
+    IndividualStudentViewSet,
+)
 from accounts.subscriptions_views import (
     SubscriptionMeView,
     SubscriptionCancelView,
@@ -57,6 +62,11 @@ router.register(r'attendance', schedule_views.AttendanceViewSet)
 router.register(r'recurring-lessons', schedule_views.RecurringLessonViewSet, basename='recurring-lessons')
 router.register(r'homework', HomeworkViewSet, basename='homework')
 router.register(r'submissions', StudentSubmissionViewSet, basename='homework-submission')
+
+# Attendance & Rating routes (новые для системы посещений)
+router.register(r'attendance-records', AttendanceRecordViewSet, basename='attendance-record')
+router.register(r'ratings', UserRatingViewSet, basename='user-rating')
+router.register(r'individual-students', IndividualStudentViewSet, basename='individual-student')
 
 def health(request):
     return JsonResponse({

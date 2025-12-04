@@ -1,0 +1,401 @@
+/* AttendanceLogTab.css */
+
+.attendance-log-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ================================================
+   ТАБЛИЦА ПОСЕЩЕНИЙ
+   ================================================ */
+
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: white;
+}
+
+.attendance-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.attendance-table thead {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  border-bottom: 2px solid #d1d5db;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.attendance-table th {
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-right: 1px solid #d1d5db;
+}
+
+.attendance-table th:last-child {
+  border-right: none;
+}
+
+.attendance-table th.student-col {
+  min-width: 180px;
+  position: sticky;
+  left: 0;
+  background: #f9fafb;
+  z-index: 11;
+  border-right: 2px solid #d1d5db;
+}
+
+.attendance-table th.lesson-col {
+  min-width: 140px;
+}
+
+.lesson-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lesson-title {
+  font-weight: 600;
+  color: #111827;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lesson-date {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+/* ================================================
+   СТРОКИ И ЯЧЕЙКИ
+   ================================================ */
+
+.attendance-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.15s ease;
+}
+
+.attendance-table tbody tr:hover {
+  background-color: #fafbfc;
+}
+
+.attendance-table td {
+  padding: 0.75rem;
+  border-right: 1px solid #e5e7eb;
+}
+
+.attendance-table td:last-child {
+  border-right: none;
+}
+
+.attendance-table td.student-col {
+  position: sticky;
+  left: 0;
+  background: white;
+  z-index: 9;
+  border-right: 2px solid #d1d5db;
+  padding: 0.5rem;
+}
+
+.attendance-table tbody tr:hover td.student-col {
+  background-color: #fafbfc;
+}
+
+/* ================================================
+   ЯЧЕЙКА ПОСЕЩЕНИЯ
+   ================================================ */
+
+.attendance-cell {
+  position: relative;
+  cursor: pointer;
+  padding: 0.5rem !important;
+  text-align: center;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.attendance-cell:hover {
+  background-color: rgba(37, 99, 235, 0.08);
+}
+
+.attendance-cell.selected {
+  background-color: rgba(37, 99, 235, 0.15);
+  border: 2px solid #2563eb;
+  border-radius: 8px;
+}
+
+.cell-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
+}
+
+.status-icon {
+  font-size: 1.25rem;
+  display: block;
+  line-height: 1;
+}
+
+.status-label {
+  font-size: 0.7rem;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Статусы */
+
+.attendance-cell.status-attended {
+  background-color: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+}
+
+.attendance-cell.status-absent {
+  background-color: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+}
+
+.attendance-cell.status-watched_recording {
+  background-color: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+}
+
+.attendance-cell.status-empty {
+  background-color: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  color: #9ca3af;
+}
+
+/* ================================================
+   КНОПКА УЧЕНИКА
+   ================================================ */
+
+.student-name-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.2s ease;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.student-name-btn:hover {
+  background-color: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+.student-avatar {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.student-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.student-text .name {
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-text .email {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ================================================
+   ЛЕГЕНДА
+   ================================================ */
+
+.attendance-legend {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 12px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.legend-icon {
+  font-size: 1.125rem;
+  display: block;
+  line-height: 1;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+/* ================================================
+   СОСТОЯНИЯ
+   ================================================ */
+
+.tab-loading,
+.tab-error,
+.tab-empty {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.tab-error {
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+}
+
+.tab-empty {
+  color: #9ca3af;
+}
+
+/* ================================================
+   АДАПТИВНОСТЬ
+   ================================================ */
+
+@media (max-width: 1024px) {
+  .lesson-title {
+    font-size: 0.8rem;
+  }
+
+  .status-label {
+    display: none;
+  }
+
+  .cell-content {
+    gap: 0;
+  }
+
+  .attendance-table th.lesson-col,
+  .attendance-table td.lesson-col {
+    min-width: 110px;
+    padding: 0.5rem 0.4rem;
+  }
+
+  .lesson-date {
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .attendance-table {
+    font-size: 0.8rem;
+  }
+
+  .attendance-table th,
+  .attendance-table td {
+    padding: 0.5rem 0.4rem;
+  }
+
+  .attendance-table th.student-col,
+  .attendance-table td.student-col {
+    min-width: 120px;
+    padding: 0.4rem;
+  }
+
+  .attendance-table th.lesson-col,
+  .attendance-table td.lesson-col {
+    min-width: 80px;
+    padding: 0.4rem 0.3rem;
+  }
+
+  .lesson-title {
+    font-size: 0.7rem;
+  }
+
+  .status-icon {
+    font-size: 1rem;
+  }
+
+  .student-text .name {
+    font-size: 0.8rem;
+  }
+
+  .student-text .email {
+    display: none;
+  }
+
+  .attendance-legend {
+    gap: 1rem;
+    flex-direction: column;
+  }
+
+  .legend-item {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .attendance-table th.lesson-col,
+  .attendance-table td.lesson-col {
+    min-width: 60px;
+  }
+
+  .lesson-title {
+    display: none;
+  }
+
+  .lesson-header {
+    gap: 0;
+  }
+
+  .lesson-date {
+    font-size: 0.65rem;
+    white-space: nowrap;
+  }
+
+  .status-icon {
+    font-size: 0.9rem;
+  }
+
+  .attendance-cell {
+    padding: 0.3rem !important;
+  }
+
+  .cell-content {
+    padding: 0.2rem 0;
+  }
+}

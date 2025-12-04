@@ -330,4 +330,53 @@ export const cancelSubscription = () => apiClient.post('subscription/cancel/');
 export const createSubscriptionPayment = (plan) => apiClient.post('subscription/create-payment/', { plan });
 export const addStoragePayment = (gb) => apiClient.post('subscription/add-storage/', { gb });
 
+// =============== ATTENDANCE & RATING ===============
+
+// Attendance records
+export const getAttendanceRecords = (params = {}) => apiClient.get('attendance-records/', { params });
+export const getAttendanceRecord = (id) => apiClient.get(`attendance-records/${id}/`);
+export const autoRecordAttendance = (lessonId, studentId, isJoined = true) => 
+  apiClient.post('attendance-records/auto_record/', { lesson_id: lessonId, student_id: studentId, is_joined: isJoined });
+export const manualRecordAttendance = (lessonId, studentId, status) =>
+  apiClient.post('attendance-records/manual_record/', { lesson_id: lessonId, student_id: studentId, status });
+export const recordWatchedRecording = (lessonId, studentId) =>
+  apiClient.post('attendance-records/record_watched_recording/', { lesson_id: lessonId, student_id: studentId });
+
+// Group attendance log
+export const getGroupAttendanceLog = (groupId) =>
+  apiClient.get(`groups/${groupId}/attendance-log/`);
+export const updateGroupAttendanceLog = (groupId, lessonId, studentId, status) =>
+  apiClient.post(`groups/${groupId}/attendance-log/update/`, { lesson_id: lessonId, student_id: studentId, status });
+
+// User ratings
+export const getRatings = (params = {}) => apiClient.get('ratings/', { params });
+export const getRating = (id) => apiClient.get(`ratings/${id}/`);
+
+// Group rating
+export const getGroupRating = (groupId) =>
+  apiClient.get(`groups/${groupId}/rating/`);
+
+// Group report
+export const getGroupReport = (groupId) =>
+  apiClient.get(`groups/${groupId}/report/`);
+
+// Student card
+export const getStudentCard = (studentId, groupId = null) => {
+  const params = groupId ? { group_id: groupId } : {};
+  return apiClient.get(`students/${studentId}/card/`, { params });
+};
+
+// Individual students
+export const getIndividualStudents = () =>
+  apiClient.get('students/individual/');
+export const getIndividualStudent = (id) =>
+  apiClient.get(`individual-students/${id}/`);
+export const createIndividualStudent = (data) =>
+  apiClient.post('individual-students/', data);
+export const updateIndividualStudent = (id, data) =>
+  apiClient.put(`individual-students/${id}/`, data);
+export const updateIndividualStudentNotes = (id, notes) =>
+  apiClient.patch(`individual-students/${id}/update_notes/`, { teacher_notes: notes });
+
 export default apiClient;
+

@@ -758,3 +758,196 @@ class NotificationLog(models.Model):
 
     def __str__(self):
         return f"{self.notification_type} → {self.user.email} ({self.status})"
+
+
+# ============================================================================
+# НОВЫЕ МОДЕЛИ: СИСТЕМА ПОСЕЩЕНИЙ И РЕЙТИНГА
+# ============================================================================
+
+class AttendanceRecord(models.Model):
+    """
+    Запись посещения ученика на занятие.
+    Может быть автоматически заполнена при подключении к Zoom или вручную учителем.
+    """
+    
+    STATUS_ATTENDED = 'attended'
+    STATUS_ABSENT = 'absent'
+    STATUS_WATCHED_RECORDING = 'watched_recording'
+    
+    STATUS_CHOICES = [
+        (STATUS_ATTENDED, '✅ Был'),
+        (STATUS_ABSENT, '❌ Не был'),
+        (STATUS_WATCHED_RECORDING, '👁️ Посмотрел запись'),
+    ]
+    
+    lesson = models.ForeignKey(
+        'schedule.Lesson',
+        on_delete=models.CASCADE,
+        related_name='attendance_records',
+        verbose_name=_('занятие')
+    )
+    student = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='attendance_records',
+        limit_choices_to={'role': 'student'},
+        verbose_name=_('ученик')
+    )
+    
+    status = models.CharField(
+        _('статус посещения'),
+        max_length=20,
+        choices=STATUS_CHOICES,
+        null=True,
+        blank=True
+    )
+    auto_recorded = models.BooleanField(
+        _('автоматически заполнено'),
+        default=False,
+        help_text=_('True если заполнено при подключении к Zoom')
+    )
+    recorded_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='manual_attendance_records',
+        limit_choices_to={'role': 'teacher'},
+        verbose_name=_('заполнил (учитель)')
+    )
+    
+    recorded_at = models.DateTimeField(_('дата создания'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
+    
+    class Meta:
+        verbose_name = _('запись посещения')
+        verbose_name_plural = _('записи посещения')
+        unique_together = ('lesson', 'student')
+        ordering = ['-recorded_at']
+        indexes = [
+            models.Index(fields=['lesson', 'student']),
+            models.Index(fields=['student', '-recorded_at']),
+            models.Index(fields=['status', 'recorded_at']),
+        ]
+    
+    def __str__(self):
+        status_label = dict(self.STATUS_CHOICES).get(self.status, '?')
+        return f"{self.student.get_full_name()} - {self.lesson.title}: {status_label}"
+
+
+class UserRating(models.Model):
+    """
+    Рейтинг ученика (очки).
+    Может быть как для группы, так и индивидуальный (group=NULL).
+    Очки суммируют посещения, ДЗ, контрольные точки.
+    """
+    
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='ratings',
+        limit_choices_to={'role': 'student'},
+        verbose_name=_('ученик')
+    )
+    group = models.ForeignKey(
+        'schedule.Group',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='student_ratings',
+        verbose_name=_('группа')
+    )
+    
+    total_points = models.IntegerField(
+        _('общие очки'),
+        default=0,
+        help_text=_('Сумма всех очков (посещение + ДЗ + контроль)')
+    )
+    attendance_points = models.IntegerField(
+        _('очки за посещение'),
+        default=0,
+        help_text=_('Очки за посещения занятий')
+    )
+    homework_points = models.IntegerField(
+        _('очки за ДЗ'),
+        default=0,
+        help_text=_('Очки за выполненные домашние задания')
+    )
+    control_points_value = models.IntegerField(
+        _('очки за контрольные точки'),
+        default=0,
+        db_column='control_points',
+        help_text=_('Очки за пройденные контрольные точки')
+    )
+    
+    rank = models.IntegerField(
+        _('место в рейтинге'),
+        default=0,
+        help_text=_('Место в рейтинге группы (0 если нет группы)')
+    )
+    
+    updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
+    
+    class Meta:
+        verbose_name = _('рейтинг ученика')
+        verbose_name_plural = _('рейтинги учеников')
+        unique_together = ('user', 'group')
+        ordering = ['-total_points']
+        indexes = [
+            models.Index(fields=['group', '-total_points']),
+            models.Index(fields=['user', 'group']),
+        ]
+    
+    def __str__(self):
+        group_name = f" ({self.group.name})" if self.group else " (индивидуальный)"
+        return f"{self.user.get_full_name()}{group_name}: {self.total_points} очков"
+    
+    def recalculate_total(self):
+        """Пересчитать общее количество очков"""
+        self.total_points = (
+            self.attendance_points + 
+            self.homework_points + 
+            self.control_points_value
+        )
+
+
+class IndividualStudent(models.Model):
+    """
+    Индивидуальный ученик (отдельная категория).
+    Может быть БЕЗ группы (полностью индивидуальные занятия)
+    или С группой (индивидуальные + групповые занятия).
+    """
+    
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name='individual_student_profile',
+        limit_choices_to={'role': 'student'},
+        verbose_name=_('ученик')
+    )
+    teacher = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='individual_students',
+        limit_choices_to={'role': 'teacher'},
+        verbose_name=_('основной учитель')
+    )
+    teacher_notes = models.TextField(
+        _('замечания учителя'),
+        blank=True,
+        default='',
+        help_text=_('Заметки преподавателя об ученике')
+    )
+    created_at = models.DateTimeField(_('дата создания'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
+    
+    class Meta:
+        verbose_name = _('индивидуальный ученик')
+        verbose_name_plural = _('индивидуальные ученики')
+    
+    def __str__(self):
+        return f"{self.user.get_full_name()} (индивидуальный)"
+

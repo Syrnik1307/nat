@@ -1,0 +1,364 @@
+/* GroupReportsTab.css */
+
+.group-reports-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* ================================================
+   ЗАГОЛОВОК ОТЧЕТА
+   ================================================ */
+
+.report-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #2563eb;
+}
+
+/* ================================================
+   ИНФОРМАЦИЯ О ГРУППЕ
+   ================================================ */
+
+.report-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f0f9ff 0%, #f8fafc 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.info-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* ================================================
+   СЕКЦИЯ СТАТИСТИКИ
+   ================================================ */
+
+.statistics-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.stat-card {
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+}
+
+.stat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.stat-icon {
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: #f3f4f6;
+  border-radius: 10px;
+}
+
+.stat-name {
+  font-weight: 600;
+  color: #111827;
+  font-size: 1rem;
+}
+
+/* ================================================
+   ПРОГРЕСС БАР
+   ================================================ */
+
+.progress-bar {
+  position: relative;
+  height: 32px;
+  background-color: #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 8px;
+  transition: width 0.3s ease;
+}
+
+.progress-value {
+  position: relative;
+  z-index: 1;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #111827;
+  margin-left: auto;
+}
+
+.stat-description {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+/* ================================================
+   РЕКОМЕНДАЦИИ
+   ================================================ */
+
+.recommendations-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.recommendations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.recommendation-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  border-left: 4px solid;
+}
+
+.recommendation-item.warning {
+  background: #fffbeb;
+  border-left-color: #f59e0b;
+  color: #92400e;
+}
+
+.recommendation-item.success {
+  background: #f0fdf4;
+  border-left-color: #10b981;
+  color: #15803d;
+}
+
+.recommendation-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+}
+
+.recommendation-text {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  flex: 1;
+}
+
+/* ================================================
+   ПРИМЕЧАНИЕ
+   ================================================ */
+
+.report-note {
+  padding: 1rem;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.report-note strong {
+  color: #374151;
+}
+
+/* ================================================
+   СОСТОЯНИЯ
+   ================================================ */
+
+.tab-loading,
+.tab-error,
+.tab-empty {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.tab-error {
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+}
+
+.tab-empty {
+  color: #9ca3af;
+}
+
+/* ================================================
+   АДАПТИВНОСТЬ
+   ================================================ */
+
+@media (max-width: 768px) {
+  .group-reports-tab {
+    gap: 1.5rem;
+  }
+
+  .report-title {
+    font-size: 1.1rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .report-info {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .info-value {
+    font-size: 1.25rem;
+  }
+
+  .stat-card {
+    padding: 1.25rem;
+  }
+
+  .stat-icon {
+    width: 2rem;
+    height: 2rem;
+    font-size: 1.25rem;
+  }
+
+  .section-title {
+    font-size: 1rem;
+  }
+
+  .recommendation-item {
+    gap: 0.75rem;
+    padding: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .group-reports-tab {
+    gap: 1.25rem;
+  }
+
+  .report-title {
+    font-size: 1rem;
+  }
+
+  .report-info {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .info-label {
+    font-size: 0.7rem;
+  }
+
+  .info-value {
+    font-size: 1.1rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .stat-header {
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .stat-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 1rem;
+  }
+
+  .stat-name {
+    font-size: 0.9rem;
+  }
+
+  .progress-bar {
+    height: 28px;
+    padding: 0 0.5rem;
+  }
+
+  .progress-value {
+    font-size: 0.8rem;
+  }
+
+  .stat-description {
+    font-size: 0.8rem;
+  }
+
+  .section-title {
+    font-size: 0.95rem;
+  }
+
+  .recommendation-item {
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .recommendation-icon {
+    font-size: 1rem;
+    width: 1.25rem;
+  }
+
+  .recommendation-text {
+    font-size: 0.8rem;
+  }
+
+  .report-note {
+    padding: 0.75rem;
+    font-size: 0.8rem;
+  }
+}

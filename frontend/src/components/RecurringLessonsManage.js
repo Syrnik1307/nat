@@ -1,8 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import './RecurringLessonsManage.css';
-import { getGroups, getRecurringLessons, createRecurringLesson, updateRecurringLesson, deleteRecurringLesson, generateLessonsFromRecurring, getLessons } from '../apiService';
+import {
+  getGroups,
+  getRecurringLessons,
+  createRecurringLesson,
+  updateRecurringLesson,
+  deleteRecurringLesson,
+  generateLessonsFromRecurring,
+  getLessons,
+} from '../apiService';
+import FancySelectField from './FancySelectField.jsx';
 
-const initialForm = { title:'', group_id:'', day_of_week:'', week_type:'ALL', start_time:'', end_time:'', start_date:'', end_date:'', topics:'', location:'' };
+const initialForm = {
+  title: '',
+  group_id: '',
+  day_of_week: '',
+  week_type: 'ALL',
+  start_time: '',
+  end_time: '',
+  start_date: '',
+  end_date: '',
+  topics: '',
+  location: '',
+};
 
 const dayOptions = [
   { value:0, label:'Понедельник' },
@@ -25,7 +45,7 @@ const RecurringLessonsManage = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState({ ...initialForm });
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
@@ -55,6 +75,10 @@ const RecurringLessonsManage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.group_id || form.day_of_week === '') {
+      alert('Выберите группу и день недели');
+      return;
+    }
     setSaving(true);
     try {
       const payload = { ...form, day_of_week: parseInt(form.day_of_week, 10) };
@@ -64,7 +88,7 @@ const RecurringLessonsManage = () => {
         await createRecurringLesson(payload);
       }
       await refresh();
-      setForm(initialForm);
+      setForm({ ...initialForm });
       setEditingId(null);
     } catch (e) {
       alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка сохранения');
@@ -77,8 +101,8 @@ const RecurringLessonsManage = () => {
     setEditingId(item.id);
     setForm({
       title: item.title,
-      group_id: item.group?.id || item.group_id,
-      day_of_week: item.day_of_week,
+      group_id: String(item.group?.id || item.group_id || ''),
+      day_of_week: String(item.day_of_week),
       week_type: item.week_type,
       start_time: item.start_time.slice(0,5),
       end_time: item.end_time.slice(0,5),
@@ -91,7 +115,7 @@ const RecurringLessonsManage = () => {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm(initialForm);
+    setForm({ ...initialForm });
   };
 
   const handleDelete = async (id) => {
@@ -122,31 +146,46 @@ const RecurringLessonsManage = () => {
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Название занятия</label>
-            <input className="form-input" required value={form.title} onChange={e=>setForm({ ...form, title:e.target.value })} placeholder="Введите название" />
+            <input
+              className="form-input"
+              required
+              value={form.title}
+              onChange={e => setForm({ ...form, title: e.target.value })}
+              placeholder="Введите название"
+            />
           </div>
-          <div className="form-group">
-            <label className="form-label">Группа</label>
-            <select className="form-select" required value={form.group_id} onChange={e=>setForm({ ...form, group_id:e.target.value })}>
-              <option value="" disabled>Выберите группу</option>
-              {groups.map(g=> <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-          </div>
+          <FancySelectField
+            label="Группа"
+            placeholder="Выберите группу"
+            value={form.group_id}
+            options={groups.map(g => ({ value: String(g.id), label: g.name }))}
+            onChange={value => setForm({ ...form, group_id: value })}
+            statusTextEmpty="Группа не выбрана"
+            statusTextFilled="Группа назначена"
+            emptyState="Группы отсутствуют"
+          />
         </div>
-        
+
         <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">День недели</label>
-            <select className="form-select" required value={form.day_of_week} onChange={e=>setForm({ ...form, day_of_week:e.target.value })}>
-              <option value="" disabled>Выберите день</option>
-              {dayOptions.map(d=> <option key={d.value} value={d.value}>{d.label}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Периодичность</label>
-            <select className="form-select" required value={form.week_type} onChange={e=>setForm({ ...form, week_type:e.target.value })}>
-              {weekTypeOptions.map(w=> <option key={w.value} value={w.value}>{w.label}</option>)}
-            </select>
-          </div>
+          <FancySelectField
+            label="День недели"
+            placeholder="Выберите день"
+            value={form.day_of_week}
+            options={dayOptions.map(d => ({ value: String(d.value), label: d.label }))}
+            onChange={value => setForm({ ...form, day_of_week: value })}
+            statusTextEmpty="День не выбран"
+            statusTextFilled="День выбран"
+            emptyState="Нет вариантов"
+          />
+          <FancySelectField
+            label="Периодичность"
+            placeholder="Выберите периодичность"
+            value={form.week_type}
+            options={weekTypeOptions}
+            onChange={value => setForm({ ...form, week_type: value })}
+            statusTextEmpty="Режим не выбран"
+            statusTextFilled="Периодичность"
+          />
         </div>
         
         <div className="form-row">

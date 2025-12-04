@@ -1,16 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import '../../../../styles/fancy-select.css';
+import '../styles/fancy-select.css';
 
-const GroupSelect = ({
-  label = 'Группа',
-  placeholder = 'Выберите группу',
+const FancySelectField = ({
+  label,
+  placeholder = 'Выберите значение',
   value,
   options = [],
   onChange,
   disabled = false,
   loading = false,
+  emptyState = 'Нет доступных значений',
+  statusTextEmpty = 'Не выбрано',
+  statusTextFilled = 'Выбрано',
   error = null,
-  onRetry,
 }) => {
   const containerRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -25,7 +27,7 @@ const GroupSelect = ({
 
   const toggleOpen = () => {
     if (disabled) return;
-    setIsOpen((previous) => !previous);
+    setIsOpen((prev) => !prev);
   };
 
   const close = useCallback(() => setIsOpen(false), []);
@@ -71,8 +73,8 @@ const GroupSelect = ({
 
       if (event.key === 'ArrowDown') {
         event.preventDefault();
-        setHighlightIndex((previous) => {
-          const nextIndex = previous + 1;
+        setHighlightIndex((prev) => {
+          const nextIndex = prev + 1;
           return nextIndex >= options.length ? 0 : nextIndex;
         });
         return;
@@ -80,8 +82,8 @@ const GroupSelect = ({
 
       if (event.key === 'ArrowUp') {
         event.preventDefault();
-        setHighlightIndex((previous) => {
-          const nextIndex = previous - 1;
+        setHighlightIndex((prev) => {
+          const nextIndex = prev - 1;
           return nextIndex < 0 ? Math.max(options.length - 1, 0) : nextIndex;
         });
         return;
@@ -101,11 +103,11 @@ const GroupSelect = ({
 
   const renderDropdownContent = () => {
     if (loading) {
-      return <div className="hc-fancy-select-loading">Загружаем группы...</div>;
+      return <div className="hc-fancy-select-loading">Загружаем...</div>;
     }
 
     if (!options.length) {
-      return <div className="hc-fancy-select-empty">Группы не найдены</div>;
+      return <div className="hc-fancy-select-empty">{emptyState}</div>;
     }
 
     return options.map((option, index) => {
@@ -134,15 +136,10 @@ const GroupSelect = ({
         className={`hc-fancy-select${isOpen ? ' is-open' : ''}${disabled ? ' is-disabled' : ''}`}
         ref={containerRef}
       >
-        <button
-          type="button"
-          className="hc-fancy-select-trigger"
-          onClick={toggleOpen}
-          disabled={disabled}
-        >
+        <button type="button" className="hc-fancy-select-trigger" onClick={toggleOpen} disabled={disabled}>
           <div className="hc-fancy-select-content">
             <span className="hc-fancy-select-placeholder">
-              {selectedOption ? 'Группа назначена' : 'Группа не выбрана'}
+              {selectedOption ? statusTextFilled : statusTextEmpty}
             </span>
             <span className={`hc-fancy-select-value${selectedOption ? ' is-set' : ''}`}>
               {selectedOption ? selectedOption.label : placeholder}
@@ -154,19 +151,9 @@ const GroupSelect = ({
 
         {isOpen && <div className="hc-fancy-select-dropdown">{renderDropdownContent()}</div>}
       </div>
-
-      {error && (
-        <div className="hc-fancy-select-error">
-          <span>{error}</span>
-          {onRetry && (
-            <button type="button" onClick={onRetry} className="gm-btn-surface">
-              Обновить
-            </button>
-          )}
-        </div>
-      )}
+      {error && <div className="hc-fancy-select-error">{error}</div>}
     </div>
   );
 };
 
-export default GroupSelect;
+export default FancySelectField;

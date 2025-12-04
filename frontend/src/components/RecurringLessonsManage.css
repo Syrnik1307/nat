@@ -69,25 +69,42 @@
 
 .rl-form .form-input,
 .rl-form .form-select {
-  padding: 0.75rem 1rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  padding: 0.85rem 1.15rem;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  border-radius: 16px;
   font-size: 1rem;
-  transition: all 0.2s ease;
-  background: white;
-  color: #1f2937;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  background-color: #ffffff;
+  color: #0f172a;
+  font-weight: 500;
+}
+
+.rl-form .form-select {
+  appearance: none;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 3rem;
+  background-image:
+    linear-gradient(135deg, #ffffff 0%, #f8fafc 100%),
+    url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%232563EB' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: repeat, no-repeat;
+  background-position: center, calc(100% - 1.1rem) center;
+  background-size: auto, 0.75rem;
+  box-shadow: 0 14px 28px -32px rgba(15, 23, 42, 0.8);
 }
 
 .rl-form .form-input:focus,
 .rl-form .form-select:focus {
   outline: none;
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
 }
 
 .rl-form .form-input:hover:not(:disabled):not(:focus),
 .rl-form .form-select:hover:not(:disabled):not(:focus) {
-  border-color: var(--text-secondary);
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 18px 35px -32px rgba(37, 99, 235, 0.9);
 }
 
 .rl-form .form-input:disabled,
@@ -95,6 +112,7 @@
   background: var(--gray-100);
   cursor: not-allowed;
   opacity: 0.6;
+  box-shadow: none;
 }
 
 /* Actions */
