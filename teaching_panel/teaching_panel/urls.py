@@ -119,7 +119,7 @@ urlpatterns = [
          GroupRatingViewSet.as_view({'get': 'list'}), 
          name='group-rating'),
     path('api/groups/<int:group_id>/report/', 
-         GroupReportViewSet.as_view({'get': 'retrieve'}), 
+         GroupReportViewSet.as_view({'get': 'list'}), 
          name='group-report'),
     
     # Student card endpoint
