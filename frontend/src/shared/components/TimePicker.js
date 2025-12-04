@@ -165,7 +165,10 @@ const TimePicker = ({
         }}
       >
         <span>{value || '--:--'}</span>
-        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>⏰</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto' }}>
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
       </div>
 
       {isOpen && !disabled && (
