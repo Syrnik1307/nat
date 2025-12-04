@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../auth';
-import { getTeacherStatsSummary, getTeacherStatsBreakdown, getLessons, getGroups, startQuickLesson, getIndividualStudents } from '../apiService';
+import { getTeacherStatsSummary, getTeacherStatsBreakdown, getLessons, getGroups, startQuickLesson, getIndividualStudents, apiClient } from '../apiService';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import StartLessonButton from '../modules/core/zoom/StartLessonButton';
+import SwipeableLesson from './SwipeableLesson';
 import SupportWidget from './SupportWidget';
 import SubscriptionBanner from './SubscriptionBanner';
 import TelegramWarningBanner from './TelegramWarningBanner';
@@ -194,6 +195,29 @@ const TeacherHomePage = () => {
     }
     // Дефолт 60 минут
     return 60;
+  };
+
+  const handleDeleteLesson = async (lessonId, deleteType) => {
+    try {
+      if (deleteType === 'single') {
+        // Удаляем только этот урок
+        await apiClient.delete(`/schedule/api/lessons/${lessonId}/`);
+      } else if (deleteType === 'recurring') {
+        // Удаляем все похожие уроки
+        const lesson = todayLessons.find(l => l.id === lessonId);
+        if (lesson) {
+          await apiClient.post(`/schedule/api/lessons/delete_recurring/`, {
+            title: lesson.title,
+            group_id: lesson.group
+          });
+        }
+      }
+      // Обновляем список уроков
+      loadData();
+    } catch (error) {
+      console.error('Ошибка удаления урока:', error);
+      throw error;
+    }
   };
 
   const derivedStats = useMemo(() => {
@@ -449,43 +473,13 @@ const TeacherHomePage = () => {
             ) : (
               <div className="lessons-list">
                 {todayLessons.map((lesson) => (
-                  <div key={lesson.id} className="lesson-card">
-                    <div className="lesson-time">
-                      <span className="time">{formatTime(lesson.start_time)}</span>
-                      <span className="duration">
-                        {getLessonDuration(lesson)} мин
-                      </span>
-                    </div>
-                    <div className="lesson-info">
-                      <h3 className="lesson-title">{lesson.title}</h3>
-                      <div className="lesson-meta">
-                        <span className="group">
-                          👥 {lesson.group_name || 'Группа'}
-                        </span>
-                        {lesson.zoom_link && (
-                          <a 
-                            href={lesson.zoom_link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="zoom-link"
-                          >
-                            🎥 Zoom
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                    <div className="lesson-actions">
-                      <StartLessonButton 
-                        lessonId={lesson.id}
-                        lesson={lesson}
-                        groupName={lesson.group_name || 'Группа'}
-                        onSuccess={() => {
-                          // Можно добавить обновление данных после старта
-                          console.log('Занятие успешно начато!');
-                        }}
-                      />
-                    </div>
-                  </div>
+                  <SwipeableLesson
+                    key={lesson.id}
+                    lesson={lesson}
+                    onDelete={handleDeleteLesson}
+                    formatTime={formatTime}
+                    getLessonDuration={getLessonDuration}
+                  />
                 ))}
               </div>
             )}

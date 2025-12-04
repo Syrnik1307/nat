@@ -1,0 +1,175 @@
+.swipeable-lesson-container {
+  position: relative;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.swipe-background {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100px;
+  background: linear-gradient(90deg, transparent, #ef4444);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 1rem;
+}
+
+.delete-trigger {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+
+.delete-trigger:hover {
+  opacity: 1;
+}
+
+/* Модальное окно удаления */
+.delete-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.delete-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.delete-modal h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  color: #111827;
+}
+
+.lesson-title-display {
+  color: #6b7280;
+  margin: 0 0 1.5rem 0;
+  font-size: 0.875rem;
+}
+
+.delete-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.delete-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-option:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.delete-option input[type="radio"] {
+  margin-top: 0.25rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  cursor: pointer;
+}
+
+.delete-option input[type="radio"]:checked + div {
+  color: #ef4444;
+}
+
+.delete-option div {
+  flex: 1;
+}
+
+.delete-option strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.9375rem;
+}
+
+.delete-option p {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.btn-cancel,
+.btn-delete {
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.btn-delete {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.btn-cancel:disabled,
+.btn-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 640px) {
+  .delete-modal {
+    padding: 1.25rem;
+  }
+
+  .delete-options {
+    gap: 0.5rem;
+  }
+
+  .delete-option {
+    padding: 0.75rem;
+  }
+}

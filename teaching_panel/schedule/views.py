@@ -244,6 +244,39 @@ class LessonViewSet(viewsets.ModelViewSet):
     serializer_class = LessonSerializer
     permission_classes = [IsLessonOwnerOrReadOnly]
     
+    @action(detail=False, methods=['post'], url_path='delete_recurring')
+    def delete_recurring(self, request):
+        """Удалить все уроки с одинаковым названием в одной группе"""
+        title = request.data.get('title')
+        group_id = request.data.get('group_id')
+        
+        if not title or not group_id:
+            return Response({'detail': 'title и group_id обязательны'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Проверяем права: только учитель может удалять уроки своих групп
+        if request.user.role != 'teacher':
+            return Response({'detail': 'Только преподаватели могут удалять уроки'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Находим все похожие уроки
+        lessons_to_delete = Lesson.objects.filter(
+            title=title,
+            group_id=group_id,
+            teacher=request.user
+        )
+        
+        count = lessons_to_delete.count()
+        if count == 0:
+            return Response({'detail': 'Уроки не найдены'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Удаляем все найденные уроки
+        lessons_to_delete.delete()
+        
+        return Response({
+            'status': 'deleted',
+            'count': count,
+            'message': f'Удалено уроков: {count}'
+        }, status=status.HTTP_200_OK)
+    
     @action(detail=False, methods=['post'], url_path='upload_standalone_recording')
     def upload_standalone_recording(self, request):
         """Загрузить самостоятельное видео без привязки к уроку"""
