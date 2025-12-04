@@ -84,40 +84,6 @@
   gap: 1.25rem;
 }
 
-.rl-input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.rl-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
-}
-
-.rl-select {
-  padding: 0.625rem 0.875rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  color: #111827;
-  background-color: white;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.rl-select:focus {
-  outline: none;
-  border-color: #6b7280;
-  box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.1);
-}
-
-.rl-select:hover:not(:focus) {
-  border-color: #9ca3af;
-}
-
 .rl-form-actions {
   display: flex;
   gap: 0.75rem;

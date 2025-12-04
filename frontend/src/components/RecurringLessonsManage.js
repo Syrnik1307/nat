@@ -11,6 +11,9 @@ import {
 import Button from '../shared/components/Button';
 import Input from '../shared/components/Input';
 import Badge from '../shared/components/Badge';
+import Select from '../shared/components/Select';
+import TimePicker from '../shared/components/TimePicker';
+import DatePicker from '../shared/components/DatePicker';
 
 const initialForm = {
   title: '',
@@ -210,71 +213,60 @@ const RecurringLessonsManage = () => {
                 placeholder="Введите название"
               />
 
-              <div className="rl-input-group">
-                <label className="rl-label">Группа</label>
-                <select
-                  className="rl-select"
-                  required
-                  value={form.group_id}
-                  onChange={(e) => setForm({ ...form, group_id: e.target.value })}
-                >
-                  <option value="">Выберите группу</option>
-                  {groups.map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Группа"
+                required
+                value={form.group_id}
+                onChange={(e) => setForm({ ...form, group_id: e.target.value })}
+                options={groups.map(g => ({ value: String(g.id), label: g.name }))}
+                placeholder="Выберите группу"
+              />
 
-              <div className="rl-input-group">
-                <label className="rl-label">День недели</label>
-                <select
-                  className="rl-select"
-                  required
-                  value={form.day_of_week}
-                  onChange={(e) => setForm({ ...form, day_of_week: e.target.value })}
-                >
-                  <option value="">Выберите день</option>
-                  {dayOptions.map(d => (
-                    <option key={d.value} value={d.value}>{d.label}</option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="День недели"
+                required
+                value={form.day_of_week}
+                onChange={(e) => setForm({ ...form, day_of_week: e.target.value })}
+                options={dayOptions.map(d => ({ value: String(d.value), label: d.label }))}
+                placeholder="Выберите день"
+              />
 
-              <div className="rl-input-group">
-                <label className="rl-label">Периодичность</label>
-                <select
-                  className="rl-select"
-                  required
-                  value={form.week_type}
-                  onChange={(e) => setForm({ ...form, week_type: e.target.value })}
-                >
-                  {weekTypeOptions.map(w => (
-                    <option key={w.value} value={w.value}>{w.label}</option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Периодичность"
+                required
+                value={form.week_type}
+                onChange={(e) => setForm({ ...form, week_type: e.target.value })}
+                options={weekTypeOptions}
+                placeholder="Выберите периодичность"
+              />
 
-              <Input
+              <TimePicker
                 label="Время начала"
-                type="time"
                 required
                 value={form.start_time}
                 onChange={(e) => setForm({ ...form, start_time: e.target.value })}
               />
 
-              <Input
+              <TimePicker
                 label="Время окончания"
-                type="time"
                 required
                 value={form.end_time}
                 onChange={(e) => setForm({ ...form, end_time: e.target.value })}
               />
 
-              <Input
+              <DatePicker
                 label="Дата начала"
-                type="date"
                 required
                 value={form.start_date}
+                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+              />
+
+              <DatePicker
+                label="Дата окончания"
+                required
+                value={form.end_date}
+                onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+              />
                 onChange={(e) => setForm({ ...form, start_date: e.target.value })}
               />
 
