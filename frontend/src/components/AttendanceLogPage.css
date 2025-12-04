@@ -71,9 +71,19 @@
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
+.grid-row {
+  display: grid;
+  gap: 0.5rem;
+  align-items: stretch;
+  padding: 0.75rem;
+  border-radius: 26px;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
+  border: 1px solid #e4e9f5;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
   transition: all 0.2s;
 }
-
+  min-width: 100%;
 .action-button.primary {
   background: #2563eb;
   color: white;
@@ -84,6 +94,11 @@
 }
 
 .action-button.secondary {
+.lesson-cell.placeholder .attendance-cell-button {
+  cursor: default;
+  background: #f1f5f9;
+  box-shadow: inset 0 0 0 1px #e2e8f0;
+}
   background: white;
   color: #2563eb;
   border: 1px solid #2563eb;
@@ -91,6 +106,31 @@
 
 .action-button.secondary:hover {
   background: #eff6ff;
+}
+
+.action-button.ghost {
+  background: transparent;
+  color: #475569;
+  border: 1px dashed #cbd5f5;
+}
+
+.action-button.ghost:hover {
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+.action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.action-link:hover {
+  color: #1d4ed8;
 }
 
 /* Доска журнала */
@@ -110,6 +150,78 @@
   align-items: center;
   border-bottom: 1px solid #e2e8f0;
   padding-bottom: 1rem;
+}
+
+.lesson-empty-state {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5f5;
+}
+
+.lesson-empty-state h3 {
+  margin: 0 0 0.35rem 0;
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.lesson-empty-state p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.lesson-empty-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.quick-lesson-form {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.quick-lesson-form .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.quick-lesson-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.quick-lesson-form input {
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid #cbd5f5;
+  font-size: 0.95rem;
+  background: white;
+}
+
+.form-error {
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
 }
 
 .board-updated {
@@ -147,60 +259,105 @@
 .table-wrapper {
   overflow-x: auto;
   position: relative;
+  padding-bottom: 1rem;
 }
 
-.attendance-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 900px;
+.attendance-grid {
+  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.attendance-table.compact th,
-.attendance-table.compact td {
+.grid-header {
+  display: grid;
+  gap: 0.5rem;
+  align-items: stretch;
+  padding: 0.85rem 0.5rem;
+  border-radius: 18px;
+  background: #f4f6fb;
   border: 1px solid #e2e8f0;
 }
 
-.attendance-table thead {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: #f8fafc;
+.grid-header-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #475569;
+  text-align: center;
 }
 
-.attendance-table th {
-  padding: 0.85rem;
-  text-align: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.grid-header-cell.student-col,
+.grid-header-cell.presence-col {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.grid-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.grid-row {
+  display: grid;
+  gap: 0.5rem;
+  align-items: stretch;
+  padding: 0.75rem;
+  border-radius: 26px;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
+  border: 1px solid #e4e9f5;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.grid-cell {
+  position: relative;
+  border-radius: 18px;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f6ff;
+  overflow: visible;
 }
 
 .student-col {
   min-width: 250px;
-  max-width: 250px;
-  position: sticky;
-  left: 0;
-  background: white;
-  z-index: 5;
-}
-
-.attendance-table thead .student-col {
-  background: #f8fafc;
 }
 
 .presence-col {
   min-width: 140px;
-  max-width: 140px;
-  position: sticky;
-  left: 250px;
-  background: white;
-  z-index: 5;
 }
 
-.attendance-table thead .presence-col {
-  background: #f8fafc;
+.student-cell {
+  background: #fff;
+  padding: 0.75rem 1rem;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  box-shadow: inset 0 0 0 1px #e2e8f0;
+}
+
+.presence-cell {
+  flex-direction: column;
+  gap: 0.25rem;
+  background: #eef2ff;
+  padding: 0.5rem;
+}
+
+.lesson-cell {
+  background: transparent;
+  padding: 0.25rem;
+}
+
+.lesson-cell.placeholder .attendance-cell-button {
+  cursor: default;
+  background: #f1f5f9;
+  box-shadow: inset 0 0 0 1px #e2e8f0;
 }
 
 .lesson-col {
@@ -216,27 +373,6 @@
 .lesson-date {
   font-size: 0.625rem;
   color: #94a3b8;
-  font-weight: normal;
-}
-
-/* Строки таблицы */
-.student-row {
-  transition: background 0.2s;
-}
-
-.student-row:hover {
-  background: #f8fafc;
-}
-
-.attendance-table td {
-  padding: 0.75rem;
-  background: #fff;
-}
-
-.student-info-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
 }
 
 .avatar-circle {
@@ -278,14 +414,13 @@
 }
 
 .presence-chip {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
+  display: inline-flex;
+  padding: 0.25rem 0.85rem;
   background: #dbeafe;
   color: #1e40af;
-  border-radius: 12px;
+  border-radius: 999px;
   font-weight: 600;
-  font-size: 0.875rem;
-  margin-right: 0.5rem;
+  font-size: 0.85rem;
 }
 
 .presence-meta {
@@ -293,39 +428,71 @@
   color: #94a3b8;
 }
 
+
 /* Ячейки посещаемости */
-.attendance-cell {
-  text-align: center;
+
+.attendance-cell-button {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #f1f4ff;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
   cursor: pointer;
-  position: relative;
-  transition: background 0.2s;
+  font: inherit;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
-.attendance-cell:hover {
-  background: #eef2ff;
+.attendance-cell-button:hover {
+  background: #e6edff;
+  box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.35);
 }
 
-.attendance-cell.selected {
-  background: #e0edff;
+.attendance-cell-button.placeholder,
+.attendance-cell-button.placeholder:hover {
+  cursor: default;
+  background: #f1f5f9;
+  box-shadow: inset 0 0 0 1px #e2e8f0;
+}
+
+.attendance-cell-button.selected {
+  background: #dbeafe;
   box-shadow: inset 0 0 0 2px #3b82f6;
+}
+
+.attendance-cell-button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px #1d4ed8;
 }
 
 .status-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 8px;
-  font-size: 1.125rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 12px;
+  font-size: 1.05rem;
   font-weight: 600;
   transition: all 0.2s;
 }
 
 .status-pill.small {
-  width: 1.5rem;
-  height: 1.5rem;
-  font-size: 0.875rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.9rem;
+}
+
+.status-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: none;
+  white-space: nowrap;
 }
 
 .status-attended .status-pill {
@@ -343,26 +510,6 @@
   color: #1e40af;
 }
 
-.attendance-legend {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  padding-top: 0.5rem;
-  border-top: 1px dashed #e2e8f0;
-  margin-top: 0.5rem;
-}
-
-.legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: #475569;
-}
-
-.legend-label {
-  font-size: 0.8rem;
-}
 
 .board-empty {
   text-align: center;
@@ -378,14 +525,15 @@
 
 .auto-badge {
   position: absolute;
-  top: 0.25rem;
-  right: 0.25rem;
+  top: 0.35rem;
+  right: 0.35rem;
   font-size: 0.625rem;
   padding: 0.125rem 0.375rem;
   background: #fef3c7;
   color: #92400e;
   border-radius: 4px;
   font-weight: 600;
+  pointer-events: none;
 }
 
 /* Легенда */
@@ -478,6 +626,5 @@
   .presence-col {
     min-width: 120px;
     max-width: 120px;
-    left: 200px;
   }
 }

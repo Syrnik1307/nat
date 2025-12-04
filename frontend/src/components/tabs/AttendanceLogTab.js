@@ -162,7 +162,11 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
   };
 
   const handleOpenFullPage = () => {
-    navigate(`/attendance/${groupId}`);
+    navigate(`/attendance/${groupId}`, {
+      state: {
+        logSnapshot: log,
+      },
+    });
   };
 
   const scrollTable = (direction) => {
