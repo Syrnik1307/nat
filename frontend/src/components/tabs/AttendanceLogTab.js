@@ -208,8 +208,8 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
           <button type="button" className="toolbar-btn ghost" onClick={loadAttendanceLog} disabled={loading}>
             Обновить
           </button>
-          <button type="button" className="toolbar-btn" onClick={handleExportCsv} disabled={!hasData}>
-            Скачать CSV
+          <button type="button" className="toolbar-btn" onClick={handleOpenFullPage} disabled={!hasData}>
+            Открыть полный журнал
           </button>
         </div>
       </div>
@@ -224,12 +224,12 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
           <span className="stat-label">Просмотрели запись</span>
           <span className="stat-value accent">{cardsStats.watched}</span>
           <span className="stat-hint">учеников вместо онлайн</span>
-          <button type="button" className="toolbar-btn ghost" onClick={loadAttendanceLog} disabled={loading}>
-            Обновить
-          </button>
-          <button type="button" className="toolbar-btn" onClick={handleOpenFullPage} disabled={!hasData}>
-            Открыть полный журнал
-          </button>
+        </div>
+        <div className="attendance-stat-card">
+          <span className="stat-label">Пропуски</span>
+          <span className="stat-value danger">{cardsStats.absences}</span>
+          <span className="stat-hint">требуют внимания</span>
+        </div>
       </div>
 
       {!hasData ? (
