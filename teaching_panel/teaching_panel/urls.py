@@ -31,6 +31,10 @@ from accounts.attendance_views import (
     AttendanceRecordViewSet,
     UserRatingViewSet,
     IndividualStudentViewSet,
+    GroupAttendanceLogViewSet,
+    GroupRatingViewSet,
+    GroupReportViewSet,
+    StudentCardViewSet,
 )
 from accounts.subscriptions_views import (
     SubscriptionMeView,
@@ -103,6 +107,26 @@ urlpatterns = [
     
     # API (DRF router)
     path('api/', include(router.urls)),
+    
+    # Nested Group endpoints для системы посещаемости
+    path('api/groups/<int:group_id>/attendance-log/', 
+         GroupAttendanceLogViewSet.as_view({'get': 'list'}), 
+         name='group-attendance-log'),
+    path('api/groups/<int:group_id>/attendance-log/update/', 
+         GroupAttendanceLogViewSet.as_view({'post': 'update'}), 
+         name='group-attendance-log-update'),
+    path('api/groups/<int:group_id>/rating/', 
+         GroupRatingViewSet.as_view({'get': 'list'}), 
+         name='group-rating'),
+    path('api/groups/<int:group_id>/report/', 
+         GroupReportViewSet.as_view({'get': 'retrieve'}), 
+         name='group-report'),
+    
+    # Student card endpoint
+    path('api/students/<int:student_id>/card/', 
+         StudentCardViewSet.as_view({'get': 'retrieve'}), 
+         name='student-card'),
+    
     path('api/gradebook/', GradebookViewSet.as_view({'get': 'group'}), name='gradebook-group'),
     path('api/me/', MeView.as_view(), name='api-me'),
     path('api/jwt/token/', CaseInsensitiveTokenObtainPairView.as_view(), name='jwt-obtain-pair'),
