@@ -4,6 +4,7 @@ import { getLessons, getHomeworkList, getSubmissions, getGroups } from '../apiSe
 import JoinGroupModal from './JoinGroupModal';
 import SupportWidget from './SupportWidget';
 import '../styles/StudentHome.css';
+import '../styles/StudentTabs.css';
 
 const StudentHomePage = () => {
   const location = useLocation();
@@ -92,16 +93,37 @@ const StudentHomePage = () => {
     return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${day} ${month}`;
   };
 
+  // Вкладки для страницы ученика
+  const [activeTab, setActiveTab] = useState('attendance');
+  const tabs = [
+    { key: 'attendance', label: 'Журнал посещений' },
+    { key: 'homework', label: 'Домашние задания' },
+    { key: 'checkpoints', label: 'Контрольные точки' },
+    { key: 'rating', label: 'Рейтинг группы' },
+    { key: 'reports', label: 'Отчеты' },
+  ];
+
   return (
     <div className="student-home">
-      {/* Main Content */}
       <main className="student-main-content">
         <div className="student-container">
           <h1 className="student-page-title">Мои курсы</h1>
 
+          {/* Горизонтальное меню вкладок */}
+          <nav className="student-tabs-nav">
+            {tabs.map(tab => (
+              <button
+                key={tab.key}
+                className={`student-tab-btn${activeTab === tab.key ? ' active' : ''}`}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+
           {/* Today's status */}
           <div className="student-today-status">
-            <div className="student-status-icon">📅</div>
             <div className="student-status-text">
               Сегодня <span className="student-status-date">{formatTodayDate()}</span>
             </div>
@@ -120,7 +142,7 @@ const StudentHomePage = () => {
 
             {groups.length === 0 ? (
               <div className="student-empty-state">
-                <div className="student-empty-icon">📚</div>
+                <div className="student-empty-icon-style" />
                 <p>У вас пока нет активных курсов</p>
                 <button onClick={() => setShowJoinModal(true)} className="student-join-first-btn">
                   Присоединиться к группе
@@ -130,9 +152,7 @@ const StudentHomePage = () => {
               <div className="student-courses-grid">
                 {groups.map(group => (
                   <div key={group.id} className="student-course-card">
-                    <div className="student-course-logo">
-                      📚
-                    </div>
+                    <div className="student-course-logo-style" />
                     <div className="student-course-info">
                       <h3>{group.name}</h3>
                       <p className="student-course-progress">

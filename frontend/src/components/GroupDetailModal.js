@@ -20,11 +20,11 @@ const GroupDetailModal = ({ group, isOpen, onClose, onStudentClick }) => {
   }
 
   const tabs = [
-    { id: 'attendance', label: 'Журнал посещений', icon: '📋' },
-    { id: 'homework', label: 'Домашние задания', icon: '📝' },
-    { id: 'control', label: 'Контрольные точки', icon: '🎯' },
-    { id: 'rating', label: 'Рейтинг группы', icon: '⭐' },
-    { id: 'reports', label: 'Отчеты', icon: '📊' },
+    { id: 'attendance', label: 'Журнал посещений' },
+    { id: 'homework', label: 'Домашние задания' },
+    { id: 'control', label: 'Контрольные точки' },
+    { id: 'rating', label: 'Рейтинг группы' },
+    { id: 'reports', label: 'Отчеты' },
   ];
 
   const renderTabContent = () => {
@@ -116,8 +116,7 @@ const GroupDetailModal = ({ group, isOpen, onClose, onStudentClick }) => {
               onClick={() => setActiveTab(tab.id)}
               title={tab.label}
             >
-              <span className="tab-icon">{tab.icon}</span>
-              <span className="tab-label">{tab.label}</span>
+              {tab.label}
             </button>
           ))}
         </div>
