@@ -32,15 +32,15 @@ const GroupReportsTab = ({ groupId }) => {
   };
 
   if (loading) {
-    return <div className="tab-loading">⏳ Загрузка отчета...</div>;
+    return <div className="tab-loading">Загрузка отчета...</div>;
   }
 
   if (error) {
-    return <div className="tab-error">⚠️ {error}</div>;
+    return <div className="tab-error">{error}</div>;
   }
 
   if (!report) {
-    return <div className="tab-empty">📊 Нет данных для отображения</div>;
+    return <div className="tab-empty">Нет данных для отображения</div>;
   }
 
   const ProgressBar = ({ value, color = '#2563eb' }) => (
@@ -78,11 +78,10 @@ const GroupReportsTab = ({ groupId }) => {
 
       {/* Статистика */}
       <div className="statistics-section">
-        <h4 className="section-title">📊 Статистика по показателям</h4>
+        <h4 className="section-title">Статистика по показателям</h4>
 
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-icon">✅</span>
             <span className="stat-name">Посещаемость</span>
           </div>
           <ProgressBar
@@ -96,7 +95,6 @@ const GroupReportsTab = ({ groupId }) => {
 
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-icon">📝</span>
             <span className="stat-name">Домашние задания</span>
           </div>
           <ProgressBar
@@ -110,7 +108,6 @@ const GroupReportsTab = ({ groupId }) => {
 
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-icon">🎯</span>
             <span className="stat-name">Контрольные точки</span>
           </div>
           <ProgressBar

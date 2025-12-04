@@ -90,21 +90,24 @@
   margin-bottom: 1rem;
 }
 
-.stat-icon {
-  font-size: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  background: #f3f4f6;
-  border-radius: 10px;
-}
-
 .stat-name {
   font-weight: 600;
   color: #111827;
   font-size: 1rem;
+  position: relative;
+  padding-left: 1rem;
+}
+
+.stat-name::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 16px;
+  background: #0284c7;
+  border-radius: 2px;
 }
 
 /* ================================================
