@@ -76,11 +76,26 @@ const GroupDetailModal = ({ group, isOpen, onClose, onStudentClick }) => {
           <div className="header-info">
             <h2 className="modal-title">{group.name}</h2>
             <span className="group-students-count">
-              👥 {group.student_count || 0} ученик{
-                (group.student_count || 0) % 10 === 1 && (group.student_count || 0) % 100 !== 11 ? '' :
-                (group.student_count || 0) % 10 >= 2 && (group.student_count || 0) % 10 <= 4 && 
-                ((group.student_count || 0) % 100 < 10 || (group.student_count || 0) % 100 >= 20) ? 'а' : 'ов'
-              }
+              {(() => {
+                const rawCount =
+                  typeof group.student_count === 'number'
+                    ? group.student_count
+                    : typeof group.students_count === 'number'
+                      ? group.students_count
+                      : Array.isArray(group.students)
+                        ? group.students.length
+                        : 0;
+                const count = Math.max(0, rawCount);
+
+                const suffix =
+                  count % 10 === 1 && count % 100 !== 11
+                    ? ''
+                    : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)
+                      ? 'а'
+                      : 'ов';
+
+                return `👥 ${count} ученик${suffix}`;
+              })()}
             </span>
           </div>
           <button
