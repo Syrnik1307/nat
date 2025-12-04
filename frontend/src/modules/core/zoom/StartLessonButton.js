@@ -111,19 +111,32 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
       </button>
 
       {showRecordingOption && !loading && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: '100%',
-          marginLeft: '0.5rem',
-          backgroundColor: 'white',
-          border: '1px solid #e5e7eb',
-          borderRadius: '8px',
-          padding: '1rem',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-          zIndex: 50,
-          minWidth: '280px',
-        }}>
+        <>
+          {/* Overlay для закрытия при клике снаружи */}
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 999,
+            }}
+            onClick={() => setShowRecordingOption(false)}
+          />
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: '100%',
+            marginLeft: '0.5rem',
+            backgroundColor: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            padding: '1rem',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            zIndex: 1000,
+            minWidth: '280px',
+          }}>
           <div style={{
             display: 'flex',
             flexDirection: 'column',
@@ -219,6 +232,7 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
             </div>
           </div>
         </div>
+        </>
       )}
 
       {error && (
