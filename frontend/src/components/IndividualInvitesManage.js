@@ -21,14 +21,21 @@ const IndividualInvitesManage = () => {
     fetchCodes();
   }, []);
 
+  const normalizeCodes = (value) => {
+    if (Array.isArray(value)) return value;
+    if (Array.isArray(value?.results)) return value.results;
+    return [];
+  };
+
   const fetchCodes = async () => {
     setLoading(true);
     try {
-      const response = await getIndividualInviteCodes();
-      setCodes(response.results || response || []);
+      const { data } = await getIndividualInviteCodes();
+      setCodes(normalizeCodes(data));
     } catch (err) {
       console.error('Failed to fetch codes:', err);
       setError('Ошибка при загрузке кодов');
+      setCodes([]);
     } finally {
       setLoading(false);
     }
@@ -43,8 +50,8 @@ const IndividualInvitesManage = () => {
 
     setCreating(true);
     try {
-      const response = await createIndividualInviteCode({ subject: subject.trim() });
-      setCodes([response, ...codes]);
+      const { data } = await createIndividualInviteCode({ subject: subject.trim() });
+      setCodes((prev) => [data, ...normalizeCodes(prev)]);
       setSubject('');
       setError('');
     } catch (err) {
@@ -58,7 +65,7 @@ const IndividualInvitesManage = () => {
   const handleDelete = async (codeId) => {
     try {
       await deleteIndividualInviteCode(codeId);
-      setCodes(codes.filter(c => c.id !== codeId));
+      setCodes((prev) => normalizeCodes(prev).filter((c) => c.id !== codeId));
       setShowDeleteConfirm(null);
     } catch (err) {
       console.error('Failed to delete code:', err);
@@ -66,8 +73,10 @@ const IndividualInvitesManage = () => {
     }
   };
 
-  const getActiveCount = () => codes.filter(c => !c.is_used).length;
-  const getUsedCount = () => codes.filter(c => c.is_used).length;
+  const safeCodes = normalizeCodes(codes);
+
+  const getActiveCount = () => safeCodes.filter(c => !c.is_used).length;
+  const getUsedCount = () => safeCodes.filter(c => c.is_used).length;
 
   return (
     <div className="individual-invites-manage">
@@ -86,7 +95,7 @@ const IndividualInvitesManage = () => {
           <div className="stat-label">Использовано</div>
         </div>
         <div className="stat-card total">
-          <div className="stat-number">{codes.length}</div>
+          <div className="stat-number">{safeCodes.length}</div>
           <div className="stat-label">Всего кодов</div>
         </div>
       </div>
@@ -122,7 +131,7 @@ const IndividualInvitesManage = () => {
         
         {loading ? (
           <div className="loading-spinner">⏳ Загрузка...</div>
-        ) : codes.length === 0 ? (
+        ) : safeCodes.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">📭</div>
             <p>Нет кодов. Создайте первый!</p>
@@ -132,11 +141,11 @@ const IndividualInvitesManage = () => {
             {/* Активные коды */}
             <div className="codes-section">
               <h4>Активные коды ({getActiveCount()})</h4>
-              {codes.filter(c => !c.is_used).length === 0 ? (
+              {safeCodes.filter(c => !c.is_used).length === 0 ? (
                 <p className="text-muted">Нет активных кодов</p>
               ) : (
                 <div className="codes-grid">
-                  {codes.filter(c => !c.is_used).map(code => (
+                  {safeCodes.filter(c => !c.is_used).map(code => (
                     <div key={code.id} className="code-card active">
                       <div className="code-header">
                         <span className="code-subject">{code.subject}</span>
@@ -173,7 +182,7 @@ const IndividualInvitesManage = () => {
               <div className="codes-section used-codes">
                 <h4>Использованные коды ({getUsedCount()})</h4>
                 <div className="codes-grid">
-                  {codes.filter(c => c.is_used).map(code => (
+                  {safeCodes.filter(c => c.is_used).map(code => (
                     <div key={code.id} className="code-card used">
                       <div className="code-header">
                         <span className="code-subject">{code.subject}</span>

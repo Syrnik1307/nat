@@ -18,10 +18,17 @@ const HomePage = () => {
       if (!accessTokenValid) return;
       setLoading(true);
       try {
+        const now = new Date();
+        const in30 = new Date();
+        in30.setDate(now.getDate() + 30);
         if (role === 'teacher') {
           const [statsRes, lessonsRes, groupsRes] = await Promise.all([
             getTeacherStatsSummary(),
-            getLessons({}),
+            getLessons({
+              start: now.toISOString(),
+              end: in30.toISOString(),
+              include_recurring: true,
+            }),
             getGroups(),
           ]);
           setTeacherStats(statsRes.data);
@@ -30,7 +37,11 @@ const HomePage = () => {
           setGroups(Array.isArray(groupsRes.data) ? groupsRes.data : groupsRes.data.results || []);
         } else if (role === 'student') {
           const [lessonsRes, groupsRes, hwRes] = await Promise.all([
-            getLessons({}),
+            getLessons({
+              start: now.toISOString(),
+              end: in30.toISOString(),
+              include_recurring: true,
+            }),
             getGroups(),
             getHomeworkList({}),
           ]);

@@ -6,21 +6,18 @@ import {
   deleteGroup,
   addStudentsToGroup,
   removeStudentsFromGroup,
-  apiClient,
+  createIndividualInviteCode,
+  getIndividualInviteCodes,
+  deleteIndividualInviteCode,
 } from '../apiService';
 import { getAccessToken } from '../apiService';
 import GroupInviteModal from './GroupInviteModal';
-import IndividualInvitesManage from './IndividualInvitesManage';
+import IndividualInviteModal from './IndividualInviteModal';
 import './GroupsManage.css';
 import { ConfirmModal } from '../shared/components';
 
 const initialGroupForm = { name: '', description: '' };
-const initialStudentForm = {
-  email: '',
-  first_name: '',
-  last_name: '',
-  password: 'password123',
-};
+// Student accounts создаются через код — ручная регистрация убрана
 
 // Utility to read user_id from JWT payload (handle base64url)
 const getCurrentUserId = () => {
@@ -45,7 +42,6 @@ const GroupsManage = () => {
   const [creating, setCreating] = useState(false);
   const [activePanel, setActivePanel] = useState('group');
   const [groupForm, setGroupForm] = useState(initialGroupForm);
-  const [studentForm, setStudentForm] = useState(initialStudentForm);
   const [editingId, setEditingId] = useState(null);
   const [studentOpsGroup, setStudentOpsGroup] = useState(null);
   const [inviteModalGroup, setInviteModalGroup] = useState(null);
@@ -68,14 +64,17 @@ const GroupsManage = () => {
       variant: 'info'
     });
   const [filterActive, setFilterActive] = useState('all'); // 'all' | 'with_students' | 'empty'
+  const [individualInvite, setIndividualInvite] = useState(null);
+  const [individualCodes, setIndividualCodes] = useState([]);
+  const [individualLoading, setIndividualLoading] = useState(false);
+  const [individualSubject, setIndividualSubject] = useState('');
+  const [individualDescription, setIndividualDescription] = useState('');
+  const [individualError, setIndividualError] = useState('');
+  const [individualDelete, setIndividualDelete] = useState(null);
 
   const resetGroupForm = () => {
     setGroupForm(initialGroupForm);
     setEditingId(null);
-  };
-
-  const resetStudentForm = () => {
-    setStudentForm(initialStudentForm);
   };
 
   const parseIds = (value) =>
@@ -106,13 +105,15 @@ const GroupsManage = () => {
 
   useEffect(() => {
     load();
+    loadIndividuals();
   }, []);
 
   const handleTabSelect = (panel) => {
     if (panel === 'group') {
       resetGroupForm();
-    } else if (panel === 'student') {
-      resetStudentForm();
+    }
+    if (panel === 'individual') {
+      loadIndividuals();
     }
     setActivePanel(panel);
   };
@@ -171,47 +172,59 @@ const GroupsManage = () => {
     }
   };
 
-  const handleCreateStudent = async (event) => {
-    event.preventDefault();
+  const normalizeIndividuals = (value) => {
+    if (Array.isArray(value)) return value;
+    if (Array.isArray(value?.results)) return value.results;
+    return [];
+  };
 
-    const email = studentForm.email.trim();
-    if (!email) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Внимание',
-        message: 'Введите email ученика',
-        variant: 'warning'
-      });
+  const loadIndividuals = async () => {
+    setIndividualLoading(true);
+    try {
+      const { data } = await getIndividualInviteCodes();
+      setIndividualCodes(normalizeIndividuals(data));
+      setIndividualError('');
+    } catch (e) {
+      setIndividualError('Ошибка загрузки индивидуальных приглашений');
+      setIndividualCodes([]);
+    } finally {
+      setIndividualLoading(false);
+    }
+  };
+
+  const handleCreateIndividual = async (event) => {
+    event.preventDefault();
+    if (!individualSubject.trim()) {
+      setIndividualError('Введите название предмета');
       return;
     }
-
     setCreating(true);
+    setIndividualError('');
     try {
-      await apiClient.post('jwt/register/', {
-        email,
-        password: studentForm.password,
-        first_name: studentForm.first_name.trim(),
-        last_name: studentForm.last_name.trim(),
-        role: 'student',
-      });
-
-      setAlertModal({
-        isOpen: true,
-        title: 'Успех',
-        message: `Ученик ${studentForm.first_name} ${studentForm.last_name} создан! Email: ${email}, Пароль: ${studentForm.password}`,
-        variant: 'info'
-      });
-      resetStudentForm();
-      setActivePanel('student');
+      const payload = {
+        subject: individualSubject.trim(),
+        description: individualDescription.trim(),
+      };
+      const { data } = await createIndividualInviteCode(payload);
+      const created = data?.code || data;
+      setIndividualCodes((prev) => [created, ...normalizeIndividuals(prev)]);
+      setIndividualSubject('');
+      setIndividualDescription('');
     } catch (e) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Ошибка',
-        message: e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка создания ученика',
-        variant: 'danger'
-      });
+      setIndividualError('Ошибка при создании приглашения');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDeleteIndividual = async () => {
+    if (!individualDelete) return;
+    try {
+      await deleteIndividualInviteCode(individualDelete.id);
+      setIndividualCodes((prev) => normalizeIndividuals(prev).filter((c) => c.id !== individualDelete.id));
+      setIndividualDelete(null);
+    } catch (e) {
+      setIndividualError('Ошибка при удалении приглашения');
     }
   };
 
@@ -348,262 +361,287 @@ const GroupsManage = () => {
             </button>
             <button
               type="button"
-              className={`gm-tab-button ${activePanel === 'student' ? 'active' : ''}`}
-              onClick={() => handleTabSelect('student')}
-            >
-              Ученик
-            </button>
-            <button
-              type="button"
               className={`gm-tab-button ${activePanel === 'individual' ? 'active' : ''}`}
               onClick={() => handleTabSelect('individual')}
             >
-              📧 Индивидуальные
+              Индивидуальные
             </button>
           </div>
 
           {activePanel === 'group' ? (
-            <div className="gm-card">
-              <div className="gm-card-heading">
-                <div>
-                  <h3 className="gm-card-title">
-                    {editingId ? 'Редактировать группу' : 'Новая группа'}
-                  </h3>
-                  <p className="gm-card-subtitle">
-                    {editingId
-                      ? 'Обновите название и описание, затем сохраните изменения.'
-                      : 'Создайте новое пространство для обучения и совместной работы.'}
-                  </p>
+            <>
+              <div className="gm-card">
+                <div className="gm-card-heading">
+                  <div>
+                    <h3 className="gm-card-title">
+                      {editingId ? 'Редактировать группу' : 'Новая группа'}
+                    </h3>
+                    <p className="gm-card-subtitle">
+                      {editingId
+                        ? 'Обновите название и описание, затем сохраните изменения.'
+                        : 'Создайте новое пространство для обучения и совместной работы.'}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <form className="gm-form" onSubmit={handleCreateGroup}>
-                <div className="form-group">
-                  <label className="form-label">Название группы</label>
-                  <input
-                    className="form-input"
-                    required
-                    value={groupForm.name}
-                    onChange={(event) => setGroupForm({ ...groupForm, name: event.target.value })}
-                    placeholder="Например: Математика 9 класс"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Описание</label>
-                  <textarea
-                    className="form-textarea"
-                    rows={3}
-                    value={groupForm.description}
-                    onChange={(event) =>
-                      setGroupForm({ ...groupForm, description: event.target.value })
-                    }
-                    placeholder="Дополнительная информация о группе"
-                  />
-                </div>
-                <div className="gm-actions">
-                  <button className="gm-btn-primary" type="submit" disabled={creating}>
-                    {creating ? 'Сохранение...' : editingId ? 'Сохранить' : 'Создать группу'}
-                  </button>
-                  {editingId && (
-                    <button
-                      type="button"
-                      className="gm-btn-surface"
-                      onClick={resetGroupForm}
-                      disabled={creating}
-                    >
-                      ✕ Отмена
+                <form className="gm-form" onSubmit={handleCreateGroup}>
+                  <div className="form-group">
+                    <label className="form-label">Название группы</label>
+                    <input
+                      className="form-input"
+                      required
+                      value={groupForm.name}
+                      onChange={(event) => setGroupForm({ ...groupForm, name: event.target.value })}
+                      placeholder="Например: Математика 9 класс"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Описание</label>
+                    <textarea
+                      className="form-textarea"
+                      rows={3}
+                      value={groupForm.description}
+                      onChange={(event) =>
+                        setGroupForm({ ...groupForm, description: event.target.value })
+                      }
+                      placeholder="Дополнительная информация о группе"
+                    />
+                  </div>
+                  <div className="gm-actions">
+                    <button className="gm-btn-primary" type="submit" disabled={creating}>
+                      {creating ? 'Сохранение...' : editingId ? 'Сохранить' : 'Создать группу'}
                     </button>
-                  )}
+                    {editingId && (
+                      <button
+                        type="button"
+                        className="gm-btn-surface"
+                        onClick={resetGroupForm}
+                        disabled={creating}
+                      >
+                        ✕ Отмена
+                      </button>
+                    )}
 
-                      <ConfirmModal
-                        isOpen={confirmModal.isOpen}
-                        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-                        onConfirm={confirmModal.onConfirm}
-                        title={confirmModal.title}
-                        message={confirmModal.message}
-                        variant={confirmModal.variant}
-                        confirmText={confirmModal.confirmText}
-                        cancelText={confirmModal.cancelText}
-                      />
+                        <ConfirmModal
+                          isOpen={confirmModal.isOpen}
+                          onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                          onConfirm={confirmModal.onConfirm}
+                          title={confirmModal.title}
+                          message={confirmModal.message}
+                          variant={confirmModal.variant}
+                          confirmText={confirmModal.confirmText}
+                          cancelText={confirmModal.cancelText}
+                        />
 
-                      <ConfirmModal
-                        isOpen={alertModal.isOpen}
-                        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
-                        onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
-                        title={alertModal.title}
-                        message={alertModal.message}
-                        variant={alertModal.variant}
-                        confirmText="OK"
-                        cancelText=""
-                      />
-                </div>
-              </form>
-            </div>
+                        <ConfirmModal
+                          isOpen={alertModal.isOpen}
+                          onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+                          onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
+                          title={alertModal.title}
+                          message={alertModal.message}
+                          variant={alertModal.variant}
+                          confirmText="OK"
+                          cancelText=""
+                        />
+                  </div>
+                </form>
+              </div>
+            </>
           ) : (
-            <div className="gm-card">
-              <div className="gm-card-heading">
-                <div>
-                  <h3 className="gm-card-title">Новый ученик</h3>
-                  <p className="gm-card-subtitle">
-                    Создайте аккаунт и поделитесь данными для входа с учеником.
-                  </p>
+            <>
+              <div className="gm-card">
+                <div className="gm-card-heading">
+                  <div>
+                    <h3 className="gm-card-title">Индивидуальный ученик</h3>
+                    <p className="gm-card-subtitle">Название предмета и описание как у групп, код генерится автоматически.</p>
+                  </div>
                 </div>
+                <form className="gm-form" onSubmit={handleCreateIndividual}>
+                  <div className="form-group">
+                    <label className="form-label">Название предмета</label>
+                    <input
+                      className="form-input"
+                      required
+                      value={individualSubject}
+                      onChange={(event) => setIndividualSubject(event.target.value)}
+                      placeholder="Например: Математика 9 класс"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Описание</label>
+                    <textarea
+                      className="form-textarea"
+                      rows={3}
+                      value={individualDescription}
+                      onChange={(event) => setIndividualDescription(event.target.value)}
+                      placeholder="Дополнительная информация"
+                    />
+                  </div>
+                  <div className="gm-actions">
+                    <button className="gm-btn-primary" type="submit" disabled={creating}>
+                      {creating ? 'Создание...' : 'Создать приглашение'}
+                    </button>
+                  </div>
+                  {individualError && <p className="gm-hint gm-text-error">{individualError}</p>}
+                </form>
               </div>
 
-              <form className="gm-form" onSubmit={handleCreateStudent}>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Имя</label>
-                    <input
-                      className="form-input"
-                      required
-                      value={studentForm.first_name}
-                      onChange={(event) =>
-                        setStudentForm({ ...studentForm, first_name: event.target.value })
-                      }
-                      placeholder="Иван"
-                    />
+              <div className="gm-card">
+                <div className="gm-card-heading">
+                  <div>
+                    <h3 className="gm-card-title">📋 Индивидуальные приглашения</h3>
+                    <p className="gm-card-subtitle">Приглашения работают как групповые: код, ссылка, QR.</p>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Фамилия</label>
-                    <input
-                      className="form-input"
-                      required
-                      value={studentForm.last_name}
-                      onChange={(event) =>
-                        setStudentForm({ ...studentForm, last_name: event.target.value })
-                      }
-                      placeholder="Иванов"
-                    />
+                  <span className="gm-badge gm-badge-blue">{individualCodes.length}</span>
+                </div>
+
+                {individualLoading ? (
+                  <div className="gm-state gm-state-loading">Загрузка...</div>
+                ) : individualCodes.length === 0 ? (
+                  <div className="gm-empty-state">
+                    <div className="gm-empty-icon">📭</div>
+                    <p>Нет приглашений. Создайте первое.</p>
                   </div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Email</label>
-                  <input
-                    className="form-input"
-                    type="email"
-                    required
-                    value={studentForm.email}
-                    onChange={(event) =>
-                      setStudentForm({ ...studentForm, email: event.target.value })
-                    }
-                    placeholder="student@example.com"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Пароль</label>
-                  <input
-                    className="form-input"
-                    type="text"
-                    required
-                    value={studentForm.password}
-                    onChange={(event) =>
-                      setStudentForm({ ...studentForm, password: event.target.value })
-                    }
-                  />
-                  <small className="gm-hint">По умолчанию используется пароль password123</small>
-                </div>
-                <div className="gm-actions">
-                  <button className="gm-btn-primary" type="submit" disabled={creating}>
-                    {creating ? 'Создание...' : 'Создать ученика'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-          
-          {activePanel === 'individual' && (
-            <IndividualInvitesManage />
+                ) : (
+                  <div className="gm-groups-list">
+                    {individualCodes.map((item) => {
+                      const isUsed = item.is_used;
+                      return (
+                        <article key={item.id} className="gm-group-card">
+                          <div className="gm-group-card-header">
+                            <div>
+                              <div className="gm-group-name" style={{ cursor: 'default' }}>
+                                {item.subject || 'Без названия'}
+                              </div>
+                              <p className="gm-group-description">{item.description || 'Нет описания'}</p>
+                              <p className="gm-hint" style={{ marginTop: '0.25rem' }}>Код: {item.invite_code}</p>
+                            </div>
+                            <span className={`gm-badge ${isUsed ? 'gm-badge-muted' : 'gm-badge-blue'}`}>
+                              {isUsed ? 'Использован' : 'Активен'}
+                            </span>
+                          </div>
+                          <div className="gm-group-card-actions">
+                            <button
+                              type="button"
+                              className="gm-btn-primary"
+                              onClick={() => setIndividualInvite(item)}
+                            >
+                              📨 Пригласить
+                            </button>
+                            <button
+                              type="button"
+                              className="gm-btn-surface"
+                              onClick={() => setIndividualDelete(item)}
+                            >
+                              Удалить
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
 
-        <div className="groups-manage-column">
-          <div className="gm-card">
-            <div className="gm-card-heading">
-              <div>
-                <h3 className="gm-card-title">📋 Мои группы</h3>
-                <p className="gm-card-subtitle">
-                  {groups.length
-                    ? 'Выберите группу, чтобы отредактировать данные или управлять учениками.'
-                    : 'Пока нет групп — создайте первую, чтобы начать обучение.'}
-                </p>
+        {activePanel === 'group' && (
+          <div className="groups-manage-column">
+            <div className="gm-card">
+              <div className="gm-card-heading">
+                <div>
+                  <h3 className="gm-card-title">📋 Мои группы</h3>
+                  <p className="gm-card-subtitle">
+                    {groups.length
+                      ? 'Выберите группу, чтобы отредактировать данные или управлять учениками.'
+                      : 'Пока нет групп — создайте первую, чтобы начать обучение.'}
+                  </p>
+                </div>
+                <span className="gm-badge gm-badge-blue">{groups.length}</span>
               </div>
-              <span className="gm-badge gm-badge-blue">{groups.length}</span>
-            </div>
 
-            <div className="gm-groups-list">
-              {groups.map((group) => {
-                const studentCount = Array.isArray(group.students)
-                  ? group.students.length
-                  : group.student_count || 0;
+              <div className="gm-groups-list">
+                {groups.map((group) => {
+                  const studentCount = Array.isArray(group.students)
+                    ? group.students.length
+                    : group.student_count || 0;
 
-                return (
-                  <article
-                    key={group.id}
-                    className={`gm-group-card ${editingId === group.id ? 'is-active' : ''}`}
-                  >
-                    <div className="gm-group-card-header">
-                      <div>
+                  return (
+                    <article
+                      key={group.id}
+                      className={`gm-group-card ${editingId === group.id ? 'is-active' : ''}`}
+                    >
+                      <div className="gm-group-card-header">
+                        <div>
+                          <button
+                            type="button"
+                            className="gm-group-name"
+                            onClick={() => startEdit(group)}
+                          >
+                            {group.name}
+                          </button>
+                          <p className="gm-group-description">{group.description || 'Без описания'}</p>
+                        </div>
+                        <span className="gm-badge">{studentCount} уч.</span>
+                      </div>
+                      <div className="gm-group-card-actions">
                         <button
                           type="button"
-                          className="gm-group-name"
+                          className="gm-btn-surface"
                           onClick={() => startEdit(group)}
                         >
-                          {group.name}
+                          Изменить
                         </button>
-                        <p className="gm-group-description">{group.description || 'Без описания'}</p>
+                        <button
+                          type="button"
+                          className="gm-btn-primary"
+                          onClick={() => setInviteModalGroup(group)}
+                        >
+                          📨 Пригласить
+                        </button>
+                        <button
+                          type="button"
+                          className="gm-btn-surface"
+                          onClick={() => openStudentOps(group)}
+                        >
+                          Ученики
+                        </button>
+                        <button
+                          type="button"
+                          className="gm-btn-danger"
+                          onClick={() => handleDelete(group.id)}
+                        >
+                          Удалить
+                        </button>
                       </div>
-                      <span className="gm-badge">{studentCount} уч.</span>
-                    </div>
-                    <div className="gm-group-card-actions">
-                      <button
-                        type="button"
-                        className="gm-btn-surface"
-                        onClick={() => startEdit(group)}
-                      >
-                        Изменить
-                      </button>
-                      <button
-                        type="button"
-                        className="gm-btn-primary"
-                        onClick={() => setInviteModalGroup(group)}
-                      >
-                        📨 Пригласить
-                      </button>
-                      <button
-                        type="button"
-                        className="gm-btn-surface"
-                        onClick={() => openStudentOps(group)}
-                      >
-                        Ученики
-                      </button>
-                      <button
-                        type="button"
-                        className="gm-btn-danger"
-                        onClick={() => handleDelete(group.id)}
-                      >
-                        Удалить
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
+                    </article>
+                  );
+                })}
 
-              {groups.length === 0 && (
-                <div className="gm-empty-state">
-                  <div className="gm-empty-icon">📂</div>
-                  <p>Нет групп. Создайте первую!</p>
-                </div>
-              )}
+                {groups.length === 0 && (
+                  <div className="gm-empty-state">
+                    <div className="gm-empty-icon">📂</div>
+                    <p>Нет групп. Создайте первую!</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {inviteModalGroup && (
         <GroupInviteModal
           group={inviteModalGroup}
           onClose={() => setInviteModalGroup(null)}
+        />
+      )}
+
+      {individualInvite && (
+        <IndividualInviteModal
+          code={individualInvite}
+          onClose={() => setIndividualInvite(null)}
         />
       )}
 
@@ -658,6 +696,18 @@ const GroupsManage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {individualDelete && (
+        <ConfirmModal
+          title="Удалить приглашение?"
+          message={`Удалить приглашение для предмета "${individualDelete.subject || ''}"?`}
+          onConfirm={handleDeleteIndividual}
+          onCancel={() => setIndividualDelete(null)}
+          confirmText="Удалить"
+          cancelText="Отмена"
+          danger
+        />
       )}
     </div>
   );

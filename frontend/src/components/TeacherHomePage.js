@@ -99,7 +99,7 @@ const TeacherHomePage = () => {
       const todayDate = new Date().toISOString().split('T')[0];
       const [groupsRes, lessonsRes, statsRes, breakdownRes, individualStudentsRes] = await Promise.all([
         getGroups(),
-        getLessons({ date: todayDate }),
+        getLessons({ date: todayDate, include_recurring: true }),
         getTeacherStatsSummary(),
         getTeacherStatsBreakdown(),
         getIndividualStudents(),

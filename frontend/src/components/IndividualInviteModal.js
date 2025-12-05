@@ -14,7 +14,7 @@ const IndividualInviteModal = ({ code, onClose }) => {
 
   const handleCopy = async (text, type) => {
     const setCopied = type === 'code' ? setCopiedCode : setCopiedLink;
-    
+
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text);
@@ -25,7 +25,7 @@ const IndividualInviteModal = ({ code, onClose }) => {
     } catch (error) {
       console.warn('Clipboard API failed, using fallback:', error);
     }
-    
+
     try {
       const textArea = document.createElement('textarea');
       textArea.value = text;
@@ -36,10 +36,10 @@ const IndividualInviteModal = ({ code, onClose }) => {
       document.body.appendChild(textArea);
       textArea.focus();
       textArea.select();
-      
+
       const successful = document.execCommand('copy');
       document.body.removeChild(textArea);
-      
+
       if (successful) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -56,8 +56,9 @@ const IndividualInviteModal = ({ code, onClose }) => {
     setRegenerating(true);
     try {
       const response = await regenerateIndividualInviteCode(code.id);
-      if (response && response.code) {
-        setInviteCode(response.code.invite_code);
+      const newCode = response?.code?.invite_code || response?.data?.code?.invite_code || response?.data?.invite_code;
+      if (newCode) {
+        setInviteCode(newCode);
       }
     } catch (error) {
       console.error('Failed to regenerate code:', error);
@@ -70,30 +71,28 @@ const IndividualInviteModal = ({ code, onClose }) => {
 
   return (
     <>
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="invite-modal" onClick={(e) => e.stopPropagation()}>
-          <button className="modal-close" onClick={onClose}>×</button>
-          
+      <div className="invite-modal-overlay" onClick={onClose}>
+        <div className="invite-modal-content" onClick={(e) => e.stopPropagation()}>
+          <button className="invite-modal-close" onClick={onClose}>×</button>
+
           <h2>Пригласить ученика</h2>
-          <p className="modal-subtitle">Предмет: <strong>{code?.subject}</strong></p>
-          
-          {/* Код приглашения */}
+          <p className="invite-modal-subtitle">Предмет: <strong>{code?.subject}</strong></p>
+
           <div className="invite-section">
             <h3>Код приглашения</h3>
             <div className="invite-code-display">
-              <span className="code-value">{inviteCode}</span>
+              <span className="invite-code-text">{inviteCode}</span>
               <button
-                className="copy-btn"
+                className="invite-copy-btn"
                 onClick={() => handleCopy(inviteCode, 'code')}
                 title="Скопировать код"
               >
                 {copiedCode ? '✓ Скопировано' : '📋 Скопировать'}
               </button>
             </div>
-            <p className="code-info">Ученик вводит этот код в поле приглашения</p>
+            <p className="invite-hint">Ученик вводит этот код в поле приглашения</p>
           </div>
 
-          {/* Ссылка приглашения */}
           <div className="invite-section">
             <h3>Ссылка приглашения</h3>
             <div className="invite-link-display">
@@ -101,29 +100,28 @@ const IndividualInviteModal = ({ code, onClose }) => {
                 type="text"
                 readOnly
                 value={inviteLink}
-                className="link-input"
+                className="invite-link-input"
               />
               <button
-                className="copy-btn"
+                className="invite-copy-btn"
                 onClick={() => handleCopy(inviteLink, 'link')}
                 title="Скопировать ссылку"
               >
                 {copiedLink ? '✓ Скопировано' : '📋 Скопировать'}
               </button>
             </div>
-            <p className="link-info">Ученик переходит по ссылке и автоматически присоединяется</p>
+            <p className="invite-hint">Ученик переходит по ссылке и автоматически присоединяется</p>
           </div>
 
-          {/* Действия */}
           <div className="invite-actions">
             <button
-              className="btn-secondary"
+              className="invite-regenerate-btn"
               onClick={() => setShowConfirm(true)}
               disabled={regenerating}
             >
               🔄 Сгенерировать новый код
             </button>
-            <button className="btn-primary" onClick={onClose}>
+            <button className="invite-done-btn" onClick={onClose}>
               Закрыть
             </button>
           </div>

@@ -15,6 +15,7 @@ import json
 from django.core.cache import cache
 import hashlib
 import logging
+from datetime import datetime, timedelta
 from .models import ZoomAccount, Group, Lesson, Attendance, RecurringLesson, LessonRecording, AuditLog, IndividualInviteCode
 from zoom_pool.models import ZoomAccount as PoolZoomAccount
 from django.db.models import F
@@ -244,6 +245,170 @@ class LessonViewSet(viewsets.ModelViewSet):
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
     permission_classes = [IsLessonOwnerOrReadOnly]
+
+    def _include_recurring(self, request):
+        flag = request.query_params.get('include_recurring')
+        # Поддерживаем различные формы boolean из query params
+        return str(flag).lower() in ('1', 'true', 'yes', 'on', '1.0')
+
+    def _safe_parse_datetime(self, raw):
+        """Парсим datetime/даты из query params, поддерживаем пробел вместо +."""
+        from django.utils.dateparse import parse_date
+        if not raw:
+            return None
+        raw_str = str(raw).replace(' ', '+')
+        dt = parse_datetime(raw_str)
+        if dt:
+            if timezone.is_naive(dt):
+                dt = timezone.make_aware(dt, timezone.get_current_timezone())
+            return dt
+        d = parse_date(raw_str)
+        if d:
+            tz = timezone.get_current_timezone()
+            return timezone.make_aware(datetime.combine(d, datetime.min.time()), tz)
+        if '+' in raw_str:
+            head, tz_part = raw_str.rsplit('+', 1)
+            tz_compact = tz_part.replace(':', '')
+            dt = parse_datetime(f"{head}+{tz_compact}")
+            if dt and timezone.is_naive(dt):
+                dt = timezone.make_aware(dt, timezone.get_current_timezone())
+            return dt
+        return None
+
+    def _resolve_list_range(self, request):
+        """Определяем диапазон дат для разворачивания регулярных уроков."""
+        from django.utils.dateparse import parse_date
+
+        date_param = request.query_params.get('date')
+        if date_param:
+            parsed = parse_date(date_param)
+            if parsed:
+                tz = timezone.get_current_timezone()
+                start_dt = timezone.make_aware(datetime.combine(parsed, datetime.min.time()), tz)
+                end_dt = timezone.make_aware(datetime.combine(parsed, datetime.max.time()), tz)
+                return start_dt, end_dt
+
+        start_dt = self._safe_parse_datetime(request.query_params.get('start'))
+        end_dt = self._safe_parse_datetime(request.query_params.get('end'))
+
+        # Если указана только одна граница, задаём вторую по умолчанию
+        if start_dt and not end_dt:
+            end_dt = start_dt + timedelta(days=30)
+        if end_dt and not start_dt:
+            start_dt = end_dt - timedelta(days=30)
+
+        # Полный дефолт: от сейчас на 30 дней вперёд
+        if not start_dt and not end_dt:
+            start_dt = timezone.now()
+            end_dt = start_dt + timedelta(days=30)
+
+        return start_dt, end_dt
+
+    def _build_recurring_virtual_lessons(self, request, start_dt, end_dt, existing_queryset):
+        """Разворачиваем RecurringLesson в виртуальные занятия в заданном диапазоне."""
+        if not start_dt or not end_dt:
+            return []
+
+        recurring_qs = RecurringLesson.objects.all()
+        user = request.user
+        if user.is_authenticated:
+            role = getattr(user, 'role', None)
+            if role == 'teacher':
+                recurring_qs = recurring_qs.filter(teacher=user)
+            elif role == 'student':
+                recurring_qs = recurring_qs.filter(group__students=user)
+
+        teacher_id = request.query_params.get('teacher')
+        group_id = request.query_params.get('group')
+        if teacher_id:
+            recurring_qs = recurring_qs.filter(teacher_id=teacher_id)
+        if group_id:
+            recurring_qs = recurring_qs.filter(group_id=group_id)
+
+        def matches_week_type(week_type, date):
+            if week_type == 'ALL':
+                return True
+            iso_week = date.isocalendar()[1]
+            if week_type == 'UPPER':
+                return iso_week % 2 == 0
+            if week_type == 'LOWER':
+                return iso_week % 2 == 1
+            return True
+
+        virtual_lessons = []
+        current_date = start_dt.date()
+        while current_date <= end_dt.date():
+            for rl in recurring_qs:
+                if not (rl.start_date <= current_date <= rl.end_date):
+                    continue
+                if current_date.weekday() != rl.day_of_week:
+                    continue
+                if not matches_week_type(rl.week_type, current_date):
+                    continue
+
+                start_local = timezone.make_aware(
+                    datetime.combine(current_date, rl.start_time),
+                    timezone.get_current_timezone()
+                )
+                end_local = timezone.make_aware(
+                    datetime.combine(current_date, rl.end_time),
+                    timezone.get_current_timezone()
+                )
+
+                # Пропускаем, если уже есть реальный урок группы на это время
+                overlap = existing_queryset.filter(
+                    group=rl.group,
+                    start_time__lt=end_local,
+                    end_time__gt=start_local
+                ).exists()
+                if overlap:
+                    continue
+
+                virtual_lessons.append({
+                    'id': f'recurring-{rl.id}-{current_date.isoformat()}',
+                    'recurring_lesson_id': rl.id,
+                    'is_recurring': True,
+                    'title': rl.title,
+                    'group': rl.group_id,
+                    'group_name': rl.group.name,
+                    'teacher': rl.teacher_id,
+                    'teacher_name': rl.teacher.get_full_name(),
+                    'start_time': start_local.isoformat(),
+                    'end_time': end_local.isoformat(),
+                    'duration_minutes': int((end_local - start_local).total_seconds() / 60),
+                    'topics': rl.topics,
+                    'location': rl.location,
+                    'zoom_meeting_id': None,
+                    'zoom_join_url': None,
+                    'zoom_start_url': None,
+                    'zoom_password': None,
+                    'record_lesson': False,
+                    'recording_available_for_days': None,
+                })
+            current_date += timedelta(days=1)
+
+        return virtual_lessons
+
+    def list(self, request, *args, **kwargs):
+        include_recurring = self._include_recurring(request)
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        lessons = list(serializer.data)
+
+        if include_recurring:
+            start_dt, end_dt = self._resolve_list_range(request)
+            virtual_lessons = self._build_recurring_virtual_lessons(request, start_dt, end_dt, queryset)
+            lessons.extend(virtual_lessons)
+            lessons.sort(key=lambda x: x.get('start_time') or '')
+            # Возвращаем как обычный массив без пагинации, так как регулярные уроки генерируются на лету
+            return Response(lessons)
+        else:
+            # Для обычных уроков используем пагинацию
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            return Response(lessons)
     
     @action(detail=False, methods=['post'], url_path='delete_recurring')
     def delete_recurring(self, request):

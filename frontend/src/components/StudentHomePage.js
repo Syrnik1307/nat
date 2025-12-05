@@ -32,8 +32,15 @@ const StudentHomePage = () => {
 
   const loadData = async () => {
     try {
+      const now = new Date();
+      const in30 = new Date();
+      in30.setDate(now.getDate() + 30);
       const [lessonsRes, hwRes, subRes, groupsRes] = await Promise.all([
-        getLessons({}),
+        getLessons({
+          start: now.toISOString(),
+          end: in30.toISOString(),
+          include_recurring: true,
+        }),
         getHomeworkList({}),
         getSubmissions({}),
         getGroups(),

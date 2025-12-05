@@ -35,7 +35,22 @@ const Calendar = () => {
   const loadLessons = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await apiService.get('/schedule/lessons/');
+      // Получаем диапазон дат: текущий месяц + 2 месяца вперед
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endDate = new Date(now.getFullYear(), now.getMonth() + 3, 0);
+      
+      const startISOString = startDate.toISOString().split('T')[0];
+      const endISOString = endDate.toISOString().split('T')[0];
+
+      const response = await apiService.get('/schedule/lessons/', {
+        params: {
+          include_recurring: true,
+          start: startISOString,
+          end: endISOString,
+        }
+      });
+      
       const resolveColor = (status) => {
         switch (status) {
           case 'scheduled':
@@ -50,8 +65,12 @@ const Calendar = () => {
             return '#2563eb';
         }
       };
-      const formattedEvents = response.data.map(lesson => {
-        const color = resolveColor(lesson.status);
+      
+      // Обработка ответа (может быть массив или пагинированный объект)
+      const lessons = Array.isArray(response.data) ? response.data : (response.data.results || []);
+      
+      const formattedEvents = lessons.map(lesson => {
+        const color = resolveColor(lesson.status || 'scheduled');
         return {
           id: lesson.id,
           title: lesson.group_name || lesson.title,
@@ -65,6 +84,8 @@ const Calendar = () => {
             zoom_join_url: lesson.zoom_join_url,
             status: lesson.status,
             description: lesson.description,
+            is_recurring: lesson.is_recurring || false,
+            recurring_lesson_id: lesson.recurring_lesson_id || null,
           },
         };
       });
