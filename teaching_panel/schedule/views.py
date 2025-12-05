@@ -350,6 +350,9 @@ class LessonViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Фильтрация по параметрам запроса"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:
@@ -357,6 +360,8 @@ class LessonViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(teacher=user)
             elif getattr(user, 'role', None) == 'student':
                 queryset = queryset.filter(group__students=user)
+        
+        logger.info(f'DEBUG: After user filter: {queryset.count()} lessons')
         
         # Фильтр по группе
         group_id = self.request.query_params.get('group')
@@ -375,10 +380,12 @@ class LessonViewSet(viewsets.ModelViewSet):
             parsed_date = parse_date(date_param)
             if parsed_date:
                 # Используем __date для фильтрации по дате независимо от часового пояса
+                logger.info(f'DEBUG: Filtering by date={date_param}, parsed_date={parsed_date}')
                 queryset = queryset.filter(start_time__date=parsed_date)
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.info(f'DEBUG: date_param={date_param}, parsed_date={parsed_date}, queryset count={queryset.count()}')
+                logger.info(f'DEBUG: After date filter: {queryset.count()} lessons')
+                # Логируем все уроки для отладки
+                for lesson in queryset:
+                    logger.info(f'DEBUG: Lesson: {lesson.title}, start_time={lesson.start_time}, date={lesson.start_time.date() if lesson.start_time else None}')
         
         # Фильтр по датам (для календаря)
         start_date = self.request.query_params.get('start')
