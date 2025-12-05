@@ -502,7 +502,7 @@ const AuthPage = () => {
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && selectRole('student')}
               >
-                <div className="role-icon">☎</div>
+                <div className="role-icon">👨‍🎓</div>
                 <h3 className="role-title">Ученик</h3>
                 <p className="role-description">
                   Доступ к урокам и заданиям
