@@ -10,6 +10,7 @@ import {
 } from '../apiService';
 import { getAccessToken } from '../apiService';
 import GroupInviteModal from './GroupInviteModal';
+import IndividualInvitesManage from './IndividualInvitesManage';
 import './GroupsManage.css';
 import { ConfirmModal } from '../shared/components';
 
@@ -110,7 +111,7 @@ const GroupsManage = () => {
   const handleTabSelect = (panel) => {
     if (panel === 'group') {
       resetGroupForm();
-    } else {
+    } else if (panel === 'student') {
       resetStudentForm();
     }
     setActivePanel(panel);
@@ -352,6 +353,13 @@ const GroupsManage = () => {
             >
               Ученик
             </button>
+            <button
+              type="button"
+              className={`gm-tab-button ${activePanel === 'individual' ? 'active' : ''}`}
+              onClick={() => handleTabSelect('individual')}
+            >
+              📧 Индивидуальные
+            </button>
           </div>
 
           {activePanel === 'group' ? (
@@ -502,6 +510,10 @@ const GroupsManage = () => {
                 </div>
               </form>
             </div>
+          )}
+          
+          {activePanel === 'individual' && (
+            <IndividualInvitesManage />
           )}
         </div>
 
