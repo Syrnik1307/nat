@@ -1037,14 +1037,17 @@
 .link-all {
   color: var(--primary-blue);
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
   transition: var(--transition);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.05);
 }
 
 .link-all:hover {
   color: var(--primary-blue-dark);
-  text-decoration: underline;
+  background: rgba(37, 99, 235, 0.12);
 }
 
 /* ================================================
@@ -1154,19 +1157,23 @@
 .empty-state {
   text-align: center;
   padding: 3rem 2rem;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.02) 0%, rgba(37, 99, 235, 0.05) 100%);
+  border-radius: 16px;
+  border: 1px dashed rgba(37, 99, 235, 0.2);
 }
 
 .empty-state h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.35rem;
+  font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.75rem 0;
 }
 
 .empty-state p {
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--text-secondary);
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 1.75rem 0;
+  line-height: 1.6;
 }
 
 .empty-state-small {

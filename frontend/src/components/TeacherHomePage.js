@@ -457,7 +457,7 @@ const TeacherHomePage = () => {
                   onClick={handleQuickLessonCreate}
                   disabled={quickLessonLoading}
                 >
-                  {quickLessonLoading ? 'Создаем Zoom...' : 'Создать урок без расписания'}
+                  {quickLessonLoading ? 'Создание...' : 'Создать урок'}
                 </button>
                 {quickLessonError && (
                   <div className="error-inline" role="status">
