@@ -19,7 +19,7 @@ const SubscriptionBanner = ({ subscription, onPayClick }) => {
     <div className={`subscription-banner ${isExpired ? 'expired' : isExpiringSoon ? 'warning' : ''}`}>
       <div className="banner-content">
         <div className="banner-icon">
-          {isExpired ? '🚫' : '⚠️'}
+          {isExpired ? '!' : '⭕'}
         </div>
         <div className="banner-text">
           {isExpired ? (

@@ -125,7 +125,7 @@ const GroupDetailModal = ({ group, isOpen, onClose, onStudentClick }) => {
         <div className="modal-body">
           {error && (
             <div className="error-message">
-              ⚠️ {error}
+              {error}
             </div>
           )}
           {renderTabContent()}

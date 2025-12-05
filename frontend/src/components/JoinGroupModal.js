@@ -164,7 +164,7 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
 
             {error && (
               <div className="join-error-message">
-                ⚠️ {error}
+                {error}
               </div>
             )}
 

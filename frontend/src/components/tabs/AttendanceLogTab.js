@@ -181,7 +181,7 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
 
 
   if (error) {
-    return <div className="tab-error">⚠️ {error}</div>;
+    return <div className="tab-error">{error}</div>;
   }
 
   const { rows, stats: computedStats } = computedData;

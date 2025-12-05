@@ -103,7 +103,7 @@ const TelegramWarningBanner = () => {
     <div className="telegram-warning-banner">
       <div className="banner-container">
         <div className="banner-icon">
-          <span className="icon-emoji">⚠️</span>
+          <span className="icon-emoji">ⓩ</span>
         </div>
         <div className="banner-content">
           <h3 className="banner-title">Защитите свой аккаунт</h3>

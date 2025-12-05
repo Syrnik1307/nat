@@ -36,7 +36,7 @@ const GroupRatingTab = ({ groupId, onStudentClick }) => {
   }
 
   if (error) {
-    return <div className="tab-error">⚠️ {error}</div>;
+    return <div className="tab-error">{error}</div>;
   }
 
   if (!rating || !rating.students || rating.students.length === 0) {

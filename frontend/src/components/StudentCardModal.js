@@ -99,7 +99,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
         <div className="modal-body">
           {error && (
             <div className="error-message">
-              ⚠️ {error}
+              {error}
             </div>
           )}
 
@@ -145,7 +145,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
               {/* Ошибки и пробелы */}
               {card.errors && (Object.keys(card.errors).length > 0) && (
                 <div className="errors-section">
-                  <h3 className="section-title">⚠️ Пробелы и недовыполнения</h3>
+                  <h3 className="section-title">Пробелы и недовыполнения</h3>
                   
                   {card.errors.incomplete_homework && card.errors.incomplete_homework.length > 0 && (
                     <div className="error-item">
