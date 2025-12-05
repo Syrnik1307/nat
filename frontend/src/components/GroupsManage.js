@@ -394,7 +394,7 @@ const GroupsManage = () => {
                 </div>
                 <div className="gm-actions">
                   <button className="gm-btn-primary" type="submit" disabled={creating}>
-                    {creating ? '⏳ Сохранение...' : editingId ? '💾 Сохранить' : '➕ Создать группу'}
+                    {creating ? 'Сохранение...' : editingId ? 'Сохранить' : 'Создать группу'}
                   </button>
                   {editingId && (
                     <button
@@ -435,7 +435,7 @@ const GroupsManage = () => {
             <div className="gm-card">
               <div className="gm-card-heading">
                 <div>
-                  <h3 className="gm-card-title">👤 Новый ученик</h3>
+                  <h3 className="gm-card-title">Новый ученик</h3>
                   <p className="gm-card-subtitle">
                     Создайте аккаунт и поделитесь данными для входа с учеником.
                   </p>
@@ -497,7 +497,7 @@ const GroupsManage = () => {
                 </div>
                 <div className="gm-actions">
                   <button className="gm-btn-primary" type="submit" disabled={creating}>
-                    {creating ? '⏳ Создание...' : '👤 Создать ученика'}
+                    {creating ? 'Создание...' : 'Создать ученика'}
                   </button>
                 </div>
               </form>
@@ -625,13 +625,13 @@ const GroupsManage = () => {
 
               <div className="gm-modal-section">
                 <p style={{padding: '1rem', background: '#f0f9ff', borderRadius: '8px', color: '#0369a1', fontSize: '0.9rem'}}>
-                  💡 <strong>Как добавить учеников:</strong> Нажмите кнопку "📨 Пригласить" в карточке группы и поделитесь кодом приглашения с учениками.
+                  <strong>Как добавить учеников:</strong> Нажмите кнопку "Пригласить" в карточке группы и поделитесь кодом приглашения с учениками.
                 </p>
               </div>
 
               <div className="gm-modal-controls">
                 <div className="gm-modal-column" style={{width: '100%'}}>
-                  <label className="gm-modal-label">➖ Удалить учеников (ID через запятую)</label>
+                  <label className="gm-modal-label">Удалить учеников (ID через запятую)</label>
                   <input
                     className="gm-modal-input"
                     value={removeIds}
@@ -639,7 +639,7 @@ const GroupsManage = () => {
                     placeholder="1, 2, 3"
                   />
                   <button type="button" className="gm-btn-danger gm-btn-block" onClick={commitRemoveStudents}>
-                    ❌ Удалить из группы
+                    Удалить из группы
                   </button>
                 </div>
               </div>

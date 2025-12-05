@@ -118,12 +118,12 @@ const TelegramWarningBanner = () => {
               onClick={handleConnectClick}
               disabled={linking || prefetching}
             >
-              {linking || prefetching ? 'Готовим ссылку...' : '🔗 Привязать Telegram сейчас'}
+              {linking || prefetching ? 'Готовим ссылку...' : 'Привязать Telegram сейчас'}
             </button>
             <div className="banner-benefits">
-              <span className="benefit">✅ Восстановление пароля за 30 сек</span>
-              <span className="benefit">✅ Уведомления в реальном времени</span>
-              <span className="benefit">✅ Напоминания о занятиях</span>
+              <span className="benefit">Восстановление пароля за 30 сек</span>
+              <span className="benefit">Уведомления в реальном времени</span>
+              <span className="benefit">Напоминания о занятиях</span>
             </div>
             {(linkMessage || linkError) && (
               <p className={`banner-message ${linkError ? 'error' : 'success'}`}>

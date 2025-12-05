@@ -912,10 +912,10 @@ const ProfilePage = () => {
                             </span>
                           </div>
                           <span className={`payment-status status-${payment.status}`}>
-                            {payment.status === 'succeeded' && '✅ Успешно'}
-                            {payment.status === 'pending' && '⏳ Ожидание'}
-                            {payment.status === 'failed' && '❌ Ошибка'}
-                            {payment.status === 'refunded' && '↩️ Возврат'}
+                            {payment.status === 'succeeded' && 'Успешно'}
+                            {payment.status === 'pending' && 'Ожидание'}
+                            {payment.status === 'failed' && 'Ошибка'}
+                            {payment.status === 'refunded' && 'Возврат'}
                           </span>
                         </div>
                       ))}

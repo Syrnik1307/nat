@@ -176,11 +176,11 @@ const SubscriptionPage = () => {
         <div className="sub-card">
           <div className="sub-status">
             <span className={`status-badge status-${subData?.status}`}>
-              {subData?.status === 'active' && isActive && '✅ Активна'}
-              {subData?.status === 'active' && !isActive && '⏱️ Истекла'}
-              {subData?.status === 'pending' && '⏳ Ожидает оплаты'}
-              {subData?.status === 'cancelled' && '❌ Отменена'}
-              {subData?.status === 'expired' && '⏱️ Истекла'}
+              {subData?.status === 'active' && isActive && 'Активна'}
+              {subData?.status === 'active' && !isActive && 'Истекла'}
+              {subData?.status === 'pending' && 'Ожидает оплаты'}
+              {subData?.status === 'cancelled' && 'Отменена'}
+              {subData?.status === 'expired' && 'Истекла'}
             </span>
           </div>
 

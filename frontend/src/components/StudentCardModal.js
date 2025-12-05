@@ -75,7 +75,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
         <div className="modal-header">
           <div className="header-info">
             {loading ? (
-              <h2 className="modal-title">⏳ Загрузка...</h2>
+              <h2 className="modal-title">Загрузка...</h2>
             ) : card ? (
               <div className="student-header">
                 <div className="student-avatar-large">👤</div>
@@ -110,7 +110,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
               {/* Статистика */}
               <div className="stats-grid">
                 <div className="stat-card">
-                  <span className="stat-icon">✅</span>
+                  <span className="stat-icon">+</span>
                   <span className="stat-label">Посещаемость</span>
                   <span className="stat-value">{card.stats?.attendance_percent || 0}%</span>
                   <span className="stat-detail">

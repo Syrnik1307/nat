@@ -259,20 +259,20 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
                 className="select-all-button"
                 onClick={toggleAllStudents}
               >
-                {selectedStudents.length === (mode === 'custom' ? filteredUsers : groupStudents).length ? '❌' : '✅'}
+                {selectedStudents.length === (mode === 'custom' ? filteredUsers : groupStudents).length ? '○' : '●'}
                 {selectedStudents.length === (mode === 'custom' ? filteredUsers : groupStudents).length ? 'Снять все' : 'Выбрать все'}
               </button>
             </div>
 
             {loading ? (
               <div className="loading-indicator">
-                <span className="loader-icon">🔄</span>
+                <span className="loader-icon">●</span>
                 {mode === 'custom' ? 'Загрузка пользователей...' : 'Загрузка студентов...'}
               </div>
             ) : mode === 'custom' ? (
               filteredUsers.length === 0 ? (
                 <div className="no-students">
-                  <span className="empty-icon">🔍</span>
+                  <span className="empty-icon">○</span>
                   <p>{searchQuery ? 'Пользователи не найдены' : 'Введите запрос для поиска'}</p>
                 </div>
               ) : (
@@ -284,7 +284,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
                       onClick={() => toggleStudent(user.id)}
                     >
                       <div className="student-checkbox">
-                        {selectedStudents.includes(user.id) ? '✅' : '⬜'}
+                        {selectedStudents.includes(user.id) ? '☑' : '☐'}
                       </div>
                       
                       <div className="student-avatar">
@@ -299,7 +299,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
                           {user.email}
                         </div>
                         <div className="student-role">
-                          {user.role === 'teacher' ? '👨‍🏫 Преподаватель' : '👨‍🎓 Студент'}
+                          {user.role === 'teacher' ? 'Преподаватель' : 'Студент'}
                         </div>
                       </div>
                     </div>
@@ -308,7 +308,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
               )
             ) : groupStudents.length === 0 ? (
               <div className="no-students">
-                <span className="empty-icon">👥</span>
+                <span className="empty-icon">○</span>
                 <p>В группе пока нет студентов</p>
               </div>
             ) : (
@@ -320,7 +320,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
                     onClick={() => toggleStudent(student.id)}
                   >
                     <div className="student-checkbox">
-                      {selectedStudents.includes(student.id) ? '✅' : '⬜'}
+                      {selectedStudents.includes(student.id) ? '☑' : '☐'}
                     </div>
                     
                     <div className="student-avatar">

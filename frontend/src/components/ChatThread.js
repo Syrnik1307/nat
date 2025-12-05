@@ -299,7 +299,7 @@ const ChatThread = ({ chat, currentUserId, onBack }) => {
           disabled={!newMessage.trim() || sending}
           loading={sending}
         >
-          {sending ? '⏳' : '📤'} Отправить
+          {sending ? 'Отправка...' : 'Отправить'}
         </Button>
       </form>
     </div>

@@ -86,7 +86,7 @@ const LessonAttendance = ({ lessonId, onClose }) => {
     <ModalFrame title="Посещаемость" onClose={()=>onClose(false)}>
       {zoomInfo && (
         <div style={{ marginBottom:'0.75rem', padding:'0.5rem 0.75rem', background:'#f1f5f9', borderRadius:8, fontSize:'0.8rem' }}>
-          <strong>Zoom статус:</strong> {zoomInfo.started ? 'создана ✅' : 'не создана'}
+          <strong>Zoom статус:</strong> {zoomInfo.started ? 'создана' : 'не создана'}
           {zoomInfo.started && (
             <>
               <div style={{ marginTop:'0.35rem' }}>

@@ -35,9 +35,9 @@ const AttendanceStatusPicker = ({ currentStatus, onStatusSelect, onClose, isLoad
   }, [onClose]);
 
   const statusOptions = [
-    { value: 'attended', label: 'Был', icon: '✅', color: '#10b981' },
-    { value: 'absent', label: 'Не был', icon: '❌', color: '#ef4444' },
-    { value: 'watched_recording', label: 'Посмотрел запись', icon: '👁️', color: '#3b82f6' },
+    { value: 'attended', label: 'Был', icon: '+', color: '#10b981' },
+    { value: 'absent', label: 'Не был', icon: '-', color: '#ef4444' },
+    { value: 'watched_recording', label: 'Посмотрел запись', icon: '◉', color: '#3b82f6' },
     { value: null, label: 'Очистить', icon: '—', color: '#9ca3af' },
   ];
 

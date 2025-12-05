@@ -129,7 +129,7 @@ const ZoomPoolStats = () => {
                 <span className="badge peak-now">🔴 Сейчас на пике!</span>
               )}
               {stats.currently_in_use < stats.peak_in_use && (
-                <span className="badge normal">✅ Нормальная загрузка</span>
+                <span className="badge normal">Нормальная загрузка</span>
               )}
             </div>
           </div>
