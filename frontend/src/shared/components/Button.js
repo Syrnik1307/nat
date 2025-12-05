@@ -38,14 +38,14 @@ const Button = ({
 
   const variants = {
     primary: {
-      background: 'linear-gradient(135deg, #1e3a8a 0%, #0c1e3a 100%)',
+      background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)',
       color: 'white',
-      boxShadow: '0 4px 14px 0 rgba(30, 58, 138, 0.39)',
+      boxShadow: '0 8px 20px -10px rgba(37, 99, 235, 0.55)',
     },
     secondary: {
-      backgroundColor: '#f3f4f6',
-      color: '#374151',
-      border: '1px solid #e5e7eb',
+      backgroundColor: '#f8fafc',
+      color: '#0f172a',
+      border: '1px solid #e2e8f0',
     },
     danger: {
       backgroundColor: '#ef4444',
@@ -53,18 +53,18 @@ const Button = ({
       boxShadow: '0 4px 14px 0 rgba(239, 68, 68, 0.39)',
     },
     success: {
-      backgroundColor: 'var(--success-500)',
+      backgroundColor: '#10b981',
       color: 'white',
       boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)',
     },
     outline: {
       backgroundColor: 'transparent',
-      color: '#1e3a8a',
-      border: '2px solid #1e3a8a',
+      color: '#2563eb',
+      border: '2px solid #2563eb',
     },
     text: {
       backgroundColor: 'transparent',
-      color: '#1e3a8a',
+      color: '#2563eb',
       boxShadow: 'none',
       textDecoration: 'underline',
     },
@@ -86,12 +86,12 @@ const Button = ({
   };
 
   const hoverStyles = {
-    primary: '#0c1e3a',
-    secondary: '#e5e7eb',
+    primary: '#1e40af',
+    secondary: '#e2e8f0',
     danger: '#dc2626',
     success: '#059669',
-    outline: '#f0f9ff',
-    text: 'rgba(30, 58, 138, 0.1)',
+    outline: 'rgba(37, 99, 235, 0.08)',
+    text: 'rgba(37, 99, 235, 0.12)',
   };
 
   const safeVariant = variants[variant] ? variant : 'primary';

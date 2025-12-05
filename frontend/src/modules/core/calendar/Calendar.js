@@ -6,6 +6,19 @@ import interactionPlugin from '@fullcalendar/interaction';
 import apiService from '../../../apiService';
 import { Button, Modal, Input, Badge, ConfirmModal } from '../../../shared/components';
 
+const PALETTE = {
+  primary: '#2563eb',
+  primaryDark: '#1e40af',
+  primaryLight: '#3b82f6',
+  secondary: '#dbeafe',
+  surface: '#f8fafc',
+  text: '#0f172a',
+  muted: '#475569',
+  success: '#10b981',
+  danger: '#ef4444',
+  warning: '#f59e0b',
+};
+
 /**
  * Календарь занятий с тремя видами: месяц, неделя, день
  * Поддержка drag-and-drop для переноса занятий
@@ -54,15 +67,15 @@ const Calendar = () => {
       const resolveColor = (status) => {
         switch (status) {
           case 'scheduled':
-            return '#1d4ed8';
+            return PALETTE.primary;
           case 'in_progress':
-            return '#2563eb';
+            return PALETTE.primaryDark;
           case 'completed':
-            return '#1e40af';
+            return PALETTE.success;
           case 'cancelled':
-            return '#ef4444';
+            return PALETTE.danger;
           default:
-            return '#2563eb';
+            return PALETTE.primary;
         }
       };
       
@@ -345,7 +358,15 @@ const Calendar = () => {
               <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>
                 {selectedEvent.title}
               </h3>
-              <Badge variant={selectedEvent.status === 'scheduled' ? 'success' : 'neutral'}>
+              <Badge
+                variant={
+                  selectedEvent.status === 'cancelled'
+                    ? 'danger'
+                    : selectedEvent.status === 'completed'
+                    ? 'success'
+                    : 'info'
+                }
+              >
                 {selectedEvent.status}
               </Badge>
             </div>
@@ -504,7 +525,7 @@ const Calendar = () => {
             margin: 0;
             font-size: 2rem;
             font-weight: 700;
-            color: #1e293b;
+            color: ${PALETTE.text};
           }
 
           .calendar-title p {
@@ -521,7 +542,7 @@ const Calendar = () => {
 
           .view-toggle {
             display: inline-flex;
-            background: #e0e7ff;
+            background: ${PALETTE.secondary};
             padding: 0.25rem;
             border-radius: 999px;
             gap: 0.25rem;
@@ -530,7 +551,7 @@ const Calendar = () => {
           .view-toggle button {
             border: none;
             background: transparent;
-            color: #1e3a8a;
+            color: ${PALETTE.text};
             font-weight: 600;
             font-size: 0.9rem;
             padding: 0.45rem 1.1rem;
@@ -540,9 +561,9 @@ const Calendar = () => {
           }
 
           .view-toggle button.active {
-            background: #2563eb;
+            background: linear-gradient(135deg, ${PALETTE.primary}, ${PALETTE.primaryDark});
             color: white;
-            box-shadow: 0 8px 16px -12px rgba(37, 99, 235, 0.7);
+            box-shadow: 0 8px 16px -12px rgba(37, 99, 235, 0.65);
           }
 
           .calendar-layout {
@@ -591,19 +612,19 @@ const Calendar = () => {
             justify-content: space-between;
             border-radius: 12px;
             padding: 0.55rem 0.85rem;
-            color: #475569;
+            color: ${PALETTE.muted};
             font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.2s ease;
           }
 
           .group-item:hover {
-            background: #eff6ff;
-            color: #2563eb;
+            background: rgba(37, 99, 235, 0.08);
+            color: ${PALETTE.primary};
           }
 
           .group-item.active {
-            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            background: linear-gradient(135deg, ${PALETTE.primary}, ${PALETTE.primaryDark});
             color: white;
             box-shadow: 0 12px 24px -12px rgba(37, 99, 235, 0.7);
           }
@@ -623,7 +644,7 @@ const Calendar = () => {
             background: #e2e8f0;
             font-weight: 600;
             font-size: 0.8rem;
-            color: #1e293b;
+            color: ${PALETTE.text};
           }
 
           .calendar-container {
@@ -643,7 +664,7 @@ const Calendar = () => {
           /* FULLCALENDAR THEME */
           .fc {
             --fc-border-color: #e2e8f0;
-            --fc-page-bg-color: #f8fafc;
+            --fc-page-bg-color: ${PALETTE.surface};
             --fc-today-bg-color: rgba(37, 99, 235, 0.08);
             font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           }
@@ -653,14 +674,14 @@ const Calendar = () => {
           }
 
           .fc .fc-button-primary {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            background: linear-gradient(135deg, ${PALETTE.primary}, ${PALETTE.primaryDark});
             border: none;
             border-radius: 10px;
             box-shadow: 0 12px 24px -14px rgba(37, 99, 235, 0.65);
           }
 
           .fc .fc-button-primary:hover {
-            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+            background: linear-gradient(135deg, ${PALETTE.primaryDark}, ${PALETTE.primary});
           }
 
           .fc .fc-button-primary:disabled {
@@ -674,8 +695,8 @@ const Calendar = () => {
           }
 
           .fc .fc-col-header-cell {
-            background: #f1f5f9;
-            color: #1d4ed8;
+            background: #eef2ff;
+            color: ${PALETTE.primaryDark};
             font-weight: 600;
             padding: 0.75rem 0;
           }
@@ -707,7 +728,7 @@ const Calendar = () => {
             border: none !important;
             border-radius: 14px !important;
             padding: 0.35rem 0.5rem !important;
-            box-shadow: 0 12px 24px -16px rgba(37, 99, 235, 0.75);
+            box-shadow: 0 12px 24px -16px rgba(37, 99, 235, 0.45);
           }
 
           .fc-event:hover {
