@@ -178,7 +178,7 @@ const AdminDashboard = () => {
                 <Card key={account.id} className="zoom-account-card">
                   <div className="account-header">
                     <div className="account-email">
-                      <span className="email-icon">📧</span>
+                      <span className="email-icon">✉</span>
                       {account.email}
                     </div>
                     <div className={`status-badge ${account.is_active ? 'active' : 'inactive'}`}>

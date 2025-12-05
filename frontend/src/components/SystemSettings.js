@@ -62,11 +62,11 @@ const SystemSettings = ({ onClose }) => {
   }
 
   const tabs = [
-    { id: 'email', label: 'Email', icon: '📧' },
-    { id: 'notifications', label: 'Уведомления', icon: '🔔' },
-    { id: 'zoom', label: 'Zoom', icon: '🎥' },
-    { id: 'schedule', label: 'Расписание', icon: '📅' },
-    { id: 'branding', label: 'Брендинг', icon: '🎨' },
+    { id: 'email', label: 'Email', icon: '✉' },
+    { id: 'notifications', label: 'Уведомления', icon: '⊙' },
+    { id: 'zoom', label: 'Zoom', icon: '◉' },
+    { id: 'schedule', label: 'Расписание', icon: '□' },
+    { id: 'branding', label: 'Брендинг', icon: '■' },
   ];
 
   return (

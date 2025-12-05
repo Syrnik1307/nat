@@ -16,7 +16,7 @@ import './AttendanceLogTab.css';
 const STATUS_META = {
   attended: { label: 'Был на занятии', short: '✓', className: 'status-attended' },
   absent: { label: 'Не был', short: '✗', className: 'status-absent' },
-  watched_recording: { label: 'Посмотрел запись', short: '👁', className: 'status-watched' },
+  watched_recording: { label: 'Посмотрел запись', short: '○', className: 'status-watched' },
   default: { label: 'Нет статуса', short: '–', className: 'status-empty' },
 };
 

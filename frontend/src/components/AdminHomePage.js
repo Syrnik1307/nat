@@ -282,7 +282,7 @@ const AdminHomePage = () => {
             color="#8b5cf6"
           />
           <QuickAction
-            icon="🎥"
+            icon="○"
             label="Zoom аккаунты"
             onClick={() => setShowZoomManager(true)}
             color="#10b981"

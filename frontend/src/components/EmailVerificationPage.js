@@ -310,7 +310,7 @@ const EmailVerificationPage = () => {
           <div key={index} style={{ ...blobBaseStyle, ...style }} />
         ))}
         <div style={cardStyle}>
-          <div style={iconStyle}>📧</div>
+          <div style={iconStyle}>✉</div>
           <h1 style={titleStyle}>Подтверждение Email</h1>
           <p style={subtitleStyle}>
             Мы отправили 6-значный код на<br />

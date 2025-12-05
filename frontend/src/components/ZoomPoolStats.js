@@ -137,7 +137,7 @@ const ZoomPoolStats = () => {
 
         {/* Карточка: Сессии */}
         <div className="stat-card sessions-card">
-          <div className="stat-icon">🎥</div>
+          <div className="stat-icon">●</div>
           <div className="stat-content">
             <h3>Активные сессии</h3>
             <div className="stat-main-value">{stats.current_sessions}</div>

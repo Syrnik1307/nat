@@ -120,7 +120,7 @@ const StudentDashboard = () => {
                   </div>
                   {l.zoom_join_url && (
                     <a href={l.zoom_join_url} target="_blank" rel="noopener noreferrer" style={{ background:'#2563eb', color:'#fff', padding:'0.5rem 1rem', borderRadius:6, textDecoration:'none', fontSize:'0.85rem' }}>
-                      🎥 Подключиться
+                      ○ Подключиться
                     </a>
                   )}
                 </div>
