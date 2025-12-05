@@ -326,12 +326,12 @@ const GroupsManage = () => {
     <div className="groups-manage-page">
       <div className="groups-manage-header">
         <div>
-          <h1 className="groups-manage-title">👥 Группы и ученики</h1>
+          <h1 className="groups-manage-title">Группы и ученики</h1>
           <p className="groups-manage-subtitle">Управление группами и создание учеников</p>
         </div>
         <div style={{fontSize:'0.9rem', color:'#64748b', display:'flex', gap:'1rem', alignItems:'center'}}>
-          <span>📊 Всего групп: {groups.length}</span>
-          <span>👨‍🎓 Всего учеников: {groups.reduce((sum, g) => sum + (g.students?.length || 0), 0)}</span>
+          <span>Всего групп: {groups.length}</span>
+          <span>Всего учеников: {groups.reduce((sum, g) => sum + (g.students?.length || 0), 0)}</span>
         </div>
       </div>
 
@@ -343,14 +343,14 @@ const GroupsManage = () => {
               className={`gm-tab-button ${activePanel === 'group' ? 'active' : ''}`}
               onClick={() => handleTabSelect('group')}
             >
-              👥 Группа
+              Группа
             </button>
             <button
               type="button"
               className={`gm-tab-button ${activePanel === 'student' ? 'active' : ''}`}
               onClick={() => handleTabSelect('student')}
             >
-              🎓 Ученик
+              Ученик
             </button>
           </div>
 
@@ -359,7 +359,7 @@ const GroupsManage = () => {
               <div className="gm-card-heading">
                 <div>
                   <h3 className="gm-card-title">
-                    {editingId ? '✏️ Редактировать группу' : '➕ Новая группа'}
+                    {editingId ? 'Редактировать группу' : 'Новая группа'}
                   </h3>
                   <p className="gm-card-subtitle">
                     {editingId
@@ -549,7 +549,7 @@ const GroupsManage = () => {
                         className="gm-btn-surface"
                         onClick={() => startEdit(group)}
                       >
-                        ✏️ Изменить
+                        Изменить
                       </button>
                       <button
                         type="button"
@@ -563,14 +563,14 @@ const GroupsManage = () => {
                         className="gm-btn-surface"
                         onClick={() => openStudentOps(group)}
                       >
-                        👥 Ученики
+                        Ученики
                       </button>
                       <button
                         type="button"
                         className="gm-btn-danger"
                         onClick={() => handleDelete(group.id)}
                       >
-                        🗑️ Удалить
+                        Удалить
                       </button>
                     </div>
                   </article>
@@ -599,7 +599,7 @@ const GroupsManage = () => {
         <div className="gm-modal-backdrop" onClick={closeStudentOps}>
           <div className="gm-modal" onClick={(event) => event.stopPropagation()}>
             <div className="gm-modal-header">
-              <h3 className="gm-modal-title">👥 Ученики группы: {studentOpsGroup.name}</h3>
+              <h3 className="gm-modal-title">Ученики группы: {studentOpsGroup.name}</h3>
               <button type="button" className="gm-modal-close" onClick={closeStudentOps}>
                 ✕
               </button>
