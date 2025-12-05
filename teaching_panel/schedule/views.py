@@ -374,13 +374,10 @@ class LessonViewSet(viewsets.ModelViewSet):
             from django.utils.dateparse import parse_date
             parsed_date = parse_date(date_param)
             if parsed_date:
-                from django.db.models import Q
-                from datetime import datetime, timezone
+                from datetime import datetime, time
                 # Ищем уроки, которые начинаются в этот день
-                start_of_day = datetime.combine(parsed_date, datetime.min.time())
-                start_of_day = timezone.make_aware(start_of_day)
-                end_of_day = datetime.combine(parsed_date, datetime.max.time())
-                end_of_day = timezone.make_aware(end_of_day)
+                start_of_day = timezone.make_aware(datetime.combine(parsed_date, time.min))
+                end_of_day = timezone.make_aware(datetime.combine(parsed_date, time.max))
                 queryset = queryset.filter(start_time__gte=start_of_day, start_time__lte=end_of_day)
         
         # Фильтр по датам (для календаря)
