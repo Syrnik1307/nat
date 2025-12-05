@@ -20,6 +20,7 @@
 .gm-btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  background: #9ca3af;
 }
 
 .gm-btn-surface {
