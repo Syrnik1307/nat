@@ -69,7 +69,6 @@
 .group-row:hover, .student-row:hover { background: var(--blue-50); }
 
 .group-meta, .student-meta { display:flex; align-items:center; gap:.9rem; }
-.group-avatar, .student-avatar { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; background: var(--secondary-blue); box-shadow: inset 0 0 0 1px rgba(37,99,235,.12); }
 .group-info, .student-info { display:flex; flex-direction:column; }
 .group-name, .student-name { font-weight:600; color: var(--text-primary); }
 .group-sub, .student-sub { font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; color: var(--text-secondary); }
@@ -923,18 +922,6 @@
   border: 1px solid rgba(37, 99, 235, 0.2);
 }
 
-.badge-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.75rem;
-  background: white;
-  box-shadow: var(--shadow-sm);
-}
-
 .badge-info {
   display: flex;
   flex-direction: column;
@@ -1167,12 +1154,6 @@
 .empty-state {
   text-align: center;
   padding: 3rem 2rem;
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
 }
 
 .empty-state h3 {
@@ -1552,12 +1533,6 @@
     gap: 0.75rem;
   }
   
-  .badge-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 1.5rem;
-  }
-  
   .badge-title {
     font-size: 0.9rem;
   }
@@ -1590,12 +1565,6 @@
     padding: 0.85rem 1rem;
   }
   
-  .group-avatar, .student-avatar {
-    width: 40px;
-    height: 40px;
-    font-size: 1.25rem;
-  }
-  
   .metric-block {
     padding-left: 52px;
   }
@@ -1613,10 +1582,6 @@
   /* Empty state */
   .empty-state {
     padding: 2rem 1rem;
-  }
-  
-  .empty-icon {
-    font-size: 3rem;
   }
   
   .empty-state h3 {

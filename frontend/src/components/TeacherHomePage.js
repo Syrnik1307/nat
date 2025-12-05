@@ -242,35 +242,30 @@ const TeacherHomePage = () => {
       {
         key: 'soil',
         name: 'Плодородная земля',
-        badge: '🌍',
         minMinutes: 0,
         description: 'Питательная база для будущего леса знаний.',
       },
       {
         key: 'sprout',
         name: 'Росток знаний',
-        badge: '🌱',
         minMinutes: 600,
         description: 'Первые 10 часов занятий превращаются в живой росток.',
       },
       {
         key: 'sapling',
         name: 'Молодой дуб',
-        badge: '🌿',
         minMinutes: 6000,
         description: '100 часов совместной работы формируют крепкий ствол.',
       },
       {
         key: 'tree',
         name: 'Большое дерево',
-        badge: '🌳',
         minMinutes: 12000,
         description: 'После 200 часов ваш дуб даёт тень целому поколению.',
       },
       {
         key: 'ancient',
         name: 'Вековой дуб',
-        badge: '🪵',
         minMinutes: 24000,
         description: 'Легендарное дерево знаний, которым вдохновляются другие.',
       },
@@ -351,11 +346,11 @@ const TeacherHomePage = () => {
           maxWidth: '400px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '24px' }}>✅</span>
+            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.3)', flexShrink: 0 }}></div>
             <div>
               <div style={{ fontWeight: 600, marginBottom: '4px' }}>Платёж успешен!</div>
               <div style={{ fontSize: '14px', opacity: 0.9 }}>
-                Ваша подписка активирована. Спасибо за оплату!
+                Ваша подписка активирована
               </div>
             </div>
           </div>
@@ -434,7 +429,7 @@ const TeacherHomePage = () => {
 
       {error && (
         <div className="error-banner">
-          <span>⚠️ {error}</span>
+          <span>{error}</span>
           <button onClick={loadData}>Повторить</button>
         </div>
       )}
@@ -445,7 +440,6 @@ const TeacherHomePage = () => {
           <section className="schedule-section">
             <div className="section-header">
               <h2 className="section-title">
-                <span className="icon">📅</span>
                 Расписание на сегодня
               </h2>
               <Link to="/calendar" className="link-all">
@@ -455,7 +449,6 @@ const TeacherHomePage = () => {
 
             {todayLessons.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-icon">📭</div>
                 <h3>Сегодня нет занятий</h3>
                 <p>Вы можете запланировать новые уроки в календаре</p>
                 <button
@@ -468,7 +461,7 @@ const TeacherHomePage = () => {
                 </button>
                 {quickLessonError && (
                   <div className="error-inline" role="status">
-                    ⚠️ {quickLessonError}
+                    {quickLessonError}
                   </div>
                 )}
               </div>
@@ -513,7 +506,6 @@ const TeacherHomePage = () => {
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <div className="group-meta">
-                    <div className="group-avatar" aria-hidden="true">👥</div>
                     <div className="group-info">
                       <div className="group-name">{g.name}</div>
                       <div className="group-sub">Учеников: {g.students_count}</div>
@@ -565,7 +557,6 @@ const TeacherHomePage = () => {
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <div className="student-meta">
-                    <div className="student-avatar" aria-hidden="true">🎓</div>
                     <div className="student-info">
                       <div className="student-name">{st.name}</div>
                       <div className="student-sub">{st.group_name || 'Индивидуальный'}</div>
@@ -592,7 +583,6 @@ const TeacherHomePage = () => {
           <section className="impact-dashboard">
             <div className="impact-header">
               <h2 className="section-title">
-                <span className="icon">🌳</span>
                 Прогресс преподавателя
               </h2>
             </div>
@@ -600,7 +590,6 @@ const TeacherHomePage = () => {
             <TreeGrowth stage={derivedStats.levelKey} progress={derivedStats.levelProgress} />
 
             <div className="badge-card">
-              <div className="badge-icon">{derivedStats.currentLevel.badge}</div>
               <div className="badge-info">
                 <span className="badge-title">{derivedStats.currentLevel.name}</span>
                 <span className="badge-subtitle">{derivedStats.currentLevel.description}</span>
