@@ -315,7 +315,7 @@ const Calendar = () => {
               slotDuration="00:30:00"
               slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
               slotMinTime="08:00:00"
-              slotMaxTime="22:00:00"
+              slotMaxTime="24:00:00"
               nowIndicator
               dayMaxEvents={4}
               eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}

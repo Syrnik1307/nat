@@ -248,6 +248,8 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     def _include_recurring(self, request):
         flag = request.query_params.get('include_recurring')
+        if flag is None:
+            return False
         # Поддерживаем различные формы boolean из query params
         return str(flag).lower() in ('1', 'true', 'yes', 'on', '1.0')
 
