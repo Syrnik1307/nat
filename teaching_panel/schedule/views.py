@@ -376,6 +376,9 @@ class LessonViewSet(viewsets.ModelViewSet):
             if parsed_date:
                 # Используем __date для фильтрации по дате независимо от часового пояса
                 queryset = queryset.filter(start_time__date=parsed_date)
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f'DEBUG: date_param={date_param}, parsed_date={parsed_date}, queryset count={queryset.count()}')
         
         # Фильтр по датам (для календаря)
         start_date = self.request.query_params.get('start')
