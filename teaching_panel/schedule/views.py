@@ -368,6 +368,21 @@ class LessonViewSet(viewsets.ModelViewSet):
         if teacher_id:
             queryset = queryset.filter(teacher_id=teacher_id)
         
+        # Фильтр по конкретной дате (для сегодняшнего расписания)
+        date_param = self.request.query_params.get('date')
+        if date_param:
+            from django.utils.dateparse import parse_date
+            parsed_date = parse_date(date_param)
+            if parsed_date:
+                from django.db.models import Q
+                from datetime import datetime, timezone
+                # Ищем уроки, которые начинаются в этот день
+                start_of_day = datetime.combine(parsed_date, datetime.min.time())
+                start_of_day = timezone.make_aware(start_of_day)
+                end_of_day = datetime.combine(parsed_date, datetime.max.time())
+                end_of_day = timezone.make_aware(end_of_day)
+                queryset = queryset.filter(start_time__gte=start_of_day, start_time__lte=end_of_day)
+        
         # Фильтр по датам (для календаря)
         start_date = self.request.query_params.get('start')
         end_date = self.request.query_params.get('end')
