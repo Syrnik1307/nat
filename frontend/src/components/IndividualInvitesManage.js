@@ -1,210 +1,276 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   getIndividualInviteCodes,
   createIndividualInviteCode,
   deleteIndividualInviteCode,
+  getAccessToken,
 } from '../apiService';
 import { ConfirmModal } from '../shared/components';
 import IndividualInviteModal from './IndividualInviteModal';
 import '../styles/IndividualInvitesManage.css';
 
+const STORAGE_KEY_PREFIX = 'tp_invite_descriptions_';
+
+const getCurrentUserId = () => {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    const part = token.split('.')[1];
+    if (!part) return null;
+    const base64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+    const payload = JSON.parse(atob(padded));
+    return payload.user_id || null;
+  } catch (_) {
+    return null;
+  }
+};
+
+const getStorageKey = () => {
+  const userId = getCurrentUserId();
+  return userId ? `${STORAGE_KEY_PREFIX}${userId}` : null;
+};
+
+const loadDescriptionMap = () => {
+  try {
+    const key = getStorageKey();
+    if (!key) return {};
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : {};
+  } catch (_) {
+    return {};
+  }
+};
+
+const persistDescriptionMap = (next) => {
+  const key = getStorageKey();
+  if (!key) return;
+  try {
+    localStorage.setItem(key, JSON.stringify(next));
+  } catch (_) {
+    /* ignore */
+  }
+};
+
+const normalizeCodes = (value) => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.results)) return value.results;
+  return [];
+};
+
 const IndividualInvitesManage = () => {
   const [codes, setCodes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [subject, setSubject] = useState('');
+  const [description, setDescription] = useState('');
   const [creating, setCreating] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [selectedCode, setSelectedCode] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [descriptionMap, setDescriptionMap] = useState({});
+
+  useEffect(() => {
+    setDescriptionMap(loadDescriptionMap());
+  }, []);
 
   useEffect(() => {
     fetchCodes();
   }, []);
-
-  const normalizeCodes = (value) => {
-    if (Array.isArray(value)) return value;
-    if (Array.isArray(value?.results)) return value.results;
-    return [];
-  };
 
   const fetchCodes = async () => {
     setLoading(true);
     try {
       const { data } = await getIndividualInviteCodes();
       setCodes(normalizeCodes(data));
+      setLoadError('');
     } catch (err) {
       console.error('Failed to fetch codes:', err);
-      setError('Ошибка при загрузке кодов');
+      setLoadError('Ошибка при загрузке кодов');
       setCodes([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    if (!subject.trim()) {
-      setError('Введите название предмета');
+  const safeCodes = useMemo(
+    () =>
+      normalizeCodes(codes).map((code) => ({
+        ...code,
+        description: descriptionMap[code.invite_code] || '',
+      })),
+    [codes, descriptionMap]
+  );
+
+  const handleCreate = async (event) => {
+    event.preventDefault();
+    const trimmedSubject = subject.trim();
+    if (!trimmedSubject) {
+      setFormError('Введите название предмета');
       return;
     }
 
     setCreating(true);
     try {
-      const { data } = await createIndividualInviteCode({ subject: subject.trim() });
-      setCodes((prev) => [data, ...normalizeCodes(prev)]);
+      const { data } = await createIndividualInviteCode({ subject: trimmedSubject });
+      const descriptionValue = description.trim();
+      const nextCodes = [data, ...normalizeCodes(codes)];
+      setCodes(nextCodes);
+
+      if (descriptionValue) {
+        const nextMap = { ...descriptionMap, [data.invite_code]: descriptionValue };
+        setDescriptionMap(nextMap);
+        persistDescriptionMap(nextMap);
+      }
+
       setSubject('');
-      setError('');
+      setDescription('');
+      setFormError('');
     } catch (err) {
       console.error('Failed to create code:', err);
-      setError('Ошибка при создании кода');
+      setFormError('Ошибка при создании кода');
     } finally {
       setCreating(false);
     }
   };
 
-  const handleDelete = async (codeId) => {
+  const handleDelete = async (codeId, inviteCode) => {
     try {
       await deleteIndividualInviteCode(codeId);
       setCodes((prev) => normalizeCodes(prev).filter((c) => c.id !== codeId));
+
+      if (inviteCode && descriptionMap[inviteCode]) {
+        const { [inviteCode]: _, ...rest } = descriptionMap;
+        setDescriptionMap(rest);
+        persistDescriptionMap(rest);
+      }
+
       setShowDeleteConfirm(null);
     } catch (err) {
       console.error('Failed to delete code:', err);
-      setError('Ошибка при удалении кода');
+      setFormError('Ошибка при удалении кода');
     }
   };
 
-  const safeCodes = normalizeCodes(codes);
-
-  const getActiveCount = () => safeCodes.filter(c => !c.is_used).length;
-  const getUsedCount = () => safeCodes.filter(c => c.is_used).length;
-
   return (
     <div className="individual-invites-manage">
-      <div className="iim-header">
-        <h2>📧 Индивидуальные приглашения</h2>
-        <p className="subtitle">Создавайте коды для приглашения учеников на отдельные предметы</p>
+      <div className="gm-card iim-form-card">
+        <div className="gm-card-heading">
+          <div>
+            <h3 className="gm-card-title">Индивидуальный ученик</h3>
+            <p className="gm-card-subtitle">
+              Название предмета и описание как у групп, код генерится автоматически.
+            </p>
+          </div>
+        </div>
+
+        <form className="gm-form" onSubmit={handleCreate}>
+          <div className="form-group">
+            <label className="form-label">Название предмета</label>
+            <input
+              className="form-input"
+              type="text"
+              placeholder="Например: Математика 9 класс"
+              value={subject}
+              onChange={(e) => {
+                setSubject(e.target.value);
+                setFormError('');
+              }}
+              disabled={creating}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Описание</label>
+            <textarea
+              className="form-textarea"
+              rows={3}
+              placeholder="Дополнительная информация"
+              value={description}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                setFormError('');
+              }}
+              disabled={creating}
+            />
+          </div>
+          {formError && <p className="iim-error-text">{formError}</p>}
+          <div className="gm-actions">
+            <button
+              type="submit"
+              className="gm-btn-primary"
+              disabled={creating}
+            >
+              {creating ? 'Создание...' : 'Создать приглашение'}
+            </button>
+          </div>
+        </form>
       </div>
 
-      <div className="iim-stats">
-        <div className="stat-card active">
-          <div className="stat-number">{getActiveCount()}</div>
-          <div className="stat-label">Активные коды</div>
+      <div className="gm-card iim-list-card">
+        <div className="gm-card-heading">
+          <div>
+            <h3 className="gm-card-title">Индивидуальные приглашения</h3>
+            <p className="gm-card-subtitle">Приглашения работают как групповые: код, ссылка, QR.</p>
+          </div>
+          <span className="gm-badge gm-badge-blue">{safeCodes.length}</span>
         </div>
-        <div className="stat-card used">
-          <div className="stat-number">{getUsedCount()}</div>
-          <div className="stat-label">Использовано</div>
-        </div>
-        <div className="stat-card total">
-          <div className="stat-number">{safeCodes.length}</div>
-          <div className="stat-label">Всего кодов</div>
-        </div>
-      </div>
 
-      {/* Форма создания */}
-      <form className="iim-create-form" onSubmit={handleCreate}>
-        <h3>Создать новый код</h3>
-        <div className="form-group">
-          <input
-            type="text"
-            placeholder="Название предмета (е.г. Математика, Физика)"
-            value={subject}
-            onChange={(e) => {
-              setSubject(e.target.value);
-              setError('');
-            }}
-            disabled={creating}
-          />
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={creating || !subject.trim()}
-          >
-            {creating ? 'Создание...' : '+ Создать код'}
-          </button>
-        </div>
-        {error && <p className="error-text">{error}</p>}
-      </form>
+        {loadError && <div className="iim-error-text">{loadError}</div>}
 
-      {/* Список кодов */}
-      <div className="iim-codes-list">
-        <h3>Мои коды</h3>
-        
         {loading ? (
-          <div className="loading-spinner">⏳ Загрузка...</div>
+          <div className="iim-loading">Загрузка...</div>
         ) : safeCodes.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">📭</div>
-            <p>Нет кодов. Создайте первый!</p>
+          <div className="iim-empty">
+            <div className="iim-empty-icon">📭</div>
+            <p>Нет приглашений. Создайте первое!</p>
           </div>
         ) : (
-          <>
-            {/* Активные коды */}
-            <div className="codes-section">
-              <h4>Активные коды ({getActiveCount()})</h4>
-              {safeCodes.filter(c => !c.is_used).length === 0 ? (
-                <p className="text-muted">Нет активных кодов</p>
-              ) : (
-                <div className="codes-grid">
-                  {safeCodes.filter(c => !c.is_used).map(code => (
-                    <div key={code.id} className="code-card active">
-                      <div className="code-header">
-                        <span className="code-subject">{code.subject}</span>
-                        <span className="code-status">○ Активен</span>
-                      </div>
-                      <div className="code-display">{code.invite_code}</div>
-                      <div className="code-actions">
-                        <button
-                          className="btn-secondary"
-                          onClick={() => setSelectedCode(code)}
-                          title="Показать детали"
-                        >
-                          🔗 Пригласить
-                        </button>
-                        <button
-                          className="btn-danger"
-                          onClick={() => setShowDeleteConfirm(code)}
-                          title="Удалить код"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                      <div className="code-date">
-                        Создан: {new Date(code.created_at).toLocaleDateString()}
-                      </div>
+          <div className="iim-list">
+            {safeCodes.map((code) => {
+              const descriptionText = code.description?.trim()
+                ? code.description
+                : 'Нет описания';
+              return (
+                <div key={code.id} className="iim-invite-card">
+                  <div className="iim-invite-header">
+                    <div className="iim-invite-meta">
+                      <div className="iim-invite-subject">{code.subject || 'Без названия'}</div>
+                      <div className="iim-invite-description">{descriptionText}</div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <span className={`iim-status ${code.is_used ? 'used' : 'active'}`}>
+                      {code.is_used ? 'Использован' : 'Активен'}
+                    </span>
+                  </div>
 
-            {/* Использованные коды */}
-            {getUsedCount() > 0 && (
-              <div className="codes-section used-codes">
-                <h4>Использованные коды ({getUsedCount()})</h4>
-                <div className="codes-grid">
-                  {safeCodes.filter(c => c.is_used).map(code => (
-                    <div key={code.id} className="code-card used">
-                      <div className="code-header">
-                        <span className="code-subject">{code.subject}</span>
-                        <span className="code-status">✓ Использован</span>
-                      </div>
-                      <div className="code-display">{code.invite_code}</div>
-                      <div className="code-used-by">
-                        <strong>Ученик:</strong> {code.used_by_name || code.used_by_email}
-                      </div>
-                      <div className="code-date">
-                        Использован: {new Date(code.used_at).toLocaleDateString()}
-                      </div>
-                    </div>
-                  ))}
+                  <div className="iim-code-row">
+                    <span className="iim-code-label">Код:</span>
+                    <span className="iim-code-value">{code.invite_code}</span>
+                  </div>
+
+                  <div className="iim-actions-row">
+                    <button
+                      type="button"
+                      className="gm-btn-primary"
+                      onClick={() => setSelectedCode(code)}
+                    >
+                      📩 Пригласить
+                    </button>
+                    <button
+                      type="button"
+                      className="gm-btn-danger"
+                      onClick={() => setShowDeleteConfirm(code)}
+                      disabled={code.is_used}
+                    >
+                      Удалить
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* Модальные окна */}
       {selectedCode && (
         <IndividualInviteModal
           code={selectedCode}
@@ -214,13 +280,16 @@ const IndividualInvitesManage = () => {
 
       {showDeleteConfirm && (
         <ConfirmModal
-          title="Удалить код?"
-          message={`Удалить код для предмета "${showDeleteConfirm.subject}"? Это действие нельзя отменить.`}
-          onConfirm={() => handleDelete(showDeleteConfirm.id)}
-          onCancel={() => setShowDeleteConfirm(null)}
+          isOpen={Boolean(showDeleteConfirm)}
+          onClose={() => setShowDeleteConfirm(null)}
+          onConfirm={() =>
+            handleDelete(showDeleteConfirm.id, showDeleteConfirm.invite_code)
+          }
+          title="Удалить приглашение?"
+          message={`Удалить код для предмета "${showDeleteConfirm.subject || 'Без названия'}"?`}
+          variant="danger"
           confirmText="Удалить"
           cancelText="Отмена"
-          danger={true}
         />
       )}
     </div>
