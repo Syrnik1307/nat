@@ -130,13 +130,14 @@ const IndividualInviteModal = ({ code, onClose }) => {
 
       {showConfirm && (
         <ConfirmModal
+          isOpen={showConfirm}
+          onClose={() => setShowConfirm(false)}
+          onConfirm={handleRegenerate}
           title="Сгенерировать новый код?"
           message="Текущий код перестанет действовать. Ученик не сможет использовать старый код."
-          onConfirm={handleRegenerate}
-          onCancel={() => setShowConfirm(false)}
           confirmText="Сгенерировать"
           cancelText="Отмена"
-          isLoading={regenerating}
+          variant="warning"
         />
       )}
     </>

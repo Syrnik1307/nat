@@ -121,7 +121,10 @@ apiClient.interceptors.response.use(
                 return apiClient(originalRequest);
             } catch (refreshErr) {
                 processQueue(refreshErr, null);
-                clearTokens();
+                clearTokens(true);
+                if (typeof window !== 'undefined') {
+                    window.location.href = '/auth-new';
+                }
                 return Promise.reject(refreshErr);
             } finally {
                 isRefreshing = false;
