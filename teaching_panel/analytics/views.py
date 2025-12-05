@@ -97,35 +97,57 @@ class TeacherStatsViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
+        """Сводная статистика преподавателя для главной страницы."""
         user = request.user
         if getattr(user, 'role', None) != 'teacher':
             return Response({'detail': 'Только для преподавателей'}, status=403)
         from schedule.models import Lesson, LessonRecording, Group
+        from datetime import timedelta
+        
+        # Все уроки преподавателя
         lessons = Lesson.objects.filter(teacher=user)
-        total_lessons = lessons.count()
+        
+        # Проведенные уроки (в прошлом)
+        completed_lessons = lessons.filter(start_time__lt=timezone.now())
+        total_completed = completed_lessons.count()
+        
+        # Подсчет реальных минут преподавания (сумма длительности проведенных уроков)
         duration_expr = ExpressionWrapper(F('end_time') - F('start_time'), output_field=DurationField())
-        avg_duration = lessons.aggregate(avg=Avg(duration_expr))['avg']
-        # Процент записанных
-        recorded_ids = LessonRecording.objects.filter(lesson__teacher=user).values_list('lesson_id', flat=True).distinct()
-        recorded_count = len(recorded_ids)
-        recording_ratio = round((recorded_count / total_lessons) * 100, 2) if total_lessons else 0.0
-        # Уникальные студенты
-        student_ids = Group.objects.filter(teacher=user).values_list('students__id', flat=True).distinct()
+        total_duration = completed_lessons.aggregate(total=Avg(duration_expr))['total']
+        
+        # Считаем реальные минуты на платформе
+        if total_duration:
+            teaching_minutes = int(total_duration.total_seconds() / 60) * total_completed
+        else:
+            teaching_minutes = 0
+        
+        # Минуты на платформе = время преподавания + работа с ДЗ/материалами (примерная оценка +15%)
+        portal_minutes = int(teaching_minutes * 1.15)
+        
+        # Количество групп
+        groups = Group.objects.filter(teacher=user)
+        total_groups = groups.count()
+        
+        # Уникальные студенты (из всех групп)
+        student_ids = groups.values_list('students__id', flat=True).distinct()
         total_students = len([s for s in student_ids if s])
+        
+        # Предстоящие уроки
         upcoming = lessons.filter(start_time__gte=timezone.now()).order_by('start_time')[:5]
         upcoming_serialized = [
             {
                 'id': l.id,
                 'title': l.title,
                 'start_time': l.start_time,
-                'group': l.group.name
+                'group': l.group.name if l.group else 'Индивидуальный'
             } for l in upcoming
         ]
+        
         return Response({
-            'total_lessons': total_lessons,
-            'average_duration_seconds': int(avg_duration.total_seconds()) if avg_duration else None,
-            'recorded_lessons': recorded_count,
-            'recording_ratio_percent': recording_ratio,
+            'total_lessons': total_completed,
+            'teaching_minutes': teaching_minutes,
+            'portal_minutes': portal_minutes,
+            'total_groups': total_groups,
             'total_students': total_students,
             'upcoming_lessons': upcoming_serialized
         })

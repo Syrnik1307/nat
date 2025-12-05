@@ -230,18 +230,14 @@ const TeacherHomePage = () => {
   };
 
   const derivedStats = useMemo(() => {
-    const totalGroupsStudents = groups.reduce((acc, group) => acc + (group.students_count || 0), 0);
-    const totalStudents = stats?.total_students || totalGroupsStudents;
-    const lessonsCount = stats?.total_lessons || todayLessons.length || 0;
-    const avgDuration = stats?.avg_lesson_duration_minutes || stats?.average_duration || 60;
-    const teachingMinutes = stats?.total_teaching_minutes || stats?.teaching_minutes || lessonsCount * avgDuration;
-    const portalMinutes = stats?.total_portal_minutes || Math.round(teachingMinutes * 1.15 + 90);
-    const homeworkSaved = stats?.auto_check_time_saved || Math.round((stats?.auto_checked_homework || 0) * 8.5);
-    const attendanceRaw = stats?.attendance_rate_percent ?? stats?.attendance_rate ?? stats?.average_attendance ?? null;
-    const normalizedAttendance = Number.isFinite(attendanceRaw)
-      ? Math.max(0, Math.min(100, Math.round(attendanceRaw)))
-      : 92;
-    const newHomework = stats?.new_homework_count ?? stats?.homework_created_this_week ?? stats?.auto_checked_homework ?? 0;
+    // Реальные данные с бэкенда
+    const totalStudents = stats?.total_students || 0;
+    const totalGroups = stats?.total_groups || 0;
+    const lessonsCount = stats?.total_lessons || 0;
+    const teachingMinutes = stats?.teaching_minutes || 0;
+    const portalMinutes = stats?.portal_minutes || 0;
+    
+    // Уровни дерева знаний
     const levels = [
       {
         key: 'soil',
@@ -305,10 +301,10 @@ const TeacherHomePage = () => {
 
     return {
       totalStudents,
+      totalGroups,
       lessonsCount,
       teachingMinutes,
       portalMinutes,
-      homeworkSaved,
       currentLevel,
       nextLevel,
       levelKey: currentLevel.key,
@@ -317,10 +313,8 @@ const TeacherHomePage = () => {
       minutesToNext,
       hoursToNext,
       treeCurrency: Math.max(0, Math.floor(teachingMinutes / 30)),
-      attendanceRate: normalizedAttendance,
-      newHomeworkCount: Math.max(0, newHomework),
     };
-  }, [groups, stats, todayLessons]);
+  }, [stats]);
 
   if (loading) {
     return (
@@ -644,14 +638,14 @@ const TeacherHomePage = () => {
                 <span className="impact-sub">совместной работы</span>
               </div>
               <div className="impact-card">
-                <span className="impact-label">Листья знаний</span>
-                <span className="impact-value">{derivedStats.treeCurrency}</span>
-                <span className="impact-sub">покупка курсов и книг внутри</span>
+                <span className="impact-label">Количество учеников</span>
+                <span className="impact-value">{derivedStats.totalStudents}</span>
+                <span className="impact-sub">индивидуальные + из групп</span>
               </div>
               <div className="impact-card">
-                <span className="impact-label">Экономия времени</span>
-                <span className="impact-value">{derivedStats.homeworkSaved}</span>
-                <span className="impact-sub">минут автопроверкой ДЗ</span>
+                <span className="impact-label">Количество групп</span>
+                <span className="impact-value">{derivedStats.totalGroups}</span>
+                <span className="impact-sub">активных групп</span>
               </div>
             </div>
           </section>
