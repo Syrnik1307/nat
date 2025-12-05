@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Group, Lesson, Attendance, ZoomAccount, RecurringLesson, LessonRecording, TeacherStorageQuota
+from .models import Group, Lesson, Attendance, ZoomAccount, RecurringLesson, LessonRecording, TeacherStorageQuota, IndividualInviteCode
 from accounts.models import CustomUser
 
 
@@ -509,3 +509,29 @@ class TeacherStorageQuotaSerializer(serializers.ModelSerializer):
             'warning_sent', 'quota_exceeded', 'last_warning_at',
             'created_at', 'updated_at'
         ]
+
+
+class IndividualInviteCodeSerializer(serializers.ModelSerializer):
+    """Сериализатор для индивидуального инвайт-кода"""
+    teacher = TeacherSerializer(read_only=True)
+    used_by_email = serializers.CharField(
+        source='used_by.email',
+        read_only=True,
+        allow_null=True
+    )
+    used_by_name = serializers.SerializerMethodField(read_only=True)
+    
+    class Meta:
+        model = IndividualInviteCode
+        fields = [
+            'id', 'teacher', 'subject', 'invite_code',
+            'is_used', 'used_by', 'used_by_email', 'used_by_name',
+            'used_at', 'created_at'
+        ]
+        read_only_fields = ['id', 'invite_code', 'is_used', 'used_by', 'used_at', 'created_at']
+    
+    def get_used_by_name(self, obj):
+        """Получить полное имя ученика"""
+        if obj.used_by:
+            return obj.used_by.get_full_name()
+        return None

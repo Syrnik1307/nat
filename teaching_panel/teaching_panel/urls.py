@@ -64,6 +64,7 @@ router.register(r'groups', schedule_views.GroupViewSet)
 router.register(r'schedule/lessons', schedule_views.LessonViewSet, basename='schedule-lesson')
 router.register(r'attendance', schedule_views.AttendanceViewSet)
 router.register(r'recurring-lessons', schedule_views.RecurringLessonViewSet, basename='recurring-lessons')
+router.register(r'individual-invite-codes', schedule_views.IndividualInviteCodeViewSet, basename='individual-invite-code')
 router.register(r'homework', HomeworkViewSet, basename='homework')
 router.register(r'submissions', StudentSubmissionViewSet, basename='homework-submission')
 

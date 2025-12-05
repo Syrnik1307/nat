@@ -271,6 +271,14 @@ export const regenerateGroupInviteCode = (groupId) => apiClient.post(`groups/${g
 export const getGroupByInviteCode = (inviteCode) => apiClient.get(`groups/preview_by_code/?code=${inviteCode}`);
 export const joinGroupByCode = (inviteCode) => apiClient.post('groups/join_by_code/', { invite_code: inviteCode });
 
+// Individual invite codes
+export const getIndividualInviteCodes = (params = {}) => apiClient.get('individual-invite-codes/', { params });
+export const createIndividualInviteCode = (data) => apiClient.post('individual-invite-codes/', data);
+export const deleteIndividualInviteCode = (id) => apiClient.delete(`individual-invite-codes/${id}/`);
+export const regenerateIndividualInviteCode = (id) => apiClient.post('individual-invite-codes/regenerate/', { id });
+export const getIndividualInviteCodeByCode = (inviteCode) => apiClient.get(`individual-invite-codes/preview_by_code/?code=${inviteCode}`);
+export const joinIndividualByCode = (inviteCode) => apiClient.post('individual-invite-codes/join_by_code/', { invite_code: inviteCode });
+
 // Attendance
 export const getAttendance = (params = {}) => apiClient.get('attendance/', { params });
 export const markLessonAttendance = (lessonId, attendances) => apiClient.post(`schedule/lessons/${lessonId}/mark_attendance/`, { attendances });

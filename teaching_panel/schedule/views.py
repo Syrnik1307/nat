@@ -15,7 +15,7 @@ import json
 from django.core.cache import cache
 import hashlib
 import logging
-from .models import ZoomAccount, Group, Lesson, Attendance, RecurringLesson, LessonRecording, AuditLog
+from .models import ZoomAccount, Group, Lesson, Attendance, RecurringLesson, LessonRecording, AuditLog, IndividualInviteCode
 from zoom_pool.models import ZoomAccount as PoolZoomAccount
 from django.db.models import F
 from .permissions import IsLessonOwnerOrReadOnly, IsGroupOwnerOrReadOnly
@@ -26,7 +26,8 @@ from .serializers import (
     LessonDetailSerializer,
     AttendanceSerializer,
     ZoomAccountSerializer,
-    RecurringLessonSerializer
+    RecurringLessonSerializer,
+    IndividualInviteCodeSerializer
 )
 from .zoom_client import my_zoom_api_client
 from accounts.subscriptions_utils import require_active_subscription
@@ -1804,5 +1805,183 @@ def lesson_recording(request, lesson_id):
         return Response({
             'error': 'Ошибка загрузки записи'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class IndividualInviteCodeViewSet(viewsets.ModelViewSet):
+    """ViewSet для управления индивидуальными инвайт-кодами"""
+    queryset = IndividualInviteCode.objects.all()
+    serializer_class = IndividualInviteCodeSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Фильтруем коды по пользователю"""
+        user = self.request.user
+        if user.role == 'teacher':
+            # Учитель видит только свои коды
+            return IndividualInviteCode.objects.filter(teacher=user).order_by('-created_at')
+        elif user.role == 'student':
+            # Ученик видит коды которыми он воспользовался
+            return IndividualInviteCode.objects.filter(used_by=user).order_by('-used_at')
+        else:
+            # Админ видит все
+            return IndividualInviteCode.objects.all().order_by('-created_at')
+    
+    def create(self, request, *args, **kwargs):
+        """Создать новый инвайт-код (только учителя)"""
+        if request.user.role != 'teacher':
+            return Response(
+                {'error': 'Только учителя могут создавать инвайт-коды'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        subject = request.data.get('subject', '').strip()
+        if not subject:
+            return Response(
+                {'error': 'Название предмета обязательно'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Создаем код
+        invite_code = IndividualInviteCode(
+            teacher=request.user,
+            subject=subject
+        )
+        invite_code.save()
+        
+        serializer = self.get_serializer(invite_code)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    def destroy(self, request, *args, **kwargs):
+        """Удалить инвайт-код (может удалить только учитель-создатель или админ)"""
+        obj = self.get_object()
+        
+        if request.user.role != 'admin' and obj.teacher != request.user:
+            return Response(
+                {'error': 'Вы не можете удалить этот инвайт-код'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if obj.is_used:
+            return Response(
+                {'error': 'Нельзя удалить использованный инвайт-код'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        return super().destroy(request, *args, **kwargs)
+    
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def regenerate(self, request):
+        """Регенерировать инвайт-код (создать новый неиспользованный код)"""
+        if request.user.role != 'teacher':
+            return Response(
+                {'error': 'Только учителя могут регенерировать коды'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        invite_code_id = request.data.get('id')
+        if not invite_code_id:
+            return Response(
+                {'error': 'ID инвайт-кода не указан'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            code_obj = IndividualInviteCode.objects.get(id=invite_code_id, teacher=request.user)
+        except IndividualInviteCode.DoesNotExist:
+            return Response(
+                {'error': 'Инвайт-код не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        if code_obj.is_used:
+            return Response(
+                {'error': 'Нельзя регенерировать использованный код'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Генерируем новый код
+        code_obj.generate_invite_code()
+        
+        serializer = self.get_serializer(code_obj)
+        return Response({
+            'message': 'Код успешно сгенерирован',
+            'code': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def preview_by_code(self, request):
+        """Получить информацию по инвайт-коду (без присоединения)"""
+        invite_code = request.query_params.get('code', '').strip().upper()
+        if not invite_code:
+            return Response(
+                {'error': 'Код приглашения не указан'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            code_obj = IndividualInviteCode.objects.select_related('teacher').get(invite_code=invite_code)
+        except IndividualInviteCode.DoesNotExist:
+            return Response(
+                {'error': 'Инвайт-код не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        if code_obj.is_used:
+            return Response(
+                {'error': 'Этот инвайт-код уже использован'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        serializer = self.get_serializer(code_obj)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def join_by_code(self, request):
+        """Присоединиться к предмету учителя по инвайт-коду"""
+        invite_code = request.data.get('invite_code', '').strip().upper()
+        if not invite_code:
+            return Response(
+                {'error': 'Код приглашения не указан'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user = request.user
+        if user.role != 'student':
+            return Response(
+                {'error': 'Только ученики могут присоединяться по инвайт-коду'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            code_obj = IndividualInviteCode.objects.select_related('teacher').get(invite_code=invite_code)
+        except IndividualInviteCode.DoesNotExist:
+            return Response(
+                {'error': 'Инвайт-код не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        if code_obj.is_used:
+            return Response(
+                {'error': 'Этот инвайт-код уже был использован'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Отмечаем код как использованный
+        code_obj.is_used = True
+        code_obj.used_by = user
+        code_obj.used_at = timezone.now()
+        code_obj.save()
+        
+        serializer = self.get_serializer(code_obj)
+        return Response({
+            'message': f'Вы успешно присоединились к предмету "{code_obj.subject}" преподавателя {code_obj.teacher.get_full_name()}',
+            'code': serializer.data,
+            'teacher': {
+                'id': code_obj.teacher.id,
+                'email': code_obj.teacher.email,
+                'first_name': code_obj.teacher.first_name,
+                'last_name': code_obj.teacher.last_name
+            }
+        }, status=status.HTTP_200_OK)
 
 

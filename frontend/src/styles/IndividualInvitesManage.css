@@ -1,0 +1,365 @@
+/* Individual Invites Management Page */
+
+.individual-invites-manage {
+  padding: 24px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #f9fafc 100%);
+  min-height: 100vh;
+}
+
+.iim-header {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.1);
+}
+
+.iim-header h2 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.iim-header .subtitle {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Statistics Cards */
+.iim-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.stat-card.active {
+  border-left-color: #10b981;
+}
+
+.stat-card.used {
+  border-left-color: #3b82f6;
+}
+
+.stat-card.total {
+  border-left-color: #8b5cf6;
+}
+
+.stat-number {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Create Form */
+.iim-create-form {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-bottom: 32px;
+}
+
+.iim-create-form h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 16px 0;
+}
+
+.iim-create-form .form-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.iim-create-form input {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.iim-create-form input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.iim-create-form .btn-primary {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.iim-create-form .btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.iim-create-form .btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.iim-create-form .error-text {
+  color: #ef4444;
+  font-size: 12px;
+  margin: 8px 0 0 0;
+  width: 100%;
+}
+
+/* Codes List */
+.iim-codes-list {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.iim-codes-list h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 24px 0;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state p {
+  color: #6b7280;
+  font-size: 16px;
+  margin: 0;
+}
+
+/* Codes Sections */
+.codes-section {
+  margin-bottom: 32px;
+}
+
+.codes-section h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.codes-section.used-codes {
+  opacity: 0.8;
+}
+
+.text-muted {
+  color: #9ca3af;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Code Cards Grid */
+.codes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.code-card {
+  background: #f9fafb;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+.code-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.code-card.active {
+  border-left: 4px solid #10b981;
+}
+
+.code-card.used {
+  background: #f0f9ff;
+  border-left: 4px solid #3b82f6;
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.code-subject {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.code-status {
+  font-size: 12px;
+  padding: 4px 8px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.code-card.used .code-status {
+  background: rgba(59, 130, 246, 0.1);
+  color: #0284c7;
+}
+
+.code-display {
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 16px;
+  background: white;
+  border-radius: 6px;
+  text-align: center;
+  color: #3b82f6;
+  margin: 12px 0;
+  border: 1px solid #dbeafe;
+}
+
+.code-used-by {
+  font-size: 12px;
+  color: #374151;
+  margin: 8px 0;
+  padding: 8px;
+  background: white;
+  border-radius: 4px;
+}
+
+.code-used-by strong {
+  color: #1f2937;
+}
+
+.code-date {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Code Actions */
+.code-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.code-actions button {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.code-actions .btn-secondary {
+  color: #3b82f6;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.code-actions .btn-secondary:hover {
+  background: #dbeafe;
+  border-color: #3b82f6;
+}
+
+.code-actions .btn-danger {
+  color: #ef4444;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.code-actions .btn-danger:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .individual-invites-manage {
+    padding: 16px;
+  }
+
+  .iim-header h2 {
+    font-size: 24px;
+  }
+
+  .iim-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .iim-create-form .form-group {
+    flex-direction: column;
+  }
+
+  .iim-create-form input {
+    min-width: auto;
+  }
+
+  .codes-grid {
+    grid-template-columns: 1fr;
+  }
+}
