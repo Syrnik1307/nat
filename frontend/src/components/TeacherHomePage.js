@@ -312,7 +312,6 @@ const TeacherHomePage = () => {
       progressPercent,
       minutesToNext,
       hoursToNext,
-      treeCurrency: Math.max(0, Math.floor(teachingMinutes / 30)),
     };
   }, [stats]);
 
@@ -596,7 +595,6 @@ const TeacherHomePage = () => {
                 <span className="icon">🌳</span>
                 Прогресс преподавателя
               </h2>
-              <span className="impact-tag">листья: {derivedStats.treeCurrency}</span>
             </div>
 
             <TreeGrowth stage={derivedStats.levelKey} progress={derivedStats.levelProgress} />
@@ -622,7 +620,6 @@ const TeacherHomePage = () => {
               </div>
               <div className="progress-meta">
                 <span>{derivedStats.teachingMinutes} мин занятий</span>
-                <span>{derivedStats.treeCurrency} листьев для магазина</span>
               </div>
             </div>
 
@@ -630,7 +627,7 @@ const TeacherHomePage = () => {
               <div className="impact-card">
                 <span className="impact-label">Проведено уроков</span>
                 <span className="impact-value">{derivedStats.lessonsCount}</span>
-                <span className="impact-sub">каждый час = новые листья</span>
+                <span className="impact-sub">завершённых занятий</span>
               </div>
               <div className="impact-card">
                 <span className="impact-label">Минут на платформе</span>
