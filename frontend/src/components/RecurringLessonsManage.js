@@ -6,7 +6,6 @@ import {
   createRecurringLesson,
   updateRecurringLesson,
   deleteRecurringLesson,
-  generateLessonsFromRecurring,
 } from '../apiService';
 import Button from '../shared/components/Button';
 import Input from '../shared/components/Input';
@@ -55,9 +54,6 @@ const RecurringLessonsManage = () => {
   const [editingId, setEditingId] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
-  const [generateInput, setGenerateInput] = useState('');
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [generatingItem, setGeneratingItem] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -146,30 +142,6 @@ const RecurringLessonsManage = () => {
       showNotification('success', 'Успешно', 'Регулярный урок удален');
     } catch (e) {
       showNotification('error', 'Ошибка', 'Не удалось удалить регулярный урок');
-    }
-  };
-
-  const handleGenerate = (item) => {
-    setGeneratingItem(item);
-    setGenerateInput('');
-    setShowGenerateModal(true);
-  };
-
-  const executeGenerate = async () => {
-    if (!generateInput) {
-      showNotification('warning', 'Внимание', 'Укажите дату');
-      return;
-    }
-    try {
-      const res = await generateLessonsFromRecurring(generatingItem.id, { 
-        until_date: generateInput, 
-        dry_run: false 
-      });
-      setShowGenerateModal(false);
-      showNotification('success', 'Успешно', `Создано уроков: ${res.data.created_count}`);
-      await refresh();
-    } catch (err) {
-      showNotification('error', 'Ошибка', err.response?.data?.detail || 'Ошибка генерации');
     }
   };
 
@@ -358,25 +330,18 @@ const RecurringLessonsManage = () => {
 
                 <div className="rl-card-actions">
                   <Button 
-                    variant="outline" 
-                    size="small"
-                    onClick={() => startEdit(item)}
-                  >
-                    Редактировать
-                  </Button>
-                  <Button 
-                    variant="text" 
-                    size="small"
-                    onClick={() => handleGenerate(item)}
-                  >
-                    Сгенерировать
-                  </Button>
-                  <Button 
                     variant="danger" 
                     size="small"
                     onClick={() => handleDelete(item.id)}
                   >
                     Удалить
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="small"
+                    onClick={() => startEdit(item)}
+                  >
+                    Редактировать
                   </Button>
                 </div>
               </div>
@@ -384,57 +349,6 @@ const RecurringLessonsManage = () => {
           </div>
         )}
       </div>
-
-      {/* Generate Modal */}
-      {showGenerateModal && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 'var(--z-modal-backdrop)',
-          }}
-          onClick={() => setShowGenerateModal(false)}
-        >
-          <div
-            style={{
-              background: 'var(--bg-primary)',
-              borderRadius: 'var(--radius-xl)',
-              boxShadow: 'var(--shadow-2xl)',
-              maxWidth: '500px',
-              width: '90%',
-              padding: 'var(--space-xl)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ marginBottom: 'var(--space-lg)' }}>Генерация уроков</h2>
-            <p style={{ marginBottom: 'var(--space-md)', color: 'var(--text-secondary)' }}>
-              Укажите дату, до которой нужно сгенерировать уроки:
-            </p>
-            <Input
-              type="date"
-              value={generateInput}
-              onChange={(e) => setGenerateInput(e.target.value)}
-              placeholder="ГГГГ-ММ-ДД"
-            />
-            <div style={{ display: 'flex', gap: 'var(--space-md)', marginTop: 'var(--space-lg)' }}>
-              <Button variant="secondary" onClick={() => setShowGenerateModal(false)}>
-                Отмена
-              </Button>
-              <Button variant="primary" onClick={executeGenerate}>
-                Сгенерировать
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <Notification
         isOpen={notification.isOpen}
