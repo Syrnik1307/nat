@@ -101,8 +101,8 @@ const StatusMessages = ({ onClose }) => {
   const getTargetLabel = (target) => {
     switch (target) {
       case 'teachers': return '👨‍🏫 Учителя';
-      case 'students': return '🎓 Ученики';
-      case 'all': return '👥 Все';
+      case 'students': return 'Ученики';
+      case 'all': return 'Все';
       default: return target;
     }
   };
@@ -154,7 +154,7 @@ const StatusMessages = ({ onClose }) => {
                       className={`target-btn ${target === 'all' ? 'active' : ''}`}
                       onClick={() => setTarget('all')}
                     >
-                      👥 Все
+                      Все
                     </button>
                     <button
                       type="button"
@@ -168,7 +168,7 @@ const StatusMessages = ({ onClose }) => {
                       className={`target-btn ${target === 'students' ? 'active' : ''}`}
                       onClick={() => setTarget('students')}
                     >
-                      🎓 Ученики
+                      Ученики
                     </button>
                   </div>
                 </div>

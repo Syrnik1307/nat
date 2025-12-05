@@ -219,7 +219,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
                   className={`group-card ${selectedGroup?.id === group.id ? 'selected' : ''}`}
                   onClick={() => setSelectedGroup(group)}
                 >
-                  <div className="group-card-icon">👥</div>
+                  <div className="group-card-icon">⚠</div>
                   <div className="group-card-name">{group.name}</div>
                   <div className="group-card-meta">
                     Уровень: {group.level}

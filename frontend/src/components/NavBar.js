@@ -56,9 +56,9 @@ const NavBar = () => {
           <div style={styles.center}>
             <Link style={styles.link} to="/">🏠 Главная</Link>
             {accessTokenValid && role === 'teacher' && <Link style={styles.link} to="/teacher">👨‍🏫 Преподаватель</Link>}
-            {accessTokenValid && role === 'teacher' && <Link style={styles.linkHighlight} to="/groups/manage">👥 Группы и ученики</Link>}
+            {accessTokenValid && role === 'teacher' && <Link style={styles.linkHighlight} to="/groups/manage">Группы и ученики</Link>}
             {accessTokenValid && role === 'teacher' && <Link style={styles.link} to="/homework/manage">📝 Домашки</Link>}
-            {accessTokenValid && role === 'teacher' && <Link style={styles.link} to="/recurring-lessons/manage">📅 Расписание</Link>}
+            {accessTokenValid && role === 'teacher' && <Link style={styles.link} to="/recurring-lessons/manage">Расписание</Link>}
             {accessTokenValid && role === 'teacher' && <Link style={styles.link} to="/calendar">📆 Календарь</Link>}
             {accessTokenValid && role === 'student' && <Link style={styles.link} to="/student">📚 Ученик</Link>}
             {accessTokenValid && role === 'student' && <Link style={styles.link} to="/homework">📝 Мои ДЗ</Link>}

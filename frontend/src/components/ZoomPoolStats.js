@@ -83,7 +83,7 @@ const ZoomPoolStats = () => {
       <div className="stats-grid">
         {/* Карточка: Аккаунты */}
         <div className="stat-card accounts-card">
-          <div className="stat-icon">👥</div>
+          <div className="stat-icon">⚠</div>
           <div className="stat-content">
             <h3>Zoom Аккаунты</h3>
             <div className="stat-main-value">{stats.total_accounts}</div>
@@ -167,7 +167,7 @@ const ZoomPoolStats = () => {
           </ul>
         </div>
         <div className="info-section">
-          <h4>📅 Статистика</h4>
+          <h4>Статистика</h4>
           <p>Данные обновляются автоматически каждые 30 секунд</p>
         </div>
       </div>

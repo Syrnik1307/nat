@@ -176,7 +176,7 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
   };
 
   if (loading) {
-    return <div className="tab-loading">⏳ Загрузка журнала...</div>;
+    return <div className="tab-loading">Загружка журнала...</div>;
   }
 
 

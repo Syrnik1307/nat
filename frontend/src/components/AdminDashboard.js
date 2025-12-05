@@ -301,7 +301,7 @@ const AdminDashboard = () => {
         <h2>📊 Статистика системы</h2>
         <div className="stats-grid">
           <Card className="stat-card">
-            <div className="stat-icon">👥</div>
+            <div className="stat-icon">⚠</div>
             <div className="stat-info">
               <div className="stat-title">Всего пользователей</div>
               <div className="stat-number">—</div>
@@ -315,7 +315,7 @@ const AdminDashboard = () => {
             </div>
           </Card>
           <Card className="stat-card">
-            <div className="stat-icon">📅</div>
+            <div className="stat-icon">▪</div>
             <div className="stat-info">
               <div className="stat-title">Уроков сегодня</div>
               <div className="stat-number">—</div>

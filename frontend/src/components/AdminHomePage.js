@@ -192,7 +192,7 @@ const AdminHomePage = () => {
         {/* Statistics Grid */}
         <div className="admin-stats-grid">
         <StatCard
-          icon="👥"
+          icon="⚠"
           label="Всего пользователей"
           value={stats.total_users}
           color="#2563eb"
@@ -243,13 +243,13 @@ const AdminHomePage = () => {
             color="#059669"
           />
           <QuickAction
-            icon="👨‍🎓"
+            icon="☎"
             label="Управление учениками"
             onClick={() => setShowStudentsManage(true)}
             color="#8b5cf6"
           />
           <QuickAction
-            icon="📈"
+            icon="▪"
             label="Статистика"
             onClick={() => setShowGrowthStats(true)}
             color="#3b82f6"
@@ -335,7 +335,7 @@ const AdminHomePage = () => {
                       checked={userRole === 'student'}
                       onChange={(e) => setUserRole(e.target.value)}
                     />
-                    <span>👨‍🎓 Ученик</span>
+                    <span>☎ Ученик</span>
                   </label>
                 </div>
               </div>

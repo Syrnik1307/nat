@@ -94,7 +94,7 @@ const GroupDetailModal = ({ group, isOpen, onClose, onStudentClick }) => {
                       ? 'а'
                       : 'ов';
 
-                return `👥 ${count} ученик${suffix}`;
+                return `${count} ученик${suffix}`;
               })()}
             </span>
           </div>

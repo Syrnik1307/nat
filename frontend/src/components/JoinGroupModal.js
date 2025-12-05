@@ -81,7 +81,7 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
         {!showConfirm ? (
           // Step 1: Enter code
           <>
-            <div className="join-modal-icon">🎓</div>
+            <div className="join-modal-icon">☎</div>
             <h2>Присоединиться к группе</h2>
             <p className="join-modal-subtitle">Введите код приглашения от преподавателя</p>
 
@@ -101,13 +101,13 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
 
               {error && (
                 <div className="join-error-message">
-                  ⚠️ {error}
+                  {error}
                 </div>
               )}
 
               {success && (
                 <div className="join-success-message">
-                  ✓ {success}
+                  {success}
                 </div>
               )}
 
@@ -131,14 +131,14 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
             </form>
 
             <div className="join-help-text">
-              <p>💡 Код приглашения состоит из 8 символов</p>
+              <p>Код приглашения состоит из 8 символов</p>
               <p>Вы можете получить его от преподавателя или отсканировать QR-код</p>
             </div>
           </>
         ) : (
           // Step 2: Confirm join
           <>
-            <div className="join-modal-icon">🎓</div>
+            <div className="join-modal-icon">☎</div>
             <h2>Присоединиться к группе?</h2>
             
             {groupInfo && (

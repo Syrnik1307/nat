@@ -170,7 +170,7 @@ const StudentsManage = ({ onClose }) => {
                       }}
                       title="Редактировать ученика"
                     >
-                      ✏️
+                      Пэ
                     </button>
                     <button 
                       className="sm-delete-btn"
@@ -180,7 +180,7 @@ const StudentsManage = ({ onClose }) => {
                       }}
                       title="Удалить ученика"
                     >
-                      🗑️
+                      ×
                     </button>
                   </div>
                 </div>

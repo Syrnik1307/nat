@@ -102,7 +102,7 @@ const StudentDashboard = () => {
         <h3>Ближайшие занятия</h3>
         {lessons.length === 0 ? (
           <div style={{ padding:'2rem', textAlign:'center', background:'#f8fafc', borderRadius:8, color:'#64748b' }}>
-            <div style={{ fontSize:'2rem', marginBottom:'0.5rem' }}>📅</div>
+            <div style={{ fontSize:'2rem', marginBottom:'0.5rem' }}>▪</div>
             <div>У вас пока нет запланированных занятий</div>
           </div>
         ) : (
@@ -113,9 +113,9 @@ const StudentDashboard = () => {
                   <div>
                     <strong style={{ fontSize:'1.05rem', color:'#1e293b' }}>{l.title || 'Занятие'}</strong>
                     <div style={{ fontSize:'0.85rem', color:'#64748b', marginTop:'0.25rem' }}>
-                      📅 {new Date(l.start_time).toLocaleString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      {new Date(l.start_time).toLocaleString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       {' · '}
-                      👥 {l.group_name || `Группа ${l.group}`}
+                      {l.group_name || `Группа ${l.group}`}
                     </div>
                   </div>
                   {l.zoom_join_url && (

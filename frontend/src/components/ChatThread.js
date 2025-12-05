@@ -209,7 +209,7 @@ const ChatThread = ({ chat, currentUserId, onBack }) => {
         
         <div className="chat-thread-info">
           <div className="chat-thread-avatar">
-            {chat.chat_type === 'group' ? '👥' : '👤'}
+            {chat.chat_type === 'group' ? '⚠' : '☎'}
           </div>
           
           <div className="chat-thread-details">

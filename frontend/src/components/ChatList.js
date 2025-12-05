@@ -158,7 +158,7 @@ const ChatList = ({ onChatSelect, currentUserId, currentUserRole }) => {
                 onClick={() => onChatSelect(chat)}
               >
                 <div className="chat-item-avatar">
-                  {chat.chat_type === 'group' ? '👥' : '👤'}
+                  {chat.chat_type === 'group' ? '⚠' : '☎'}
                 </div>
                 
                 <div className="chat-item-content">

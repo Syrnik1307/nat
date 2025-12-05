@@ -64,7 +64,7 @@ const ChatPage = () => {
                 variant="primary"
                 onClick={() => setShowGroupModal(true)}
               >
-                👥 Создать групповой чат
+                Создать групповой чат
               </Button>
             </div>
             

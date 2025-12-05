@@ -32,7 +32,7 @@ const GroupRatingTab = ({ groupId, onStudentClick }) => {
   };
 
   if (loading) {
-    return <div className="tab-loading">⏳ Загрузка рейтинга...</div>;
+    return <div className="tab-loading">Загружка рейтинга...</div>;
   }
 
   if (error) {

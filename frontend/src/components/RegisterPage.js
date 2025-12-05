@@ -162,7 +162,7 @@ const RegisterPage = () => {
               aria-label="Выбрать роль ученик"
               style={{ cursor: 'pointer', pointerEvents: 'auto' }}
             >
-              <div className="role-icon">🎓</div>
+              <div className="role-icon">☎</div>
               <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>Я Ученик</h3>
               <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, opacity: .85, margin: 0 }}>Расписание, задания, прогресс и внутренняя валюта роста.</p>
             </div>
@@ -189,7 +189,7 @@ const RegisterPage = () => {
       {step === 1 && (
       <div className="auth-form-card" style={{ zIndex: 1 }}>
         <h2 style={{ textAlign: 'center', marginBottom: 'var(--space-xl)', fontSize: '2rem', fontWeight: 700, letterSpacing: '-0.01em' }}>
-          {formData.role === 'teacher' ? '👨‍🏫 Регистрация преподавателя' : '🎓 Регистрация ученика'}
+          {formData.role === 'teacher' ? 'Организатор регистрацию рея обучал' : 'Регистрация ученика'}
         </h2>
 
         <form onSubmit={handleSubmit}>
