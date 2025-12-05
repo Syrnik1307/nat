@@ -330,18 +330,18 @@ const RecurringLessonsManage = () => {
 
                 <div className="rl-card-actions">
                   <Button 
-                    variant="danger" 
-                    size="small"
-                    onClick={() => handleDelete(item.id)}
-                  >
-                    Удалить
-                  </Button>
-                  <Button 
                     variant="outline" 
                     size="small"
                     onClick={() => startEdit(item)}
                   >
                     Редактировать
+                  </Button>
+                  <Button 
+                    variant="danger" 
+                    size="small"
+                    onClick={() => handleDelete(item.id)}
+                  >
+                    Удалить
                   </Button>
                 </div>
               </div>

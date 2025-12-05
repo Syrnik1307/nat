@@ -81,7 +81,7 @@
   border: 2px solid #e2e8f0;
   border-radius: 12px;
   background: #f8fafc;
-  color: #0284c7;
+  color: #1e3a8a;
   font-family: 'Courier New', monospace;
   text-transform: uppercase;
   transition: all 0.2s ease;
@@ -89,7 +89,7 @@
 
 .join-code-input:focus {
   outline: none;
-  border-color: #0284c7;
+  border-color: #1e3a8a;
   background: white;
   box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
 }
@@ -156,7 +156,7 @@
 .join-submit-btn {
   flex: 1;
   padding: 0.875rem 1.25rem;
-  background: #0284c7;
+  background: #1e3a8a;
   color: white;
   border: none;
   border-radius: 10px;
@@ -263,3 +263,4 @@
     width: 100%;
   }
 }
+

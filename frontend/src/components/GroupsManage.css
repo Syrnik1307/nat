@@ -142,12 +142,12 @@
 }
 
 .gm-btn-primary {
-  background: var(--primary-600);
+  background: #1e3a8a;
   color: #fff;
 }
 
 .gm-btn-primary:hover {
-  background: var(--primary-700);
+  background: #0c1e3a;
 }
 
 .gm-btn-surface {
@@ -436,3 +436,4 @@
     padding: 1.1rem 1.25rem;
   }
 }
+

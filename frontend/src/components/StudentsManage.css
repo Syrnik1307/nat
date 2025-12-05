@@ -32,7 +32,7 @@
   justify-content: space-between;
   padding: 1.5rem;
   border-bottom: 1px solid var(--border-gray);
-  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-dark) 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #0c1e3a 100%);
   color: white;
 }
 
@@ -323,3 +323,4 @@
     justify-content: flex-start;
   }
 }
+

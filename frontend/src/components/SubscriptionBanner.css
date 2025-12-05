@@ -2,8 +2,8 @@
   position: sticky;
   top: 12px;
   z-index: 100;
-  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
-  border: 2px solid #F59E0B;
+  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+  border: 2px solid #EF4444;
   border-radius: 16px;
   padding: 16px 24px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -19,8 +19,8 @@
 }
 
 .subscription-banner.warning {
-  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
-  border-bottom: 2px solid #F59E0B;
+  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+  border-bottom: 2px solid #EF4444;
 }
 
 .banner-content {
@@ -108,3 +108,4 @@
     width: 100%;
   }
 }
+

@@ -55,12 +55,12 @@
 }
 
 .tm-refresh {
-  background: #2563eb;
+  background: #1e3a8a;
   color: #fff;
 }
 
 .tm-refresh:hover {
-  background: #1d4ed8;
+  background: #0c1e3a;
   transform: rotate(180deg);
 }
 
@@ -119,7 +119,7 @@
 }
 
 .tm-teacher-card.active {
-  border-color: #2563eb;
+  border-color: #1e3a8a;
   box-shadow: 0 10px 20px rgba(37, 99, 235, 0.15);
 }
 
@@ -362,12 +362,12 @@
 }
 
 .btn-submit {
-  background: #2563eb;
+  background: #1e3a8a;
   color: #fff;
 }
 
 .btn-submit:hover {
-  background: #1d4ed8;
+  background: #0c1e3a;
 }
 
 .btn-outline {
@@ -446,3 +446,4 @@
     width: 100%;
   }
 }
+

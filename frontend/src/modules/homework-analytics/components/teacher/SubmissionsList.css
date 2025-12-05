@@ -73,7 +73,7 @@
 }
 
 .sl-stat-success {
-  color: #059669;
+  color: #0c1e3a;
 }
 
 .sl-btn-refresh {
@@ -254,7 +254,7 @@
 .sl-score {
   font-weight: 600;
   font-size: 0.875rem;
-  color: #059669;
+  color: #0c1e3a;
 }
 
 /* Review Button */
@@ -311,3 +311,4 @@
     flex: 1;
   }
 }
+

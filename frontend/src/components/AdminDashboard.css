@@ -136,7 +136,7 @@
 
 .status-badge.active {
   background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
+  color: #1e3a8a;
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
@@ -178,7 +178,7 @@
 }
 
 .availability.available {
-  color: #10b981;
+  color: #1e3a8a;
 }
 
 .availability.busy {
@@ -318,3 +318,4 @@
     width: 100%;
   }
 }
+

@@ -51,7 +51,7 @@
 
 .picker-option.selected {
   background-color: rgba(37, 99, 235, 0.1);
-  color: #2563eb;
+  color: #1e3a8a;
   font-weight: 600;
 }
 
@@ -92,3 +92,4 @@
     font-size: 1rem;
   }
 }
+

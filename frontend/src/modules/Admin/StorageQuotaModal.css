@@ -58,7 +58,7 @@
 .storage-link-button {
   border: none;
   background: none;
-  color: #2563eb;
+  color: #1e3a8a;
   cursor: pointer;
   margin-left: 6px;
   font-weight: 600;
@@ -171,8 +171,8 @@
 }
 
 .storage-tag.ok {
-  background: #ecfdf5;
-  color: #059669;
+  background: #eff6ff;
+  color: #1e3a8a;
 }
 
 .storage-tag.warning {
@@ -201,7 +201,7 @@
 }
 
 .storage-small-button.primary {
-  background: #2563eb;
+  background: #1e3a8a;
   color: #fff;
 }
 
@@ -240,7 +240,7 @@
 
 .storage-primary-button {
   border: none;
-  background: #2563eb;
+  background: #1e3a8a;
   color: #fff;
   padding: 8px 14px;
   border-radius: 10px;
@@ -288,3 +288,4 @@
     flex-direction: column;
   }
 }
+

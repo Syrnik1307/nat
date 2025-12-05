@@ -247,7 +247,7 @@
 .media-wave .wave-bar {
   width: 6px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #38bdf8, #2563eb);
+  background: linear-gradient(180deg, #1e3a8a, #0c1e3a);
   animation: wave-pulse 1.4s ease-in-out infinite;
   opacity: 0.85;
 }
@@ -340,7 +340,7 @@
 }
 
 .player-action-btn.primary {
-  background: linear-gradient(120deg, #2563eb, #3b82f6);
+  background: linear-gradient(120deg, #1e3a8a, #0c1e3a);
   color: #f8fafc;
   box-shadow: 0 15px 35px rgba(37, 99, 235, 0.35);
 }
@@ -440,3 +440,4 @@
     right: 1rem;
   }
 }
+

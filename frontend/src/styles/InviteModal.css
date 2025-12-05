@@ -90,13 +90,13 @@
   font-weight: 700;
   letter-spacing: 0.2em;
   text-align: center;
-  color: #0284c7;
+  color: #1e3a8a;
   font-family: 'Courier New', monospace;
 }
 
 .invite-copy-btn {
   padding: 0.75rem 1.25rem;
-  background: #0284c7;
+  background: #1e3a8a;
   color: white;
   border: none;
   border-radius: 10px;
@@ -141,7 +141,7 @@
 
 .invite-link-input:focus {
   outline: none;
-  border-color: #0284c7;
+  border-color: #1e3a8a;
 }
 
 .invite-qr-placeholder {
@@ -193,7 +193,7 @@
 
 .invite-done-btn {
   padding: 0.875rem 2rem;
-  background: #0284c7;
+  background: #1e3a8a;
   color: white;
   border: none;
   border-radius: 10px;
@@ -204,7 +204,7 @@
 }
 
 .invite-done-btn:hover {
-  background: #0369a1;
+  background: #0c1e3a;
   transform: translateY(-1px);
 }
 
@@ -232,3 +232,4 @@
     width: 100%;
   }
 }
+

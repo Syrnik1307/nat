@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #0c1e3a 100%);
   padding: 2rem;
 }
 
@@ -72,13 +72,13 @@
 }
 
 .info-row .value.success {
-  color: #10B981;
+  color: #1e3a8a;
   font-weight: 600;
 }
 
 .mock-notice {
   background: #EFF6FF;
-  border-left: 4px solid #3B82F6;
+  border-left: 4px solid #1e3a8a;
   border-radius: 8px;
   padding: 1rem;
   display: flex;
@@ -155,3 +155,4 @@
     font-size: 48px;
   }
 }
+

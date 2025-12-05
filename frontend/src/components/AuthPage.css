@@ -120,14 +120,14 @@
 }
 
 .role-card:hover {
-  border-color: #2563eb;
+  border-color: #1e3a8a;
   background: #f0f7ff;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
 }
 
 .role-card:focus {
-  outline: 2px solid #2563eb;
+  outline: 2px solid #1e3a8a;
   outline-offset: 2px;
 }
 
@@ -199,7 +199,7 @@
 .form-group input:focus,
 .form-group textarea:focus,
 .form-group select:focus {
-  border-color: #2563eb;
+  border-color: #1e3a8a;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
   outline: none;
 }
@@ -238,11 +238,11 @@
 }
 
 .toggle-password:hover {
-  color: #2563eb;
+  color: #1e3a8a;
 }
 
 .toggle-password:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid #1e3a8a;
   outline-offset: 2px;
 }
 
@@ -272,13 +272,13 @@
   width: 1rem;
   height: 1rem;
   cursor: pointer;
-  accent-color: #2563eb;
+  accent-color: #1e3a8a;
 }
 
 .link-button {
   background: transparent;
   border: none;
-  color: #2563eb;
+  color: #1e3a8a;
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
@@ -288,7 +288,7 @@
 }
 
 .link-button:hover {
-  color: #1d4ed8;
+  color: #0c1e3a;
   text-decoration: underline;
 }
 
@@ -382,7 +382,7 @@
 .submit-button {
   width: 100%;
   padding: 0.825rem 1.25rem;
-  background: #2563eb;
+  background: #1e3a8a;
   color: white;
   border: none;
   border-radius: 8px;
@@ -394,7 +394,7 @@
 }
 
 .submit-button:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: #0c1e3a;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
   transform: translateY(-1px);
 }
@@ -566,3 +566,4 @@
     padding: 1rem 0.875rem;
   }
 }
+

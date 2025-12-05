@@ -5,7 +5,7 @@
 
 .auth-gradient-bg {
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-500) 50%, var(--primary-400) 100%);
+  background: linear-gradient(135deg, var(--primary-main) 0%, var(--primary-dark) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -222,7 +222,7 @@
   left: 0;
   width: 60px;
   height: 4px;
-  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+  background: linear-gradient(135deg, var(--primary-main) 0%, var(--primary-light) 100%);
   border-radius: var(--radius-sm);
 }
 
@@ -705,3 +705,4 @@
     display: none !important;
   }
 }
+

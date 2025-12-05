@@ -2,7 +2,7 @@
 
 /* Общие стили кнопок */
 .gm-btn-primary {
-  background: #111827;
+  background: #1e3a8a;
   color: white;
   border: none;
   padding: 0.625rem 1.25rem;
@@ -14,7 +14,7 @@
 }
 
 .gm-btn-primary:hover:not(:disabled) {
-  background: #1f2937;
+  background: #0c1e3a;
 }
 
 .gm-btn-primary:disabled {
@@ -25,7 +25,7 @@
 
 .gm-btn-surface {
   background: white;
-  color: #111827;
+  color: #1e3a8a;
   border: 1px solid #e5e7eb;
   padding: 0.625rem 1rem;
   border-radius: 8px;
@@ -37,7 +37,7 @@
 
 .gm-btn-surface:hover:not(:disabled) {
   background: #f9fafb;
-  border-color: #111827;
+  border-color: #1e3a8a;
 }
 
 .gm-btn-surface:disabled {
@@ -46,7 +46,7 @@
 }
 
 .gm-btn-danger {
-  background: #dc2626;
+  background: #ef4444;
   color: white;
   border: none;
   padding: 0.625rem 1rem;
@@ -245,8 +245,8 @@
 
 .hc-question-card.is-dragging {
   background: #f9fafb;
-  border-color: #3b82f6;
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2);
+  border-color: #1e3a8a;
+  box-shadow: 0 4px 16px rgba(30, 58, 138, 0.2);
 }
 
 .hc-question-toolbar {
@@ -809,7 +809,7 @@ input[type="datetime-local"]:hover {
 
 input[type="datetime-local"]:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #1e3a8a;
   background: #ffffff;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
@@ -870,13 +870,13 @@ input[type="datetime-local"]:invalid {
 }
 
 .dtp-trigger:hover {
-  border-color: rgba(37, 99, 235, 0.4);
-  box-shadow: 0 14px 28px -20px rgba(37, 99, 235, 0.6);
+  border-color: rgba(30, 58, 138, 0.4);
+  box-shadow: 0 14px 28px -20px rgba(30, 58, 138, 0.6);
 }
 
 .dtp-display.is-open .dtp-trigger {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.12);
 }
 
 .dtp-trigger-label {
@@ -894,7 +894,7 @@ input[type="datetime-local"]:invalid {
 .dtp-trigger-time {
   font-weight: 700;
   font-size: 1.1rem;
-  color: #1d4ed8;
+  color: #0c1e3a;
   background: rgba(59, 130, 246, 0.1);
   border-radius: 999px;
   padding: 0.35rem 0.85rem;
@@ -917,7 +917,7 @@ input[type="datetime-local"]:invalid {
 
 .dtp-clear:hover {
   background: rgba(37, 99, 235, 0.25);
-  color: #1d4ed8;
+  color: #0c1e3a;
   transform: translateY(-50%) rotate(90deg);
 }
 
@@ -1009,17 +1009,17 @@ input[type="datetime-local"]:invalid {
 }
 
 .dtp-day.today {
-  border: 1px dashed rgba(37, 99, 235, 0.6);
+  border: 1px dashed rgba(30, 58, 138, 0.6);
 }
 
 .dtp-day.selected {
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  background: linear-gradient(135deg, #1e3a8a, #0c1e3a);
   color: #ffffff;
-  box-shadow: 0 12px 18px -12px rgba(37, 99, 235, 0.8);
+  box-shadow: 0 12px 18px -12px rgba(30, 58, 138, 0.8);
 }
 
 .dtp-day.current:hover {
-  background: rgba(37, 99, 235, 0.12);
+  background: rgba(30, 58, 138, 0.12);
 }
 
 .dtp-chips {
@@ -1040,9 +1040,9 @@ input[type="datetime-local"]:invalid {
 }
 
 .dtp-chips button:hover {
-  border-color: rgba(37, 99, 235, 0.4);
-  color: #1d4ed8;
-  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(30, 58, 138, 0.4);
+  color: #0c1e3a;
+  background: rgba(30, 58, 138, 0.1);
 }
 
 .dtp-time-grid {
@@ -1081,8 +1081,8 @@ input[type="datetime-local"]:invalid {
 }
 
 .dtp-spin-group button:hover {
-  background: rgba(37, 99, 235, 0.25);
-  color: #2563eb;
+  background: rgba(30, 58, 138, 0.25);
+  color: #1e3a8a;
 }
 
 .dtp-spin-group input {
@@ -1114,4 +1114,5 @@ input[type="datetime-local"]:invalid {
     grid-template-columns: 1fr;
   }
 }
+
 

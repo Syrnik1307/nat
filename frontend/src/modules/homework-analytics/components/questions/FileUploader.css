@@ -15,13 +15,13 @@
 }
 
 .file-uploader-dropzone:hover {
-  border-color: #FF6B35;
-  background: #fff5f2;
+  border-color: #1e3a8a;
+  background: #eff6ff;
 }
 
 .file-uploader-dropzone.dragging {
-  border-color: #FF6B35;
-  background: #ffe8df;
+  border-color: #1e3a8a;
+  background: #dbeafe;
   border-style: solid;
 }
 
@@ -70,7 +70,7 @@
 
 .file-uploader-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #FF6B35, #ff8c61);
+  background: linear-gradient(90deg, #1e3a8a, #0c1e3a);
   transition: width 0.3s ease;
 }
 
@@ -140,3 +140,4 @@
     max-height: 200px;
   }
 }
+

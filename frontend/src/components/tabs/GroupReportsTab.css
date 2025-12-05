@@ -16,7 +16,7 @@
   font-weight: 700;
   color: #111827;
   padding-bottom: 1rem;
-  border-bottom: 2px solid #2563eb;
+  border-bottom: 2px solid #1e3a8a;
 }
 
 /* ================================================
@@ -79,7 +79,7 @@
 }
 
 .stat-card:hover {
-  border-color: #2563eb;
+  border-color: #1e3a8a;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
 }
 
@@ -106,7 +106,7 @@
   transform: translateY(-50%);
   width: 4px;
   height: 16px;
-  background: #0284c7;
+  background: #1e3a8a;
   border-radius: 2px;
 }
 
@@ -176,13 +176,13 @@
 
 .recommendation-item.warning {
   background: #fffbeb;
-  border-left-color: #f59e0b;
+  border-left-color: #ef4444;
   color: #92400e;
 }
 
 .recommendation-item.success {
   background: #f0fdf4;
-  border-left-color: #10b981;
+  border-left-color: #1e3a8a;
   color: #15803d;
 }
 
@@ -365,3 +365,4 @@
     font-size: 0.8rem;
   }
 }
+

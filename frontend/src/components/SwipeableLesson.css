@@ -33,7 +33,7 @@
 .lesson-time .time {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #2563eb;
+  color: #1e3a8a;
   letter-spacing: -0.5px;
 }
 
@@ -87,7 +87,7 @@
   font-size: 0.8rem;
   font-weight: 600;
   background: rgba(37, 99, 235, 0.08);
-  color: #1d4ed8;
+  color: #0c1e3a;
   border: 1px solid rgba(37, 99, 235, 0.15);
 }
 
@@ -99,7 +99,7 @@
 .meta-link {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #2563eb;
+  color: #1e3a8a;
   text-decoration: none;
   padding: 0.35rem 0.8rem;
   border-radius: 999px;
@@ -110,7 +110,7 @@
 
 .meta-link:hover {
   background: rgba(37, 99, 235, 0.15);
-  color: #1d4ed8;
+  color: #0c1e3a;
 }
 
 /* Actions */
@@ -298,3 +298,4 @@
     height: 36px;
   }
 }
+

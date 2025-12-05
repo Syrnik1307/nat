@@ -124,7 +124,7 @@
 }
 
 .storage-extra {
-  color: #10b981;
+  color: #1e3a8a;
   font-weight: 600;
 }
 
@@ -193,11 +193,11 @@
 }
 
 .toggle-renew-btn.renew-disabled {
-  background: #10b981;
+  background: #1e3a8a;
 }
 
 .toggle-renew-btn.renew-disabled:hover:not(:disabled) {
-  background: #059669;
+  background: #0c1e3a;
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
@@ -231,7 +231,7 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #6366f1 0%, #10b981 100%);
+  background: linear-gradient(90deg, #6366f1 0%, #1e3a8a 100%);
   transition: width 0.4s ease;
 }
 
@@ -302,7 +302,7 @@
 
 .buy-storage-btn {
   padding: 0.75rem 1.5rem;
-  background: #10b981;
+  background: #1e3a8a;
   color: white;
   border: none;
   border-radius: 8px;
@@ -313,7 +313,7 @@
 }
 
 .buy-storage-btn:hover:not(:disabled) {
-  background: #059669;
+  background: #0c1e3a;
 }
 
 .buy-storage-btn:disabled {
@@ -361,3 +361,4 @@
     flex-wrap: wrap;
   }
 }
+

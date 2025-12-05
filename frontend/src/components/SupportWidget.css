@@ -6,12 +6,12 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #0c1e3a 100%);
   color: white;
   border: none;
   font-size: 24px;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.4);
   transition: all 0.3s ease;
   z-index: 9998;
   display: flex;
@@ -61,7 +61,7 @@
 }
 
 .support-widget-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #0c1e3a 100%);
   color: white;
   padding: 16px 20px;
   display: flex;
@@ -116,7 +116,7 @@
 }
 
 .support-new-ticket-btn {
-  background: #667eea;
+  background: #1e3a8a;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -148,7 +148,7 @@
 
 .support-ticket-item:hover {
   background: #f3f4f6;
-  border-color: #667eea;
+  border-color: #1e3a8a;
 }
 
 .support-ticket-header-row {
@@ -174,15 +174,15 @@
 
 /* Цвета статусов */
 .support-ticket-status[data-status="new"] {
-  background: #10b981;
+  background: #1e3a8a;
 }
 
 .support-ticket-status[data-status="in_progress"] {
-  background: #3b82f6;
+  background: #1e3a8a;
 }
 
 .support-ticket-status[data-status="waiting_user"] {
-  background: #f59e0b;
+  background: #ef4444;
 }
 
 .support-ticket-status[data-status="resolved"] {
@@ -233,7 +233,7 @@
 }
 
 .support-create-first-btn {
-  background: #667eea;
+  background: #1e3a8a;
   color: white;
   border: none;
   padding: 12px 24px;
@@ -251,7 +251,7 @@
 .support-back-btn {
   background: none;
   border: none;
-  color: #667eea;
+  color: #1e3a8a;
   cursor: pointer;
   font-size: 14px;
   margin-bottom: 16px;
@@ -296,7 +296,7 @@
 .support-form-group textarea:focus,
 .support-form-group select:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #1e3a8a;
 }
 
 .support-form-row {
@@ -307,7 +307,7 @@
 
 .support-submit-btn {
   width: 100%;
-  background: #667eea;
+  background: #1e3a8a;
   color: white;
   border: none;
   padding: 12px;
@@ -362,7 +362,7 @@
 }
 
 .support-message-user {
-  background: #667eea;
+  background: #1e3a8a;
   color: white;
   align-self: flex-end;
   border-bottom-right-radius: 4px;
@@ -410,11 +410,11 @@
 
 .support-message-form textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #1e3a8a;
 }
 
 .support-message-form button {
-  background: #667eea;
+  background: #1e3a8a;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -452,3 +452,4 @@
     grid-template-columns: 1fr;
   }
 }
+

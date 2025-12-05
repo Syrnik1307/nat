@@ -80,11 +80,11 @@
 }
 
 .teacher-stat-success .teacher-stat-value {
-  color: #10b981;
+  color: #1e3a8a;
 }
 
 .teacher-stat-warning .teacher-stat-value {
-  color: #f59e0b;
+  color: #ef4444;
 }
 
 .teacher-stat-danger .teacher-stat-value {
@@ -120,8 +120,8 @@
 
 .teacher-search-input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
 }
 
 .teacher-filter-group {
@@ -149,8 +149,8 @@
 
 .teacher-filter-select:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
 }
 
 .teacher-refresh-btn {
@@ -188,7 +188,7 @@
   width: 50px;
   height: 50px;
   border: 4px solid #f3f4f6;
-  border-top-color: #667eea;
+  border-top-color: #1e3a8a;
   border-radius: 50%;
   animation: teacher-spin 1s linear infinite;
   margin: 0 auto 1rem;
@@ -278,7 +278,7 @@
 }
 
 .teacher-recordings-count strong {
-  color: #667eea;
+  color: #1e3a8a;
   font-weight: 700;
 }
 
@@ -376,7 +376,7 @@
 .teacher-upload-btn {
   padding: 0.75rem 1.5rem;
   background: white;
-  color: #667eea;
+  color: #1e3a8a;
   border: 2px solid white;
   border-radius: 8px;
   font-size: 1rem;
@@ -489,7 +489,7 @@
 .teacher-upload-input:focus,
 .teacher-upload-select:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #1e3a8a;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -557,12 +557,12 @@
 }
 
 .teacher-dropzone:hover {
-  border-color: #667eea;
+  border-color: #1e3a8a;
   background: #f1f5f9;
 }
 
 .teacher-dropzone-active {
-  border-color: #667eea;
+  border-color: #1e3a8a;
   background: #eef2ff;
   transform: scale(1.02);
 }
@@ -728,14 +728,14 @@
 
 .teacher-checkbox-item:hover {
   background: #f9fafb;
-  border-color: #667eea;
+  border-color: #1e3a8a;
 }
 
 .teacher-checkbox-item input[type="checkbox"] {
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: #667eea;
+  accent-color: #1e3a8a;
 }
 
 .teacher-checkbox-item span {
@@ -770,5 +770,6 @@
   text-align: center;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #667eea;
+  color: #1e3a8a;
 }
+

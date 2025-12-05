@@ -41,7 +41,7 @@
   border-radius: 12px;
   padding: 0.55rem 1rem;
   font-weight: 600;
-  background: #2563eb;
+  background: #1e3a8a;
   color: #fff;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -56,7 +56,7 @@
 
 .toolbar-btn.ghost {
   background: #fff;
-  color: #2563eb;
+  color: #1e3a8a;
   border: 1px solid rgba(37, 99, 235, 0.25);
   box-shadow: none;
 }
@@ -101,7 +101,7 @@
 }
 
 .stat-value.accent {
-  color: #2563eb;
+  color: #1e3a8a;
 }
 
 .stat-value.danger {
@@ -290,7 +290,7 @@
 .status-watched .status-pill,
 .status-pill.status-watched {
   background: #eff6ff;
-  color: #1d4ed8;
+  color: #0c1e3a;
 }
 
 .status-empty .status-pill {
@@ -389,3 +389,4 @@
     border-radius: 16px;
   }
 }
+

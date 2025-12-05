@@ -37,7 +37,7 @@
 .stat-value {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #2563eb;
+  color: #1e3a8a;
   line-height: 1;
 }
 
@@ -97,7 +97,7 @@
   min-width: 80px;
   text-align: right;
   font-weight: 700;
-  color: #2563eb;
+  color: #1e3a8a;
 }
 
 .rating-table th.breakdown-col {
@@ -164,7 +164,7 @@
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
   color: white;
   font-weight: 700;
   font-size: 0.9rem;
@@ -189,7 +189,7 @@
 }
 
 .student-link:hover {
-  color: #2563eb;
+  color: #1e3a8a;
 }
 
 .student-avatar {
@@ -232,7 +232,7 @@
 .points-value {
   font-weight: 700;
   font-size: 1.125rem;
-  color: #2563eb;
+  color: #1e3a8a;
   display: inline-block;
   min-width: 2.5rem;
   text-align: right;
@@ -409,3 +409,4 @@
     gap: 0.5rem;
   }
 }
+

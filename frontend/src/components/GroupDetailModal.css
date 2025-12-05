@@ -157,7 +157,7 @@
 }
 
 .tab-button:hover {
-  color: #0284c7;
+  color: #1e3a8a;
 }
 
 .tab-button.active {
@@ -172,7 +172,7 @@
   bottom: -2px;
   width: 100%;
   height: 2px;
-  background: #0284c7;
+  background: #1e3a8a;
   border-radius: 2px;
 }
 
@@ -317,3 +317,4 @@
     gap: 0;
   }
 }
+

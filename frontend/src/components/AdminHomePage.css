@@ -484,7 +484,7 @@
   background: #d1fae5;
   border: 1px solid #a7f3d0;
   border-radius: var(--radius-md);
-  color: #059669;
+  color: #0c1e3a;
   font-size: 0.875rem;
   margin-bottom: 1rem;
 }
@@ -858,3 +858,4 @@
     font-size: 0.85rem;
   }
 }
+

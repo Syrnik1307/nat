@@ -213,7 +213,7 @@
 }
 
 .btn-submit {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background: linear-gradient(135deg, #1e3a8a 0%, #0c1e3a 100%);
     color: white;
     border: none;
     padding: 12px 32px;
@@ -442,7 +442,7 @@
 }
 
 .summary-value.success {
-    color: #10b981;
+    color: #1e3a8a;
 }
 
 .summary-value.danger {
@@ -483,7 +483,7 @@
 }
 
 .students-table tbody tr.viewed {
-    background: rgba(16, 185, 129, 0.1);
+    background: rgba(30, 58, 138, 0.1);
 }
 
 .students-table tbody tr.not-viewed {
@@ -505,9 +505,9 @@
 }
 
 .badge-success {
-    background: rgba(16, 185, 129, 0.3);
-    color: #10b981;
-    border: 1px solid rgba(16, 185, 129, 0.5);
+    background: rgba(30, 58, 138, 0.3);
+    color: #1e3a8a;
+    border: 1px solid rgba(30, 58, 138, 0.5);
 }
 
 .badge-danger {
@@ -599,3 +599,4 @@
         padding: 8px;
     }
 }
+

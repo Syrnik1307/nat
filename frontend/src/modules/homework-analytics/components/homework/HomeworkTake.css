@@ -61,14 +61,14 @@
 
 .ht-progress-fill {
   height: 100%;
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  background: linear-gradient(135deg, #1e3a8a, #0c1e3a);
   border-radius: inherit;
   transition: width 0.25s ease;
 }
 
 .ht-progress-label {
   font-size: 0.85rem;
-  color: #1d4ed8;
+  color: #0c1e3a;
   font-weight: 600;
 }
 
@@ -149,7 +149,7 @@
 
 .ht-question-nav-item.current {
   background: rgba(37, 99, 235, 0.2);
-  color: #1d4ed8;
+  color: #0c1e3a;
   box-shadow: var(--shadow-sm);
 }
 
@@ -233,7 +233,7 @@
   background: rgba(37, 99, 235, 0.08);
   padding: 0.75rem 1rem;
   border-radius: 12px;
-  color: #1d4ed8;
+  color: #0c1e3a;
 }
 
 .ht-sub-questions {
@@ -368,10 +368,11 @@
 }
 
 .ht-state.ht-loading {
-  color: #2563eb;
+  color: #1e3a8a;
 }
 
 .ht-state.ht-error {
   color: #b91c1c;
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
+

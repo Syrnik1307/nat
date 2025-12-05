@@ -25,7 +25,7 @@
 }
 
 .btn:focus-visible {
-  outline: 2px solid var(--primary-500);
+  outline: 2px solid var(--primary-main);
   outline-offset: 2px;
 }
 
@@ -53,7 +53,7 @@
 /* === PRIMARY BUTTONS === */
 .btn-primary,
 .gm-btn-primary {
-  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+  background: linear-gradient(135deg, var(--primary-main) 0%, var(--primary-dark) 100%);
   color: white;
   border: none;
   box-shadow: var(--shadow-sm);
@@ -73,7 +73,7 @@
 /* === SECONDARY BUTTONS === */
 .btn-secondary,
 .sr-btn-secondary {
-  background: linear-gradient(135deg, var(--blue-500) 0%, var(--blue-600) 100%);
+  background: linear-gradient(135deg, var(--primary-main) 0%, var(--primary-dark) 100%);
   color: white;
   border: none;
   box-shadow: var(--shadow-sm);
@@ -89,15 +89,15 @@
 .btn-outline,
 .gm-btn-outline {
   background: transparent;
-  color: var(--primary-500);
-  border: 2px solid var(--primary-500);
+  color: var(--primary-main);
+  border: 2px solid var(--primary-main);
 }
 
 .btn-outline:hover,
 .gm-btn-outline:hover {
   background: var(--primary-50);
-  border-color: var(--primary-600);
-  color: var(--primary-600);
+  border-color: var(--primary-dark);
+  color: var(--primary-dark);
 }
 
 /* === SURFACE BUTTONS === */
@@ -178,13 +178,13 @@
 /* === TEXT BUTTONS === */
 .btn-text {
   background: transparent;
-  color: var(--primary-500);
+  color: var(--primary-main);
   border: none;
   box-shadow: none;
 }
 
 .btn-text:hover {
-  color: var(--primary-600);
+  color: var(--primary-dark);
   text-decoration: underline;
 }
 
@@ -478,3 +478,4 @@
     font-size: var(--text-base);
   }
 }
+
