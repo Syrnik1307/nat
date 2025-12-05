@@ -2,7 +2,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Avg, Count, Q, F, DurationField, ExpressionWrapper
+from django.db.models import Avg, Count, Q, F, DurationField, ExpressionWrapper, Sum
 from django.utils import timezone
 from .models import ControlPoint, ControlPointResult
 from .serializers import ControlPointSerializer, ControlPointResultSerializer
@@ -113,11 +113,13 @@ class TeacherStatsViewSet(viewsets.ViewSet):
         
         # Подсчет реальных минут преподавания (сумма длительности проведенных уроков)
         duration_expr = ExpressionWrapper(F('end_time') - F('start_time'), output_field=DurationField())
-        total_duration = completed_lessons.aggregate(total=Avg(duration_expr))['total']
+        total_duration_seconds = completed_lessons.annotate(duration=duration_expr).aggregate(
+            total=Sum('duration')
+        )['total']
         
-        # Считаем реальные минуты на платформе
-        if total_duration:
-            teaching_minutes = int(total_duration.total_seconds() / 60) * total_completed
+        # Считаем реальные минуты преподавания
+        if total_duration_seconds:
+            teaching_minutes = int(total_duration_seconds.total_seconds() / 60)
         else:
             teaching_minutes = 0
         
