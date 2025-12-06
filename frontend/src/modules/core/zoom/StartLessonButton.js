@@ -97,19 +97,10 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
           justifyContent: 'center',
           gap: '0.5rem',
           boxShadow: '0 6px 16px rgba(11, 43, 101, 0.35)',
-        }}
-        onMouseEnter={(e) => {
-          if (!loading) {
-            e.target.style.background = 'linear-gradient(135deg, #103779 0%, #0c265b 100%)';
-            e.target.style.boxShadow = '0 8px 18px rgba(11, 43, 101, 0.42)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.target.style.background = 'linear-gradient(135deg, #0b2b65 0%, #0a1f4d 100%)';
-          e.target.style.boxShadow = '0 6px 16px rgba(11, 43, 101, 0.35)';
+          transform: 'none',
         }}
       >
-        {loading ? '⏳ Начинаем...' : '▶ Начать занятие'}
+        {loading ? 'Начинаем...' : 'Начать занятие'}
       </button>
 
       {showRecordingOption && !loading && (
@@ -154,7 +145,7 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
                 fontWeight: '600',
                 color: '#1f2937',
               }}>
-                🎥 Записать урок?
+                Записать урок?
               </div>
               
               <label style={{
@@ -220,17 +211,10 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
                     cursor: 'pointer',
                     transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
                     boxShadow: '0 3px 10px rgba(11, 43, 101, 0.28)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'linear-gradient(135deg, #103779 0%, #0c265b 100%)';
-                    e.target.style.boxShadow = '0 5px 14px rgba(11, 43, 101, 0.36)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'linear-gradient(135deg, #0b2b65 0%, #0a1f4d 100%)';
-                    e.target.style.boxShadow = '0 3px 10px rgba(11, 43, 101, 0.28)';
+                    transform: 'none',
                   }}
                 >
-                  ▶ Начать
+                  Начать
                 </button>
                 <button
                   type="button"
