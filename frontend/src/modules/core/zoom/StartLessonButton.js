@@ -84,29 +84,29 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
         onClick={handleButtonClick}
         style={{
           fontWeight: '600',
-          backgroundColor: loading ? '#9ca3af' : '#2563eb',
+          background: loading ? '#9ca3af' : 'linear-gradient(135deg, #0b2b65 0%, #0a1f4d 100%)',
           color: 'white',
           border: 'none',
           borderRadius: '8px',
           padding: '0.65rem 1.35rem',
           fontSize: '0.9rem',
           cursor: loading ? 'not-allowed' : 'pointer',
-          transition: 'all 0.2s ease',
+          transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '0.5rem',
-          boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+          boxShadow: '0 6px 16px rgba(11, 43, 101, 0.35)',
         }}
         onMouseEnter={(e) => {
           if (!loading) {
-            e.target.style.transform = 'translateY(-2px)';
-            e.target.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.35)';
+            e.target.style.background = 'linear-gradient(135deg, #103779 0%, #0c265b 100%)';
+            e.target.style.boxShadow = '0 8px 18px rgba(11, 43, 101, 0.42)';
           }
         }}
         onMouseLeave={(e) => {
-          e.target.style.transform = 'translateY(0)';
-          e.target.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.25)';
+          e.target.style.background = 'linear-gradient(135deg, #0b2b65 0%, #0a1f4d 100%)';
+          e.target.style.boxShadow = '0 6px 16px rgba(11, 43, 101, 0.35)';
         }}
       >
         {loading ? '⏳ Начинаем...' : '▶ Начать занятие'}
@@ -211,23 +211,23 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
                   style={{
                     flex: 1,
                     padding: '0.65rem 1rem',
-                    background: '#2563eb',
+                    background: 'linear-gradient(135deg, #0b2b65 0%, #0a1f4d 100%)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
                     fontSize: '0.9rem',
                     fontWeight: '600',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
+                    transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
+                    boxShadow: '0 3px 10px rgba(11, 43, 101, 0.28)',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.transform = 'translateY(-1px)';
-                    e.target.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)';
+                    e.target.style.background = 'linear-gradient(135deg, #103779 0%, #0c265b 100%)';
+                    e.target.style.boxShadow = '0 5px 14px rgba(11, 43, 101, 0.36)';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.2)';
+                    e.target.style.background = 'linear-gradient(135deg, #0b2b65 0%, #0a1f4d 100%)';
+                    e.target.style.boxShadow = '0 3px 10px rgba(11, 43, 101, 0.28)';
                   }}
                 >
                   ▶ Начать
