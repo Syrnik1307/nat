@@ -91,13 +91,15 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
           padding: '0.65rem 1.35rem',
           fontSize: '0.9rem',
           cursor: loading ? 'not-allowed' : 'pointer',
-          transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
+          transition: 'none',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '0.5rem',
           boxShadow: '0 6px 16px rgba(11, 43, 101, 0.35)',
           transform: 'none',
+          outline: 'none',
+          willChange: 'auto',
         }}
       >
         {loading ? 'Начинаем...' : 'Начать занятие'}
@@ -133,7 +135,7 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
             zIndex: 1000,
             minWidth: '320px',
             maxWidth: '90vw',
-            animation: 'slideUp 0.25s ease-out',
+            animation: 'none',
           }}>
             <div style={{
               display: 'flex',
@@ -209,9 +211,10 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
                     fontSize: '0.9rem',
                     fontWeight: '600',
                     cursor: 'pointer',
-                    transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
+                    transition: 'none',
                     boxShadow: '0 3px 10px rgba(11, 43, 101, 0.28)',
                     transform: 'none',
+                    outline: 'none',
                   }}
                 >
                   Начать
