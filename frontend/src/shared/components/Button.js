@@ -26,7 +26,7 @@ const Button = ({
     borderRadius: 'var(--radius-lg)',
     cursor: disabled || loading ? 'not-allowed' : 'pointer',
     fontWeight: '600',
-    transition: 'all var(--transition-base)',
+    transition: 'background-color var(--transition-base), box-shadow var(--transition-base)',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -34,23 +34,25 @@ const Button = ({
     opacity: disabled || loading ? 0.5 : 1,
     boxShadow: 'var(--shadow-sm)',
     fontFamily: 'inherit',
+    transform: 'none',
   };
 
   const variants = {
     primary: {
-      background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)',
+      background: 'linear-gradient(135deg, #0b2b65 0%, #0a1f4d 100%)',
       color: 'white',
-      boxShadow: '0 8px 20px -10px rgba(37, 99, 235, 0.55)',
+      boxShadow: '0 8px 20px -10px rgba(30, 58, 138, 0.55)',
     },
     secondary: {
-      backgroundColor: '#f8fafc',
-      color: '#0f172a',
-      border: '1px solid #e2e8f0',
+      backgroundColor: '#e0e7ff',
+      color: '#0f1f4b',
+      border: '1px solid #1e3a8a',
+      boxShadow: '0 6px 18px -12px rgba(30, 58, 138, 0.35)',
     },
     danger: {
-      backgroundColor: '#ef4444',
+      background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
       color: 'white',
-      boxShadow: '0 4px 14px 0 rgba(239, 68, 68, 0.39)',
+      boxShadow: '0 6px 16px -10px rgba(239, 68, 68, 0.45)',
     },
     success: {
       backgroundColor: '#10b981',
@@ -59,12 +61,13 @@ const Button = ({
     },
     outline: {
       backgroundColor: 'transparent',
-      color: '#2563eb',
-      border: '2px solid #2563eb',
+      color: '#1e3a8a',
+      border: '2px solid #1e3a8a',
+      boxShadow: '0 6px 18px -14px rgba(30, 58, 138, 0.45)',
     },
     text: {
       backgroundColor: 'transparent',
-      color: '#2563eb',
+      color: '#1e3a8a',
       boxShadow: 'none',
       textDecoration: 'underline',
     },
@@ -86,12 +89,12 @@ const Button = ({
   };
 
   const hoverStyles = {
-    primary: '#1e40af',
-    secondary: '#e2e8f0',
+    primary: 'linear-gradient(135deg, #103779 0%, #0c265b 100%)',
+    secondary: '#cbd5f5',
     danger: '#dc2626',
     success: '#059669',
-    outline: 'rgba(37, 99, 235, 0.08)',
-    text: 'rgba(37, 99, 235, 0.12)',
+    outline: 'rgba(30, 58, 138, 0.08)',
+    text: 'rgba(30, 58, 138, 0.12)',
   };
 
   const safeVariant = variants[variant] ? variant : 'primary';
@@ -101,13 +104,12 @@ const Button = ({
       const target = e.currentTarget;
       if (!target) return;
       const hoverColor = hoverStyles[safeVariant];
-      if (safeVariant === 'outline' || safeVariant === 'text') {
+      if (safeVariant === 'primary') {
+        target.style.background = hoverColor;
+      } else if (safeVariant === 'outline' || safeVariant === 'text') {
         target.style.backgroundColor = hoverColor;
-      } else if (safeVariant === 'primary') {
-        target.style.transform = 'scale(1.02)';
       } else {
         target.style.backgroundColor = hoverColor;
-        target.style.transform = 'scale(1.02)';
       }
     }
   };
@@ -118,14 +120,13 @@ const Button = ({
       if (!target) return;
       const variantStyle = variants[safeVariant] || {};
       // Для primary используется gradient, поэтому восстанавливаем background
-      if (safeVariant === 'primary' && variantStyle.background) {
+        if (safeVariant === 'primary' && variantStyle.background) {
         target.style.background = variantStyle.background;
       } else if (variantStyle.backgroundColor) {
         target.style.backgroundColor = variantStyle.backgroundColor;
       } else {
         target.style.backgroundColor = '';
       }
-      target.style.transform = 'scale(1)';
     }
   };
 
