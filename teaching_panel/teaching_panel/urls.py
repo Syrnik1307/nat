@@ -119,14 +119,20 @@ urlpatterns = [
     path('api/groups/<int:group_id>/rating/', 
          GroupRatingViewSet.as_view({'get': 'list'}), 
          name='group-rating'),
-    path('api/groups/<int:group_id>/report/', 
-         GroupReportViewSet.as_view({'get': 'list'}), 
-         name='group-report'),
-    
-    # Student card endpoint
-    path('api/students/<int:student_id>/card/', 
-         StudentCardViewSet.as_view({'get': 'retrieve'}), 
-         name='student-card'),
+        path('api/groups/<int:group_id>/report/', 
+            GroupReportViewSet.as_view({'get': 'list'}), 
+            name='group-report'),
+
+        # Student card endpoints
+        path('api/students/<int:pk>/card/', 
+            StudentCardViewSet.as_view({'get': 'retrieve'}), 
+            name='student-card'),
+        path('api/students/<int:pk>/individual-card/', 
+            StudentCardViewSet.as_view({'get': 'individual_card'}), 
+            name='student-individual-card'),
+        path('api/students/individual/', 
+            StudentCardViewSet.as_view({'get': 'individual'}), 
+            name='students-individual-list'),
     
     path('api/gradebook/', GradebookViewSet.as_view({'get': 'group'}), name='gradebook-group'),
     path('api/me/', MeView.as_view(), name='api-me'),

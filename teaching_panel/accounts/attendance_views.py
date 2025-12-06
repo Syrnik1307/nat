@@ -350,19 +350,19 @@ class GroupAttendanceLogViewSet(viewsets.ViewSet):
         {
             "lesson_id": 1,
             "student_id": 5,
-            "status": "attended"
+            "status": "attended" | "absent" | "watched_recording" | null (очистить)
         }
         """
         lesson_id = request.data.get('lesson_id')
         student_id = request.data.get('student_id')
         status_value = request.data.get('status')
-        
-        if not all([lesson_id, student_id, status_value]):
+
+        if lesson_id is None or student_id is None:
             return Response(
-                {'error': 'lesson_id, student_id и status обязательны'},
+                {'error': 'lesson_id и student_id обязательны'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             lesson = Lesson.objects.get(id=lesson_id, group_id=group_id)
             if lesson.teacher != request.user:
@@ -370,14 +370,36 @@ class GroupAttendanceLogViewSet(viewsets.ViewSet):
                     {'error': 'Вы не имеете прав на обновление'},
                     status=status.HTTP_403_FORBIDDEN
                 )
-            
+
+            # Очистка статуса
+            if status_value in (None, ''):
+                AttendanceRecord.objects.filter(
+                    lesson=lesson,
+                    student_id=student_id
+                ).delete()
+                RatingService.recalculate_student_rating(
+                    student_id=student_id,
+                    group_id=lesson.group_id
+                )
+                return Response({'status': 'cleared'}, status=status.HTTP_200_OK)
+
+            if status_value not in [
+                AttendanceRecord.STATUS_ATTENDED,
+                AttendanceRecord.STATUS_ABSENT,
+                AttendanceRecord.STATUS_WATCHED_RECORDING,
+            ]:
+                return Response(
+                    {'error': 'Недопустимый статус посещения'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             record = AttendanceService.manual_record_attendance(
                 lesson_id=lesson_id,
                 student_id=student_id,
                 status=status_value,
                 teacher_id=request.user.id
             )
-            
+
             return Response(
                 AttendanceRecordSerializer(record).data,
                 status=status.HTTP_200_OK
@@ -433,19 +455,52 @@ class StudentCardViewSet(viewsets.ViewSet):
     """
     
     permission_classes = [IsAuthenticated]
+
+    def retrieve(self, request, *args, **kwargs):
+        """Primary entrypoint for detail routes (aliases to card)."""
+        student_id = kwargs.get('pk') or kwargs.get('student_id')
+        return self.card(request, pk=student_id, **kwargs)
+
+    def _build_card_response(self, student, group_id=None, teacher_notes=None):
+        notes = teacher_notes
+        if notes is None:
+            try:
+                notes = student.individual_student_profile.teacher_notes
+            except IndividualStudent.DoesNotExist:
+                notes = ''
+
+        card_data = {
+            'student_id': student.id,
+            'name': student.get_full_name(),
+            'email': student.email,
+            'teacher_notes': notes,
+        }
+
+        serializer = StudentCardSerializer(
+            card_data,
+            context={'group_id': group_id}
+        )
+        return Response(serializer.data)
     
     @action(detail=True, methods=['get'])
-    def card(self, request, pk=None):
-        """GET /api/students/{student_id}/card/"""
-        
+    def card(self, request, pk=None, **kwargs):
+        """GET /api/students/{student_id}/card/ (also used by retrieve)."""
+
+        student_id = pk or kwargs.get('student_id') or kwargs.get('pk')
+        if not student_id:
+            return Response(
+                {'error': 'student_id обязателен'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
-            student = CustomUser.objects.get(id=pk, role='student')
+            student = CustomUser.objects.get(id=student_id, role='student')
         except CustomUser.DoesNotExist:
             return Response(
-                {'error': f'Ученик с ID {pk} не найден'},
+                {'error': f'Ученик с ID {student_id} не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         # Проверить доступ (учитель может видеть только своих учеников)
         if request.user.role == 'teacher':
             if not student.enrolled_groups.filter(teacher=request.user).exists():
@@ -461,27 +516,40 @@ class StudentCardViewSet(viewsets.ViewSet):
                         {'error': 'Вы не имеете доступа к этому ученику'},
                         status=status.HTTP_403_FORBIDDEN
                     )
-        
+
         group_id = request.query_params.get('group_id')
-        
-        card_data = {
-            'student_id': student.id,
-            'name': student.get_full_name(),
-            'email': student.email,
-        }
-        
-        # Добавить замечания учителя если это индивидуальный ученик
+        return self._build_card_response(student, group_id=group_id)
+
+    @action(detail=True, methods=['get'], url_path='individual-card')
+    def individual_card(self, request, pk=None, **kwargs):
+        """GET /api/students/{student_id}/individual-card/"""
+
+        student_id = pk or kwargs.get('student_id') or kwargs.get('pk')
+        if not student_id:
+            return Response(
+                {'error': 'student_id обязателен'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
-            ind_student = student.individual_student_profile
-            card_data['teacher_notes'] = ind_student.teacher_notes
+            ind_student = IndividualStudent.objects.select_related('user', 'teacher').get(user_id=student_id)
         except IndividualStudent.DoesNotExist:
-            card_data['teacher_notes'] = ''
-        
-        serializer = StudentCardSerializer(
-            card_data,
-            context={'group_id': group_id}
+            return Response(
+                {'error': f'Индивидуальный ученик с ID {student_id} не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if request.user.role == 'teacher' and ind_student.teacher != request.user:
+            return Response(
+                {'error': 'Вы не имеете доступа к этому ученику'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        return self._build_card_response(
+            ind_student.user,
+            group_id=None,
+            teacher_notes=ind_student.teacher_notes
         )
-        return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def individual(self, request):
