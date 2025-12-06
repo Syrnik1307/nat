@@ -458,7 +458,7 @@ class StudentCardViewSet(viewsets.ViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         """Primary entrypoint for detail routes (aliases to card)."""
-        student_id = kwargs.get('pk') or kwargs.get('student_id')
+        student_id = kwargs.pop('pk', None) or kwargs.get('student_id')
         return self.card(request, pk=student_id, **kwargs)
 
     def _build_card_response(self, student, group_id=None, teacher_notes=None):
