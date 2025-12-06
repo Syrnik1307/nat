@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { startLessonNew, updateLesson } from '../../../apiService';
 
 /**
@@ -18,6 +18,20 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
   const [error, setError] = useState(null);
   const [showRecordingOption, setShowRecordingOption] = useState(false);
   const [recordLesson, setRecordLesson] = useState(lesson?.record_lesson || false);
+
+  // Блокируем скролл страницы, пока модалка открыта, чтобы исключить дергание на колесе мыши
+  useEffect(() => {
+    const preventScroll = (e) => e.preventDefault();
+    if (showRecordingOption) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('wheel', preventScroll, { passive: false });
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        window.removeEventListener('wheel', preventScroll);
+      };
+    }
+  }, [showRecordingOption]);
 
   const handleStartLesson = async () => {
     setLoading(true);
@@ -117,9 +131,9 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
               bottom: 0,
               zIndex: 999,
               backgroundColor: 'rgba(0, 0, 0, 0.3)',
-              backdropFilter: 'blur(2px)',
             }}
             onClick={() => setShowRecordingOption(false)}
+            onWheel={(e) => e.preventDefault()}
           />
           {/* Modal */}
           <div style={{
@@ -134,7 +148,9 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
             boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
             zIndex: 1000,
             minWidth: '320px',
-            maxWidth: '90vw',
+            maxWidth: '420px',
+            width: '360px',
+            boxSizing: 'border-box',
             animation: 'none',
           }}>
             <div style={{
