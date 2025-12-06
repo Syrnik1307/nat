@@ -24,10 +24,16 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
     const preventScroll = (e) => e.preventDefault();
     if (showRecordingOption) {
       const originalOverflow = document.body.style.overflow;
+      const originalPaddingRight = document.body.style.paddingRight;
+      const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
       document.body.style.overflow = 'hidden';
+      if (scrollBarWidth > 0) {
+        document.body.style.paddingRight = `${scrollBarWidth}px`;
+      }
       window.addEventListener('wheel', preventScroll, { passive: false });
       return () => {
         document.body.style.overflow = originalOverflow;
+        document.body.style.paddingRight = originalPaddingRight;
         window.removeEventListener('wheel', preventScroll);
       };
     }
@@ -131,6 +137,7 @@ const StartLessonButton = ({ lessonId, lesson, groupName, onSuccess }) => {
               bottom: 0,
               zIndex: 999,
               backgroundColor: 'rgba(0, 0, 0, 0.3)',
+              pointerEvents: 'auto',
             }}
             onClick={() => setShowRecordingOption(false)}
             onWheel={(e) => e.preventDefault()}
