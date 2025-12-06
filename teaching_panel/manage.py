@@ -2,6 +2,12 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+from pathlib import Path
+
+# Ensure we import apps from the project source (teaching_panel/*) even if a stale copy exists at repo root
+PROJECT_SRC = Path(__file__).resolve().parent / 'teaching_panel'
+if PROJECT_SRC.exists():
+    sys.path.insert(0, str(PROJECT_SRC))
 
 
 def main():
