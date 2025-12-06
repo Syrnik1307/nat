@@ -4,10 +4,14 @@ import os
 import sys
 from pathlib import Path
 
-# Ensure we import apps from the project source (teaching_panel/*) even if a stale copy exists at repo root
-PROJECT_SRC = Path(__file__).resolve().parent / 'teaching_panel'
+# Reorder sys.path so site-packages stay ahead of our project source, preventing celery.py shadowing
+PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_SRC = PROJECT_ROOT / 'teaching_panel'
+sys.path = [p for p in sys.path if p not in {str(PROJECT_ROOT), str(PROJECT_SRC)}]
 if PROJECT_SRC.exists():
-    sys.path.insert(0, str(PROJECT_SRC))
+    sys.path.append(str(PROJECT_SRC))
+if PROJECT_ROOT.exists():
+    sys.path.append(str(PROJECT_ROOT))
 
 
 def main():
