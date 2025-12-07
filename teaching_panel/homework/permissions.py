@@ -18,4 +18,16 @@ class IsStudentSubmission(BasePermission):
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        return request.user.is_authenticated and obj.student_id == request.user.id
+        if not request.user.is_authenticated:
+            return False
+        user_role = getattr(request.user, 'role', None)
+        # Студент видит только свои работы
+        if user_role == 'student':
+            return obj.student_id == request.user.id
+        # Учитель видит работы по своим заданиям
+        if user_role == 'teacher':
+            return obj.homework.teacher_id == request.user.id
+        # Админ видит всё
+        if user_role == 'admin':
+            return True
+        return False
