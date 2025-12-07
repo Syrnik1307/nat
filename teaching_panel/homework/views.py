@@ -428,7 +428,8 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         # Обновляем статус на "проверено", если это была ручная проверка
         if submission.status == 'submitted':
             submission.status = 'graded'
-            submission.save(update_fields=['status'])
+            submission.graded_at = timezone.now()
+            submission.save(update_fields=['status', 'graded_at'])
             # Уведомим ученика в фоне (Celery)
             try:
                 notify_student_graded.delay(submission.id)
@@ -451,3 +452,35 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             f"Итоговый балл: {score}."
         )
         send_telegram_notification(student, 'homework_graded', message)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def complete_review(self, request, pk=None):
+        """
+        Завершить проверку работы: перевести в статус 'graded' если еще не проверена.
+        
+        POST /api/submissions/{id}/complete_review/
+        """
+        submission = self.get_object()
+        
+        # Проверяем права: только учитель этого задания
+        if request.user != submission.homework.teacher:
+            return Response(
+                {'error': 'Только учитель, создавший задание, может завершить проверку'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Переводим в статус 'graded' если еще не переведена
+        if submission.status != 'graded':
+            submission.status = 'graded'
+            submission.graded_at = timezone.now()
+            submission.save(update_fields=['status', 'graded_at'])
+            
+            # Уведомляем ученика
+            try:
+                notify_student_graded.delay(submission.id)
+            except Exception:
+                pass
+            self._notify_student_graded(submission)
+        
+        serializer = self.get_serializer(submission)
+        return Response(serializer.data)
