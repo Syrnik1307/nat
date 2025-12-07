@@ -15,6 +15,7 @@ const GradedSubmissionsList = () => {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [groups, setGroups] = useState([]);
   const [filters, setFilters] = useState({
     search: '',
     group: groupIdFromUrl || '',
@@ -24,7 +25,25 @@ const GradedSubmissionsList = () => {
 
   useEffect(() => {
     loadGradedSubmissions();
+    loadGroups();
   }, [groupIdFromUrl]);
+
+  useEffect(() => {
+    if (!groupIdFromUrl) {
+      loadGradedSubmissions();
+    }
+  }, [filters.group, groupIdFromUrl]);
+
+  const loadGroups = async () => {
+    try {
+      const res = await fetch('/api/groups/');
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : data.results || [];
+      setGroups(arr);
+    } catch (err) {
+      console.error('Ошибка загрузки групп', err);
+    }
+  };
 
   const loadGradedSubmissions = async () => {
     setLoading(true);
@@ -39,6 +58,10 @@ const GradedSubmissionsList = () => {
       // Добавляем фильтр по группе если есть
       if (groupIdFromUrl) {
         params.homework__lesson__group = groupIdFromUrl;
+      } else if (filters.group === 'individual') {
+        params.individual = 1;
+      } else if (filters.group) {
+        params.group_id = filters.group;
       }
       
       const response = await getSubmissions(params);
@@ -122,6 +145,19 @@ const GradedSubmissionsList = () => {
             className="filter-input"
           />
         </div>
+        <div className="filter-group">
+          <select
+            value={filters.group}
+            onChange={(e) => setFilters({ ...filters, group: e.target.value })}
+            className="filter-select"
+          >
+            <option value="">Все группы</option>
+            {groups.map(g => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+            <option value="individual">Индивидуальные</option>
+          </select>
+        </div>
       </div>
 
       {/* Список */}
@@ -133,45 +169,62 @@ const GradedSubmissionsList = () => {
         </div>
       ) : (
         <div className="graded-grid">
-          {filteredSubmissions.map((submission) => (
-            <div key={submission.id} className="graded-card">
-              <div className="graded-card-header">
-                <div className="student-info">
-                  <div className="student-avatar">🎓</div>
-                  <div className="student-details">
-                    <h4 className="student-name">{submission.student_name || 'Ученик'}</h4>
-                    <p className="homework-title">{submission.homework_title || 'Домашнее задание'}</p>
+          {Object.entries(
+            filteredSubmissions.reduce((acc, sub) => {
+              const key = sub.group_name || (sub.is_individual ? 'Индивидуальные' : 'Без группы');
+              if (!acc[key]) acc[key] = [];
+              acc[key].push(sub);
+              return acc;
+            }, {})
+          ).sort(([a], [b]) => a.localeCompare(b, 'ru')).map(([groupLabel, items]) => (
+            <div key={groupLabel} className="graded-group">
+              <div className="graded-group-header">
+                <span className="graded-group-title">{groupLabel}</span>
+                <span className="graded-group-count">{items.length} шт.</span>
+              </div>
+              <div className="graded-group-items">
+                {items.map((submission) => (
+                  <div key={submission.id} className="graded-card">
+                    <div className="graded-card-header">
+                      <div className="student-info">
+                        <div className="student-avatar">🎓</div>
+                        <div className="student-details">
+                          <h4 className="student-name">{submission.student_name || 'Ученик'}</h4>
+                          <p className="homework-title">{submission.homework_title || 'Домашнее задание'}</p>
+                        </div>
+                      </div>
+                      <div 
+                        className="score-badge"
+                        style={{ 
+                          color: getScoreColor(submission.total_score, submission.max_score),
+                          borderColor: getScoreColor(submission.total_score, submission.max_score),
+                        }}
+                      >
+                        {submission.total_score || 0} / {submission.max_score || 0}
+                      </div>
+                    </div>
+
+                    <div className="graded-card-meta">
+                      <div className="meta-item">
+                        <span className="meta-label">Сдано:</span>
+                        <span className="meta-value">{formatDate(submission.submitted_at)}</span>
+                      </div>
+                      <div className="meta-item">
+                        <span className="meta-label">Проверено:</span>
+                        <span className="meta-value">{formatDate(submission.graded_at)}</span>
+                      </div>
+                    </div>
+
+                    <div className="graded-card-actions">
+                      <button
+                        onClick={() => handleViewSubmission(submission.id)}
+                        className="btn-view"
+                      >
+                        Просмотреть
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div 
-                  className="score-badge"
-                  style={{ 
-                    color: getScoreColor(submission.total_score, submission.max_score),
-                    borderColor: getScoreColor(submission.total_score, submission.max_score),
-                  }}
-                >
-                  {submission.total_score || 0} / {submission.max_score || 0}
-                </div>
-              </div>
-
-              <div className="graded-card-meta">
-                <div className="meta-item">
-                  <span className="meta-label">Сдано:</span>
-                  <span className="meta-value">{formatDate(submission.submitted_at)}</span>
-                </div>
-                <div className="meta-item">
-                  <span className="meta-label">Проверено:</span>
-                  <span className="meta-value">{formatDate(submission.graded_at)}</span>
-                </div>
-              </div>
-
-              <div className="graded-card-actions">
-                <button
-                  onClick={() => handleViewSubmission(submission.id)}
-                  className="btn-view"
-                >
-                  Просмотреть
-                </button>
+                ))}
               </div>
             </div>
           ))}

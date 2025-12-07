@@ -44,8 +44,10 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
         params.status = filterStatus;
       }
       
-      // Применяем фильтр по группе
-      if (selectedGroup) {
+      // Применяем фильтр по группе или индивидуальным
+      if (selectedGroup === 'individual') {
+        params.individual = 1;
+      } else if (selectedGroup) {
         params.group_id = selectedGroup;
       }
       
@@ -146,10 +148,8 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
             onChange={(e) => setSelectedGroup(e.target.value)}
             options={[
               { value: '', label: 'Все группы' },
-              ...groups.map(group => ({
-                value: group.id,
-                label: group.name
-              }))
+              ...groups.map(group => ({ value: group.id?.toString(), label: group.name })),
+              { value: 'individual', label: 'Индивидуальные' },
             ]}
             placeholder="Выберите группу..."
             className="sl-filter-select"
@@ -165,56 +165,73 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
         </div>
       ) : (
         <div className="sl-table-container">
-          <table className="sl-table">
-            <thead>
-              <tr>
-                <th>Ученик</th>
-                <th>Задание</th>
-                <th>Дата сдачи</th>
-                <th>Статус</th>
-                <th>Баллы</th>
-                <th>Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredSubmissions.map(submission => (
-                <tr key={submission.id} className="sl-table-row">
-                  <td>
-                    <div className="sl-student-info">
-                      <div className="sl-student-name">{submission.student_name}</div>
-                      <div className="sl-student-email">{submission.student_email}</div>
-                    </div>
-                  </td>
-                  <td className="sl-homework-title">{submission.homework_title}</td>
-                  <td className="sl-date">
-                    {new Date(submission.submitted_at).toLocaleDateString('ru-RU', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </td>
-                  <td>
-                    <span className={`sl-status ${getStatusClass(submission.status)}`}>
-                      {getStatusLabel(submission.status)}
-                    </span>
-                  </td>
-                  <td className="sl-score">
-                    {submission.total_score !== null ? submission.total_score : '—'}
-                  </td>
-                  <td>
-                    <button
-                      className="sl-btn-review"
-                      onClick={() => navigate(`/submissions/${submission.id}/review`)}
-                    >
-                      {submission.status === 'graded' ? 'Просмотр' : 'Проверить'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {Object.entries(
+            filteredSubmissions.reduce((acc, item) => {
+              const key = item.group_name || (item.is_individual ? 'Индивидуальные' : 'Без группы');
+              if (!acc[key]) acc[key] = [];
+              acc[key].push(item);
+              return acc;
+            }, {})
+          )
+            .sort(([aKey], [bKey]) => aKey.localeCompare(bKey, 'ru'))
+            .map(([groupLabel, items]) => (
+              <div key={groupLabel} className="sl-group-block">
+                <div className="sl-group-header">
+                  <span className="sl-group-title">{groupLabel}</span>
+                  <span className="sl-group-count">{items.length} шт.</span>
+                </div>
+                <table className="sl-table">
+                  <thead>
+                    <tr>
+                      <th>Ученик</th>
+                      <th>Задание</th>
+                      <th>Дата сдачи</th>
+                      <th>Статус</th>
+                      <th>Баллы</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map(submission => (
+                      <tr key={submission.id} className="sl-table-row">
+                        <td>
+                          <div className="sl-student-info">
+                            <div className="sl-student-name">{submission.student_name}</div>
+                            <div className="sl-student-email">{submission.student_email}</div>
+                          </div>
+                        </td>
+                        <td className="sl-homework-title">{submission.homework_title}</td>
+                        <td className="sl-date">
+                          {new Date(submission.submitted_at).toLocaleDateString('ru-RU', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </td>
+                        <td>
+                          <span className={`sl-status ${getStatusClass(submission.status)}`}>
+                            {getStatusLabel(submission.status)}
+                          </span>
+                        </td>
+                        <td className="sl-score">
+                          {submission.total_score !== null ? submission.total_score : '—'}
+                        </td>
+                        <td>
+                          <button
+                            className="sl-btn-review"
+                            onClick={() => navigate(`/submissions/${submission.id}/review`)}
+                          >
+                            {submission.status === 'graded' ? 'Просмотр' : 'Проверить'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
         </div>
       )}
     </div>

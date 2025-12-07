@@ -69,7 +69,23 @@
   transition: all 0.2s;
 }
 
+.filter-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #E2E8F0;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  transition: all 0.2s;
+}
+
 .filter-input:focus {
+  outline: none;
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+}
+
+.filter-select:focus {
   outline: none;
   border-color: #1e3a8a;
   box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
@@ -99,9 +115,41 @@
 
 /* Сетка карточек */
 .graded-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.graded-group {
+  border: 2px solid #E2E8F0;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 1rem;
+}
+
+.graded-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.graded-group-title {
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.graded-group-count {
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.graded-group-items {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
 }
 
 .graded-card {
@@ -228,7 +276,7 @@
 
 /* Адаптивность */
 @media (max-width: 768px) {
-  .graded-grid {
+  .graded-group-items {
     grid-template-columns: 1fr;
   }
 

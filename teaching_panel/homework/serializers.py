@@ -159,12 +159,14 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
     homework_title = serializers.CharField(source='homework.title', read_only=True)
     max_score = serializers.SerializerMethodField()
     group_id = serializers.SerializerMethodField()
+    group_name = serializers.SerializerMethodField()
+    is_individual = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentSubmission
         fields = ['id', 'homework', 'homework_title', 'student', 'student_email', 'student_name',
-                  'status', 'total_score', 'max_score', 'group_id', 'answers', 'teacher_feedback_summary',
-                  'created_at', 'submitted_at', 'graded_at']
+              'status', 'total_score', 'max_score', 'group_id', 'group_name', 'is_individual',
+              'answers', 'teacher_feedback_summary', 'created_at', 'submitted_at', 'graded_at']
         read_only_fields = ['student', 'total_score', 'teacher_feedback_summary']
     
     def get_student_name(self, obj):
@@ -179,6 +181,14 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
         if obj.homework.lesson and hasattr(obj.homework.lesson, 'group'):
             return obj.homework.lesson.group.id
         return None
+
+    def get_group_name(self, obj):
+        if obj.homework.lesson and getattr(obj.homework.lesson, 'group', None):
+            return obj.homework.lesson.group.name
+        return 'Индивидуальные'
+
+    def get_is_individual(self, obj):
+        return not (obj.homework.lesson and getattr(obj.homework.lesson, 'group', None))
 
     def create(self, validated_data):
         answers_data = validated_data.pop('answers', [])

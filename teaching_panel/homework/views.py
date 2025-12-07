@@ -215,7 +215,9 @@ class HomeworkViewSet(viewsets.ModelViewSet):
 
 
 class StudentSubmissionViewSet(viewsets.ModelViewSet):
-    queryset = StudentSubmission.objects.all().select_related('homework', 'student')
+    queryset = StudentSubmission.objects.all().select_related(
+        'homework', 'homework__lesson', 'homework__lesson__group', 'student'
+    )
     serializer_class = StudentSubmissionSerializer
     permission_classes = [IsStudentSubmission]
     # Ограничиваем частоту сабмитов (см. DEFAULT_THROTTLE_RATES['submissions'])
@@ -237,9 +239,12 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         if status_filter:
             qs = qs.filter(status=status_filter)
         
-        # Фильтрация по группе (ищем по homework__lesson__group__id)
+        # Фильтрация по индивидуальным/групповым
+        individual = self.request.query_params.get('individual')
         group_filter = self.request.query_params.get('group_id')
-        if group_filter:
+        if individual == '1':
+            qs = qs.filter(homework__lesson__group__isnull=True)
+        elif group_filter:
             qs = qs.filter(homework__lesson__group__id=group_filter)
         
         # Для детального просмотра (retrieve) подгружаем ответы
@@ -248,7 +253,8 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
                 'answers', 'answers__question', 'answers__selected_choices'
             )
         
-        return qs
+        # Стабильная сортировка: сначала по группе, затем по студенту и дате
+        return qs.order_by('homework__lesson__group__name', 'student__last_name', 'student__first_name', '-created_at')
 
     # --- Student flows -------------------------------------------------
     def _upsert_answers(self, submission: StudentSubmission, answers_payload: dict):
