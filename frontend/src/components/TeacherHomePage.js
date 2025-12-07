@@ -116,53 +116,6 @@ const TreeGrowth = ({ stage, progress, timeOfDay = 'day' }) => {
           </div>
         </div>
       </div>
-      <div className="tree-santa" aria-hidden="true">
-        <div className="santa-sleigh">
-          <div className="reindeer-group">
-            <div className="reindeer r1">
-              <div className="deer-body"></div>
-              <div className="deer-head"></div>
-              <div className="deer-snout"></div>
-              <div className="deer-nose"></div>
-              <div className="deer-antler left"></div>
-              <div className="deer-antler right"></div>
-              <div className="deer-ear left"></div>
-              <div className="deer-ear right"></div>
-              <div className="deer-leg fl"></div>
-              <div className="deer-leg fr"></div>
-              <div className="deer-leg bl"></div>
-              <div className="deer-leg br"></div>
-            </div>
-            <div className="reindeer r2">
-              <div className="deer-body"></div>
-              <div className="deer-head"></div>
-              <div className="deer-snout"></div>
-              <div className="deer-nose"></div>
-              <div className="deer-antler left"></div>
-              <div className="deer-antler right"></div>
-              <div className="deer-ear left"></div>
-              <div className="deer-ear right"></div>
-              <div className="deer-leg fl"></div>
-              <div className="deer-leg fr"></div>
-              <div className="deer-leg bl"></div>
-              <div className="deer-leg br"></div>
-            </div>
-          </div>
-          <div className="sleigh-body">
-            <div className="sleigh-base"></div>
-            <div className="sleigh-runner left"></div>
-            <div className="sleigh-runner right"></div>
-            <div className="santa-figure">
-              <div className="santa-hat"></div>
-              <div className="santa-head"></div>
-              <div className="santa-beard"></div>
-              <div className="santa-body"></div>
-              <div className="santa-belt"></div>
-              <div className="santa-sack"></div>
-            </div>
-          </div>
-        </div>
-      </div>
       <div className="tree-snow" aria-hidden="true">
         <span></span><span></span><span></span><span></span><span></span>
         <span></span><span></span><span></span><span></span><span></span>
