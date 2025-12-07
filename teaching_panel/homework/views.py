@@ -235,9 +235,10 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         if status_filter:
             qs = qs.filter(status=status_filter)
         
-        group_filter = self.request.query_params.get('homework__lesson__group')
+        # Фильтрация по группе (ищем по homework__lesson__group__id)
+        group_filter = self.request.query_params.get('group_id')
         if group_filter:
-            qs = qs.filter(homework__lesson__group=group_filter)
+            qs = qs.filter(homework__lesson__group__id=group_filter)
         
         # Для детального просмотра (retrieve) подгружаем ответы
         if self.action == 'retrieve':

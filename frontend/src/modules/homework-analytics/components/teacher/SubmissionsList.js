@@ -21,7 +21,7 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
   useEffect(() => {
     loadSubmissions();
     loadGroups();
-  }, [filterStatus]);
+  }, [filterStatus, selectedGroup]);
 
   const loadGroups = async () => {
     try {
@@ -42,6 +42,11 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
       // Применяем фильтр статуса
       if (filterStatus !== 'all') {
         params.status = filterStatus;
+      }
+      
+      // Применяем фильтр по группе
+      if (selectedGroup) {
+        params.group_id = selectedGroup;
       }
       
       const response = await getSubmissions(params);
@@ -74,14 +79,7 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
   };
 
   const filteredSubmissions = submissions.filter(sub => {
-    // Фильтр по группе (проверяем что group_id существует и совпадает)
-    if (selectedGroup) {
-      if (!sub.group_id || sub.group_id !== parseInt(selectedGroup)) {
-        return false;
-      }
-    }
-    
-    // Фильтр по поиску
+    // Фильтр по поиску (группа и статус уже отфильтрованы на бэкенде)
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       const studentMatch = sub.student_name?.toLowerCase().includes(term) ||
