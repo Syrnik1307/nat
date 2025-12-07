@@ -519,6 +519,10 @@ class LessonViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Фильтрация по параметрам запроса"""
         queryset = super().get_queryset()
+        
+        # Исключаем быстрые уроки из расписания по умолчанию
+        queryset = queryset.filter(is_quick_lesson=False)
+        
         user = self.request.user
         if user.is_authenticated:
             if getattr(user, 'role', None) == 'teacher':
@@ -1131,6 +1135,7 @@ class LessonViewSet(viewsets.ModelViewSet):
             start_time=start_time,
             end_time=end_time,
             record_lesson=record_lesson,
+            is_quick_lesson=True,  # Помечаем как быстрый урок
             notes='Создано кнопкой "Быстрый урок"'
         )
 

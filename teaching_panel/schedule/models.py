@@ -163,6 +163,13 @@ class Lesson(models.Model):
     
     notes = models.TextField(_('заметки'), blank=True)
     
+    # Флаг быстрого урока (не показывается в расписании)
+    is_quick_lesson = models.BooleanField(
+        _('быстрый урок'),
+        default=False,
+        help_text=_('Урок создан через "Быстрый урок" и не должен отображаться в расписании')
+    )
+    
     # Настройка записи урока
     record_lesson = models.BooleanField(
         _('записывать урок'),
