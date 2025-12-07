@@ -8,6 +8,7 @@ import SubscriptionBanner from './SubscriptionBanner';
 import TelegramWarningBanner from './TelegramWarningBanner';
 import GroupDetailModal from './GroupDetailModal';
 import StudentCardModal from './StudentCardModal';
+import QuickLessonButton from './QuickLessonButton';
 import './TeacherHomePage.css';
 
 const TreeGrowth = ({ stage, progress }) => {
@@ -369,12 +370,13 @@ const TeacherHomePage = () => {
           </p>
         </div>
         <div className="header-actions">
+          <QuickLessonButton onSuccess={loadData} />
           <button 
             type="button" 
             className="header-message-button" 
             aria-label="Записи уроков"
             onClick={() => navigate('/teacher/recordings')}
-            style={{ marginRight: '1rem' }}
+            style={{ marginLeft: '1rem' }}
           >
             <span className="header-message-icon" aria-hidden="true">
               <svg

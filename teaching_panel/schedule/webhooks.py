@@ -208,8 +208,35 @@ def handle_recording_completed(payload):
                 lesson_recording.status = 'processing'
                 lesson_recording.save()
 
+            # Применяем настройки приватности из урока если они есть
+            privacy_type = LessonRecording.Visibility.LESSON_GROUP
+            allowed_groups = []
+            allowed_students = []
+            
+            # Пытаемся извлечь настройки приватности из notes урока
+            if lesson.notes and 'Privacy:' in lesson.notes:
+                import json
+                try:
+                    # Извлекаем JSON строку из notes
+                    privacy_json = lesson.notes.split('Privacy: ', 1)[1].strip()
+                    privacy_settings = json.loads(privacy_json)
+                    
+                    privacy_type_str = privacy_settings.get('privacy_type', 'all')
+                    if privacy_type_str == 'groups':
+                        privacy_type = LessonRecording.Visibility.CUSTOM_GROUPS
+                        allowed_groups = privacy_settings.get('allowed_groups', [])
+                    elif privacy_type_str == 'students':
+                        privacy_type = LessonRecording.Visibility.CUSTOM_STUDENTS
+                        allowed_students = privacy_settings.get('allowed_students', [])
+                    elif privacy_type_str == 'all':
+                        privacy_type = LessonRecording.Visibility.ALL_TEACHER_GROUPS
+                except (json.JSONDecodeError, IndexError) as e:
+                    logger.warning(f"Failed to parse privacy settings from lesson notes: {e}")
+
             lesson_recording.apply_privacy(
-                privacy_type=LessonRecording.Visibility.LESSON_GROUP,
+                privacy_type=privacy_type,
+                group_ids=allowed_groups,
+                student_ids=allowed_students,
                 teacher=lesson.teacher
             )
             

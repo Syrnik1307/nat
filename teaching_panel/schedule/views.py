@@ -1121,19 +1121,41 @@ class LessonViewSet(viewsets.ModelViewSet):
         start_time = timezone.now()
         end_time = start_time + timezone.timedelta(minutes=duration)
 
+        # Получаем настройки записи
+        record_lesson = request.data.get('record_lesson', False)
+
         lesson = Lesson.objects.create(
             title=title,
             group=group,
             teacher=user,
             start_time=start_time,
             end_time=end_time,
-            notes='Создано кнопкой "Создать урок без расписания"'
+            record_lesson=record_lesson,
+            notes='Создано кнопкой "Быстрый урок"'
         )
 
         payload, error_response = self._start_zoom_via_pool(lesson, user, request)
         if error_response:
             lesson.delete()
             return error_response
+
+        # Если урок записывается, применяем настройки приватности к будущей записи
+        if record_lesson:
+            privacy_type = request.data.get('privacy_type', 'all')
+            allowed_groups = request.data.get('allowed_groups', [])
+            allowed_students = request.data.get('allowed_students', [])
+            
+            # Сохраняем настройки приватности в метаданных урока для применения при создании записи
+            # Это будет использовано в webhook обработчике когда запись будет готова
+            lesson.privacy_settings = {
+                'privacy_type': privacy_type,
+                'allowed_groups': allowed_groups,
+                'allowed_students': allowed_students,
+            }
+            # Сохраняем в поле notes временно (или можно добавить JSONField в модель)
+            import json
+            lesson.notes = f"Создано кнопкой \"Быстрый урок\"\nPrivacy: {json.dumps(lesson.privacy_settings)}"
+            lesson.save(update_fields=['notes'])
 
         payload.update({
             'lesson_id': lesson.id,
