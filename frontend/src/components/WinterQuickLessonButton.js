@@ -206,26 +206,29 @@ const QuickLessonButton = ({ onSuccess, className = '', text = 'Быстрый �
     try {
       const response = await startQuickLesson();
       
-      if (response.success) {
-        setLessonData(response);
+      // axios возвращает данные в response.data
+      if (response.data && response.data.zoom_start_url) {
+        setLessonData(response.data);
         setShowModal(true);
         
         // Вызываем callback если передан
         if (onSuccess) {
-          onSuccess();
+          onSuccess(response.data);
         }
         
         setTimeout(() => {
-          if (response.meeting_url) {
-            window.open(response.meeting_url, '_blank');
+          if (response.data.zoom_start_url) {
+            window.open(response.data.zoom_start_url, '_blank');
           }
         }, 1500);
       } else {
-        setError(response.error || 'Не удалось запустить урок');
+        setError('Не удалось запустить урок');
         setShowModal(true);
       }
     } catch (err) {
-      setError(err.message || 'Произошла ошибка');
+      console.error('Quick lesson error:', err);
+      const errorMessage = err.response?.data?.detail || err.response?.data?.error || err.message || 'Произошла ошибка';
+      setError(errorMessage);
       setShowModal(true);
     } finally {
       setIsLoading(false);
@@ -239,8 +242,8 @@ const QuickLessonButton = ({ onSuccess, className = '', text = 'Быстрый �
   };
 
   const handleConfirm = () => {
-    if (lessonData?.meeting_url) {
-      window.open(lessonData.meeting_url, '_blank');
+    if (lessonData?.zoom_start_url) {
+      window.open(lessonData.zoom_start_url, '_blank');
       handleModalClose();
     } else {
       handleModalClose();
@@ -297,7 +300,7 @@ const QuickLessonButton = ({ onSuccess, className = '', text = 'Быстрый �
                 {error 
                   ? error
                   : lessonData 
-                    ? `Урок готов! Комната: ${lessonData.meeting_id || 'загрузка...'}`
+                    ? `Урок готов! Переходим в Zoom...`
                     : 'Снежная база для будущего леса знаний. Снег укрывает землю, готовясь к весне.'
                 }
               </p>
