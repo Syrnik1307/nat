@@ -92,6 +92,20 @@ const SubmissionReview = () => {
     return answer.teacher_score ?? answer.auto_score ?? 0;
   };
 
+  const completeReview = async () => {
+    try {
+      setSaving(true);
+      await apiClient.post(`submissions/${submissionId}/complete_review/`);
+      showNotification('success', 'Успешно', 'Проверка завершена');
+      setTimeout(() => navigate(-1), 1000);
+    } catch (err) {
+      console.error('Ошибка завершения проверки:', err);
+      showNotification('error', 'Ошибка', err.response?.data?.error || 'Не удалось завершить проверку');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="sr-container">
@@ -251,8 +265,12 @@ const SubmissionReview = () => {
         <div className="sr-total-score">
           <strong>Итоговый балл:</strong> {submission.total_score || 0}
         </div>
-        <button className="sr-btn-done" onClick={() => navigate(-1)}>
-          Завершить проверку
+        <button 
+          className="sr-btn-done" 
+          onClick={completeReview}
+          disabled={saving}
+        >
+          {saving ? 'Завершение...' : 'Завершить проверку'}
         </button>
       </div>
 
