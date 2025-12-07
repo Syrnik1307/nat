@@ -1700,7 +1700,8 @@ def sync_missing_zoom_recordings_for_teacher(teacher):
                 return f"{url}{separator}pwd={pwd}"
             for rec_file in recording_files:
                 file_type = str(rec_file.get('file_type', '')).lower()
-                if file_type not in ['mp4', 'm4a']:
+                # Только MP4 видео, пропускаем аудио и timeline JSON
+                if file_type not in ['mp4']:
                     continue
 
                 # Время записи из Zoom
