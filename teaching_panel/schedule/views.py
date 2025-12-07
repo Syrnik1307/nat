@@ -1379,13 +1379,19 @@ def zoom_webhook_receiver(request):
         
         # Zoom отправляет verification token при первой настройке webhook
         # Нужно ответить этим же token для верификации
+        # Проверяем наличие plainToken на верхнем уровне
+        if 'plainToken' in payload:
+            plain_token = payload.get('plainToken')
+            return JsonResponse({
+                'plainToken': plain_token,
+            })
+        
+        # Также проверяем структуру с payload.payload.plainToken (старые версии)
         if 'event' not in payload:
-            # Это verification request
             plain_token = payload.get('payload', {}).get('plainToken')
             if plain_token:
                 return JsonResponse({
                     'plainToken': plain_token,
-                    'encryptedToken': plain_token  # В production нужно шифровать
                 })
         
         event_type = payload.get('event')
