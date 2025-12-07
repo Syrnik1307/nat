@@ -1011,6 +1011,9 @@ class LessonViewSet(viewsets.ModelViewSet):
         force_new_meeting = str(request.data.get('force_new_meeting', '')).lower() in (
             '1', 'true', 'yes', 'on', 'y', 't'
         )
+        keep_existing_meeting = str(request.data.get('keep_existing_meeting', '')).lower() in (
+            '1', 'true', 'yes', 'on', 'y', 't'
+        )
         record_flag_changed = False
         if record_flag_raw is not None:
             desired_record_flag = str(record_flag_raw).lower() in ('1', 'true', 'yes', 'on', 'y', 't')
@@ -1019,7 +1022,11 @@ class LessonViewSet(viewsets.ModelViewSet):
                 lesson.save(update_fields=['record_lesson'])
                 record_flag_changed = True
 
-        # Если просили включить запись и встреча уже есть — пересоздаём её, чтобы передать авто-запись в Zoom
+        # Если запись включена, а встреча уже создана — пересоздаём (если явно не попросили оставить)
+        force_new_meeting = force_new_meeting or (
+            lesson.record_lesson and lesson.zoom_meeting_id and not keep_existing_meeting
+        )
+        # Вариант, когда флаг только что сменился на True — тоже пересоздаём
         force_new_meeting = force_new_meeting or (record_flag_changed and lesson.record_lesson)
 
         # Rate limiting - 3 попытки в минуту на пользователя
