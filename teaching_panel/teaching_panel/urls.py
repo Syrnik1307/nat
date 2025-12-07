@@ -50,6 +50,7 @@ from accounts.subscriptions_views import (
     SubscriptionPaymentStatusView,
 )
 from accounts.payments_views import yookassa_webhook
+from schedule.views import zoom_webhook_receiver
 from accounts.debug_views import debug_env  # Debug endpoint
 from django.conf import settings
 from django.conf.urls.static import static
@@ -163,6 +164,8 @@ urlpatterns = [
     
     # Payment webhooks
     path('api/payments/yookassa/webhook/', yookassa_webhook, name='yookassa_webhook'),
+    # Zoom webhooks
+    path('schedule/webhook/zoom/', zoom_webhook_receiver, name='zoom_webhook'),
 ]
 
 # Serve media files in development
