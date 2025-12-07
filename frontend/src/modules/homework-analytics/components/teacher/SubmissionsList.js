@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient, getSubmissions } from '../../../../apiService';
+import { Select, Input } from '../../../../shared/components';
 import './SubmissionsList.css';
 
 /**
@@ -73,8 +74,12 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
   };
 
   const filteredSubmissions = submissions.filter(sub => {
-    // Фильтр по группе
-    if (selectedGroup && sub.group_id !== parseInt(selectedGroup)) return false;
+    // Фильтр по группе (проверяем что group_id существует и совпадает)
+    if (selectedGroup) {
+      if (!sub.group_id || sub.group_id !== parseInt(selectedGroup)) {
+        return false;
+      }
+    }
     
     // Фильтр по поиску
     if (searchTerm) {
@@ -127,29 +132,30 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
       </div>
 
       <div className="sl-controls">
-        <div className="sl-search">
-          <input
+        <div className="sl-search-wrapper">
+          <Input
             type="text"
-            className="sl-search-input"
             placeholder="Поиск по ученику или заданию..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            className="sl-search-input"
           />
         </div>
 
-        <div className="sl-filters">
-          <select
-            className="sl-filter-select"
+        <div className="sl-filter-wrapper">
+          <Select
             value={selectedGroup}
             onChange={(e) => setSelectedGroup(e.target.value)}
-          >
-            <option value="">Все группы</option>
-            {groups.map(group => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: '', label: 'Все группы' },
+              ...groups.map(group => ({
+                value: group.id,
+                label: group.name
+              }))
+            ]}
+            placeholder="Выберите группу..."
+            className="sl-filter-select"
+          />
         </div>
       </div>
       
