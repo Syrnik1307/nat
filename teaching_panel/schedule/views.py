@@ -1338,59 +1338,51 @@ def student_dashboard_view(request):
 
 @csrf_exempt  # Required for external webhooks - verified by signature instead
 @require_http_methods(["POST"])
+@csrf_exempt  # Required for external webhooks - verified by signature instead
+@require_http_methods(["POST"])
 def zoom_webhook_receiver(request):
     """
     Webhook приемник для событий Zoom
-    
-    Zoom отправляет POST запросы на этот endpoint при различных событиях:
-    - meeting.started - встреча началась
-    - meeting.ended - встреча завершена
-    - participant.joined - участник присоединился
-    - etc.
-    
-    Security: This endpoint uses @csrf_exempt because it receives external webhooks.
-    Instead, we verify the webhook signature using ZOOM_WEBHOOK_SECRET_TOKEN.
-    
-    Документация: https://developers.zoom.us/docs/api/rest/webhook-reference/
-    
-    Для тестирования можно использовать ngrok:
-    1. ngrok http 8000
-    2. Скопировать https URL
-    3. В Zoom App настройках добавить Event Subscription:
-       https://your-ngrok-url.ngrok.io/schedule/webhook/zoom/
-    4. Подписаться на событие "End Meeting" (meeting.ended)
     """
     try:
         # Логируем всё что приходит
-        logger.info(f"[Webhook] Получен запрос: method={request.method}, path={request.path}")
-        logger.info(f"[Webhook] Headers: {dict(request.headers)}")
+        logger.info(f"[Webhook] Получен POST запрос на /schedule/webhook/zoom/")
+        logger.info(f"[Webhook] Content-Type: {request.content_type}")
+        logger.info(f"[Webhook] Body length: {len(request.body)}")
+        
+        # Если body пуста, просто отвечаем 200 (может быть проверка доступности)
+        if not request.body:
+            logger.info(f"[Webhook] Empty body, returning 200")
+            return JsonResponse({'status': 'ok'})
         
         # Парсим JSON из тела запроса
-        payload = json.loads(request.body.decode('utf-8'))
-        logger.info(f"[Webhook] Payload: {payload}")
+        try:
+            payload = json.loads(request.body.decode('utf-8'))
+        except json.JSONDecodeError as e:
+            logger.error(f"[Webhook] Invalid JSON: {e}")
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+        
+        logger.info(f"[Webhook] Payload keys: {list(payload.keys())}")
         
         # Zoom отправляет verification token при первой настройке webhook
-        # Нужно ответить этим же token для верификации
         # Проверяем наличие plainToken на верхнем уровне
         if 'plainToken' in payload:
             plain_token = payload.get('plainToken')
-            logger.info(f"[Webhook] Verification request detected, plainToken={plain_token}")
-            response = JsonResponse({
-                'plainToken': plain_token,
-            })
-            logger.info(f"[Webhook] Sending verification response: {response.content}")
+            logger.info(f"[Webhook] ✓ Verification request detected, plainToken={plain_token[:20]}...")
+            response = JsonResponse({'plainToken': plain_token})
+            logger.info(f"[Webhook] ✓ Responding with plainToken")
             return response
         
         # Также проверяем структуру с payload.payload.plainToken (старые версии)
-        if 'event' not in payload:
+        if 'event' not in payload and 'payload' in payload:
             plain_token = payload.get('payload', {}).get('plainToken')
             if plain_token:
-                logger.info(f"[Webhook] Verification request (nested), plainToken={plain_token}")
-                return JsonResponse({
-                    'plainToken': plain_token,
-                })
+                logger.info(f"[Webhook] ✓ Verification request (nested), responding")
+                return JsonResponse({'plainToken': plain_token})
         
+        # Обрабатываем события
         event_type = payload.get('event')
+        logger.info(f"[Webhook] Event type: {event_type}")
         
         # Обрабатываем событие завершения встречи
         if event_type == 'meeting.ended':
