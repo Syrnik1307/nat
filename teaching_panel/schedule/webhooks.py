@@ -60,11 +60,6 @@ def zoom_webhook(request):
     URL: /api/zoom/webhook/
     """
     try:
-        # Проверяем подпись запроса
-        if not verify_zoom_webhook(request):
-            logger.warning(f"Invalid Zoom webhook signature from {request.META.get('REMOTE_ADDR')}")
-            return JsonResponse({'error': 'Invalid signature'}, status=403)
-        
         # Парсим JSON payload
         try:
             payload = json.loads(request.body)
@@ -78,8 +73,14 @@ def zoom_webhook(request):
         logger.info(f"Received Zoom webhook: {event_type}")
         
         # Zoom требует ответить на URL validation challenge
+        # При валидации Zoom НЕ отправляет подпись, поэтому пропускаем проверку
         if event_type == 'endpoint.url_validation':
             return handle_url_validation(payload)
+        
+        # Для всех остальных событий проверяем подпись
+        if not verify_zoom_webhook(request):
+            logger.warning(f"Invalid Zoom webhook signature from {request.META.get('REMOTE_ADDR')}")
+            return JsonResponse({'error': 'Invalid signature'}, status=403)
         
         # Обрабатываем событие завершения записи
         elif event_type == 'recording.completed':
