@@ -1337,9 +1337,7 @@ def student_dashboard_view(request):
 
 
 @csrf_exempt  # Required for external webhooks - verified by signature instead
-@require_http_methods(["POST"])
-@csrf_exempt  # Required for external webhooks - verified by signature instead
-@require_http_methods(["POST"])
+@require_http_methods(["GET", "POST"])  # Allow GET for Zoom validation probes
 def zoom_webhook_receiver(request):
     """
     Webhook приемник для событий Zoom
