@@ -227,12 +227,17 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
     );
   };
 
+  console.log('QuickLessonButton rendered, showModal:', showModal);
+
   return (
     <>
       <button
         type="button"
         disabled={loading}
-        onClick={() => setShowModal(true)}
+        onClick={() => {
+          console.log('Quick Lesson button clicked!');
+          setShowModal(true);
+        }}
         className={`header-message-button ${className}`}
         aria-label="Быстрый урок"
       >
