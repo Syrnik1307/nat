@@ -239,14 +239,13 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         if group_filter:
             qs = qs.filter(homework__lesson__group=group_filter)
         
+        # Для детального просмотра (retrieve) подгружаем ответы
+        if self.action == 'retrieve':
+            qs = qs.prefetch_related(
+                'answers', 'answers__question', 'answers__selected_choices'
+            )
+        
         return qs
-    
-    def retrieve(self, request, *args, **kwargs):
-        # Детальный просмотр: подтянем ответы и связанные объекты, чтобы избежать N+1
-        self.queryset = self.get_queryset().prefetch_related(
-            'answers', 'answers__question', 'answers__selected_choices'
-        )
-        return super().retrieve(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         submission = serializer.save()
