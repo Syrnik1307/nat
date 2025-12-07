@@ -255,7 +255,7 @@ export const removeStudentFromCourse = (courseId, studentId) => {
 export const getLessons = (filters = {}) => apiClient.get('schedule/lessons/', { params: filters });
 export const getLesson = (id) => apiClient.get(`schedule/lessons/${id}/`);
 export const createLesson = (data) => apiClient.post('schedule/lessons/', data);
-export const updateLesson = (id, data) => apiClient.put(`schedule/lessons/${id}/`, data);
+export const updateLesson = (id, data) => apiClient.patch(`schedule/lessons/${id}/`, data);
 export const deleteLesson = (id) => apiClient.delete(`schedule/lessons/${id}/`);
 export const startLesson = (id) => apiClient.post(`schedule/lessons/${id}/start/`);
 export const startLessonNew = (id) => apiClient.post(`schedule/lessons/${id}/start-new/`);
