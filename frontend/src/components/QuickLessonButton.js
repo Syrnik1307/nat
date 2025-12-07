@@ -46,20 +46,18 @@ const modalStyles = {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    background: 'url(https://media.giphy.com/media/xUOxeZy95BvYvkKmVW/giphy.gif)',
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    border: '3px solid rgba(255, 255, 255, 0.5)',
+    background: 'linear-gradient(180deg, #0f172a 0%, #1e3a8a 50%, #2563eb 100%)',
+    border: '3px solid rgba(255, 255, 255, 0.4)',
     borderRadius: '20px',
     padding: '1.5rem',
-    boxShadow: '0 25px 70px rgba(0, 0, 0, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.3)',
+    boxShadow: '0 25px 70px rgba(0, 0, 0, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.3), 0 0 100px rgba(96, 165, 250, 0.3)',
     zIndex: 1000,
     width: '420px',
     maxWidth: '92vw',
     maxHeight: '85vh',
     overflowY: 'auto',
     boxSizing: 'border-box',
-    animation: 'none',
+    animation: 'glow 3s ease-in-out infinite alternate',
     position: 'relative',
     overflow: 'hidden',
   },
@@ -69,9 +67,9 @@ const modalStyles = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.85) 0%, rgba(37, 99, 235, 0.85) 100%)',
-    backdropFilter: 'blur(3px)',
+    background: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.1) 0%, transparent 60%)',
     zIndex: 0,
+    pointerEvents: 'none',
   },
   overlay: {
     position: 'fixed',
@@ -270,8 +268,30 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
           <style>
             {`
               @keyframes snowfall {
-                0% { transform: translateY(0) rotate(0deg); }
-                100% { transform: translateY(500px) rotate(360deg); }
+                0% { 
+                  transform: translateY(-10px) translateX(0) rotate(0deg);
+                  opacity: 0;
+                }
+                10% {
+                  opacity: 1;
+                }
+                100% { 
+                  transform: translateY(600px) translateX(100px) rotate(360deg);
+                  opacity: 0.8;
+                }
+              }
+              
+              @keyframes glow {
+                0% {
+                  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.5), 
+                             inset 0 2px 0 rgba(255, 255, 255, 0.3), 
+                             0 0 80px rgba(96, 165, 250, 0.2);
+                }
+                100% {
+                  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.5), 
+                             inset 0 2px 0 rgba(255, 255, 255, 0.3), 
+                             0 0 120px rgba(96, 165, 250, 0.4);
+                }
               }
             `}
           </style>
@@ -281,11 +301,11 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
             onWheel={(e) => e.preventDefault()}
           />
           <div style={modalStyles.container} onWheel={(e) => e.preventDefault()}>
-            {/* GIF backdrop overlay */}
+            {/* Radial glow backdrop */}
             <div style={modalStyles.backdrop}></div>
             
-            {/* Снегопад */}
-            {[...Array(30)].map((_, i) => (
+            {/* Интенсивный снегопад */}
+            {[...Array(50)].map((_, i) => (
               <Snowflake
                 key={i}
                 delay={Math.random() * 5}
