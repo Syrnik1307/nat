@@ -1,6 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { startQuickLesson, apiClient } from '../apiService';
 
+// Снежинка компонент
+const Snowflake = ({ delay, duration, left }) => (
+  <div
+    style={{
+      position: 'absolute',
+      top: '-10px',
+      left: `${left}%`,
+      width: '8px',
+      height: '8px',
+      background: 'white',
+      borderRadius: '50%',
+      opacity: 0.8,
+      animation: `snowfall ${duration}s linear infinite`,
+      animationDelay: `${delay}s`,
+      boxShadow: '0 0 10px rgba(255, 255, 255, 0.8)',
+    }}
+  />
+);
+
 const PRIMARY_GRADIENT = 'linear-gradient(135deg, #0b2b65 0%, #0a1f4d 100%)';
 
 const buttonBase = {
@@ -27,11 +46,11 @@ const modalStyles = {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    backgroundColor: 'white',
-    border: '1px solid #e5e7eb',
-    borderRadius: '12px',
+    background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
+    border: '2px solid rgba(255, 255, 255, 0.3)',
+    borderRadius: '16px',
     padding: '1.5rem',
-    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
     zIndex: 1000,
     width: '420px',
     maxWidth: '92vw',
@@ -39,6 +58,8 @@ const modalStyles = {
     overflowY: 'auto',
     boxSizing: 'border-box',
     animation: 'none',
+    position: 'relative',
+    overflow: 'hidden',
   },
   overlay: {
     position: 'fixed',
@@ -47,7 +68,8 @@ const modalStyles = {
     right: 0,
     bottom: 0,
     zIndex: 999,
-    backgroundColor: 'rgba(0, 0, 0, 0.32)',
+    backgroundColor: 'rgba(0, 20, 60, 0.6)',
+    backdropFilter: 'blur(4px)',
     pointerEvents: 'auto',
   },
 };
@@ -233,48 +255,82 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
 
       {showModal && (
         <>
+          <style>
+            {`
+              @keyframes snowfall {
+                0% { transform: translateY(0) rotate(0deg); }
+                100% { transform: translateY(500px) rotate(360deg); }
+              }
+            `}
+          </style>
           <div
             style={modalStyles.overlay}
             onClick={() => setShowModal(false)}
             onWheel={(e) => e.preventDefault()}
           />
           <div style={modalStyles.container} onWheel={(e) => e.preventDefault()}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1f2937' }}>
+            {/* Снегопад */}
+            {[...Array(30)].map((_, i) => (
+              <Snowflake
+                key={i}
+                delay={Math.random() * 5}
+                duration={5 + Math.random() * 5}
+                left={Math.random() * 100}
+              />
+            ))}
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative', zIndex: 1 }}>
+              <div style={{ 
+                fontSize: '1.3rem', 
+                fontWeight: 700, 
+                color: 'white',
+                textShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <span style={{ fontSize: '1.5rem' }}>❄️</span>
                 Быстрый урок
+                <span style={{ fontSize: '1.5rem' }}>🎄</span>
               </div>
 
               {/* Опция записи */}
               <label style={{
                 display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer',
                 padding: '0.75rem', borderRadius: '8px',
-                backgroundColor: recordLesson ? '#f0fdf4' : '#f9fafb',
-                border: recordLesson ? '1px solid #d1fae5' : '1px solid #e5e7eb',
+                backgroundColor: recordLesson ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)',
+                border: recordLesson ? '2px solid rgba(255, 255, 255, 0.5)' : '2px solid rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                transition: 'all 0.3s ease',
               }}>
                 <input
                   type="checkbox"
                   checked={recordLesson}
                   onChange={(e) => setRecordLesson(e.target.checked)}
-                  style={{ width: '1.1rem', height: '1.1rem', cursor: 'pointer', accentColor: '#0b2b65' }}
+                  style={{ width: '1.1rem', height: '1.1rem', cursor: 'pointer', accentColor: '#60a5fa' }}
                 />
-                <span style={{ fontSize: '0.9rem', color: '#1f2937', fontWeight: 500 }}>
-                  Записать урок
+                <span style={{ fontSize: '0.95rem', fontWeight: 500 }}>
+                  🎥 Записать урок
                 </span>
               </label>
 
               {recordLesson && (
                 <>
                   <div style={{
-                    fontSize: '0.8rem', color: '#6b7280', padding: '0.75rem',
-                    backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb',
+                    fontSize: '0.85rem', 
+                    color: 'rgba(255, 255, 255, 0.9)', 
+                    padding: '0.75rem',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
                   }}>
-                    Запись будет доступна в разделе «Записи» после окончания урока
+                    ⏺️ Запись будет доступна в разделе «Записи» после окончания урока
                   </div>
 
                   {/* Настройки приватности */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#1f2937' }}>
-                      Кому будет доступна запись?
+                    <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'white', textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
+                      🎁 Кому будет доступна запись?
                     </div>
                     
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -286,11 +342,12 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
                           padding: '0.5rem 0.75rem',
                           fontSize: '0.85rem',
                           fontWeight: 500,
-                          borderRadius: '6px',
-                          border: privacyType === 'all' ? '2px solid #0b2b65' : '1px solid #e5e7eb',
-                          backgroundColor: privacyType === 'all' ? '#f0f9ff' : 'white',
-                          color: privacyType === 'all' ? '#0b2b65' : '#4b5563',
+                          borderRadius: '8px',
+                          border: privacyType === 'all' ? '2px solid white' : '2px solid rgba(255, 255, 255, 0.3)',
+                          backgroundColor: privacyType === 'all' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.15)',
+                          color: 'white',
                           cursor: 'pointer',
+                          transition: 'all 0.3s ease',
                           transition: 'none',
                         }}
                       >
@@ -304,12 +361,12 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
                           padding: '0.5rem 0.75rem',
                           fontSize: '0.85rem',
                           fontWeight: 500,
-                          borderRadius: '6px',
-                          border: privacyType === 'groups' ? '2px solid #0b2b65' : '1px solid #e5e7eb',
-                          backgroundColor: privacyType === 'groups' ? '#f0f9ff' : 'white',
-                          color: privacyType === 'groups' ? '#0b2b65' : '#4b5563',
+                          borderRadius: '8px',
+                          border: privacyType === 'groups' ? '2px solid white' : '2px solid rgba(255, 255, 255, 0.3)',
+                          backgroundColor: privacyType === 'groups' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.15)',
+                          color: 'white',
                           cursor: 'pointer',
-                          transition: 'none',
+                          transition: 'all 0.3s ease',
                         }}
                       >
                         Выбрать группы
@@ -322,12 +379,12 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
                           padding: '0.5rem 0.75rem',
                           fontSize: '0.85rem',
                           fontWeight: 500,
-                          borderRadius: '6px',
-                          border: privacyType === 'students' ? '2px solid #0b2b65' : '1px solid #e5e7eb',
-                          backgroundColor: privacyType === 'students' ? '#f0f9ff' : 'white',
-                          color: privacyType === 'students' ? '#0b2b65' : '#4b5563',
+                          borderRadius: '8px',
+                          border: privacyType === 'students' ? '2px solid white' : '2px solid rgba(255, 255, 255, 0.3)',
+                          backgroundColor: privacyType === 'students' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.15)',
+                          color: 'white',
                           cursor: 'pointer',
-                          transition: 'none',
+                          transition: 'all 0.3s ease',
                         }}
                       >
                         Выбрать учеников
@@ -340,12 +397,12 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
                         maxHeight: '200px',
                         overflowY: 'auto',
                         padding: '0.75rem',
-                        backgroundColor: '#f9fafb',
+                        backgroundColor: 'rgba(255, 255, 255, 0.15)',
                         borderRadius: '8px',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
                       }}>
                         {groups.length === 0 ? (
-                          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                          <div style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)' }}>
                             Нет доступных групп
                           </div>
                         ) : (
@@ -356,17 +413,18 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
                               gap: '0.5rem',
                               padding: '0.5rem',
                               cursor: 'pointer',
-                              borderRadius: '4px',
+                              borderRadius: '6px',
                               marginBottom: '0.25rem',
-                              backgroundColor: selectedGroups.includes(group.id) ? '#f0f9ff' : 'transparent',
+                              backgroundColor: selectedGroups.includes(group.id) ? 'rgba(255, 255, 255, 0.25)' : 'transparent',
+                              transition: 'all 0.2s ease',
                             }}>
                               <input
                                 type="checkbox"
                                 checked={selectedGroups.includes(group.id)}
                                 onChange={() => toggleGroupSelection(group.id)}
-                                style={{ width: '1rem', height: '1rem', cursor: 'pointer', accentColor: '#0b2b65' }}
+                                style={{ width: '1rem', height: '1rem', cursor: 'pointer', accentColor: '#60a5fa' }}
                               />
-                              <span style={{ fontSize: '0.85rem', color: '#1f2937' }}>
+                              <span style={{ fontSize: '0.85rem', color: 'white' }}>
                                 {group.name} ({group.student_count || 0} учеников)
                               </span>
                             </label>
@@ -381,12 +439,12 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
                         maxHeight: '200px',
                         overflowY: 'auto',
                         padding: '0.75rem',
-                        backgroundColor: '#f9fafb',
+                        backgroundColor: 'rgba(255, 255, 255, 0.15)',
                         borderRadius: '8px',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
                       }}>
                         {students.length === 0 ? (
-                          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                          <div style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.7)' }}>
                             Нет доступных учеников
                           </div>
                         ) : (
@@ -397,17 +455,18 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
                               gap: '0.5rem',
                               padding: '0.5rem',
                               cursor: 'pointer',
-                              borderRadius: '4px',
+                              borderRadius: '6px',
                               marginBottom: '0.25rem',
-                              backgroundColor: selectedStudents.includes(student.id) ? '#f0f9ff' : 'transparent',
+                              backgroundColor: selectedStudents.includes(student.id) ? 'rgba(255, 255, 255, 0.25)' : 'transparent',
+                              transition: 'all 0.2s ease',
                             }}>
                               <input
                                 type="checkbox"
                                 checked={selectedStudents.includes(student.id)}
                                 onChange={() => toggleStudentSelection(student.id)}
-                                style={{ width: '1rem', height: '1rem', cursor: 'pointer', accentColor: '#0b2b65' }}
+                                style={{ width: '1rem', height: '1rem', cursor: 'pointer', accentColor: '#60a5fa' }}
                               />
-                              <span style={{ fontSize: '0.85rem', color: '#1f2937' }}>
+                              <span style={{ fontSize: '0.85rem', color: 'white' }}>
                                 {student.first_name} {student.last_name}
                               </span>
                             </label>
@@ -426,34 +485,39 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
                   onClick={handleStartQuickLesson}
                   disabled={loading}
                   style={{
-                    ...buttonBase,
                     flex: 1,
-                    padding: '0.65rem 1rem',
-                    background: PRIMARY_GRADIENT,
+                    padding: '0.75rem 1.25rem',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: '2px solid rgba(255, 255, 255, 0.4)',
+                    borderRadius: '10px',
+                    fontSize: '1rem',
+                    fontWeight: 700,
                     cursor: loading ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 3px 10px rgba(11, 43, 101, 0.28)',
+                    boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)',
+                    transition: 'all 0.3s ease',
+                    opacity: loading ? 0.7 : 1,
                   }}
                 >
-                  {loading ? 'Запуск...' : 'Начать'}
+                  {loading ? '⏳ Запуск...' : '🚀 Начать'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
                   style={{
                     flex: 1,
-                    padding: '0.65rem 1rem',
-                    backgroundColor: '#f3f4f6',
-                    color: '#4b5563',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '0.9rem',
+                    padding: '0.75rem 1.25rem',
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    color: 'white',
+                    border: '2px solid rgba(255, 255, 255, 0.3)',
+                    borderRadius: '10px',
+                    fontSize: '1rem',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    boxShadow: 'none',
-                    transition: 'none',
+                    transition: 'all 0.3s ease',
                   }}
                 >
-                  Отмена
+                  ❌ Отмена
                 </button>
               </div>
 
@@ -461,13 +525,14 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
                 <div style={{
                   marginTop: '0.25rem',
                   padding: '0.75rem',
-                  backgroundColor: '#fef2f2',
-                  color: '#b91c1c',
+                  backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                  color: 'white',
                   borderRadius: '8px',
                   fontSize: '0.875rem',
-                  border: '1px solid #fecaca',
+                  border: '2px solid rgba(239, 68, 68, 0.5)',
+                  fontWeight: 500,
                 }}>
-                  {error}
+                  ⚠️ {error}
                 </div>
               )}
             </div>
