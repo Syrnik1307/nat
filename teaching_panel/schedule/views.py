@@ -1361,35 +1361,31 @@ def zoom_webhook_receiver(request):
     4. Подписаться на событие "End Meeting" (meeting.ended)
     """
     try:
-        # TODO: Verify webhook signature for production
-        # webhook_signature = request.headers.get('x-zm-signature')
-        # if webhook_signature:
-        #     from django.conf import settings
-        #     import hmac, hashlib
-        #     expected_signature = hmac.new(
-        #         settings.ZOOM_WEBHOOK_SECRET_TOKEN.encode(),
-        #         request.body,
-        #         hashlib.sha256
-        #     ).hexdigest()
-        #     if not hmac.compare_digest(webhook_signature, expected_signature):
-        #         return JsonResponse({'status': 'error', 'message': 'Invalid signature'}, status=403)
+        # Логируем всё что приходит
+        logger.info(f"[Webhook] Получен запрос: method={request.method}, path={request.path}")
+        logger.info(f"[Webhook] Headers: {dict(request.headers)}")
         
         # Парсим JSON из тела запроса
         payload = json.loads(request.body.decode('utf-8'))
+        logger.info(f"[Webhook] Payload: {payload}")
         
         # Zoom отправляет verification token при первой настройке webhook
         # Нужно ответить этим же token для верификации
         # Проверяем наличие plainToken на верхнем уровне
         if 'plainToken' in payload:
             plain_token = payload.get('plainToken')
-            return JsonResponse({
+            logger.info(f"[Webhook] Verification request detected, plainToken={plain_token}")
+            response = JsonResponse({
                 'plainToken': plain_token,
             })
+            logger.info(f"[Webhook] Sending verification response: {response.content}")
+            return response
         
         # Также проверяем структуру с payload.payload.plainToken (старые версии)
         if 'event' not in payload:
             plain_token = payload.get('payload', {}).get('plainToken')
             if plain_token:
+                logger.info(f"[Webhook] Verification request (nested), plainToken={plain_token}")
                 return JsonResponse({
                     'plainToken': plain_token,
                 })
