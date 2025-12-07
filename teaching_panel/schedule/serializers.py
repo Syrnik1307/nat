@@ -396,15 +396,21 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
         return None
 
     def get_duration_display(self, obj):
-        # Возвращаем длительность записи в минутах
+        # Возвращаем длительность записи в минутах (или секундах если < 1 мин)
         # Предпочитаем явно сохранённую duration (в секундах)
         if obj.duration and obj.duration > 0:
-            return int(round(obj.duration / 60.0))
+            if obj.duration < 60:
+                return f"{obj.duration}s"  # Меньше минуты - показываем в секундах
+            else:
+                return int(round(obj.duration / 60.0))  # Больше минуты - в минутах
         # Если есть время начала/конца, считаем
         if obj.recording_start and obj.recording_end:
             duration_seconds = int((obj.recording_end - obj.recording_start).total_seconds())
             if duration_seconds > 0:
-                return int(round(duration_seconds / 60.0))
+                if duration_seconds < 60:
+                    return f"{duration_seconds}s"
+                else:
+                    return int(round(duration_seconds / 60.0))
         # Только если ничего не помогло, берём длительность урока
         if obj.lesson and obj.lesson.start_time and obj.lesson.end_time:
             duration = obj.lesson.end_time - obj.lesson.start_time
