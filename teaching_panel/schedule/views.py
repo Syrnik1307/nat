@@ -1011,9 +1011,6 @@ class LessonViewSet(viewsets.ModelViewSet):
         force_new_meeting = str(request.data.get('force_new_meeting', '')).lower() in (
             '1', 'true', 'yes', 'on', 'y', 't'
         )
-        keep_existing_meeting = str(request.data.get('keep_existing_meeting', '')).lower() in (
-            '1', 'true', 'yes', 'on', 'y', 't'
-        )
         record_flag_changed = False
         if record_flag_raw is not None:
             desired_record_flag = str(record_flag_raw).lower() in ('1', 'true', 'yes', 'on', 'y', 't')
@@ -1022,11 +1019,7 @@ class LessonViewSet(viewsets.ModelViewSet):
                 lesson.save(update_fields=['record_lesson'])
                 record_flag_changed = True
 
-        # Если запись включена, а встреча уже создана — пересоздаём (если явно не попросили оставить)
-        force_new_meeting = force_new_meeting or (
-            lesson.record_lesson and lesson.zoom_meeting_id and not keep_existing_meeting
-        )
-        # Вариант, когда флаг только что сменился на True — тоже пересоздаём
+        # Если просили включить запись и встреча уже есть — пересоздаём её, чтобы передать авто-запись в Zoom
         force_new_meeting = force_new_meeting or (record_flag_changed and lesson.record_lesson)
 
         # Rate limiting - 3 попытки в минуту на пользователя
@@ -1662,6 +1655,88 @@ def student_recordings_list(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+def sync_missing_zoom_recordings_for_teacher(teacher):
+    """Подтягивает облачные записи Zoom, если вебхук не пришел."""
+    try:
+        now = timezone.now()
+        recent_from = now - timedelta(days=3)
+
+        # Ищем уроки без записей за последние 3 дня
+        lessons_to_sync = Lesson.objects.filter(
+            teacher=teacher,
+            record_lesson=True,
+            zoom_meeting_id__isnull=False,
+            start_time__lte=now,
+            start_time__gte=recent_from,
+        ).filter(lessonrecording__isnull=True).distinct()
+
+        if not lessons_to_sync:
+            return 0
+
+        recordings_response = my_zoom_api_client.list_user_recordings(
+            from_date=recent_from.date().isoformat(),
+            to_date=now.date().isoformat(),
+        )
+
+        meetings = recordings_response.get('meetings', [])
+        meetings_by_id = {str(m.get('id')): m for m in meetings if m.get('id')}
+
+        synced = 0
+
+        for lesson in lessons_to_sync:
+            meeting_data = meetings_by_id.get(str(lesson.zoom_meeting_id))
+            if not meeting_data:
+                continue
+
+            recording_files = meeting_data.get('recording_files', [])
+            for rec_file in recording_files:
+                file_type = str(rec_file.get('file_type', '')).lower()
+                if file_type not in ['mp4', 'm4a']:
+                    continue
+
+                lr, created = LessonRecording.objects.get_or_create(
+                    lesson=lesson,
+                    zoom_recording_id=rec_file.get('id', ''),
+                    defaults={
+                        'download_url': rec_file.get('download_url', ''),
+                        'play_url': rec_file.get('play_url', ''),
+                        'recording_type': rec_file.get('recording_type', ''),
+                        'file_size': rec_file.get('file_size', 0),
+                        'status': 'ready',
+                        'visibility': LessonRecording.Visibility.LESSON_GROUP,
+                        'storage_provider': 'zoom',
+                    }
+                )
+
+                if not created:
+                    lr.download_url = rec_file.get('download_url', '')
+                    lr.play_url = rec_file.get('play_url', '')
+                    lr.recording_type = rec_file.get('recording_type', '')
+                    lr.file_size = rec_file.get('file_size', 0)
+                    lr.status = 'ready'
+                    lr.storage_provider = 'zoom'
+                    lr.save()
+
+                if lesson.recording_available_for_days > 0 and not lr.available_until:
+                    lr.available_until = timezone.now() + timedelta(days=lesson.recording_available_for_days)
+                    lr.save()
+
+                lr.apply_privacy(
+                    privacy_type=LessonRecording.Visibility.LESSON_GROUP,
+                    teacher=lesson.teacher,
+                )
+
+                synced += 1
+
+        if synced:
+            logger.info(f"Synced {synced} Zoom recording(s) for teacher {teacher.id}")
+        return synced
+
+    except Exception as e:
+        logger.exception(f"Failed to sync Zoom recordings for teacher {teacher.id}: {e}")
+        return 0
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def teacher_recordings_list(request):
@@ -1683,6 +1758,13 @@ def teacher_recordings_list(request):
         return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
     
     try:
+        # Подтягиваем записи напрямую из Zoom, если вебхук не сработал
+        try:
+            sync_missing_zoom_recordings_for_teacher(user)
+        except Exception:
+            # Ошибка уже залогирована внутри
+            pass
+
         # Все записи уроков преподавателя
         recordings = LessonRecording.objects.filter(
             lesson__teacher=user

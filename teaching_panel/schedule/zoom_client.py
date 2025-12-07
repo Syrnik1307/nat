@@ -182,6 +182,41 @@ class ZoomAPIClient:
             logger.error(f"Failed to end Zoom meeting: {e}")
             raise Exception(f"Failed to end meeting: {str(e)}")
 
+    def list_user_recordings(self, user_id='me', from_date=None, to_date=None, page_size=50):
+        """Возвращает облачные записи Zoom для пользователя за указанный период."""
+        try:
+            access_token = self._get_access_token()
+
+            # По умолчанию берем последние 3 дня, чтобы поймать свежие уроки
+            now = datetime.utcnow()
+            default_from = (now - timedelta(days=3)).date().isoformat()
+            default_to = now.date().isoformat()
+
+            params = {
+                'from': from_date or default_from,
+                'to': to_date or default_to,
+                'page_size': page_size,
+            }
+
+            response = requests.get(
+                f'{self.BASE_URL}/users/{user_id}/recordings',
+                headers={
+                    'Authorization': f'Bearer {access_token}',
+                    'Content-Type': 'application/json'
+                },
+                params=params,
+                timeout=30
+            )
+
+            response.raise_for_status()
+            return response.json()
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to list Zoom recordings: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"Response: {e.response.text}")
+            raise Exception(f"Failed to list Zoom recordings: {str(e)}")
+
 
 # Глобальный экземпляр для использования в views
 my_zoom_api_client = ZoomAPIClient()
