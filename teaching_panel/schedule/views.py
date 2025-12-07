@@ -1689,32 +1689,66 @@ def sync_missing_zoom_recordings_for_teacher(teacher):
                 continue
 
             recording_files = meeting_data.get('recording_files', [])
+            passcode = meeting_data.get('recording_play_passcode') or meeting_data.get('password')
+
+            def apply_passcode(url, pwd):
+                if not url or not pwd:
+                    return url
+                if 'pwd=' in url:
+                    return url
+                separator = '&' if '?' in url else '?'
+                return f"{url}{separator}pwd={pwd}"
             for rec_file in recording_files:
                 file_type = str(rec_file.get('file_type', '')).lower()
                 if file_type not in ['mp4', 'm4a']:
                     continue
 
+                # Время записи из Zoom
+                def parse_dt(val):
+                    if not val:
+                        return None
+                    try:
+                        return datetime.fromisoformat(val.replace('Z', '+00:00'))
+                    except Exception:
+                        return None
+
+                rec_start = parse_dt(rec_file.get('recording_start'))
+                rec_end = parse_dt(rec_file.get('recording_end'))
+                rec_duration = None
+                if rec_start and rec_end:
+                    rec_duration = int((rec_end - rec_start).total_seconds())
+
+                play_url = apply_passcode(rec_file.get('play_url', ''), passcode)
+                download_url = apply_passcode(rec_file.get('download_url', ''), passcode)
+
                 lr, created = LessonRecording.objects.get_or_create(
                     lesson=lesson,
                     zoom_recording_id=rec_file.get('id', ''),
                     defaults={
-                        'download_url': rec_file.get('download_url', ''),
-                        'play_url': rec_file.get('play_url', ''),
+                        'download_url': download_url,
+                        'play_url': play_url,
                         'recording_type': rec_file.get('recording_type', ''),
                         'file_size': rec_file.get('file_size', 0),
                         'status': 'ready',
                         'visibility': LessonRecording.Visibility.LESSON_GROUP,
                         'storage_provider': 'zoom',
+                        'recording_start': rec_start,
+                        'recording_end': rec_end,
+                        'duration': rec_duration,
                     }
                 )
 
                 if not created:
-                    lr.download_url = rec_file.get('download_url', '')
-                    lr.play_url = rec_file.get('play_url', '')
+                    lr.download_url = download_url
+                    lr.play_url = play_url
                     lr.recording_type = rec_file.get('recording_type', '')
                     lr.file_size = rec_file.get('file_size', 0)
                     lr.status = 'ready'
                     lr.storage_provider = 'zoom'
+                    lr.recording_start = rec_start or lr.recording_start
+                    lr.recording_end = rec_end or lr.recording_end
+                    if rec_duration:
+                        lr.duration = rec_duration
                     lr.save()
 
                 if lesson.recording_available_for_days > 0 and not lr.available_until:
