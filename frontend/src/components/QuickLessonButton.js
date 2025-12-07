@@ -58,7 +58,10 @@ const modalStyles = {
     overflowY: 'auto',
     boxSizing: 'border-box',
     animation: 'glow 3s ease-in-out infinite alternate',
+  },
+  innerContainer: {
     position: 'relative',
+    minHeight: '100%',
     overflow: 'hidden',
   },
   backdrop: {
@@ -301,20 +304,21 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
             onWheel={(e) => e.preventDefault()}
           />
           <div style={modalStyles.container} onWheel={(e) => e.preventDefault()}>
-            {/* Radial glow backdrop */}
-            <div style={modalStyles.backdrop}></div>
-            
-            {/* Интенсивный снегопад */}
-            {[...Array(50)].map((_, i) => (
-              <Snowflake
-                key={i}
-                delay={Math.random() * 5}
-                duration={5 + Math.random() * 5}
-                left={Math.random() * 100}
-              />
-            ))}
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative', zIndex: 1 }}>
+            <div style={modalStyles.innerContainer}>
+              {/* Radial glow backdrop */}
+              <div style={modalStyles.backdrop}></div>
+              
+              {/* Интенсивный снегопад */}
+              {[...Array(50)].map((_, i) => (
+                <Snowflake
+                  key={i}
+                  delay={Math.random() * 5}
+                  duration={5 + Math.random() * 5}
+                  left={Math.random() * 100}
+                />
+              ))}
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'relative', zIndex: 1 }}>
               <div style={{ 
                 fontSize: '1.3rem', 
                 fontWeight: 700, 
@@ -383,7 +387,6 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
                           color: 'white',
                           cursor: 'pointer',
                           transition: 'all 0.3s ease',
-                          transition: 'none',
                         }}
                       >
                         Все ученики
@@ -570,6 +573,7 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
                   ⚠️ {error}
                 </div>
               )}
+            </div>
             </div>
           </div>
         </>
