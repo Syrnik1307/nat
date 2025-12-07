@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { startQuickLesson, apiClient } from '../apiService';
+import { startQuickLesson } from '../apiService';
 
 // CSS для зимней анимации
 const winterStyles = `
@@ -183,7 +183,7 @@ const modalStyles = {
   },
 };
 
-const QuickLessonButton = ({ text = 'Быстрый урок', subscription = null }) => {
+const QuickLessonButton = ({ onSuccess, className = '', text = 'Быстрый урок' }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [lessonData, setLessonData] = useState(null);
@@ -200,12 +200,6 @@ const QuickLessonButton = ({ text = 'Быстрый урок', subscription = nu
   const handleClick = async () => {
     if (isLoading) return;
 
-    if (!subscription || subscription.status !== 'active') {
-      setError('Подписка истекла. Пожалуйста, обновите подписку.');
-      setShowModal(true);
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
@@ -215,6 +209,11 @@ const QuickLessonButton = ({ text = 'Быстрый урок', subscription = nu
       if (response.success) {
         setLessonData(response);
         setShowModal(true);
+        
+        // Вызываем callback если передан
+        if (onSuccess) {
+          onSuccess();
+        }
         
         setTimeout(() => {
           if (response.meeting_url) {
@@ -255,6 +254,7 @@ const QuickLessonButton = ({ text = 'Быстрый урок', subscription = nu
       <button
         onClick={handleClick}
         disabled={isLoading}
+        className={className}
         style={{
           ...buttonBase,
           background: PRIMARY_GRADIENT,
