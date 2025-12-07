@@ -46,11 +46,13 @@ const modalStyles = {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
-    border: '2px solid rgba(255, 255, 255, 0.3)',
-    borderRadius: '16px',
+    background: 'url(https://media.giphy.com/media/xUOxeZy95BvYvkKmVW/giphy.gif)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    border: '3px solid rgba(255, 255, 255, 0.5)',
+    borderRadius: '20px',
     padding: '1.5rem',
-    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+    boxShadow: '0 25px 70px rgba(0, 0, 0, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.3)',
     zIndex: 1000,
     width: '420px',
     maxWidth: '92vw',
@@ -60,6 +62,16 @@ const modalStyles = {
     animation: 'none',
     position: 'relative',
     overflow: 'hidden',
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.85) 0%, rgba(37, 99, 235, 0.85) 100%)',
+    backdropFilter: 'blur(3px)',
+    zIndex: 0,
   },
   overlay: {
     position: 'fixed',
@@ -269,6 +281,9 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
             onWheel={(e) => e.preventDefault()}
           />
           <div style={modalStyles.container} onWheel={(e) => e.preventDefault()}>
+            {/* GIF backdrop overlay */}
+            <div style={modalStyles.backdrop}></div>
+            
             {/* Снегопад */}
             {[...Array(30)].map((_, i) => (
               <Snowflake
