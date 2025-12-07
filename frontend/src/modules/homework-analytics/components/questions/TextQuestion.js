@@ -1,12 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import FileUploader from './FileUploader';
 
 const TextQuestion = ({ question, onChange }) => {
   const { config = {} } = question;
+  const [localAnswer, setLocalAnswer] = useState(config.correctAnswer || '');
+
+  // Синхронизируем локальное состояние с props при изменении question.config
+  useEffect(() => {
+    setLocalAnswer(config.correctAnswer || '');
+  }, [config.correctAnswer]);
 
   const updateConfig = (patch) => {
     const nextConfig = { ...config, ...patch };
     onChange({ ...question, config: nextConfig, correct_answer: nextConfig.correctAnswer || null });
+  };
+
+  const handleAnswerChange = (e) => {
+    setLocalAnswer(e.target.value);
+  };
+
+  const handleAnswerBlur = () => {
+    // Обновляем parent только когда пользователь закончил вводить
+    if (localAnswer !== config.correctAnswer) {
+      updateConfig({ correctAnswer: localAnswer });
+    }
   };
 
   return (
@@ -53,8 +70,9 @@ const TextQuestion = ({ question, onChange }) => {
         <textarea
           className="form-textarea"
           rows={config.answerLength === 'long' ? 4 : 2}
-          value={config.correctAnswer || ''}
-          onChange={(event) => updateConfig({ correctAnswer: event.target.value })}
+          value={localAnswer}
+          onChange={handleAnswerChange}
+          onBlur={handleAnswerBlur}
           placeholder="Добавьте эталонный ответ для автопроверки"
         />
       </div>
