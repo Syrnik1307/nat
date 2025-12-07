@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import './GroupDetailModal.css';
 
 import AttendanceLogTab from './tabs/AttendanceLogTab';
+import HomeworkTab from './tabs/HomeworkTab';
 import GroupRatingTab from './tabs/GroupRatingTab';
 import GroupReportsTab from './tabs/GroupReportsTab';
 
@@ -49,11 +50,7 @@ const GroupDetailModal = ({ group, isOpen, onClose, onStudentClick }) => {
         );
       case 'homework':
         return (
-          <div className="tab-content">
-            <div className="placeholder">
-              📌 Домашние задания и контрольные работы (интеграция с модулем ДЗ)
-            </div>
-          </div>
+          <HomeworkTab groupId={group.id} />
         );
       case 'control':
         return (

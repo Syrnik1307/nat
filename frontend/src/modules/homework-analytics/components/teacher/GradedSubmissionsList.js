@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { apiClient } from '../../../../apiService';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getSubmissions } from '../../../../apiService';
 import './GradedSubmissionsList.css';
 
 /**
@@ -9,31 +9,39 @@ import './GradedSubmissionsList.css';
  */
 const GradedSubmissionsList = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const groupIdFromUrl = searchParams.get('group');
+  
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     search: '',
-    group: '',
+    group: groupIdFromUrl || '',
     dateFrom: '',
     dateTo: '',
   });
 
   useEffect(() => {
     loadGradedSubmissions();
-  }, []);
+  }, [groupIdFromUrl]);
 
   const loadGradedSubmissions = async () => {
     setLoading(true);
     setError(null);
     try {
       // Загружаем submissions со статусом 'graded'
-      const response = await apiClient.get('/homework/submissions/', {
-        params: {
-          status: 'graded',
-          ordering: '-graded_at',
-        }
-      });
+      const params = {
+        status: 'graded',
+        ordering: '-graded_at',
+      };
+      
+      // Добавляем фильтр по группе если есть
+      if (groupIdFromUrl) {
+        params.homework__lesson__group = groupIdFromUrl;
+      }
+      
+      const response = await getSubmissions(params);
       
       const data = Array.isArray(response.data) ? response.data : response.data.results || [];
       setSubmissions(data);

@@ -122,15 +122,18 @@ const TeacherHomePage = () => {
         ? individualStudentsRes.data
         : individualStudentsRes.data.results || [];
       
-      const individualStudentsForDisplay = individualStudents.map(st => ({
-        id: st.student_id,
-        name: st.student_name || `${st.first_name} ${st.last_name}`,
-        email: st.email,
-        group_id: null,
-        group_name: 'Индивидуальный',
-        attendance_percent: 0,
-        homework_percent: 0
-      }));
+      const individualStudentsForDisplay = individualStudents.map(st => {
+        const fullName = st.student_name || `${st.first_name || ''} ${st.last_name || ''}`.trim();
+        return {
+          id: st.user_id || st.student_id || st.id,
+          name: fullName || st.email,
+          email: st.email,
+          group_id: null,
+          group_name: 'Индивидуальный',
+          attendance_percent: st.attendance_percent ?? 0,
+          homework_percent: st.homework_percent ?? 0,
+        };
+      });
       
       setBreakdown({
         groups: breakdownRes.data?.groups || [],

@@ -224,10 +224,22 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_authenticated:
             if getattr(user, 'role', None) == 'student':
-                return qs.filter(student=user)
+                qs = qs.filter(student=user)
             elif getattr(user, 'role', None) == 'teacher':
-                return qs.filter(homework__teacher=user)
-        return qs.none()
+                qs = qs.filter(homework__teacher=user)
+        else:
+            return qs.none()
+        
+        # Фильтрация по query параметрам
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        
+        group_filter = self.request.query_params.get('homework__lesson__group')
+        if group_filter:
+            qs = qs.filter(homework__lesson__group=group_filter)
+        
+        return qs
     
     def retrieve(self, request, *args, **kwargs):
         # Детальный просмотр: подтянем ответы и связанные объекты, чтобы избежать N+1

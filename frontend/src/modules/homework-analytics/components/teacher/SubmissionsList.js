@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiClient } from '../../../../apiService';
+import { apiClient, getSubmissions } from '../../../../apiService';
 import './SubmissionsList.css';
 
 /**
@@ -43,7 +43,7 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
         params.status = filterStatus;
       }
       
-      const response = await apiClient.get('/homework/submissions/', { params });
+      const response = await getSubmissions(params);
       
       // Предполагаем, что API возвращает массив или объект с results
       const data = Array.isArray(response.data) 
