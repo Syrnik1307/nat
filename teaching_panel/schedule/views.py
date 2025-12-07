@@ -1344,9 +1344,13 @@ def zoom_webhook_receiver(request):
     """
     try:
         # Логируем всё что приходит
-        logger.info(f"[Webhook] Получен POST запрос на /schedule/webhook/zoom/")
+        logger.info(f"[Webhook] Получен {request.method} запрос на /schedule/webhook/zoom/")
         logger.info(f"[Webhook] Content-Type: {request.content_type}")
         logger.info(f"[Webhook] Body length: {len(request.body)}")
+
+        # Zoom может слать GET пробный — отвечаем 200
+        if request.method == 'GET':
+            return JsonResponse({'status': 'ok'})
         
         # Если body пуста, просто отвечаем 200 (может быть проверка доступности)
         if not request.body:
