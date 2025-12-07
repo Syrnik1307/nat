@@ -8,7 +8,7 @@ import SubscriptionBanner from './SubscriptionBanner';
 import TelegramWarningBanner from './TelegramWarningBanner';
 import GroupDetailModal from './GroupDetailModal';
 import StudentCardModal from './StudentCardModal';
-import QuickLessonButton from './QuickLessonButton';
+import QuickLessonButton from './WinterQuickLessonButton';
 import './TeacherHomePage.css';
 
 const TreeGrowth = ({ stage, progress, timeOfDay = 'day' }) => {

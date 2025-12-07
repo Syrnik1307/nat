@@ -61,14 +61,14 @@ const Snowflake = ({ delay, duration, left }) => (
     style={{
       position: 'absolute',
       top: '-10px',
-      left: \`\${left}%\`,
+      left: `${left}%`,
       width: '8px',
       height: '8px',
       background: 'white',
       borderRadius: '50%',
       opacity: 0.8,
-      animation: \`snowfall \${duration}s linear infinite\`,
-      animationDelay: \`\${delay}s\`,
+      animation: `snowfall ${duration}s linear infinite`,
+      animationDelay: `${delay}s`,
       boxShadow: '0 0 10px rgba(255, 255, 255, 0.8)',
     }}
   />
