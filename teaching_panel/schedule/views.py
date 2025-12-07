@@ -1006,6 +1006,22 @@ class LessonViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
 
+        # Позволяем передать флаг записи вместе с запросом, чтобы исключить расхождения между фронтом и БД
+        record_flag_raw = request.data.get('record_lesson')
+        force_new_meeting = str(request.data.get('force_new_meeting', '')).lower() in (
+            '1', 'true', 'yes', 'on', 'y', 't'
+        )
+        record_flag_changed = False
+        if record_flag_raw is not None:
+            desired_record_flag = str(record_flag_raw).lower() in ('1', 'true', 'yes', 'on', 'y', 't')
+            if desired_record_flag != lesson.record_lesson:
+                lesson.record_lesson = desired_record_flag
+                lesson.save(update_fields=['record_lesson'])
+                record_flag_changed = True
+
+        # Если просили включить запись и встреча уже есть — пересоздаём её, чтобы передать авто-запись в Zoom
+        force_new_meeting = force_new_meeting or (record_flag_changed and lesson.record_lesson)
+
         # Rate limiting - 3 попытки в минуту на пользователя
         rate_limit_key = f"start_lesson_rate_limit:{user.id}"
         attempts = cache.get(rate_limit_key, 0)
@@ -1020,8 +1036,8 @@ class LessonViewSet(viewsets.ModelViewSet):
         if lesson.teacher != user:
             return Response({'detail': 'Только преподаватель урока может его запустить'}, status=status.HTTP_403_FORBIDDEN)
 
-        # Если уже есть встреча – вернуть её
-        if lesson.zoom_meeting_id:
+        # Если уже есть встреча и не требуется пересоздание – вернуть её
+        if lesson.zoom_meeting_id and not force_new_meeting:
             return Response({
                 'zoom_join_url': lesson.zoom_join_url,
                 'zoom_start_url': lesson.zoom_start_url,
@@ -1029,6 +1045,24 @@ class LessonViewSet(viewsets.ModelViewSet):
                 'zoom_password': lesson.zoom_password,
                 'account_email': getattr(lesson.zoom_account, 'email', 'уже назначен')
             }, status=status.HTTP_200_OK)
+
+        # Пересоздаём встречу, если нужно включить запись
+        if lesson.zoom_meeting_id and force_new_meeting:
+            old_account = lesson.zoom_account
+            lesson.zoom_meeting_id = None
+            lesson.zoom_join_url = None
+            lesson.zoom_start_url = None
+            lesson.zoom_password = None
+            lesson.zoom_account = None
+            lesson.save(update_fields=[
+                'zoom_meeting_id', 'zoom_join_url', 'zoom_start_url', 'zoom_password', 'zoom_account'
+            ])
+
+            if old_account:
+                try:
+                    old_account.release()
+                except Exception:
+                    logger.exception('Не удалось освободить Zoom аккаунт при пересоздании встречи')
 
         # Проверка времени (за 15 минут до начала)
         now = timezone.now()

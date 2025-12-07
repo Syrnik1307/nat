@@ -80,18 +80,18 @@ const StartLessonButton = ({ lessonId, lesson, onSuccess }) => {
     setLoading(true);
     setError(null);
     try {
+      const recordFlagChanged = lesson && recordLesson !== lesson.record_lesson;
       // Update record_lesson flag before starting
-      if (lesson && recordLesson !== lesson.record_lesson) {
+      if (recordFlagChanged) {
         await updateLesson(lessonId, {
-          title: lesson.title,
-          group: lesson.group,
-          start_time: lesson.start_time,
-          end_time: lesson.end_time,
           record_lesson: recordLesson
         });
       }
 
-      const response = await startLessonNew(lessonId);
+      const response = await startLessonNew(lessonId, {
+        record_lesson: recordLesson,
+        force_new_meeting: recordFlagChanged && recordLesson && Boolean(lesson?.zoom_meeting_id),
+      });
       if (response.data?.zoom_start_url) {
         window.open(response.data.zoom_start_url, '_blank', 'noopener,noreferrer');
       }

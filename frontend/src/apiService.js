@@ -258,7 +258,7 @@ export const createLesson = (data) => apiClient.post('schedule/lessons/', data);
 export const updateLesson = (id, data) => apiClient.patch(`schedule/lessons/${id}/`, data);
 export const deleteLesson = (id) => apiClient.delete(`schedule/lessons/${id}/`);
 export const startLesson = (id) => apiClient.post(`schedule/lessons/${id}/start/`);
-export const startLessonNew = (id) => apiClient.post(`schedule/lessons/${id}/start-new/`);
+export const startLessonNew = (id, data = {}) => apiClient.post(`schedule/lessons/${id}/start-new/`, data);
 export const startQuickLesson = (payload = {}) => apiClient.post('schedule/lessons/quick-start/', payload);
 export const addLessonRecording = (id, url) => apiClient.post(`schedule/lessons/${id}/add_recording/`, { url });
 
