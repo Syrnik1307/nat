@@ -172,7 +172,7 @@ const useHomeworkSession = (homeworkId, injectedService) => {
       if (question.question_type === 'SINGLE_CHOICE') {
         return Boolean(value);
       }
-      if (question.question_type === 'MULTIPLE_CHOICE') {
+      if (question.question_type === 'MULTIPLE_CHOICE' || question.question_type === 'MULTI_CHOICE') {
         return Array.isArray(value) && value.length > 0;
       }
       if (question.question_type === 'LISTENING') {

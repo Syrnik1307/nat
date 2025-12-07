@@ -76,7 +76,7 @@ class StudentSubmission(models.Model):
     )
     homework = models.ForeignKey(Homework, on_delete=models.CASCADE, related_name='submissions')
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='homework_submissions', limit_choices_to={'role': 'student'})
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='submitted')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='in_progress')
     total_score = models.IntegerField(null=True, blank=True)
     teacher_feedback_summary = models.JSONField(
         default=dict,
@@ -84,7 +84,7 @@ class StudentSubmission(models.Model):
         help_text='Общий комментарий учителя к работе: {"text": "...", "attachments": [...]}'
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    submitted_at = models.DateTimeField(auto_now_add=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
     graded_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:

@@ -1,3 +1,5 @@
+import json
+
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
@@ -247,6 +249,102 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             )
         
         return qs
+
+    # --- Student flows -------------------------------------------------
+    def _upsert_answers(self, submission: StudentSubmission, answers_payload: dict):
+        """Создать или обновить ответы студента в зависимости от типа вопроса."""
+        if not answers_payload:
+            return
+
+        questions_map = {
+            q.id: q for q in submission.homework.questions.all().prefetch_related('choices')
+        }
+
+        for question_id, raw_value in answers_payload.items():
+            try:
+                qid = int(question_id)
+            except (TypeError, ValueError):
+                continue
+
+            question = questions_map.get(qid)
+            if not question:
+                continue
+
+            answer_obj, _ = Answer.objects.get_or_create(submission=submission, question=question)
+
+            qtype = question.question_type
+            # Нормализуем фронтовые значения
+            if qtype == 'SINGLE_CHOICE':
+                answer_obj.text_answer = ''
+                choices = []
+                if raw_value:
+                    try:
+                        choices = [int(raw_value)]
+                    except (TypeError, ValueError):
+                        choices = []
+                answer_obj.selected_choices.set(choices)
+            elif qtype == 'MULTI_CHOICE':
+                answer_obj.text_answer = ''
+                base_list = raw_value if isinstance(raw_value, (list, tuple)) else []
+                choices = []
+                for val in base_list:
+                    try:
+                        choices.append(int(val))
+                    except (TypeError, ValueError):
+                        continue
+                answer_obj.selected_choices.set(choices)
+            elif qtype in {'TEXT'}:
+                answer_obj.selected_choices.clear()
+                answer_obj.text_answer = raw_value or ''
+            else:
+                # Сложные типы храним в text_answer как JSON
+                answer_obj.selected_choices.clear()
+                try:
+                    answer_obj.text_answer = json.dumps(raw_value)
+                except TypeError:
+                    answer_obj.text_answer = ''
+
+            answer_obj.evaluate()
+            answer_obj.save()
+
+        submission.compute_auto_score()
+
+    @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
+    def answer(self, request, pk=None):
+        """Сохранить промежуточные ответы ученика (автосохранение)."""
+        submission = self.get_object()
+        if request.user != submission.student:
+            return Response({'error': 'Доступ только для автора попытки'}, status=status.HTTP_403_FORBIDDEN)
+        if submission.status == 'graded':
+            return Response({'error': 'Работа уже проверена'}, status=status.HTTP_400_BAD_REQUEST)
+
+        answers_payload = request.data.get('answers', {})
+        self._upsert_answers(submission, answers_payload)
+        return Response({'status': 'saved', 'total_score': submission.total_score})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def submit(self, request, pk=None):
+        """Финальная отправка работы учеником."""
+        submission = self.get_object()
+        if request.user != submission.student:
+            return Response({'error': 'Доступ только для автора попытки'}, status=status.HTTP_403_FORBIDDEN)
+        if submission.status == 'graded':
+            return Response({'error': 'Работа уже проверена'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Если ответы переданы вместе с submit — сначала сохраним их
+        answers_payload = request.data.get('answers')
+        if answers_payload:
+            self._upsert_answers(submission, answers_payload)
+
+        submission.status = 'submitted'
+        submission.submitted_at = timezone.now()
+        submission.save(update_fields=['status', 'submitted_at', 'total_score'])
+
+        # Уведомляем преподавателя о сдаче
+        self._notify_teacher_submission(submission)
+
+        serializer = self.get_serializer(submission)
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         submission = serializer.save()

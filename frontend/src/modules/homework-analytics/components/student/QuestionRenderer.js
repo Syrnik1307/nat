@@ -102,7 +102,7 @@ const QuestionRenderer = ({ question, answer, onChange }) => {
     );
   }
 
-  if (type === 'MULTIPLE_CHOICE') {
+  if (type === 'MULTIPLE_CHOICE' || type === 'MULTI_CHOICE') {
     const options = config.options || [];
     const selected = Array.isArray(answer) ? answer : [];
     return (

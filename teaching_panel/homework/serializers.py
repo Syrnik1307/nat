@@ -91,11 +91,16 @@ class QuestionSerializer(serializers.ModelSerializer):
 class QuestionStudentSerializer(serializers.ModelSerializer):
     """Ученический сериализатор вопроса: без баллов и, конечно, без is_correct."""
     choices = ChoiceStudentSerializer(many=True, read_only=True)
+    question_type = serializers.SerializerMethodField()
     config = serializers.SerializerMethodField()
 
     class Meta:
         model = Question
         fields = ['id', 'prompt', 'question_type', 'order', 'choices', 'config']
+
+    def get_question_type(self, obj):
+        # Возвращаем фронтовое именование для multi choice
+        return 'MULTIPLE_CHOICE' if obj.question_type == 'MULTI_CHOICE' else obj.question_type
 
     def get_config(self, obj):
         return sanitize_question_config(obj)
@@ -178,12 +183,18 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         answers_data = validated_data.pop('answers', [])
         validated_data['student'] = self.context['request'].user
-        submission = StudentSubmission.objects.create(**validated_data)
-        for ans in answers_data:
-            selected_choices = ans.pop('selected_choices', [])
-            answer = Answer.objects.create(submission=submission, **ans)
-            if selected_choices:
-                answer.selected_choices.set(selected_choices)
-            answer.evaluate()
-        submission.compute_auto_score()
+        # Создаем попытку в статусе "в процессе", без автоматической сдачи
+        submission = StudentSubmission.objects.create(
+            status='in_progress',
+            submitted_at=None,
+            **validated_data,
+        )
+        if answers_data:
+            for ans in answers_data:
+                selected_choices = ans.pop('selected_choices', [])
+                answer = Answer.objects.create(submission=submission, **ans)
+                if selected_choices:
+                    answer.selected_choices.set(selected_choices)
+                answer.evaluate()
+            submission.compute_auto_score()
         return submission
