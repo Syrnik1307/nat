@@ -1,13 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient, getSubmissions } from '../../../../apiService';
-import { Input, Select } from '../../../../shared/components';
+import { Select } from '../../../../shared/components';
 import './SubmissionsList.css';
 
-/**
- * Компонент списка работ учеников для проверки учителем
- * @param {string} filterStatus - Фильтр статуса ('submitted' для "на проверку", 'all' для всех)
- */
 const SubmissionsList = ({ filterStatus = 'submitted' }) => {
   const navigate = useNavigate();
   
@@ -18,33 +14,26 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
   const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('');
 
-  useEffect(() => {
-    loadSubmissions();
-    loadGroups();
-  }, [filterStatus, selectedGroup]);
-
-  const loadGroups = async () => {
+  const loadGroups = useCallback(async () => {
     try {
       const response = await apiClient.get('/groups/');
       const data = Array.isArray(response.data) ? response.data : response.data.results || [];
       setGroups(data);
     } catch (err) {
-      console.error('Ошибка загрузки групп:', err);
+      console.error('Error loading groups:', err);
     }
-  };
+  }, []);
 
-  const loadSubmissions = async () => {
+  const loadSubmissions = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const params = {};
       
-      // Применяем фильтр статуса
       if (filterStatus !== 'all') {
         params.status = filterStatus;
       }
       
-      // Применяем фильтр по группе или индивидуальным
       if (selectedGroup === 'individual') {
         params.individual = 1;
       } else if (selectedGroup) {
@@ -52,36 +41,37 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
       }
       
       const response = await getSubmissions(params);
-      
-      // Предполагаем, что API возвращает массив или объект с results
       const data = Array.isArray(response.data) 
         ? response.data 
         : response.data.results || [];
       
       setSubmissions(data);
     } catch (err) {
-      console.error('Ошибка загрузки работ:', err);
-      setError(err.response?.data?.error || 'Не удалось загрузить список работ');
+      console.error('Error loading submissions:', err);
+      setError(err.response?.data?.error || 'Failed to load submissions');
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterStatus, selectedGroup]);
+
+  useEffect(() => {
+    loadSubmissions();
+  }, [loadSubmissions]);
+
+  useEffect(() => {
+    loadGroups();
+  }, [loadGroups]);
 
   const getStatusLabel = (status) => {
     const labels = {
-      'in_progress': 'В процессе',
+      'in_progress': 'В работе',
       'submitted': 'Отправлено',
       'graded': 'Проверено'
     };
     return labels[status] || status;
   };
 
-  const getStatusClass = (status) => {
-    return `sl-status-${status}`;
-  };
-
   const filteredSubmissions = submissions.filter(sub => {
-    // Фильтр по поиску (группа и статус уже отфильтрованы на бэкенде)
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       const studentMatch = sub.student_name?.toLowerCase().includes(term) ||
@@ -90,11 +80,21 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
       
       if (!studentMatch && !homeworkMatch) return false;
     }
-    
     return true;
   });
 
-  const needsReview = filteredSubmissions.length;
+  const isIndividual = (item) => {
+    const flag = item?.is_individual;
+    return flag === true || flag === 1 || flag === '1' || flag === 'true';
+  };
+
+  const displayedSubmissions = filteredSubmissions.filter((item) => {
+    if (selectedGroup === 'individual') return isIndividual(item);
+    if (selectedGroup) return String(item.group_id) === String(selectedGroup);
+    return true;
+  });
+
+  const needsReview = displayedSubmissions.length;
 
   if (loading) {
     return (
@@ -120,10 +120,10 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
       <div className="sl-header">
         <div>
           <h1 className="sl-title">
-            {filterStatus === 'submitted' ? 'Работы на проверку' : 'Все работы'}
+            {filterStatus === 'submitted' ? 'ДЗ на проверку' : 'Все работы'}
           </h1>
           <div className="sl-stats">
-            <span className="sl-stat sl-stat-warning">Найдено работ: {needsReview}</span>
+            <span className="sl-stat">Найдено: {needsReview}</span>
           </div>
         </div>
         <button className="sl-btn-refresh" onClick={loadSubmissions}>
@@ -132,32 +132,27 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
       </div>
 
       <div className="sl-controls">
-        <div className="sl-search-wrapper">
-          <Input
-            type="text"
-            placeholder="Поиск по ученику или заданию..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="sl-search-input"
-          />
-        </div>
-
-        <div className="sl-filter-wrapper">
-          <Select
-            value={selectedGroup}
-            onChange={(e) => setSelectedGroup(e.target.value)}
-            className="sl-filter-select"
-          >
-            <option value="">Все группы</option>
-            {groups.map(group => (
-              <option key={group.id} value={group.id}>{group.name}</option>
-            ))}
-            <option value="individual">Индивидуальные</option>
-          </Select>
-        </div>
+        <input
+          type="text"
+          placeholder="Поиск по ученику или заданию..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="sl-search-input"
+        />
+        <Select
+          value={selectedGroup}
+          onChange={(e) => setSelectedGroup(e.target.value)}
+          options={[
+            { value: '', label: 'Все группы' },
+            ...groups.map((group) => ({ value: group.id, label: group.name })),
+            { value: 'individual', label: 'Индивидуальные' },
+          ]}
+          placeholder="Все группы"
+          className="sl-filter-select"
+        />
       </div>
       
-      {filteredSubmissions.length === 0 ? (
+      {displayedSubmissions.length === 0 ? (
         <div className="sl-empty">
           {searchTerm || selectedGroup 
             ? 'Работ по выбранным фильтрам не найдено'
@@ -166,8 +161,8 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
       ) : (
         <div className="sl-table-container">
           {Object.entries(
-            filteredSubmissions.reduce((acc, item) => {
-              const key = item.group_name || (item.is_individual ? 'Индивидуальные' : 'Без группы');
+            displayedSubmissions.reduce((acc, item) => {
+              const key = item.group_name || (isIndividual(item) ? 'Индивидуальные' : 'Без группы');
               if (!acc[key]) acc[key] = [];
               acc[key].push(item);
               return acc;
@@ -178,52 +173,35 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
               <div key={groupLabel} className="sl-group-block">
                 <div className="sl-group-header">
                   <span className="sl-group-title">{groupLabel}</span>
-                  <span className="sl-group-count">{items.length} шт.</span>
+                  <span className="sl-group-count">{items.length}</span>
                 </div>
                 <table className="sl-table">
                   <thead>
                     <tr>
                       <th>Ученик</th>
                       <th>Задание</th>
-                      <th>Дата сдачи</th>
                       <th>Статус</th>
-                      <th>Баллы</th>
-                      <th>Действия</th>
+                      <th>Отправлено</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map(submission => (
-                      <tr key={submission.id} className="sl-table-row">
+                    {items.map(sub => (
+                      <tr key={sub.id} className="sl-table-row">
+                        <td className="sl-student-name">{sub.student_name}</td>
+                        <td>{sub.homework_title}</td>
                         <td>
-                          <div className="sl-student-info">
-                            <div className="sl-student-name">{submission.student_name}</div>
-                            <div className="sl-student-email">{submission.student_email}</div>
-                          </div>
-                        </td>
-                        <td className="sl-homework-title">{submission.homework_title}</td>
-                        <td className="sl-date">
-                          {new Date(submission.submitted_at).toLocaleDateString('ru-RU', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </td>
-                        <td>
-                          <span className={`sl-status ${getStatusClass(submission.status)}`}>
-                            {getStatusLabel(submission.status)}
+                          <span className={`sl-status sl-status-${sub.status}`}>
+                            {getStatusLabel(sub.status)}
                           </span>
                         </td>
-                        <td className="sl-score">
-                          {submission.total_score !== null ? submission.total_score : '—'}
-                        </td>
+                        <td className="sl-date">{sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString('ru-RU') : '—'}</td>
                         <td>
-                          <button
-                            className="sl-btn-review"
-                            onClick={() => navigate(`/submissions/${submission.id}/review`)}
+                          <button 
+                            className="sl-btn-view"
+                            onClick={() => navigate(`/submissions/${sub.id}/review`)}
                           >
-                            {submission.status === 'graded' ? 'Просмотр' : 'Проверить'}
+                            Открыть
                           </button>
                         </td>
                       </tr>

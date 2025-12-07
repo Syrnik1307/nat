@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../../../apiService';
 import { Notification } from '../../../../shared/components';
@@ -21,11 +21,7 @@ const SubmissionReview = () => {
   const [editValues, setEditValues] = useState({});
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadSubmission();
-  }, [submissionId]);
-
-  const loadSubmission = async () => {
+  const loadSubmission = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -37,7 +33,11 @@ const SubmissionReview = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [submissionId]);
+
+  useEffect(() => {
+    loadSubmission();
+  }, [loadSubmission]);
 
   const startEditing = (answer) => {
     setEditingAnswerId(answer.id);

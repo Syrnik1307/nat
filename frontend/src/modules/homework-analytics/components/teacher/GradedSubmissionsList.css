@@ -2,8 +2,10 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  padding: 0;
 }
 
+/* Loading and Error */
 .graded-submissions-loading,
 .graded-submissions-error {
   display: flex;
@@ -17,8 +19,8 @@
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #E2E8F0;
-  border-top-color: #1e3a8a;
+  border: 4px solid #e5e7eb;
+  border-top-color: #1e40af;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -27,97 +29,51 @@
   to { transform: rotate(360deg); }
 }
 
-.error-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
 .btn-retry {
   margin-top: 1rem;
   padding: 0.75rem 1.5rem;
-  background: #1e3a8a;
+  background: #1e40af;
   color: white;
   border: none;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .btn-retry:hover {
-  background: #E5501C;
-  transform: translateY(-2px);
+  background: #1e3a8a;
 }
 
-/* Фильтры */
-.graded-filters {
-  margin-bottom: 1.25rem;
+/* Controls */
+.graded-controls {
   display: flex;
   gap: 0.75rem;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  margin-bottom: 1.5rem;
+  align-items: center;
 }
 
-.filter-group {
+.graded-search {
   flex: 1;
-  min-width: 260px;
-}
-
-.filter-group-select {
-  position: relative;
-}
-
-.filter-input,
-.filter-select,
-.graded-submissions-list select.filter-select {
-  width: 100%;
-  padding: 0.7rem 1rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  color: #111827;
-  background: #fff !important;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  box-sizing: border-box;
   height: 44px;
-  font-weight: 500;
+  padding: 0 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: #374151;
+  background: white;
+}
+
+.graded-search:focus {
   outline: none;
-  border-color: #e5e7eb !important;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-.filter-select,
-.graded-submissions-list select.filter-select {
-  padding-right: 2.5rem;
-  cursor: pointer;
+.graded-select {
+  min-width: 220px;
 }
 
-.filter-input:focus,
-.filter-select:focus {
-  outline: none !important;
-  border-color: #111827;
-  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
-}
-
-.filter-group-select::after {
-  content: '\25BE';
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6b7280;
-  pointer-events: none;
-  font-size: 0.9rem;
-}
-
-.filter-select option {
-  color: #111827;
-}
-
-/* Пустое состояние */
+/* Empty State */
 .graded-empty {
   text-align: center;
   padding: 4rem 2rem;
@@ -130,17 +86,16 @@
 
 .graded-empty h3 {
   font-size: 1.5rem;
-  color: #0F172A;
+  color: #0f172a;
   margin: 0 0 0.5rem 0;
 }
 
 .graded-empty p {
-  color: #64748B;
+  color: #64748b;
   font-size: 1rem;
 }
 
-/* Сетка карточек */
-
+/* Grid */
 .graded-grid {
   display: flex;
   flex-direction: column;
@@ -150,23 +105,24 @@
 .graded-group {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  background: #fff;
+  background: white;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .graded-group-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 1rem;
   background: #f8fafc;
   border-bottom: 1px solid #e5e7eb;
 }
 
 .graded-group-title {
+  font-size: 1rem;
   font-weight: 600;
   color: #111827;
+  margin: 0;
 }
 
 .graded-group-count {
@@ -177,147 +133,60 @@
 
 .graded-group-items {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1rem;
-  padding: 12px;
+  padding: 1rem;
 }
 
 .graded-card {
-  background: #fff;
+  background: white;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  padding: 1.1rem;
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-}
-
-.graded-card:hover {
-  border-color: #111827;
-  box-shadow: 0 6px 16px rgba(17, 24, 39, 0.12);
-  transform: translateY(-2px);
-}
-
-.graded-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-}
-
-.student-info {
-  display: flex;
-  gap: 0.75rem;
-  flex: 1;
-}
-
-.student-avatar {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #0c1e3a 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  flex-shrink: 0;
-}
-
-.student-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.student-name {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #0F172A;
-  margin: 0 0 0.25rem 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.homework-title {
-  font-size: 0.875rem;
-  color: #64748B;
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.score-badge {
-  padding: 0.5rem 0.75rem;
-  border: 2px solid;
-  border-radius: 8px;
-  font-weight: 700;
-  font-size: 1rem;
-  white-space: nowrap;
-}
-
-/* Мета-информация */
-.graded-card-meta {
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 1rem 0;
-  border-top: 1px solid #E2E8F0;
-  border-bottom: 1px solid #E2E8F0;
-  margin-bottom: 1rem;
-}
-
-.meta-item {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.875rem;
-}
-
-.meta-label {
-  color: #64748B;
-  font-weight: 500;
-}
-
-.meta-value {
-  color: #0F172A;
-  font-weight: 600;
-}
-
-/* Действия */
-.graded-card-actions {
-  display: flex;
   gap: 0.75rem;
 }
 
-.btn-view {
-  flex: 1;
-  padding: 0.75rem;
-  background: #1e3a8a;
+.graded-card-score {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.graded-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.graded-card-student {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.graded-card-dates {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 0.75rem;
+}
+
+.graded-card-dates div {
+  margin-bottom: 0.25rem;
+}
+
+.graded-card-btn {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #1e40af;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  font-size: 0.9rem;
 }
 
-.btn-view:hover {
-  background: #0c1e3a;
-  transform: translateY(-2px);
+.graded-card-btn:hover {
+  background: #1e3a8a;
 }
-
-/* Адаптивность */
-@media (max-width: 768px) {
-  .graded-group-items {
-    grid-template-columns: 1fr;
-  }
-
-  .graded-card-header {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .score-badge {
-    align-self: flex-start;
-  }
-}
-

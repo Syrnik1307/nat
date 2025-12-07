@@ -177,18 +177,42 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
         return sum(q.points for q in obj.homework.questions.all())
     
     def get_group_id(self, obj):
-        """Получаем ID группы из урока если есть"""
-        if obj.homework.lesson and hasattr(obj.homework.lesson, 'group'):
+        """Получаем ID группы: урок → группа студента у этого преподавателя → None"""
+        if obj.homework.lesson and getattr(obj.homework.lesson, 'group', None):
             return obj.homework.lesson.group.id
+
+        # Fallback: если у студента есть группы у этого преподавателя, берем первую
+        teacher = getattr(obj.homework, 'teacher', None)
+        if teacher and hasattr(obj.student, 'enrolled_groups'):
+            group = obj.student.enrolled_groups.filter(teacher=teacher).first()
+            if group:
+                return group.id
+
         return None
 
     def get_group_name(self, obj):
         if obj.homework.lesson and getattr(obj.homework.lesson, 'group', None):
             return obj.homework.lesson.group.name
+
+        teacher = getattr(obj.homework, 'teacher', None)
+        if teacher and hasattr(obj.student, 'enrolled_groups'):
+            group = obj.student.enrolled_groups.filter(teacher=teacher).first()
+            if group:
+                return group.name
+
         return 'Индивидуальные'
 
     def get_is_individual(self, obj):
-        return not (obj.homework.lesson and getattr(obj.homework.lesson, 'group', None))
+        if obj.homework.lesson and getattr(obj.homework.lesson, 'group', None):
+            return False
+
+        teacher = getattr(obj.homework, 'teacher', None)
+        if teacher and hasattr(obj.student, 'enrolled_groups'):
+            group = obj.student.enrolled_groups.filter(teacher=teacher).first()
+            if group:
+                return False
+
+        return True
 
     def create(self, validated_data):
         answers_data = validated_data.pop('answers', [])

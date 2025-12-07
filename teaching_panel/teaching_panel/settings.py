@@ -45,7 +45,7 @@ if SECRET_KEY == 'django-insecure-your-secret-key-change-this-in-production':
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver,72.56.81.163,*.ngrok-free.dev').split(',')
 
 # Отключаем проверку тестовых ключей reCAPTCHA для разработки
 SILENCED_SYSTEM_CHECKS = ['django_recaptcha.recaptcha_test_key_error']

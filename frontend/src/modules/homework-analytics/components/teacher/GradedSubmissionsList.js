@@ -1,13 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Input, Select } from '../../../../shared/components';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Select } from '../../../../shared/components';
 import { getSubmissions } from '../../../../apiService';
 import './GradedSubmissionsList.css';
 
-/**
- * Список проверенных домашних заданий
- * Показывает архив всех проверенных работ с возможностью повторного просмотра
- */
 const GradedSubmissionsList = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -17,68 +13,68 @@ const GradedSubmissionsList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [groups, setGroups] = useState([]);
-  const [filters, setFilters] = useState({
-    search: '',
-    group: groupIdFromUrl || '',
-    dateFrom: '',
-    dateTo: '',
-  });
+  const [searchText, setSearchText] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState(groupIdFromUrl || '');
+  const effectiveGroup = groupIdFromUrl || selectedGroup;
 
-  useEffect(() => {
-    loadGradedSubmissions();
-    loadGroups();
-  }, [groupIdFromUrl]);
-
-  useEffect(() => {
-    if (!groupIdFromUrl) {
-      loadGradedSubmissions();
-    }
-  }, [filters.group, groupIdFromUrl]);
-
-  const loadGroups = async () => {
+  const loadGroups = useCallback(async () => {
     try {
       const res = await fetch('/api/groups/');
       const data = await res.json();
       const arr = Array.isArray(data) ? data : data.results || [];
       setGroups(arr);
     } catch (err) {
-      console.error('Ошибка загрузки групп', err);
+      console.error('Error loading groups', err);
     }
-  };
+  }, []);
 
-  const loadGradedSubmissions = async () => {
+  const loadGradedSubmissions = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // Загружаем submissions со статусом 'graded'
       const params = {
         status: 'graded',
         ordering: '-graded_at',
       };
       
-      // Добавляем фильтр по группе если есть
-      if (groupIdFromUrl) {
-        params.homework__lesson__group = groupIdFromUrl;
-      } else if (filters.group === 'individual') {
+      if (effectiveGroup === 'individual') {
         params.individual = 1;
-      } else if (filters.group) {
-        params.group_id = filters.group;
+      } else if (effectiveGroup) {
+        params.group_id = effectiveGroup;
       }
       
       const response = await getSubmissions(params);
-      
       const data = Array.isArray(response.data) ? response.data : response.data.results || [];
       setSubmissions(data);
     } catch (err) {
-      console.error('Ошибка загрузки проверенных работ:', err);
+      console.error('Error loading graded submissions:', err);
       setError('Не удалось загрузить проверенные работы');
     } finally {
       setLoading(false);
     }
-  };
+  }, [effectiveGroup]);
+
+  useEffect(() => {
+    loadGroups();
+  }, [loadGroups]);
+
+  useEffect(() => {
+    loadGradedSubmissions();
+  }, [loadGradedSubmissions]);
+
+  useEffect(() => {
+    if (groupIdFromUrl) {
+      setSelectedGroup(groupIdFromUrl);
+    }
+  }, [groupIdFromUrl]);
 
   const handleViewSubmission = (submissionId) => {
     navigate(`/submissions/${submissionId}/review`);
+  };
+
+  const handleGroupChange = (event) => {
+    const nextValue = event.target.value;
+    setSelectedGroup(nextValue);
   };
 
   const formatDate = (dateString) => {
@@ -99,16 +95,26 @@ const GradedSubmissionsList = () => {
     return '#EF4444';
   };
 
-  // Фильтрация
   const filteredSubmissions = submissions.filter(sub => {
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
+    if (searchText) {
+      const searchLower = searchText.toLowerCase();
       const studentName = sub.student_name?.toLowerCase() || '';
       const homeworkTitle = sub.homework_title?.toLowerCase() || '';
       if (!studentName.includes(searchLower) && !homeworkTitle.includes(searchLower)) {
         return false;
       }
     }
+    return true;
+  });
+
+  const isIndividual = (item) => {
+    const flag = item?.is_individual;
+    return flag === true || flag === 1 || flag === '1' || flag === 'true';
+  };
+
+  const displayedSubmissions = filteredSubmissions.filter((item) => {
+    if (effectiveGroup === 'individual') return isIndividual(item);
+    if (effectiveGroup) return String(item.group_id) === String(effectiveGroup);
     return true;
   });
 
@@ -135,44 +141,38 @@ const GradedSubmissionsList = () => {
 
   return (
     <div className="graded-submissions-list">
-      {/* Фильтры */}
-      <div className="graded-filters">
-        <div className="filter-group">
-          <Input
-            type="text"
-            placeholder="Поиск по ученику или названию..."
-            value={filters.search}
-            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            className="filter-input"
-          />
-        </div>
-        <div className="filter-group filter-group-select">
-          <Select
-            value={filters.group}
-            onChange={(e) => setFilters({ ...filters, group: e.target.value })}
-            className="filter-select"
-          >
-            <option value="">Все группы</option>
-            {groups.map(g => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-            <option value="individual">Индивидуальные</option>
-          </Select>
-        </div>
+      <div className="graded-controls">
+        <input
+          type="text"
+          placeholder="Поиск по ученику или заданию..."
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          className="graded-search"
+        />
+        <Select
+          value={selectedGroup}
+          onChange={handleGroupChange}
+          options={[
+            { value: '', label: 'Все группы' },
+            ...groups.map((group) => ({ value: group.id, label: group.name })),
+            { value: 'individual', label: 'Индивидуальные' },
+          ]}
+          placeholder="Все группы"
+          className="graded-select"
+        />
       </div>
 
-      {/* Список */}
-      {filteredSubmissions.length === 0 ? (
+      {displayedSubmissions.length === 0 ? (
         <div className="graded-empty">
           <div className="empty-icon">📚</div>
           <h3>Нет проверенных работ</h3>
-          <p>Проверенные домашние задания появятся здесь</p>
+          <p>Завершенные домашние задания появятся здесь</p>
         </div>
       ) : (
         <div className="graded-grid">
           {Object.entries(
-            filteredSubmissions.reduce((acc, sub) => {
-              const key = sub.group_name || (sub.is_individual ? 'Индивидуальные' : 'Без группы');
+            displayedSubmissions.reduce((acc, sub) => {
+              const key = sub.group_name || (isIndividual(sub) ? 'Индивидуальные' : 'Без группы');
               if (!acc[key]) acc[key] = [];
               acc[key].push(sub);
               return acc;
@@ -180,50 +180,29 @@ const GradedSubmissionsList = () => {
           ).sort(([a], [b]) => a.localeCompare(b, 'ru')).map(([groupLabel, items]) => (
             <div key={groupLabel} className="graded-group">
               <div className="graded-group-header">
-                <span className="graded-group-title">{groupLabel}</span>
+                <h3 className="graded-group-title">{groupLabel}</h3>
                 <span className="graded-group-count">{items.length} шт.</span>
               </div>
               <div className="graded-group-items">
-                {items.map((submission) => (
-                  <div key={submission.id} className="graded-card">
-                    <div className="graded-card-header">
-                      <div className="student-info">
-                        <div className="student-avatar">🎓</div>
-                        <div className="student-details">
-                          <h4 className="student-name">{submission.student_name || 'Ученик'}</h4>
-                          <p className="homework-title">{submission.homework_title || 'Домашнее задание'}</p>
-                        </div>
-                      </div>
-                      <div 
-                        className="score-badge"
-                        style={{ 
-                          color: getScoreColor(submission.total_score, submission.max_score),
-                          borderColor: getScoreColor(submission.total_score, submission.max_score),
-                        }}
-                      >
-                        {submission.total_score || 0} / {submission.max_score || 0}
-                      </div>
+                {items.map(sub => (
+                  <div key={sub.id} className="graded-card">
+                    <div className="graded-card-score">
+                      <span style={{ color: getScoreColor(sub.score, sub.max_score) }}>
+                        {sub.score} / {sub.max_score}
+                      </span>
                     </div>
-
-                    <div className="graded-card-meta">
-                      <div className="meta-item">
-                        <span className="meta-label">Сдано:</span>
-                        <span className="meta-value">{formatDate(submission.submitted_at)}</span>
-                      </div>
-                      <div className="meta-item">
-                        <span className="meta-label">Проверено:</span>
-                        <span className="meta-value">{formatDate(submission.graded_at)}</span>
-                      </div>
+                    <div className="graded-card-title">{sub.homework_title}</div>
+                    <div className="graded-card-student">{sub.student_name}</div>
+                    <div className="graded-card-dates">
+                      <div>Отправлено: {formatDate(sub.submitted_at)}</div>
+                      <div>Проверено: {formatDate(sub.graded_at)}</div>
                     </div>
-
-                    <div className="graded-card-actions">
-                      <button
-                        onClick={() => handleViewSubmission(submission.id)}
-                        className="btn-view"
-                      >
-                        Просмотреть
-                      </button>
-                    </div>
+                    <button 
+                      onClick={() => handleViewSubmission(sub.id)}
+                      className="graded-card-btn"
+                    >
+                      Открыть
+                    </button>
                   </div>
                 ))}
               </div>

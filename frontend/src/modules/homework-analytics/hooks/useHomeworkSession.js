@@ -109,7 +109,7 @@ const useHomeworkSession = (homeworkId, injectedService) => {
         setLoading(false);
       }
     }
-  }, [homeworkId, localDraftKey]);
+  }, [homeworkId, localDraftKey, svc]);
 
   useEffect(() => {
     loadHomework();
@@ -145,7 +145,7 @@ const useHomeworkSession = (homeworkId, injectedService) => {
       console.error('[useHomeworkSession] save failed:', saveError);
       setSavingState({ status: 'error', timestamp: Date.now() });
     }
-  }, [answers, submission?.id, localDraftKey]);
+  }, [answers, localDraftKey, submission?.id, submission?.status, svc]);
 
   useEffect(() => {
     if (!submission?.id) return undefined;
@@ -166,7 +166,7 @@ const useHomeworkSession = (homeworkId, injectedService) => {
       try { localStorage.removeItem(localDraftKey); } catch {}
     }
     return resp;
-  }, [saveProgress, submission?.id, localDraftKey]);
+  }, [localDraftKey, saveProgress, submission?.id, svc]);
 
   const progress = useMemo(() => {
     if (!homework?.questions?.length) return 0;

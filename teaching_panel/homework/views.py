@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.db.models import Q
 from core.models import AuditLog
 from accounts.notifications import send_telegram_notification
 from .models import Homework, StudentSubmission, Answer
@@ -217,7 +218,7 @@ class HomeworkViewSet(viewsets.ModelViewSet):
 class StudentSubmissionViewSet(viewsets.ModelViewSet):
     queryset = StudentSubmission.objects.all().select_related(
         'homework', 'homework__lesson', 'homework__lesson__group', 'student'
-    )
+    ).prefetch_related('student__enrolled_groups')
     serializer_class = StudentSubmissionSerializer
     permission_classes = [IsStudentSubmission]
     # Ограничиваем частоту сабмитов (см. DEFAULT_THROTTLE_RATES['submissions'])
@@ -244,8 +245,17 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         group_filter = self.request.query_params.get('group_id')
         if individual == '1':
             qs = qs.filter(homework__lesson__group__isnull=True)
+            if getattr(user, 'role', None) == 'teacher':
+                qs = qs.exclude(student__enrolled_groups__teacher=user)
         elif group_filter:
-            qs = qs.filter(homework__lesson__group__id=group_filter)
+            qs = qs.filter(
+                Q(homework__lesson__group__id=group_filter) |
+                Q(
+                    homework__lesson__group__isnull=True,
+                    student__enrolled_groups__id=group_filter,
+                    student__enrolled_groups__teacher=user
+                )
+            ).distinct()
         
         # Для детального просмотра (retrieve) подгружаем ответы
         if self.action == 'retrieve':
