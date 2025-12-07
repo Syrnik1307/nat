@@ -11,18 +11,162 @@ import StudentCardModal from './StudentCardModal';
 import QuickLessonButton from './QuickLessonButton';
 import './TeacherHomePage.css';
 
-const TreeGrowth = ({ stage, progress }) => {
+const TreeGrowth = ({ stage, progress, timeOfDay = 'day' }) => {
   const safeProgress = Number.isFinite(progress)
     ? Math.min(Math.max(progress, 0), 1)
     : 0;
 
+  const timeThemes = {
+    dawn: {
+      sky: 'linear-gradient(180deg, #dbeafe 0%, #bfdbfe 45%, #e0f2fe 100%)',
+      glow: 'radial-gradient(circle at 50% 40%, rgba(253, 224, 71, 0.25), transparent 55%)',
+      orb: '#fde047',
+      starsOpacity: 0.05,
+    },
+    day: {
+      sky: 'linear-gradient(180deg, #d8ecff 0%, #e9f2ff 38%, #f3f7ff 100%)',
+      glow: 'radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.45), transparent 60%)',
+      orb: '#fde047',
+      starsOpacity: 0,
+    },
+    evening: {
+      sky: 'linear-gradient(180deg, #0ea5e9 0%, #1e3a8a 55%, #0b162f 100%)',
+      glow: 'radial-gradient(circle at 50% 30%, rgba(252, 211, 77, 0.35), transparent 65%)',
+      orb: '#fbbf24',
+      starsOpacity: 0.35,
+    },
+    night: {
+      sky: 'linear-gradient(180deg, #0b1224 0%, #0f172a 40%, #111827 100%)',
+      glow: 'radial-gradient(circle at 50% 30%, rgba(96, 165, 250, 0.28), transparent 60%)',
+      orb: '#e0f2fe',
+      starsOpacity: 0.7,
+    },
+  };
+
+  const theme = timeThemes[timeOfDay] || timeThemes.day;
+
   return (
     <div
-      className="tree-growth"
+      className={`tree-growth tod-${timeOfDay}`}
       data-stage={stage}
-      style={{ '--growth-progress': safeProgress.toFixed(2) }}
+      style={{ 
+        '--growth-progress': safeProgress.toFixed(2),
+        '--sky-gradient': theme.sky,
+        '--orb-color': theme.orb,
+        '--scene-glow': theme.glow,
+        '--stars-opacity': theme.starsOpacity,
+      }}
     >
       <div className="tree-sky" aria-hidden="true"></div>
+      <div className="tree-stars" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div className="tree-orb" aria-hidden="true"></div>
+      <div className="tree-glow" aria-hidden="true"></div>
+      <div className="tree-hills" aria-hidden="true"></div>
+      <div className="tree-forest" aria-hidden="true">
+        <div className="pine">
+          <div className="tree-top"></div>
+          <div className="tree-mid"></div>
+          <div className="snow-cap"></div>
+          <div className="garland">
+            <span className="bulb red"></span>
+            <span className="bulb yellow"></span>
+            <span className="bulb blue"></span>
+          </div>
+        </div>
+        <div className="pine">
+          <div className="tree-top"></div>
+          <div className="tree-mid"></div>
+          <div className="snow-cap"></div>
+          <div className="garland">
+            <span className="bulb yellow"></span>
+            <span className="bulb pink"></span>
+            <span className="bulb blue"></span>
+          </div>
+        </div>
+        <div className="pine">
+          <div className="tree-top"></div>
+          <div className="tree-mid"></div>
+          <div className="snow-cap"></div>
+          <div className="garland">
+            <span className="bulb blue"></span>
+            <span className="bulb red"></span>
+            <span className="bulb pink"></span>
+          </div>
+        </div>
+        <div className="pine">
+          <div className="tree-top"></div>
+          <div className="tree-mid"></div>
+          <div className="snow-cap"></div>
+          <div className="garland">
+            <span className="bulb pink"></span>
+            <span className="bulb blue"></span>
+            <span className="bulb yellow"></span>
+          </div>
+        </div>
+        <div className="pine">
+          <div className="tree-top"></div>
+          <div className="tree-mid"></div>
+          <div className="snow-cap"></div>
+          <div className="garland">
+            <span className="bulb red"></span>
+            <span className="bulb blue"></span>
+            <span className="bulb yellow"></span>
+          </div>
+        </div>
+      </div>
+      <div className="tree-santa" aria-hidden="true">
+        <div className="santa-sleigh">
+          <div className="reindeer-group">
+            <div className="reindeer r1">
+              <div className="deer-body"></div>
+              <div className="deer-head"></div>
+              <div className="deer-snout"></div>
+              <div className="deer-nose"></div>
+              <div className="deer-antler left"></div>
+              <div className="deer-antler right"></div>
+              <div className="deer-ear left"></div>
+              <div className="deer-ear right"></div>
+              <div className="deer-leg fl"></div>
+              <div className="deer-leg fr"></div>
+              <div className="deer-leg bl"></div>
+              <div className="deer-leg br"></div>
+            </div>
+            <div className="reindeer r2">
+              <div className="deer-body"></div>
+              <div className="deer-head"></div>
+              <div className="deer-snout"></div>
+              <div className="deer-nose"></div>
+              <div className="deer-antler left"></div>
+              <div className="deer-antler right"></div>
+              <div className="deer-ear left"></div>
+              <div className="deer-ear right"></div>
+              <div className="deer-leg fl"></div>
+              <div className="deer-leg fr"></div>
+              <div className="deer-leg bl"></div>
+              <div className="deer-leg br"></div>
+            </div>
+          </div>
+          <div className="sleigh-body">
+            <div className="sleigh-base"></div>
+            <div className="sleigh-runner left"></div>
+            <div className="sleigh-runner right"></div>
+            <div className="santa-figure">
+              <div className="santa-hat"></div>
+              <div className="santa-head"></div>
+              <div className="santa-beard"></div>
+              <div className="santa-body"></div>
+              <div className="santa-belt"></div>
+              <div className="santa-sack"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="tree-snow" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
       <div className="tree-fireflies" aria-hidden="true">
         <span></span>
         <span></span>
@@ -72,6 +216,7 @@ const TeacherHomePage = () => {
   const [quickLessonLoading, setQuickLessonLoading] = useState(false);
   const [quickLessonError, setQuickLessonError] = useState(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [timeOfDay, setTimeOfDay] = useState('day');
   
   // Состояние для модальных окон
   const [groupDetailModal, setGroupDetailModal] = useState({ isOpen: false, group: null });
@@ -151,6 +296,19 @@ const TeacherHomePage = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    const resolveTime = () => {
+      const hours = new Date().getHours();
+      if (hours >= 5 && hours < 9) return 'dawn';
+      if (hours >= 9 && hours < 17) return 'day';
+      if (hours >= 17 && hours < 21) return 'evening';
+      return 'night';
+    };
+    setTimeOfDay(resolveTime());
+    const timer = setInterval(() => setTimeOfDay(resolveTime()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleQuickLessonCreate = useCallback(async () => {
     setQuickLessonLoading(true);
@@ -245,33 +403,33 @@ const TeacherHomePage = () => {
     const levels = [
       {
         key: 'soil',
-        name: 'Плодородная земля',
+        name: '⛄ Снежное поле',
         minMinutes: 0,
-        description: 'Питательная база для будущего леса знаний.',
+        description: 'Зимняя база для будущего леса знаний. Снег укрывает землю, готовясь к весне.',
       },
       {
         key: 'sprout',
-        name: 'Росток знаний',
+        name: '☃️ Снеговик-новичок',
         minMinutes: 600,
-        description: 'Первые 10 часов занятий превращаются в живой росток.',
+        description: 'Первые 10 часов занятий превращаются в маленького снеговика!',
       },
       {
         key: 'sapling',
-        name: 'Молодой дуб',
+        name: '🎄 Ёлка молодая',
         minMinutes: 6000,
-        description: '100 часов совместной работы формируют крепкий ствол.',
+        description: '100 часов совместной работы украшают ёлку игрушками.',
       },
       {
         key: 'tree',
-        name: 'Большое дерево',
+        name: '🎁 Большая ёлка с подарками',
         minMinutes: 12000,
-        description: 'После 200 часов ваш дуб даёт тень целому поколению.',
+        description: 'После 200 часов ваша ёлка дарит радость целому поколению.',
       },
       {
         key: 'ancient',
-        name: 'Вековой дуб',
+        name: '⭐ Волшебная ёлка',
         minMinutes: 24000,
-        description: 'Легендарное дерево знаний, которым вдохновляются другие.',
+        description: 'Легендарная ёлка знаний со звездой на вершине, которой восхищаются все!',
       },
     ];
     const currentLevel = levels
@@ -341,16 +499,17 @@ const TeacherHomePage = () => {
           top: '80px',
           right: '20px',
           zIndex: 9999,
-          background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+          background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
           color: 'white',
           padding: '16px 24px',
           borderRadius: '12px',
-          boxShadow: '0 10px 40px rgba(16, 185, 129, 0.4)',
+          boxShadow: '0 10px 40px rgba(37, 99, 235, 0.4)',
           animation: 'slideInRight 0.5s ease',
-          maxWidth: '400px'
+          maxWidth: '400px',
+          border: '2px solid rgba(255, 255, 255, 0.3)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.3)', flexShrink: 0 }}></div>
+            <div style={{ fontSize: '24px' }}>🎉</div>
             <div>
               <div style={{ fontWeight: 600, marginBottom: '4px' }}>Платёж успешен!</div>
               <div style={{ fontSize: '14px', opacity: 0.9 }}>
@@ -592,7 +751,11 @@ const TeacherHomePage = () => {
               </h2>
             </div>
 
-            <TreeGrowth stage={derivedStats.levelKey} progress={derivedStats.levelProgress} />
+            <TreeGrowth 
+              stage={derivedStats.levelKey} 
+              progress={derivedStats.levelProgress} 
+              timeOfDay={timeOfDay}
+            />
 
             <div className="badge-card">
               <div className="badge-info">
