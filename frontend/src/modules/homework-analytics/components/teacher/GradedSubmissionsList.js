@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Input, Select } from '../../../../shared/components';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getSubmissions } from '../../../../apiService';
 import './GradedSubmissionsList.css';
@@ -137,7 +138,7 @@ const GradedSubmissionsList = () => {
       {/* Фильтры */}
       <div className="graded-filters">
         <div className="filter-group">
-          <input
+          <Input
             type="text"
             placeholder="Поиск по ученику или названию..."
             value={filters.search}
@@ -146,7 +147,7 @@ const GradedSubmissionsList = () => {
           />
         </div>
         <div className="filter-group filter-group-select">
-          <select
+          <Select
             value={filters.group}
             onChange={(e) => setFilters({ ...filters, group: e.target.value })}
             className="filter-select"
@@ -156,7 +157,7 @@ const GradedSubmissionsList = () => {
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
             <option value="individual">Индивидуальные</option>
-          </select>
+          </Select>
         </div>
       </div>
 

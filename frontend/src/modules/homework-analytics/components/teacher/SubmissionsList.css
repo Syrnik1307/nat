@@ -39,60 +39,6 @@
 .sl-btn-retry:hover {
   background: #1f2937;
 }
-
-/* Header */
-.sl-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.5rem;
-  gap: 1rem;
-}
-
-.sl-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 0.5rem 0;
-}
-
-.sl-stats {
-  display: flex;
-  gap: 1.25rem;
-  flex-wrap: wrap;
-}
-
-.sl-stat {
-  font-size: 0.875rem;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.sl-stat-warning {
-  color: #d97706;
-}
-
-.sl-stat-success {
-  color: #0c1e3a;
-}
-
-.sl-btn-refresh {
-  background: white;
-  color: #111827;
-  border: 1px solid #e5e7eb;
-  padding: 0.625rem 1rem;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.sl-btn-refresh:hover {
-  background: #f9fafb;
-  border-color: #111827;
-}
-
 /* Controls */
 .sl-controls {
   display: flex;

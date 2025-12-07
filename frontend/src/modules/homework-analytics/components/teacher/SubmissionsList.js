@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient, getSubmissions } from '../../../../apiService';
+import { Input, Select } from '../../../../shared/components';
 import './SubmissionsList.css';
 
 /**
@@ -132,7 +133,7 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
 
       <div className="sl-controls">
         <div className="sl-search-wrapper">
-          <input
+          <Input
             type="text"
             placeholder="Поиск по ученику или заданию..."
             value={searchTerm}
@@ -142,7 +143,7 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
         </div>
 
         <div className="sl-filter-wrapper">
-          <select
+          <Select
             value={selectedGroup}
             onChange={(e) => setSelectedGroup(e.target.value)}
             className="sl-filter-select"
@@ -152,7 +153,7 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
               <option key={group.id} value={group.id}>{group.name}</option>
             ))}
             <option value="individual">Индивидуальные</option>
-          </select>
+          </Select>
         </div>
       </div>
       
