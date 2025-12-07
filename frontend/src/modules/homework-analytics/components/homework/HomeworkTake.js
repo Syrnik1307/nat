@@ -22,6 +22,8 @@ const HomeworkTake = () => {
     submitHomework,
     savingState,
     progress,
+    isLocked,
+    submission,
     reload,
   } = useHomeworkSession(id);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -75,11 +77,13 @@ const HomeworkTake = () => {
   };
 
   const savingLabel = useMemo(() => {
+    if (submission?.status === 'submitted') return 'Отправлено';
+    if (submission?.status === 'graded') return 'Проверено';
     if (savingState.status === 'saving') return 'Сохранение...';
     if (savingState.status === 'saved') return 'Сохранено';
     if (savingState.status === 'error') return 'Ошибка автосохранения';
     return 'Черновик';
-  }, [savingState.status]);
+  }, [savingState.status, submission?.status]);
 
   if (loading) {
     return (
@@ -177,7 +181,12 @@ const HomeworkTake = () => {
               <QuestionRenderer
                 question={currentQuestion}
                 answer={answers[currentQuestion.id]}
-                onChange={(value) => recordAnswer(currentQuestion.id, value)}
+                onChange={(value) => {
+                  if (!isLocked) {
+                    recordAnswer(currentQuestion.id, value);
+                  }
+                }}
+                disabled={isLocked}
               />
 
               <div className="ht-controls">
@@ -185,7 +194,7 @@ const HomeworkTake = () => {
                   type="button"
                   className="gm-btn-surface"
                   onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
-                  disabled={currentIndex === 0}
+                  disabled={currentIndex === 0 || isLocked}
                 >
                   ← Назад
                 </button>
@@ -193,7 +202,7 @@ const HomeworkTake = () => {
                   type="button"
                   className="gm-btn-surface"
                   onClick={() => setCurrentIndex((index) => Math.min(questions.length - 1, index + 1))}
-                  disabled={currentIndex === questions.length - 1}
+                  disabled={currentIndex === questions.length - 1 || isLocked}
                 >
                   Далее →
                 </button>
@@ -220,7 +229,7 @@ const HomeworkTake = () => {
                 type="button"
                 className="gm-btn-primary"
                 onClick={handleSubmit}
-                disabled={submitting}
+                disabled={submitting || isLocked}
               >
                 {submitting ? 'Отправка...' : 'Завершить и отправить'}
               </button>

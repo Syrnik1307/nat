@@ -129,6 +129,7 @@ const useHomeworkSession = (homeworkId, injectedService) => {
   }, [localDraftKey]);
 
   const saveProgress = useCallback(async () => {
+    if (submission?.status && submission.status !== 'in_progress') return;
     if (!submission?.id) return;
     if (!dirtyRef.current) return;
     try {
@@ -157,8 +158,15 @@ const useHomeworkSession = (homeworkId, injectedService) => {
   const submitHomework = useCallback(async () => {
     if (!submission?.id) return;
     await saveProgress();
-    return svc.submit(submission.id);
-  }, [saveProgress, submission?.id]);
+    const resp = await svc.submit(submission.id);
+    const data = resp && resp.data ? resp.data : resp;
+    setSubmission(data);
+    // После отправки удалим локальный черновик
+    if (localDraftKey) {
+      try { localStorage.removeItem(localDraftKey); } catch {}
+    }
+    return resp;
+  }, [saveProgress, submission?.id, localDraftKey]);
 
   const progress = useMemo(() => {
     if (!homework?.questions?.length) return 0;
@@ -206,6 +214,7 @@ const useHomeworkSession = (homeworkId, injectedService) => {
     submitHomework,
     savingState,
     progress,
+    isLocked: submission?.status && submission.status !== 'in_progress',
     reload: loadHomework,
   };
 };

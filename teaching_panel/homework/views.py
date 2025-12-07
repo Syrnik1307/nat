@@ -315,8 +315,8 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         submission = self.get_object()
         if request.user != submission.student:
             return Response({'error': 'Доступ только для автора попытки'}, status=status.HTTP_403_FORBIDDEN)
-        if submission.status == 'graded':
-            return Response({'error': 'Работа уже проверена'}, status=status.HTTP_400_BAD_REQUEST)
+        if submission.status != 'in_progress':
+            return Response({'error': 'Работа уже отправлена или проверена'}, status=status.HTTP_400_BAD_REQUEST)
 
         answers_payload = request.data.get('answers', {})
         self._upsert_answers(submission, answers_payload)
@@ -328,8 +328,8 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         submission = self.get_object()
         if request.user != submission.student:
             return Response({'error': 'Доступ только для автора попытки'}, status=status.HTTP_403_FORBIDDEN)
-        if submission.status == 'graded':
-            return Response({'error': 'Работа уже проверена'}, status=status.HTTP_400_BAD_REQUEST)
+        if submission.status in ('submitted', 'graded'):
+            return Response({'error': 'Работа уже отправлена'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Если ответы переданы вместе с submit — сначала сохраним их
         answers_payload = request.data.get('answers')

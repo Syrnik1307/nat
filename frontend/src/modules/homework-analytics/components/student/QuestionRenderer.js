@@ -70,6 +70,7 @@ const QuestionRenderer = ({ question, answer, onChange }) => {
           value={answer || ''}
           onChange={handleTextChange}
           placeholder="Введите ответ"
+            disabled={disabled}
         />
       );
     }
@@ -79,6 +80,7 @@ const QuestionRenderer = ({ question, answer, onChange }) => {
         value={answer || ''}
         onChange={handleTextChange}
         placeholder="Введите ответ"
+          disabled={disabled}
       />
     );
   }
@@ -94,6 +96,7 @@ const QuestionRenderer = ({ question, answer, onChange }) => {
               name={`single-${question.id}`}
               checked={answer === option.id}
               onChange={() => handleSingleChoice(option.id)}
+                disabled={disabled}
             />
             <span>{option.text}</span>
           </label>
@@ -113,6 +116,7 @@ const QuestionRenderer = ({ question, answer, onChange }) => {
               type="checkbox"
               checked={selected.includes(option.id)}
               onChange={() => handleMultipleChoice(option.id)}
+                disabled={disabled}
             />
             <span>{option.text}</span>
           </label>
@@ -140,6 +144,7 @@ const QuestionRenderer = ({ question, answer, onChange }) => {
                 value={answer?.[subQuestion.id] || ''}
                 onChange={(event) => handleListeningAnswer(subQuestion.id, event.target.value)}
                 placeholder="Ответ ученика"
+                  disabled={disabled}
               />
             </div>
           ))}
@@ -163,6 +168,7 @@ const QuestionRenderer = ({ question, answer, onChange }) => {
               className="form-input"
               value={answer?.[pair.id] || ''}
               onChange={(event) => handleMatching(pair.id, event.target.value)}
+                disabled={disabled}
             >
               <option value="">Выберите соответствие</option>
               {rightOptions.map((option) => (
@@ -205,7 +211,7 @@ const QuestionRenderer = ({ question, answer, onChange }) => {
                 type="button"
                 className="gm-btn-icon"
                 onClick={() => handleDragDropMove(item.id, 1)}
-                disabled={index === orderedItems.length - 1}
+                  disabled={index === orderedItems.length - 1 || disabled}
                 aria-label="Ниже"
               >
                 ↓
@@ -238,6 +244,7 @@ const QuestionRenderer = ({ question, answer, onChange }) => {
             className="form-input ht-inline-input"
             value={answersList[index] || ''}
             onChange={(event) => handleFillBlank(index, event.target.value)}
+              disabled={disabled}
           />
         );
       }
@@ -259,6 +266,7 @@ const QuestionRenderer = ({ question, answer, onChange }) => {
                 type="checkbox"
                 checked={Array.isArray(answer) && answer.includes(hotspot.id)}
                 onChange={() => handleHotspotToggle(hotspot.id)}
+                  disabled={disabled}
               />
               <span>{hotspot.label || hotspot.id}</span>
             </label>
