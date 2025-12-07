@@ -46,7 +46,8 @@ if SECRET_KEY == 'django-insecure-your-secret-key-change-this-in-production':
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 # Dev/testing: allow all hosts to let ngrok validation pass
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+# Force allow all hosts (ngrok webhook validation)
+ALLOWED_HOSTS = ['*']
 
 # Отключаем проверку тестовых ключей reCAPTCHA для разработки
 SILENCED_SYSTEM_CHECKS = ['django_recaptcha.recaptcha_test_key_error']
