@@ -1,7 +1,7 @@
 import React from 'react';
 import MediaPreview from '../shared/MediaPreview';
 
-const QuestionRenderer = ({ question, answer, onChange }) => {
+const QuestionRenderer = ({ question, answer, onChange, disabled = false }) => {
   if (!question) return null;
 
   const { question_type: type, config = {} } = question;
