@@ -145,7 +145,7 @@ const GradedSubmissionsList = () => {
             className="filter-input"
           />
         </div>
-        <div className="filter-group">
+        <div className="filter-group filter-group-select">
           <select
             value={filters.group}
             onChange={(e) => setFilters({ ...filters, group: e.target.value })}

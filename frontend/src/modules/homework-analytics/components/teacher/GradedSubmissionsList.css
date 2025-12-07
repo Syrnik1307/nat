@@ -63,6 +63,10 @@
   min-width: 260px;
 }
 
+.filter-group-select {
+  position: relative;
+}
+
 .filter-input,
 .filter-select {
   width: 100%;
@@ -78,6 +82,13 @@
   -webkit-appearance: none;
   -moz-appearance: none;
   box-sizing: border-box;
+  height: 44px;
+  font-weight: 500;
+}
+
+.filter-select {
+  padding-right: 2.5rem;
+  cursor: pointer;
 }
 
 .filter-input:focus,
@@ -85,6 +96,21 @@
   outline: none;
   border-color: #111827;
   box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+
+.filter-group-select::after {
+  content: '\25BE';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+  pointer-events: none;
+  font-size: 0.9rem;
+}
+
+.filter-select option {
+  color: #111827;
 }
 
 /* Пустое состояние */
