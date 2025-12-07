@@ -144,6 +144,10 @@
   font-weight: 500;
 }
 
+.sl-filter-select option {
+  color: #111827;
+}
+
 .sl-filter-wrapper {
   position: relative;
 }
@@ -164,6 +168,13 @@
   color: #6b7280;
   pointer-events: none;
   font-size: 0.9rem;
+}
+
+.sl-btn-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
 }
 
 /* Table */
