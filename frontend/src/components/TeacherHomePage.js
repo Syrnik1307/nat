@@ -100,45 +100,45 @@ const WinterNightCard = () => {
         
         {/* Главная новогодняя ёлка (по центру, самая яркая) */}
         {/* Ствол ёлки */}
-        <rect x="185" y="220" width="30" height="50" rx="4" fill="#5a4a3a" />
+        <rect x="185" y="240" width="30" height="30" rx="4" fill="#5a4a3a" />
         
         {/* Ярусы ёлки (снизу вверх) */}
-        <polygon points="200,220 120,220 200,160" fill="url(#treeGreen)" />
-        <polygon points="200,220 280,220 200,160" fill="#1a4a1a" />
+        <polygon points="200,240 120,240 200,180" fill="url(#treeGreen)" />
+        <polygon points="200,240 280,240 200,180" fill="#1a4a1a" />
         
-        <polygon points="200,175 130,175 200,125" fill="url(#treeGreen)" />
-        <polygon points="200,175 270,175 200,125" fill="#1a4a1a" />
+        <polygon points="200,195 130,195 200,145" fill="url(#treeGreen)" />
+        <polygon points="200,195 270,195 200,145" fill="#1a4a1a" />
         
-        <polygon points="200,140 145,140 200,95" fill="url(#treeGreen)" />
-        <polygon points="200,140 255,140 200,95" fill="#1a4a1a" />
+        <polygon points="200,160 145,160 200,115" fill="url(#treeGreen)" />
+        <polygon points="200,160 255,160 200,115" fill="#1a4a1a" />
         
-        <polygon points="200,110 160,110 200,70" fill="url(#treeGreen)" />
-        <polygon points="200,110 240,110 200,70" fill="#1a4a1a" />
+        <polygon points="200,130 160,130 200,90" fill="url(#treeGreen)" />
+        <polygon points="200,130 240,130 200,90" fill="#1a4a1a" />
         
-        <polygon points="200,85 175,85 200,55" fill="url(#treeGreen)" />
-        <polygon points="200,85 225,85 200,55" fill="#1a4a1a" />
+        <polygon points="200,105 175,105 200,75" fill="url(#treeGreen)" />
+        <polygon points="200,105 225,105 200,75" fill="#1a4a1a" />
         
         {/* Снег на ветвях */}
-        <ellipse cx="200" cy="220" rx="85" ry="12" fill="rgba(255,255,255,0.75)" />
-        <ellipse cx="200" cy="175" rx="72" ry="10" fill="rgba(255,255,255,0.75)" />
-        <ellipse cx="200" cy="140" rx="58" ry="9" fill="rgba(255,255,255,0.75)" />
-        <ellipse cx="200" cy="110" rx="42" ry="7" fill="rgba(255,255,255,0.75)" />
-        <ellipse cx="200" cy="85" rx="26" ry="6" fill="rgba(255,255,255,0.75)" />
+        <ellipse cx="200" cy="240" rx="85" ry="12" fill="rgba(255,255,255,0.75)" />
+        <ellipse cx="200" cy="195" rx="72" ry="10" fill="rgba(255,255,255,0.75)" />
+        <ellipse cx="200" cy="160" rx="58" ry="9" fill="rgba(255,255,255,0.75)" />
+        <ellipse cx="200" cy="130" rx="42" ry="7" fill="rgba(255,255,255,0.75)" />
+        <ellipse cx="200" cy="105" rx="26" ry="6" fill="rgba(255,255,255,0.75)" />
         
         {/* Новогодние игрушки */}
-        <circle cx="170" cy="200" r="8" fill="url(#ornamentRed)" opacity="0.9" />
-        <circle cx="230" cy="195" r="7" fill="url(#ornamentGold)" opacity="0.9" />
-        <circle cx="150" cy="165" r="6" fill="url(#ornamentBlue)" opacity="0.9" />
-        <circle cx="250" cy="160" r="6" fill="url(#ornamentRed)" opacity="0.9" />
-        <circle cx="185" cy="150" r="5" fill="url(#ornamentGold)" opacity="0.9" />
-        <circle cx="215" cy="145" r="5" fill="url(#ornamentBlue)" opacity="0.9" />
-        <circle cx="175" cy="120" r="4" fill="url(#ornamentRed)" opacity="0.9" />
-        <circle cx="225" cy="115" r="4" fill="url(#ornamentGold)" opacity="0.9" />
-        <circle cx="190" cy="95" r="3.5" fill="url(#ornamentBlue)" opacity="0.9" />
-        <circle cx="210" cy="92" r="3.5" fill="url(#ornamentRed)" opacity="0.9" />
+        <circle cx="170" cy="220" r="8" fill="url(#ornamentRed)" opacity="0.9" />
+        <circle cx="230" cy="215" r="7" fill="url(#ornamentGold)" opacity="0.9" />
+        <circle cx="150" cy="185" r="6" fill="url(#ornamentBlue)" opacity="0.9" />
+        <circle cx="250" cy="180" r="6" fill="url(#ornamentRed)" opacity="0.9" />
+        <circle cx="185" cy="170" r="5" fill="url(#ornamentGold)" opacity="0.9" />
+        <circle cx="215" cy="165" r="5" fill="url(#ornamentBlue)" opacity="0.9" />
+        <circle cx="175" cy="140" r="4" fill="url(#ornamentRed)" opacity="0.9" />
+        <circle cx="225" cy="135" r="4" fill="url(#ornamentGold)" opacity="0.9" />
+        <circle cx="190" cy="115" r="3.5" fill="url(#ornamentBlue)" opacity="0.9" />
+        <circle cx="210" cy="112" r="3.5" fill="url(#ornamentRed)" opacity="0.9" />
         
         {/* Золотая звезда на вершине */}
-        <g transform="translate(200, 50)">
+        <g transform="translate(200, 70)">
           <polygon points="0,-15 4,-5 15,-5 6,2 9,13 0,7 -9,13 -6,2 -15,-5 -4,-5" 
                    fill="#ffd700" 
                    stroke="#daa520" 
