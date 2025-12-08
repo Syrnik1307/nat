@@ -794,8 +794,8 @@
 .winter-hero {
   position: relative;
   border-radius: var(--radius-md);
-  overflow: hidden;
-  height: 240px;
+  overflow: visible;
+  height: 280px;
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
 }
 
@@ -821,7 +821,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  overflow: hidden;
+  overflow: visible;
   z-index: 3;
 }
 
