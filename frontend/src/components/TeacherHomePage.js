@@ -15,19 +15,35 @@ const WinterNightCard = () => {
   const snowflakes = Array.from({ length: 30 }, (_, idx) => idx);
   
   return (
-    <div className="winter-hero" aria-label="Красивая зимняя новогодняя ёлка">
-      {/* Фон: мягкий зимний градиент */}
+    <div className="winter-hero" aria-label="Зимний ночной лес с новогодней ёлкой">
+      {/* Фон: ночное небо */}
       <svg className="winter-forest-bg" viewBox="0 0 400 280" preserveAspectRatio="none" aria-hidden="true">
         <defs>
           <linearGradient id="winterSky" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#e8f4f8" />
-            <stop offset="100%" stopColor="#d0e8f5" />
+            <stop offset="0%" stopColor="#1a2642" />
+            <stop offset="100%" stopColor="#2d3e5f" />
           </linearGradient>
+          <radialGradient id="moonGlow" cx="80%" cy="20%" r="15%">
+            <stop offset="0%" stopColor="#fffacd" stopOpacity="0.9" />
+            <stop offset="40%" stopColor="#fff8dc" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#1a2642" stopOpacity="0" />
+          </radialGradient>
         </defs>
         <rect width="400" height="280" fill="url(#winterSky)" />
+        {/* Луна */}
+        <circle cx="320" cy="60" r="25" fill="#fffacd" opacity="0.95" />
+        <circle cx="315" cy="58" r="25" fill="#1a2642" opacity="0.3" />
+        <ellipse cx="320" cy="60" rx="35" ry="35" fill="url(#moonGlow)" />
+        {/* Звёзды */}
+        {[...Array(15)].map((_, i) => {
+          const x = 30 + (i * 27) % 340;
+          const y = 20 + (i * 13) % 80;
+          const size = 1.5 + (i % 3) * 0.5;
+          return <circle key={i} cx={x} cy={y} r={size} fill="white" opacity={0.7 + (i % 3) * 0.1} />;
+        })}
       </svg>
 
-      {/* Красивая новогодняя ёлка по центру */}
+      {/* Лес с новогодней ёлкой */}
       <svg className="winter-forest" viewBox="0 0 400 280" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
         <defs>
           <linearGradient id="treeGreen" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -48,6 +64,41 @@ const WinterNightCard = () => {
           </radialGradient>
         </defs>
         
+        {/* Дальние ёлки (тёмный фон) */}
+        <g opacity="0.3">
+          <g transform="translate(60, 220) scale(0.5)">
+            <rect x="-3" y="20" width="6" height="30" fill="#3a3a3a" />
+            <polygon points="0,0 -30,20 30,20" fill="#1a2a1a" />
+            <polygon points="0,18 -32,38 32,38" fill="#0f1f0f" />
+            <ellipse cx="0" cy="20" rx="32" ry="6" fill="rgba(255,255,255,0.3)" />
+          </g>
+          <g transform="translate(340, 230) scale(0.6)">
+            <rect x="-3" y="15" width="6" height="25" fill="#3a3a3a" />
+            <polygon points="0,0 -25,15 25,15" fill="#1a2a1a" />
+            <polygon points="0,13 -28,28 28,28" fill="#0f1f0f" />
+            <ellipse cx="0" cy="15" rx="28" ry="5" fill="rgba(255,255,255,0.3)" />
+          </g>
+        </g>
+        
+        {/* Средние ёлки по бокам (полутень) */}
+        <g opacity="0.5">
+          <g transform="translate(120, 210) scale(0.7)">
+            <rect x="-3" y="25" width="6" height="35" fill="#4a4a3a" />
+            <polygon points="0,0 -35,25 35,25" fill="#2a3a2a" />
+            <polygon points="0,22 -38,45 38,45" fill="#1a2a1a" />
+            <ellipse cx="0" cy="25" rx="38" ry="8" fill="rgba(255,255,255,0.4)" />
+            <ellipse cx="0" cy="45" rx="40" ry="8" fill="rgba(255,255,255,0.35)" />
+          </g>
+          <g transform="translate(280, 215) scale(0.65)">
+            <rect x="-3" y="22" width="6" height="32" fill="#4a4a3a" />
+            <polygon points="0,0 -32,22 32,22" fill="#2a3a2a" />
+            <polygon points="0,20 -35,40 35,40" fill="#1a2a1a" />
+            <ellipse cx="0" cy="22" rx="35" ry="7" fill="rgba(255,255,255,0.4)" />
+            <ellipse cx="0" cy="40" rx="37" ry="7" fill="rgba(255,255,255,0.35)" />
+          </g>
+        </g>
+        
+        {/* Главная новогодняя ёлка (по центру, самая яркая) */}
         {/* Ствол ёлки */}
         <rect x="185" y="220" width="30" height="50" rx="4" fill="#5a4a3a" />
         
