@@ -12,74 +12,102 @@ import QuickLessonButton from './WinterQuickLessonButton';
 import './TeacherHomePage.css';
 
 const WinterNightCard = () => {
-  const snowflakes = Array.from({ length: 20 }, (_, idx) => idx);
+  const snowflakes = Array.from({ length: 25 }, (_, idx) => idx);
+  
+  // Элегантные ёлки разных размеров
+  const trees = [
+    { x: 50, scale: 0.8, opacity: 0.6 },
+    { x: 120, scale: 1.2, opacity: 0.9 },
+    { x: 200, scale: 0.9, opacity: 0.7 },
+    { x: 280, scale: 1, opacity: 0.85 },
+    { x: 340, scale: 0.7, opacity: 0.6 },
+  ];
+
+  const Tree = ({ x, scale, opacity }) => (
+    <g transform={`translate(${x} 180) scale(${scale})`} opacity={opacity}>
+      {/* Ствол */}
+      <rect x="-3" y="20" width="6" height="35" fill="#5a4a3a" />
+      {/* 5 уровней хвои */}
+      <polygon points="0,-2 -28,12 28,12" fill="#1e4620" />
+      <polygon points="0,8 -32,24 32,24" fill="#1a3a1a" />
+      <polygon points="0,20 -35,35 35,35" fill="#1e4620" />
+      <polygon points="0,32 -38,45 38,45" fill="#0f2f0f" />
+      <polygon points="0,44 -40,55 40,55" fill="#1a3a1a" />
+      
+      {/* Снег на ветвях - белые шапки */}
+      <ellipse cx="0" cy="10" rx="32" ry="6" fill="rgba(255,255,255,0.7)" />
+      <ellipse cx="0" cy="24" rx="36" ry="7" fill="rgba(255,255,255,0.65)" />
+      <ellipse cx="0" cy="38" rx="40" ry="8" fill="rgba(255,255,255,0.6)" />
+      <ellipse cx="0" cy="50" rx="42" ry="8" fill="rgba(255,255,255,0.55)" />
+      
+      {/* Звёздочка на вершине */}
+      <polygon points="0,-8 2,-2 8,-1 3,3 5,9 0,6 -5,9 -3,3 -8,-1 -2,-2" fill="#ffd700" opacity="0.9" />
+    </g>
+  );
   
   return (
     <div className="winter-hero" aria-label="Зимний лес с падающими снежинками">
-      {/* Фон неба */}
+      {/* Фон: мягкий зимний градиент неба */}
       <svg className="winter-forest-bg" viewBox="0 0 400 250" preserveAspectRatio="none" aria-hidden="true">
         <defs>
           <linearGradient id="winterSky" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#e8f4f8" />
-            <stop offset="50%" stopColor="#cfe9f3" />
-            <stop offset="100%" stopColor="#b8ddf0" />
+            <stop offset="0%" stopColor="#e6f2ff" />
+            <stop offset="40%" stopColor="#d4e8f7" />
+            <stop offset="100%" stopColor="#c8dff0" />
           </linearGradient>
+          <radialGradient id="snowGlow" cx="50%" cy="100%" r="60%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+          </radialGradient>
         </defs>
         <rect width="400" height="250" fill="url(#winterSky)" />
+        {/* Мягкое свечение снега */}
+        <rect width="400" height="60" y="190" fill="url(#snowGlow)" />
       </svg>
 
-      {/* Деревья леса */}
+      {/* Лес с красивыми ёлками */}
       <svg className="winter-forest" viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
         <defs>
-          <linearGradient id="darkTree" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#2d5016" />
-            <stop offset="100%" stopColor="#1a3009" />
-          </linearGradient>
-          <linearGradient id="lightTree" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#4a7c2c" />
-            <stop offset="100%" stopColor="#2d5016" />
+          <linearGradient id="snowGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#f0f8ff" stopOpacity="0.4" />
           </linearGradient>
         </defs>
-
-        {/* Дальний лес (фон) */}
-        <g opacity="0.4">
-          {[20, 80, 140, 200, 260, 320, 380].map((x, i) => (
-            <polygon key={`bg-tree-${i}`} points={`${x},250 ${x-25},120 ${x+25},120`} fill="url(#darkTree)" />
-          ))}
-        </g>
-
-        {/* Ближний лес (основной) */}
-        <g opacity="0.8">
-          {[30, 100, 180, 260, 350].map((x, i) => (
-            <g key={`tree-${i}`} transform={`translate(${x} 200)`}>
-              {/* Ствол */}
-              <rect x="-4" y="0" width="8" height="50" fill="#3d2817" />
-              {/* Хвоя - 3 уровня */}
-              <polygon points="0,-5 -30,20 30,20" fill="url(#lightTree)" />
-              <polygon points="0,15 -35,45 35,45" fill="url(#darkTree)" />
-              <polygon points="0,40 -40,70 40,70" fill="url(#lightTree)" />
-              {/* Снег на ветвях */}
-              <ellipse cx="-20" cy="25" rx="8" ry="4" fill="rgba(255,255,255,0.6)" />
-              <ellipse cx="20" cy="25" rx="8" ry="4" fill="rgba(255,255,255,0.6)" />
-              <ellipse cx="-25" cy="50" rx="10" ry="5" fill="rgba(255,255,255,0.6)" />
-              <ellipse cx="25" cy="50" rx="10" ry="5" fill="rgba(255,255,255,0.6)" />
-            </g>
-          ))}
-        </g>
-
-        {/* Снег на земле */}
-        <path d="M0 240 Q 100 235 200 240 T 400 240 L 400 250 L 0 250 Z" fill="#f0f8ff" opacity="0.9" />
+        
+        {/* Рисуем ёлки */}
+        {trees.map((tree, idx) => (
+          <Tree key={idx} x={tree.x} scale={tree.scale} opacity={tree.opacity} />
+        ))}
+        
+        {/* Белый снег на земле с текстурой */}
+        <rect x="0" y="220" width="400" height="30" fill="#f8fcff" />
+        <path d="M0 220 Q50 215 100 220 T200 220 T300 220 T400 220 L400 230 Q350 227 300 230 T200 230 T100 230 T0 230 Z" 
+              fill="rgba(255,255,255,0.6)" />
       </svg>
 
-      {/* Падающие снежинки */}
+      {/* Падающие снежинки - красивые и медленные */}
       <div className="winter-snow" aria-hidden="true">
-        {snowflakes.map((flake) => (
-          <span key={flake} className="snowflake" style={{
-            left: `${Math.random() * 100}%`,
-            animationDuration: `${3 + Math.random() * 4}s`,
-            animationDelay: `${Math.random() * 2}s`,
-          }} />
-        ))}
+        {snowflakes.map((flake) => {
+          const leftPos = Math.random() * 100;
+          const duration = 8 + Math.random() * 6; // медленнее падают
+          const delay = Math.random() * 3;
+          const size = 4 + Math.random() * 4;
+          
+          return (
+            <span 
+              key={flake} 
+              className="snowflake" 
+              style={{
+                left: `${leftPos}%`,
+                width: `${size}px`,
+                height: `${size}px`,
+                animationDuration: `${duration}s`,
+                animationDelay: `${delay}s`,
+                boxShadow: `0 0 ${size + 2}px rgba(255,255,255,0.9), 0 0 ${size * 1.5}px rgba(200,220,255,0.6)`
+              }} 
+            />
+          );
+        })}
       </div>
     </div>
   );
