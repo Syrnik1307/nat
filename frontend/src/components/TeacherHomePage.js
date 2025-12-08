@@ -11,129 +11,76 @@ import StudentCardModal from './StudentCardModal';
 import QuickLessonButton from './WinterQuickLessonButton';
 import './TeacherHomePage.css';
 
-const TreeGrowth = ({ stage, progress, timeOfDay = 'day' }) => {
-  const safeProgress = Number.isFinite(progress)
-    ? Math.min(Math.max(progress, 0), 1)
-    : 0;
-
-  const timeThemes = {
-    dawn: {
-      sky: 'linear-gradient(180deg, #dbeafe 0%, #bfdbfe 45%, #e0f2fe 100%)',
-      glow: 'radial-gradient(circle at 50% 40%, rgba(253, 224, 71, 0.25), transparent 55%)',
-      orb: '#fde047',
-      starsOpacity: 0.05,
-    },
-    day: {
-      sky: 'linear-gradient(180deg, #d8ecff 0%, #e9f2ff 38%, #f3f7ff 100%)',
-      glow: 'radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.45), transparent 60%)',
-      orb: '#fde047',
-      starsOpacity: 0,
-    },
-    evening: {
-      sky: 'linear-gradient(180deg, #0ea5e9 0%, #1e3a8a 55%, #0b162f 100%)',
-      glow: 'radial-gradient(circle at 50% 30%, rgba(252, 211, 77, 0.35), transparent 65%)',
-      orb: '#fbbf24',
-      starsOpacity: 0.35,
-    },
-    night: {
-      sky: 'linear-gradient(180deg, #0b1224 0%, #0f172a 40%, #111827 100%)',
-      glow: 'radial-gradient(circle at 50% 30%, rgba(96, 165, 250, 0.28), transparent 60%)',
-      orb: '#e0f2fe',
-      starsOpacity: 0.7,
-    },
-  };
-
-  const theme = timeThemes[timeOfDay] || timeThemes.day;
-
+const WinterNightCard = () => {
+  const snowflakes = Array.from({ length: 20 }, (_, idx) => idx);
+  
   return (
-    <div
-      className={`tree-growth tod-${timeOfDay}`}
-      data-stage={stage}
-      style={{ 
-        '--growth-progress': safeProgress.toFixed(2),
-        '--sky-gradient': theme.sky,
-        '--orb-color': theme.orb,
-        '--scene-glow': theme.glow,
-        '--stars-opacity': theme.starsOpacity,
-      }}
-    >
-      <div className="tree-sky" aria-hidden="true"></div>
-      <div className="tree-stars" aria-hidden="true">
-        <span></span><span></span><span></span><span></span><span></span><span></span>
+    <div className="winter-hero" aria-label="Зимний лес с падающими снежинками">
+      {/* Фон неба */}
+      <svg className="winter-forest-bg" viewBox="0 0 400 250" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="winterSky" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#e8f4f8" />
+            <stop offset="50%" stopColor="#cfe9f3" />
+            <stop offset="100%" stopColor="#b8ddf0" />
+          </linearGradient>
+        </defs>
+        <rect width="400" height="250" fill="url(#winterSky)" />
+      </svg>
+
+      {/* Деревья леса */}
+      <svg className="winter-forest" viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <linearGradient id="darkTree" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#2d5016" />
+            <stop offset="100%" stopColor="#1a3009" />
+          </linearGradient>
+          <linearGradient id="lightTree" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#4a7c2c" />
+            <stop offset="100%" stopColor="#2d5016" />
+          </linearGradient>
+        </defs>
+
+        {/* Дальний лес (фон) */}
+        <g opacity="0.4">
+          {[20, 80, 140, 200, 260, 320, 380].map((x, i) => (
+            <polygon key={`bg-tree-${i}`} points={`${x},250 ${x-25},120 ${x+25},120`} fill="url(#darkTree)" />
+          ))}
+        </g>
+
+        {/* Ближний лес (основной) */}
+        <g opacity="0.8">
+          {[30, 100, 180, 260, 350].map((x, i) => (
+            <g key={`tree-${i}`} transform={`translate(${x} 200)`}>
+              {/* Ствол */}
+              <rect x="-4" y="0" width="8" height="50" fill="#3d2817" />
+              {/* Хвоя - 3 уровня */}
+              <polygon points="0,-5 -30,20 30,20" fill="url(#lightTree)" />
+              <polygon points="0,15 -35,45 35,45" fill="url(#darkTree)" />
+              <polygon points="0,40 -40,70 40,70" fill="url(#lightTree)" />
+              {/* Снег на ветвях */}
+              <ellipse cx="-20" cy="25" rx="8" ry="4" fill="rgba(255,255,255,0.6)" />
+              <ellipse cx="20" cy="25" rx="8" ry="4" fill="rgba(255,255,255,0.6)" />
+              <ellipse cx="-25" cy="50" rx="10" ry="5" fill="rgba(255,255,255,0.6)" />
+              <ellipse cx="25" cy="50" rx="10" ry="5" fill="rgba(255,255,255,0.6)" />
+            </g>
+          ))}
+        </g>
+
+        {/* Снег на земле */}
+        <path d="M0 240 Q 100 235 200 240 T 400 240 L 400 250 L 0 250 Z" fill="#f0f8ff" opacity="0.9" />
+      </svg>
+
+      {/* Падающие снежинки */}
+      <div className="winter-snow" aria-hidden="true">
+        {snowflakes.map((flake) => (
+          <span key={flake} className="snowflake" style={{
+            left: `${Math.random() * 100}%`,
+            animationDuration: `${3 + Math.random() * 4}s`,
+            animationDelay: `${Math.random() * 2}s`,
+          }} />
+        ))}
       </div>
-      <div className="tree-orb" aria-hidden="true"></div>
-      <div className="tree-glow" aria-hidden="true"></div>
-      <div className="tree-hills" aria-hidden="true"></div>
-      <div className="tree-forest" aria-hidden="true">
-        <div className="pine">
-          <div className="tree-top"></div>
-          <div className="tree-mid"></div>
-          <div className="snow-cap"></div>
-          <div className="garland">
-            <span className="bulb red"></span>
-            <span className="bulb yellow"></span>
-            <span className="bulb blue"></span>
-          </div>
-        </div>
-        <div className="pine">
-          <div className="tree-top"></div>
-          <div className="tree-mid"></div>
-          <div className="snow-cap"></div>
-          <div className="garland">
-            <span className="bulb yellow"></span>
-            <span className="bulb pink"></span>
-            <span className="bulb blue"></span>
-          </div>
-        </div>
-        <div className="pine">
-          <div className="tree-top"></div>
-          <div className="tree-mid"></div>
-          <div className="snow-cap"></div>
-          <div className="garland">
-            <span className="bulb blue"></span>
-            <span className="bulb red"></span>
-            <span className="bulb pink"></span>
-          </div>
-        </div>
-        <div className="pine">
-          <div className="tree-top"></div>
-          <div className="tree-mid"></div>
-          <div className="snow-cap"></div>
-          <div className="garland">
-            <span className="bulb pink"></span>
-            <span className="bulb blue"></span>
-            <span className="bulb yellow"></span>
-          </div>
-        </div>
-        <div className="pine">
-          <div className="tree-top"></div>
-          <div className="tree-mid"></div>
-          <div className="snow-cap"></div>
-          <div className="garland">
-            <span className="bulb red"></span>
-            <span className="bulb blue"></span>
-            <span className="bulb yellow"></span>
-          </div>
-        </div>
-      </div>
-      <div className="tree-snow" aria-hidden="true">
-        <span></span><span></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span></span><span></span>
-      </div>
-      <div className="tree-fireflies" aria-hidden="true">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-      <div className="tree-sprout" aria-hidden="true">
-        <div className="stem"></div>
-        <div className="leaf left"></div>
-        <div className="leaf right"></div>
-      </div>
-      <div className="tree-trunk" aria-hidden="true"></div>
-      <div className="tree-crown crown-main" aria-hidden="true"></div>
-      <div className="tree-crown crown-second" aria-hidden="true"></div>
-      <div className="tree-ground" aria-hidden="true"></div>
     </div>
   );
 };
@@ -169,7 +116,6 @@ const TeacherHomePage = () => {
   const [quickLessonLoading, setQuickLessonLoading] = useState(false);
   const [quickLessonError, setQuickLessonError] = useState(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [timeOfDay, setTimeOfDay] = useState('day');
   
   // Состояние для модальных окон
   const [groupDetailModal, setGroupDetailModal] = useState({ isOpen: false, group: null });
@@ -249,19 +195,6 @@ const TeacherHomePage = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  useEffect(() => {
-    const resolveTime = () => {
-      const hours = new Date().getHours();
-      if (hours >= 5 && hours < 9) return 'dawn';
-      if (hours >= 9 && hours < 17) return 'day';
-      if (hours >= 17 && hours < 21) return 'evening';
-      return 'night';
-    };
-    setTimeOfDay(resolveTime());
-    const timer = setInterval(() => setTimeOfDay(resolveTime()), 60 * 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const handleQuickLessonCreate = useCallback(async () => {
     setQuickLessonLoading(true);
@@ -704,11 +637,7 @@ const TeacherHomePage = () => {
               </h2>
             </div>
 
-            <TreeGrowth 
-              stage={derivedStats.levelKey} 
-              progress={derivedStats.levelProgress} 
-              timeOfDay={timeOfDay}
-            />
+            <WinterNightCard />
 
             <div className="badge-card">
               <div className="badge-info">

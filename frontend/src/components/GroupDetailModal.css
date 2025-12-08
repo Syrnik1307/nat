@@ -2,49 +2,43 @@
 
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.4);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55) !important; /* Force reset in case cached seasonal theme lingers */
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 0.2s ease;
+  backdrop-filter: blur(4px) !important;
+  animation: fadeIn 0.2s ease-out;
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-content {
-  background: white;
-  border-radius: 16px;
-  max-width: 1000px;
-  width: 90%;
+  background: #ffffff !important;
+  border-radius: 18px;
+  max-width: 1040px;
+  width: 94%;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12), 0 10px 30px rgba(0, 0, 0, 0.08);
-  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.18) !important;
+  animation: slideUp 0.25s ease-out;
   overflow: hidden;
+  border: 1px solid #e5e7eb !important;
+  color: #111827 !important;
+}
+
+.modal-content * {
+  color: inherit !important;
 }
 
 @keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  from { transform: translateY(18px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .group-detail-modal {
@@ -60,10 +54,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5rem 2rem;
+  padding: 1.25rem 1.75rem;
   border-bottom: 1px solid #e5e7eb;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border-radius: 16px 16px 0 0;
+  background: #ffffff;
+  border-radius: 18px 18px 0 0;
   flex-shrink: 0;
 }
 
@@ -76,9 +70,10 @@
 
 .modal-title {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   font-weight: 700;
-  color: #111827;
+  color: #111827 !important;
+  text-shadow: none !important;
 }
 
 .group-students-count {
@@ -91,22 +86,23 @@
 }
 
 .modal-close-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  font-size: 1.25rem;
   cursor: pointer;
   color: #6b7280;
-  padding: 0.5rem;
+  padding: 0.4rem 0.65rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  border-radius: 10px;
+  transition: all 0.18s ease;
 }
 
 .modal-close-btn:hover {
-  background: #f3f4f6;
+  background: #eef2f7;
   color: #111827;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
 }
 
 /* ================================================
@@ -115,10 +111,10 @@
 
 .tabs-nav {
   display: flex;
-  gap: 2rem;
-  border-bottom: 2px solid #e5e7eb;
-  background: white;
-  padding: 0 2rem;
+  gap: 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+  padding: 0 1.75rem;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   flex-shrink: 0;
@@ -141,18 +137,19 @@
   background: #9ca3af;
 }
 
+
 .tab-button {
   flex: 0 0 auto;
   background: none;
   border: none;
   outline: none;
-  font-size: 1rem;
-  font-weight: 500;
-  color: #64748b;
-  padding: 0.75rem 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: #6b7280;
+  padding: 0.85rem 0;
   cursor: pointer;
   position: relative;
-  transition: color 0.2s;
+  transition: color 0.18s ease;
   white-space: nowrap;
 }
 
@@ -161,7 +158,7 @@
 }
 
 .tab-button.active {
-  color: #1e293b;
+  color: #0f172a;
 }
 
 .tab-button.active::after {
@@ -169,11 +166,11 @@
   display: block;
   position: absolute;
   left: 0;
-  bottom: -2px;
+  bottom: -1px;
   width: 100%;
-  height: 2px;
-  background: #1e3a8a;
-  border-radius: 2px;
+  height: 3px;
+  background: linear-gradient(90deg, #1e3a8a, #2563eb);
+  border-radius: 999px;
 }
 
 /* На мобилках убираем gap */
@@ -196,8 +193,8 @@
 .modal-body {
   flex: 1;
   overflow-y: auto;
-  padding: 2rem;
-  background: white;
+  padding: 1.75rem;
+  background: #ffffff;
   min-height: 0;
 }
 

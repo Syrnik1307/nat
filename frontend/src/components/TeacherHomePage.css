@@ -320,6 +320,45 @@
     z-index: 2;
   }
 
+  .pine .tree-bottom {
+    position: absolute;
+    bottom: 20px;
+    width: 0;
+    height: 0;
+    border-left: 45px solid transparent;
+    border-right: 45px solid transparent;
+    border-bottom: 55px solid transparent;
+    background: radial-gradient(ellipse at 20% 20%, 
+      #2d5f3f, 
+      #1e4d2e 45%, 
+      #0f3820 75%, 
+      #061c0f);
+    clip-path: polygon(50% 0%, 4% 94%, 96% 94%);
+    box-shadow: 
+      inset -16px 0 24px rgba(0,0,0,0.55),
+      inset 16px 0 24px rgba(255,255,255,0.08);
+    z-index: 1;
+  }
+
+  .pine .trunk {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 15px;
+    height: 28px;
+    background: linear-gradient(90deg, 
+      #4a3828, 
+      #5d4832 30%, 
+      #6f5a42 50%, 
+      #5d4832 70%, 
+      #4a3828);
+    border-radius: 2px 2px 0 0;
+    box-shadow: 
+      inset -3px 0 6px rgba(0,0,0,0.45),
+      inset 3px 0 6px rgba(255,255,255,0.1);
+  }
+
 .summary-icon {
   width: 56px;
   height: 56px;
@@ -750,6 +789,71 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+.winter-hero {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  height: 240px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+}
+
+.winter-forest-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.winter-forest {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+
+.winter-snow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 3;
+}
+
+.snowflake {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 
+    0 0 6px rgba(255, 255, 255, 0.9),
+    0 0 12px rgba(255, 255, 255, 0.6);
+  filter: blur(0.4px);
+  animation: snowfall 6s linear infinite;
+  opacity: 0.8;
+}
+
+@keyframes snowfall {
+  0% { 
+    transform: translateY(-20px) translateX(0px) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% { 
+    transform: translateY(280px) translateX(30px) rotate(360deg);
+    opacity: 0;
+  }
 }
 
 /* ================================================

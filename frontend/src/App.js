@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import './App.css';
-import './styles/winter-theme.css';
 import { AuthProvider, useAuth, Protected } from './auth';
 import RegisterPage from './components/RegisterPage';
 import StudentDashboard from './components/StudentDashboard';
