@@ -212,79 +212,13 @@ const TeacherHomePage = () => {
     const totalStudents = stats?.total_students || 0;
     const totalGroups = stats?.total_groups || 0;
     const lessonsCount = stats?.total_lessons || 0;
-    const teachingMinutes = stats?.teaching_minutes || 0;
     const portalMinutes = stats?.portal_minutes || 0;
-    
-    // Уровни дерева знаний
-    const levels = [
-      {
-        key: 'soil',
-        name: '⛄ Снежное поле',
-        minMinutes: 0,
-        description: 'Зимняя база для будущего леса знаний. Снег укрывает землю, готовясь к весне.',
-      },
-      {
-        key: 'sprout',
-        name: '☃️ Снеговик-новичок',
-        minMinutes: 600,
-        description: 'Первые 10 часов занятий превращаются в маленького снеговика!',
-      },
-      {
-        key: 'sapling',
-        name: '🎄 Ёлка молодая',
-        minMinutes: 6000,
-        description: '100 часов совместной работы украшают ёлку игрушками.',
-      },
-      {
-        key: 'tree',
-        name: '🎁 Большая ёлка с подарками',
-        minMinutes: 12000,
-        description: 'После 200 часов ваша ёлка дарит радость целому поколению.',
-      },
-      {
-        key: 'ancient',
-        name: '⭐ Волшебная ёлка',
-        minMinutes: 24000,
-        description: 'Легендарная ёлка знаний со звездой на вершине, которой восхищаются все!',
-      },
-    ];
-    const currentLevel = levels
-      .slice()
-      .reverse()
-      .find(level => teachingMinutes >= level.minMinutes) || levels[0];
-    const nextLevel = levels.find(level => level.minMinutes > currentLevel.minMinutes);
-    const minutesToNext = nextLevel ? Math.max(0, nextLevel.minMinutes - teachingMinutes) : 0;
-    const levelRange = nextLevel
-      ? Math.max(1, nextLevel.minMinutes - currentLevel.minMinutes)
-      : Math.max(1, teachingMinutes || 1);
-    const levelProgress = nextLevel
-      ? Math.min(1, Math.max(0, (teachingMinutes - currentLevel.minMinutes) / levelRange))
-      : 1;
-    const progressPercent = nextLevel
-      ? Math.min(
-          100,
-          Math.round(
-            ((teachingMinutes - currentLevel.minMinutes) /
-              (nextLevel.minMinutes - currentLevel.minMinutes)) *
-              100
-          )
-        )
-      : 100;
-    const hoursToNext = nextLevel ? Math.ceil(minutesToNext / 60) : 0;
 
     return {
       totalStudents,
       totalGroups,
       lessonsCount,
-      teachingMinutes,
       portalMinutes,
-      currentLevel,
-      nextLevel,
-      levelKey: currentLevel.key,
-      levelProgress,
-      progressPercent,
-      minutesToNext,
-      hoursToNext,
     };
   }, [stats]);
 
@@ -568,29 +502,6 @@ const TeacherHomePage = () => {
             </div>
 
             {/* Winter illustration removed by request */}
-
-            <div className="badge-card">
-              <div className="badge-info">
-                <span className="badge-title">{derivedStats.currentLevel.name}</span>
-                <span className="badge-subtitle">{derivedStats.currentLevel.description}</span>
-                {derivedStats.nextLevel ? (
-                  <span className="badge-subtitle">
-                    До стадии «{derivedStats.nextLevel.name}»: {derivedStats.hoursToNext} ч занятий
-                  </span>
-                ) : (
-                  <span className="badge-subtitle">Вы достигли максимального уровня! 🔥</span>
-                )}
-              </div>
-            </div>
-
-            <div className="level-progress">
-              <div className="progress-track">
-                <div className="progress-thumb" style={{ width: `${derivedStats.progressPercent}%` }}></div>
-              </div>
-              <div className="progress-meta">
-                <span>{derivedStats.teachingMinutes} мин занятий</span>
-              </div>
-            </div>
 
             <div className="impact-grid">
               <div className="impact-card">

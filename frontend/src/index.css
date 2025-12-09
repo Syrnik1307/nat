@@ -1,6 +1,7 @@
 /* Импорт единой Design System */
 @import './styles/design-system.css';
 @import './styles/buttons.css';
+@import './styles/dashboard.css';
 
 /* Остальные глобальные стили уже в design-system.css */
 code {

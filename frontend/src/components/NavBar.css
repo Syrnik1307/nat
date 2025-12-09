@@ -1,82 +1,86 @@
-/* ===================== ТЕМА (Минималистичная) ===================== */
-:root {
-  --bg-base: #ffffff;
-  --bg-soft: #f9fafb;
-  --border-soft: #e5e7eb;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --accent: #1e3a8a;
-  --accent-soft: #f0f9ff;
-  --hover-bg: #f3f4f6;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-md: 0 4px 12px -2px rgba(0,0,0,0.08);
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --transition: 0.18s ease;
-  --font-main: system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
-}
+/* 🌨️ WINTER MAGIC NAVBAR - Темная зимняя ночь с теплым светом */
 
-/* Навигационная панель (минимализм) */
+/* Навигационная панель - глубокий темно-синий фон */
 .navbar-new {
-  background: var(--bg-base);
-  border-bottom: 1px solid var(--border-soft);
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   position: sticky;
   top: 0;
   z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .navbar-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 0 var(--space-xl);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 60px;
+  height: 72px;
 }
 
 .navbar-logo {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-.navbar-profile-button {
-  display: flex;
-  align-items: center;
-  gap: .55rem;
-  background: var(--bg-base);
-  border: 1px solid var(--border-soft);
-  color: var(--text-primary);
-  padding: .45rem .75rem;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-weight: 500;
-  font-size: .83rem;
-  line-height: 1.2;
-  transition: background var(--transition), border-color var(--transition);
-}
-.navbar-profile-button:hover { background: var(--hover-bg); border-color:#d1d5db; }
-  justify-content: center;
+  gap: var(--space-sm);
 }
 
+/* Навигационные ссылки - белый текст с прозрачностью */
 .navbar-link {
-  color: var(--text-primary);
+  color: var(--sidebar-text);
   text-decoration: none;
-  padding: .55rem .85rem;
-  border-radius: var(--radius-sm);
-  transition: var(--transition);
-  font-weight: 500;
-  font-size: .92rem;
+  padding: 12px var(--space-md);
+  border-radius: var(--radius-button);
+  transition: all var(--transition-base);
+  font-weight: var(--font-medium);
+  font-size: var(--text-base);
   display: flex;
   align-items: center;
-  gap: .45rem;
+  gap: var(--space-xs);
   position: relative;
 }
 
-.navbar-link:hover { background: var(--hover-bg); }
+.navbar-link:hover {
+  background: var(--sidebar-hover);
+  color: var(--text-white);
+}
 
-.navbar-link.active { background: var(--accent-soft); color: var(--accent); }
+/* 🔥 АКТИВНАЯ ССЫЛКА - Горящий янтарный эффект */
+.navbar-link.active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-text-active);
+  border-left: 3px solid var(--accent-primary);
+  padding-left: calc(var(--space-md) - 3px);
+  box-shadow: var(--glow-accent);
+  animation: glowPulse 2s ease-in-out infinite;
+}
 
-.navbar-right { display: flex; align-items: center; gap: .9rem; }
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: var(--glow-accent);
+  }
+  50% {
+    box-shadow: var(--glow-accent-strong);
+  }
+}
+
+.navbar-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%);
+  box-shadow: 0 0 10px var(--accent-primary);
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
 
 .navbar-profile {
   position: relative;
@@ -85,65 +89,89 @@
 .navbar-profile-button {
   display: flex;
   align-items: center;
-  gap: .55rem;
-  background: var(--bg-soft);
-  border: 1px solid var(--border-soft);
-  color: var(--text-primary);
-  padding: .5rem .8rem;
-  border-radius: var(--radius-md);
+  gap: var(--space-xs);
+  background: var(--sidebar-hover);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-white);
+  padding: 10px var(--space-md);
+  border-radius: var(--radius-button);
   cursor: pointer;
-  font-weight: 500;
-  font-size: .85rem;
-  transition: var(--transition);
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
+  transition: all var(--transition-base);
+  min-height: 44px;
 }
 
-.navbar-profile-button:hover { background: var(--hover-bg); }
+.navbar-profile-button:hover {
+  background: var(--sidebar-active-bg);
+  border-color: rgba(255, 255, 255, 0.25);
+}
 
 .navbar-dropdown {
   position: absolute;
-  top: calc(100% + .5rem);
+  top: calc(100% + var(--space-xs));
   right: 0;
-  background: var(--bg-base);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  min-width: 200px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-hover);
+  min-width: 220px;
   overflow: hidden;
+  animation: slideDown 0.25s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .navbar-dropdown-link {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  color: #333;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  color: var(--text-primary);
   text-decoration: none;
-  transition: background-color 0.2s;
+  transition: all var(--transition-base);
+  font-size: var(--text-base);
 }
 
-.navbar-dropdown-link:hover { background: var(--hover-bg); }
+.navbar-dropdown-link:hover {
+  background: var(--bg-snow);
+  color: var(--accent-primary);
+}
 
 .navbar-dropdown-button {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
   background: none;
   border: none;
-  color: #e53e3e;
+  color: var(--color-error);
   cursor: pointer;
-  transition: background-color 0.2s;
-  font-weight: 500;
+  transition: all var(--transition-base);
+  font-weight: var(--font-medium);
+  font-size: var(--text-base);
 }
 
-.navbar-dropdown-button:hover { background: #fff1f1; }
+.navbar-dropdown-button:hover {
+  background: var(--color-error-light);
+  color: #dc2626;
+}
 
-/* Баннер сообщений (минималистичный) */
+/* Баннер сообщений */
 .status-banner {
-  background: var(--accent-soft);
-  border-bottom: 1px solid var(--border-soft);
-  padding: .6rem 1.6rem;
+  background: var(--accent-primary-light);
+  border-bottom: 1px solid var(--border-light);
+  padding: var(--space-sm) var(--space-xl);
   display: flex;
   align-items: center;
   justify-content: space-between;
