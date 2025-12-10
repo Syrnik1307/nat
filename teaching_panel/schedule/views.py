@@ -16,8 +16,8 @@ from django.core.cache import cache
 import hashlib
 import logging
 from datetime import datetime, timedelta
-from .models import ZoomAccount, Group, Lesson, Attendance, RecurringLesson, LessonRecording, AuditLog, IndividualInviteCode
-from zoom_pool.models import ZoomAccount as PoolZoomAccount
+from .models import Group, Lesson, Attendance, RecurringLesson, LessonRecording, AuditLog, IndividualInviteCode
+from zoom_pool.models import ZoomAccount
 from django.db.models import F
 from .permissions import IsLessonOwnerOrReadOnly, IsGroupOwnerOrReadOnly
 from .serializers import (
@@ -687,11 +687,11 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     def _start_zoom_via_pool(self, lesson, user, request):
         """Создать Zoom встречу через пул аккаунтов и сохранить в урок."""
-        pool_account = None
+        zoom_account = None
         try:
             with transaction.atomic():
-                pool_account = (
-                    PoolZoomAccount.objects.select_for_update()
+                zoom_account = (
+                    ZoomAccount.objects.select_for_update()
                     .filter(
                         is_active=True,
                         current_meetings__lt=F('max_concurrent_meetings')
@@ -700,16 +700,16 @@ class LessonViewSet(viewsets.ModelViewSet):
                     .first()
                 )
 
-                if not pool_account:
+                if not zoom_account:
                     return None, Response(
                         {'detail': 'Все Zoom аккаунты заняты. Попробуйте позже.'},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE
                     )
 
-                pool_account.acquire()
+                zoom_account.acquire()
 
                 meeting_data = my_zoom_api_client.create_meeting(
-                    user_id=pool_account.zoom_user_id or None,
+                    user_id=zoom_account.zoom_user_id or None,
                     topic=f"{lesson.group.name} - {lesson.title}",
                     start_time=lesson.start_time,
                     duration=lesson.duration(),
@@ -720,7 +720,7 @@ class LessonViewSet(viewsets.ModelViewSet):
                 lesson.zoom_join_url = meeting_data['join_url']
                 lesson.zoom_start_url = meeting_data['start_url']
                 lesson.zoom_password = meeting_data.get('password', '')
-                lesson.zoom_account = pool_account
+                lesson.zoom_account = zoom_account
                 lesson.save()
 
                 log_audit(
@@ -732,7 +732,7 @@ class LessonViewSet(viewsets.ModelViewSet):
                     details={
                         'lesson_title': lesson.title,
                         'group_name': lesson.group.name,
-                        'zoom_account_email': pool_account.email,
+                        'zoom_account_email': zoom_account.email,
                         'zoom_meeting_id': meeting_data['id'],
                         'start_time': lesson.start_time.isoformat(),
                     }
@@ -743,14 +743,14 @@ class LessonViewSet(viewsets.ModelViewSet):
                 'zoom_start_url': lesson.zoom_start_url,
                 'zoom_meeting_id': lesson.zoom_meeting_id,
                 'zoom_password': lesson.zoom_password,
-                'account_email': pool_account.email,
+                'account_email': zoom_account.email,
             }
             return payload, None
         except Exception as e:
             logger.exception(f"Failed to create Zoom meeting for lesson {lesson.id}: {e}")
-            if pool_account:
+            if zoom_account:
                 try:
-                    pool_account.release()
+                    zoom_account.release()
                 except Exception:
                     logger.exception('Failed to release Zoom account after error')
             return None, Response(

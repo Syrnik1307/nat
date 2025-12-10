@@ -1,13 +1,13 @@
-/* 🌨️ WINTER MAGIC NAVBAR - Темная зимняя ночь с теплым светом */
+/* 🌨️ INTEGRATED TRANSPARENT NAVBAR - Soft Premium */
 
-/* Навигационная панель - глубокий темно-синий фон */
+/* Навигационная панель - интегрированная прозрачная */
 .navbar-new {
-  background: var(--sidebar-bg);
+  background: transparent;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   position: sticky;
   top: 0;
   z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: none;
 }
 
 .navbar-container {
@@ -17,7 +17,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 72px;
+  height: 80px;
+  gap: 32px;
 }
 
 .navbar-logo {
@@ -26,15 +27,16 @@
   gap: var(--space-sm);
 }
 
-/* Навигационные ссылки - белый текст с прозрачностью */
+/* Навигационные ссылки - крупные с разрядкой */
 .navbar-link {
-  color: var(--sidebar-text);
+  color: #FFFFFF;
   text-decoration: none;
   padding: 12px var(--space-md);
   border-radius: var(--radius-button);
   transition: all var(--transition-base);
-  font-weight: var(--font-medium);
-  font-size: var(--text-base);
+  font-weight: 500;
+  font-size: 18px;
+  letter-spacing: 0.02em;
   display: flex;
   align-items: center;
   gap: var(--space-xs);
@@ -42,17 +44,17 @@
 }
 
 .navbar-link:hover {
-  background: var(--sidebar-hover);
-  color: var(--text-white);
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
 }
 
-/* 🔥 АКТИВНАЯ ССЫЛКА - Горящий янтарный эффект */
+/* 🔥 АКТИВНАЯ ССЫЛКА - Благородное золото */
 .navbar-link.active {
-  background: var(--sidebar-active-bg);
-  color: var(--sidebar-text-active);
-  border-left: 3px solid var(--accent-primary);
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border-left: 3px solid #fbbf24;
   padding-left: calc(var(--space-md) - 3px);
-  box-shadow: var(--glow-accent);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
   animation: glowPulse 2s ease-in-out infinite;
 }
 

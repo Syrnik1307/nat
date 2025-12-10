@@ -1,92 +1,135 @@
 /*
- * 🌨️ WINTER MAGIC DESIGN SYSTEM
- * Teaching Panel - Atmospheric Interface Design
- * Метафора: Теплый свет среди зимней ночи
- * Обновлено: 9 декабря 2025
+ * ✨ EASY TEACHING - PREMIUM MINIMALIST DESIGN SYSTEM
+ * Modern, Fresh, Clean UI
+ * Обновлено: 10 декабря 2025
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,800&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
   /* ========================================
-     🎨 WINTER PALETTE - Цветовая палитра
-     ======================================== */
-  
-  /* Фон приложения - Холодный снежный */
-  --bg-body: #F0F4F8;
-  --bg-snow: #F8FAFC;
-  
-  /* Sidebar - Глубокая зимняя ночь */
-  --sidebar-bg: #1E293B;
-  --sidebar-text: rgba(255, 255, 255, 0.7);
-  --sidebar-text-active: #F59E0B;
-  --sidebar-hover: rgba(255, 255, 255, 0.1);
-  --sidebar-active-bg: rgba(255, 255, 255, 0.15);
-  
-  /* Основной текст - Холодный темно-синий */
-  --text-primary: #334155;
-  --text-secondary: #64748B;
-  --text-light: #94A3B8;
-  --text-white: #FFFFFF;
-  
-  /* Акцентный цвет - Теплый янтарный (магический свет) */
-  --accent-primary: #F59E0B;
-  --accent-primary-hover: #D97706;
-  --accent-primary-light: #FEF3C7;
-  --accent-glow: rgba(245, 158, 11, 0.4);
-  
-  /* Карточки и поверхности */
-  --surface-card: #FFFFFF;
-  --surface-overlay: rgba(30, 41, 59, 0.4);
-  
-  /* Состояния */
+    🎨 PREMIUM MINIMALIST PALETTE
+    ======================================== */
+
+  /* Core palette - Premium SaaS Colors */
+  --bg-app: #F8FAFC; /* Slate-50 - Clean page background */
+  --bg-paper: #FFFFFF; /* Pure white for cards */
+  --bg-surface: #F1F5F9; /* Light slate for inputs */
+  --bg-hover: #F8FAFC;
+  --text-main: #1E293B; /* Slate-800 - Primary text */
+  --text-muted: #64748B; /* Slate-500 - Secondary text */
+  --text-light: #94A3B8; /* Light gray for metadata */
+  --color-primary: #4F46E5; /* Indigo-600 - Primary brand */
+  --color-primary-dark: #4338CA; /* Indigo-700 - Hover state */
+  --color-primary-light: #818CF8; /* Indigo-400 */
+  --color-primary-subtle: #E0E7FF; /* Indigo-100 - Backgrounds */
+  --color-accent: #4F46E5; /* Same as primary */
+  --color-accent-hover: #4338CA;
+  --color-error: #F43F5E; /* Rose-500 - Danger */
+  --color-success: #10B981; /* Emerald-500 - Success */
+  --color-warning: #F59E0B; /* Amber-500 - Warning */
+  --color-sidebar: #0F172A; /* Slate-900 - Dark sidebar */
+  --text-inverted: #F8FAFC; /* Slate-50 - Text on dark */
+  --glass-border: rgba(226, 232, 240, 0.8);
+
+  /* Support palette aliases (compatibility with existing vars) */
+  --bg-body: #F8FAFC; /* Slate-50 - Page background */
+  --bg-snow: #F1F5F9;
+  --bg-secondary: #F8FAFC;
+  --surface-card: var(--bg-paper);
+  --surface-overlay: rgba(15, 23, 42, 0.6);
+  --text-primary: var(--text-main);
+  --text-secondary: var(--text-muted);
+  --text-white: var(--text-inverted);
+  --accent-primary: var(--color-primary);
+  --accent-primary-hover: var(--color-primary-dark);
+  --accent-primary-light: var(--color-primary-subtle);
+  --accent-glow: rgba(79, 70, 229, 0.2);
+  --accent: var(--color-accent);
+  --sidebar-bg: var(--color-sidebar);
+  --sidebar-text: var(--text-inverted);
+  --sidebar-text-active: var(--color-primary-subtle);
+  --sidebar-hover: rgba(255, 255, 255, 0.05);
+  --sidebar-active-bg: rgba(224, 231, 255, 0.1);
+
+  /* Primary scale (Indigo family) */
+  --primary-50: #EEF2FF;
+  --primary-100: #E0E7FF;
+  --primary-200: #C7D2FE;
+  --primary-300: #A5B4FC;
+  --primary-400: #818CF8;
+  --primary-500: var(--color-primary);
+  --primary-600: var(--color-primary-dark);
+  --primary-700: #3730A3;
+  --primary-800: #312E81;
+  --primary-900: #1E1B4B;
+
+  /* Accent scale (same as primary for minimalism) */
+  --accent-50: var(--primary-50);
+  --accent-100: var(--primary-100);
+  --accent-200: var(--primary-200);
+  --accent-300: var(--primary-300);
+  --accent-400: var(--primary-400);
+  --accent-500: var(--primary-500);
+  --accent-600: var(--primary-600);
+  --accent-700: var(--primary-700);
+  --accent-800: var(--primary-800);
+  --accent-900: var(--primary-900);
+
+  /* States */
   --color-success: #10B981;
   --color-success-light: #D1FAE5;
-  --color-error: #EF4444;
-  --color-error-light: #FEE2E2;
-  --color-warning: #F59E0B;
+  --color-warning: var(--color-accent);
   --color-warning-light: #FEF3C7;
   --color-info: #3B82F6;
   --color-info-light: #DBEAFE;
-  
-  /* Границы */
+
+  /* Borders - Soft and subtle */
   --border-light: #E2E8F0;
   --border-medium: #CBD5E1;
   --border-dark: #94A3B8;
 
   /* ========================================
-     🌟 SHADOWS & GLOW - Тени и свечение
-     ======================================== */
-  
-  /* Мягкие цветные тени */
-  --shadow-card: 0 4px 20px rgba(148, 163, 184, 0.15);
-  --shadow-hover: 0 10px 25px rgba(148, 163, 184, 0.25);
-  --shadow-focus: 0 0 0 4px rgba(245, 158, 11, 0.1);
-  
-  /* Магическое свечение */
-  --glow-accent: 0 0 15px var(--accent-glow);
-  --glow-accent-strong: 0 0 25px var(--accent-glow), 0 0 40px rgba(245, 158, 11, 0.2);
-  
-  /* Frosted Glass эффект */
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.18);
+    🌟 SHADOWS - Soft & Diffused for Premium Feel
+    ======================================== */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  --shadow-soft: var(--shadow-md);
+  --shadow-glow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  --shadow-float: var(--shadow-xl);
+  --shadow-focus: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  --shadow-card: var(--shadow-sm);
+  --shadow-hover: var(--shadow-lg);
+  --glow-accent: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  --glow-accent-strong: 0 0 0 4px rgba(79, 70, 229, 0.15);
+
+  /* Frosted Glass */
+  --glass-bg: rgba(255, 255, 255, 0.9);
   --glass-blur: blur(12px);
 
   /* ========================================
-     📐 GEOMETRY - Геометрия и скругления
-     ======================================== */
-  
-  --radius-card: 24px;
-  --radius-button: 12px;
-  --radius-input: 12px;
-  --radius-small: 8px;
-  --radius-modal: 24px;
+    📐 SHAPE & RADII - Generous for modern feel
+    ======================================== */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+  --radius-card: var(--radius-xl);
+  --radius-button: var(--radius-lg);
+  --radius-input: var(--radius-lg);
+  --radius-modal: var(--radius-2xl);
   --radius-full: 9999px;
 
   /* ========================================
-     📏 SPACING - Отступы (шаг 8px)
-     ======================================== */
-  
+    📏 SPACING (8px scale)
+    ======================================== */
   --space-xs: 8px;
   --space-sm: 12px;
   --space-md: 16px;
@@ -96,33 +139,38 @@
   --space-3xl: 64px;
 
   /* ========================================
-     ✍️ TYPOGRAPHY - Типографика
-     ======================================== */
-  
-  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'SF Mono', 'Consolas', 'Monaco', monospace;
-  
-  --text-xs: 0.75rem;      /* 12px */
-  --text-sm: 0.875rem;     /* 14px */
-  --text-base: 1rem;       /* 16px */
-  --text-lg: 1.125rem;     /* 18px */
-  --text-xl: 1.25rem;      /* 20px */
-  --text-2xl: 1.5rem;      /* 24px */
-  --text-3xl: 1.875rem;    /* 30px */
-  
+    ✍️ TYPOGRAPHY - Plus Jakarta Sans
+    ======================================== */
+  --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'SF Mono', 'Menlo', 'Consolas', 'Monaco', monospace;
+
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px - Base size */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.875rem;   /* 30px */
+  --text-4xl: 2.25rem;    /* 36px */
+  --text-5xl: 3rem;       /* 48px */
+
+  --font-light: 300;
   --font-normal: 400;
   --font-medium: 500;
   --font-semibold: 600;
   --font-bold: 700;
-  
+  --font-extrabold: 800;
+
   --leading-tight: 1.25;
+  --leading-snug: 1.375;
   --leading-normal: 1.5;
-  --leading-relaxed: 1.75;
+  --leading-relaxed: 1.6;
+  --leading-loose: 2;
 
   /* ========================================
-     ⚡ ANIMATIONS - Анимации
-     ======================================== */
-  
+    ⚡ ANIMATIONS
+    ======================================== */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -137,27 +185,47 @@
   --z-popover: 1060;
   --z-tooltip: 1070;
 
-  /* === РАЗМЕРЫ КОНТЕЙНЕРОВ === */
-  --container-xs: 20rem;    /* 320px */
-  --container-sm: 24rem;    /* 384px */
-  --container-md: 28rem;    /* 448px */
-  --container-lg: 32rem;    /* 512px */
-  --container-xl: 36rem;    /* 576px */
-  --container-2xl: 42rem;   /* 672px */
-  --container-3xl: 48rem;   /* 768px */
-  --container-4xl: 56rem;   /* 896px */
-  --container-5xl: 64rem;   /* 1024px */
+  /* === CONTAINER WIDTHS === */
+  --container-xs: 20rem;
+  --container-sm: 24rem;
+  --container-md: 28rem;
+  --container-lg: 32rem;
+  --container-xl: 36rem;
+  --container-2xl: 42rem;
+  --container-3xl: 48rem;
+  --container-4xl: 56rem;
+  --container-5xl: 64rem;
+  --container-6xl: 72rem;
+  --container-7xl: 80rem;
 
-  /* Z-Index слои */
-  --z-base: 0;
-  --z-dropdown: 1000;
-  --z-sticky: 1020;
-  --z-fixed: 1030;
-  --z-modal-backdrop: 1040;
-  --z-modal: 1050;
-  --z-tooltip: 1070;
+  /* Compatibility radius & shadow tokens used across legacy styles */
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+  --shadow-sm: 0 6px 16px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 12px 30px rgba(15, 23, 42, 0.12);
+  --shadow-lg: var(--shadow-soft);
+  --shadow-xl: var(--shadow-float);
+  --shadow-2xl: 0 30px 60px rgba(15, 23, 42, 0.16);
+  --shadow-glass: 0 20px 50px rgba(15, 23, 42, 0.35);
+
+  /* Extra typography aliases */
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+  --text-tertiary: rgba(100, 116, 139, 0.7);
+
+  /* Legacy aliases used across components */
+  --primary-main: var(--color-primary);
+  --primary-dark: #0B1221;
+  --primary-light: #2F456F;
+  --bg-primary: var(--bg-paper);
+  --bg-tertiary: #E9EFF7;
+  --border-color: var(--border-light);
+  --error-50: #FEF2F2;
+  --error-500: #EF4444;
+  --error-600: #DC2626;
 }
-
 /* ========================================
    🌐 GLOBAL RESET & BASE STYLES
    ======================================== */
@@ -169,40 +237,76 @@
 }
 
 html {
-  font-size: 16px;
+  font-size: 16px; /* Base size - crucial */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
 }
 
-body {
+html, body {
   margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-base);
-  line-height: var(--leading-normal);
-  color: var(--text-primary);
-  background-color: var(--bg-body);
+  padding: 0;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 1rem; /* 16px */
+  line-height: 1.6; /* Relaxed for readability */
+  color: var(--text-main);
+  background: var(--bg-app) !important;
+  width: 100%;
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Заголовки */
+#root {
+  background: var(--bg-app) !important;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Premium Minimalist Cards */
+.card,
+.content-card,
+.section-card,
+.light-card,
+.main-content-card {
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-card);
+  padding: clamp(24px, 5vw, 32px);
+  box-shadow: var(--shadow-card);
+  transition: all var(--transition-base);
+}
+
+.card:hover,
+.content-card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+  border-color: var(--border-medium);
+}
+
+/* Заголовки - Bold, Dark, Tight Spacing */
 h1, h2, h3, h4, h5, h6 {
   margin: 0;
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-bold);
   line-height: var(--leading-tight);
-  color: var(--text-primary);
+  color: #0F172A; /* Dark slate for headings */
+  letter-spacing: -0.02em; /* Tighter spacing */
+  font-family: var(--font-display);
 }
 
-h1 { font-size: var(--text-3xl); }
-h2 { font-size: var(--text-2xl); }
-h3 { font-size: var(--text-xl); }
-h4 { font-size: var(--text-lg); }
-h5 { font-size: var(--text-base); }
-h6 { font-size: var(--text-sm); }
+h1 { font-size: var(--text-3xl); font-weight: var(--font-bold); }
+h2 { font-size: var(--text-2xl); font-weight: var(--font-bold); }
+h3 { font-size: var(--text-xl); font-weight: var(--font-semibold); }
+h4 { font-size: var(--text-lg); font-weight: var(--font-semibold); }
+h5 { font-size: var(--text-base); font-weight: var(--font-medium); }
+h6 { font-size: var(--text-sm); font-weight: var(--font-medium); }
 
-/* Параграфы */
+/* Параграфы - Regular weight, Slate Gray, Relaxed line-height */
 p {
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--text-muted); /* Slate-500 */
+  font-weight: var(--font-normal);
+  line-height: var(--leading-relaxed); /* 1.6 for readability */
 }
 
 /* Ссылки */
@@ -311,16 +415,18 @@ input, textarea, select {
    ======================================== */
 
 .card {
-  background: var(--surface-card);
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-card);
   padding: var(--space-lg);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-soft);
   transition: all var(--transition-base);
 }
 
 .card:hover {
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-float);
+  transform: translateY(-4px);
+  border-color: rgba(15, 23, 42, 0.08);
 }
 
 .card-header {
@@ -380,43 +486,63 @@ input, textarea, select {
   cursor: not-allowed;
 }
 
-/* Primary Button - Магический янтарный */
+/* Primary Button - Solid Indigo */
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%);
-  color: var(--text-white);
-  box-shadow: var(--glow-accent);
+  background: var(--color-primary);
+  color: white;
+  box-shadow: var(--shadow-sm);
+  font-weight: var(--font-medium);
 }
 
 .btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: var(--glow-accent-strong);
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-primary:active:not(:disabled) {
   transform: translateY(0);
+  box-shadow: var(--shadow-xs);
 }
 
-/* Secondary Button - Прозрачный с границей */
+/* Secondary Button - Light subtle */
 .btn-secondary {
-  background: transparent;
-  color: var(--text-primary);
-  border: 1px solid var(--border-medium);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border: 1px solid var(--border-light);
+  font-weight: var(--font-medium);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--bg-snow);
-  border-color: var(--border-dark);
+  background: var(--bg-hover);
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-xs);
 }
 
-/* Danger Button */
+/* Outline Button */
+.btn-outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  font-weight: var(--font-medium);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary-dark);
+}
+
+/* Danger Button - Rose-500 */
 .btn-danger {
-  background: var(--color-error);
-  color: var(--text-white);
+  background: #F43F5E; /* Rose-500 */
+  color: white;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #dc2626;
-  transform: translateY(-2px);
+  background: #E11D48; /* Rose-600 */
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 /* Icon Button */
@@ -446,12 +572,12 @@ input, textarea, select {
 .form-textarea,
 .form-select {
   width: 100%;
-  padding: 12px var(--space-md);
+  padding: 13px var(--space-md);
   font-size: var(--text-base);
   font-family: inherit;
-  color: var(--text-primary);
-  background: var(--surface-card);
-  border: 1px solid var(--border-light);
+  color: var(--text-main);
+  background: var(--bg-surface);
+  border: 1px solid transparent;
   border-radius: var(--radius-input);
   transition: all var(--transition-base);
   line-height: 1.5;
@@ -461,20 +587,21 @@ input, textarea, select {
 .form-input:hover,
 .form-textarea:hover,
 .form-select:hover {
-  border-color: var(--border-medium);
+  background: var(--bg-hover);
 }
 
 .form-input:focus,
 .form-textarea:focus,
 .form-select:focus {
   outline: none;
-  border-color: var(--accent-primary);
+  background: white;
+  border-color: var(--color-primary);
   box-shadow: var(--shadow-focus);
 }
 
 .form-input::placeholder,
 .form-textarea::placeholder {
-  color: var(--text-light);
+  color: var(--text-muted);
 }
 
 .form-textarea {
@@ -485,6 +612,41 @@ input, textarea, select {
 .form-error {
   font-size: var(--text-xs);
   color: var(--color-error);
+}
+
+/* ========================================
+   🪟 MODAL SHELLS & OVERLAYS
+   ======================================== */
+
+.modal-overlay,
+.subscriptions-modal-overlay,
+.teacher-upload-modal-overlay,
+.recording-player-modal {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.modal,
+.subscriptions-modal,
+.teacher-upload-modal,
+.recording-player-shell {
+  background: var(--bg-paper);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-float);
+  padding: clamp(24px, 4vw, 40px);
+}
+
+.modal h1,
+.modal h2,
+.modal h3,
+.modal p,
+.subscriptions-modal h1,
+.subscriptions-modal h2,
+.subscriptions-modal h3,
+.subscriptions-modal p {
+  color: var(--text-primary);
 }
 
 /* ========================================

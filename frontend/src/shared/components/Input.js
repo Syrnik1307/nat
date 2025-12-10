@@ -37,25 +37,28 @@ const Input = ({
 
   const labelStyles = {
     display: 'block',
-    marginBottom: 'var(--space-sm)',
-    fontSize: 'var(--text-sm)',
-    fontWeight: 'var(--font-medium)',
-    color: 'var(--text-primary)',
+    marginBottom: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    color: '#1E293B', /* Slate-800 */
+    letterSpacing: '0',
+    fontFamily: 'Plus Jakarta Sans, sans-serif',
   };
 
   const inputBaseStyles = {
     width: '100%',
-    padding: 'var(--space-md) var(--space-lg)',
-    fontSize: 'var(--text-base)',
-    border: `1px solid ${error ? 'var(--error-500)' : focused ? 'var(--primary-500)' : 'var(--border-color)'}`,
-    borderRadius: 'var(--radius-lg)',
+    padding: '13px 16px',
+    fontSize: '1rem', /* 16px base */
+    border: error ? '1px solid #F43F5E' : (focused ? '1px solid #4F46E5' : '1px solid transparent'),
+    borderRadius: '16px',
     outline: 'none',
-    transition: 'all var(--transition-base)',
-    backgroundColor: disabled ? 'var(--gray-100)' : 'var(--bg-primary)',
-    color: disabled ? 'var(--text-tertiary)' : 'var(--text-primary)',
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    backgroundColor: disabled ? '#F1F5F9' : (focused ? '#FFFFFF' : '#F1F5F9'),
+    color: disabled ? '#94A3B8' : '#1E293B', /* Slate-800 */
     cursor: disabled ? 'not-allowed' : 'text',
-    boxShadow: focused ? `0 0 0 3px ${error ? 'rgba(239, 68, 68, 0.12)' : 'rgba(255, 107, 53, 0.12)'}` : 'none',
-    fontFamily: 'var(--font-sans)',
+    boxShadow: focused ? (error ? '0 0 0 3px rgba(244, 63, 94, 0.12)' : '0 0 0 3px rgba(79, 70, 229, 0.12)') : 'none',
+    fontFamily: 'Plus Jakarta Sans, Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+    minHeight: '48px',
   };
 
   const passwordContainerStyles = {
@@ -78,15 +81,16 @@ const Input = ({
   };
 
   const errorStyles = {
-    marginTop: 'var(--space-xs)',
-    fontSize: 'var(--text-xs)',
-    color: 'var(--error-500)',
+    marginTop: '6px',
+    fontSize: '0.75rem',
+    color: '#F43F5E', /* Rose-500 */
+    fontWeight: '500',
   };
 
   const helperStyles = {
-    marginTop: 'var(--space-xs)',
-    fontSize: 'var(--text-xs)',
-    color: 'var(--text-secondary)',
+    marginTop: '6px',
+    fontSize: '0.75rem',
+    color: '#64748B', /* Slate-500 */
   };
 
   const handleChange = (e) => {

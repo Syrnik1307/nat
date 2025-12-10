@@ -131,12 +131,17 @@ const StudentHomePage = () => {
 
           {/* Today's status */}
           <div className="student-today-status">
-            <div className="student-status-text">
-              Сегодня <span className="student-status-date">{formatTodayDate()}</span>
+            <div className="student-status-icon">📅</div>
+            <div className="student-status-content">
+              <h3>Сегодня</h3>
+              <p className="student-status-date">{formatTodayDate()}</p>
             </div>
           </div>
 
-          <p className="student-status-message">{message}</p>
+          <div className="student-lessons-today">
+            <span className="student-lessons-icon">{hasLessonsToday ? '✨' : '🌙'}</span>
+            <p className="student-status-message">{message}</p>
+          </div>
 
           {/* Course List */}
           <div className="student-courses-section">
@@ -159,15 +164,32 @@ const StudentHomePage = () => {
               <div className="student-courses-grid">
                 {groups.map(group => (
                   <div key={group.id} className="student-course-card">
-                    <div className="student-course-logo-style" />
-                    <div className="student-course-info">
-                      <h3>{group.name}</h3>
-                      <p className="student-course-progress">
-                        Преподаватель: {group.teacher?.first_name || group.teacher?.email || 'Не указан'}
-                      </p>
-                      <p className="student-course-students">
-                        {group.student_count || 0} {getStudentsText(group.student_count || 0)}
-                      </p>
+                    <div className="student-course-header">
+                      <div className="student-course-icon">📚</div>
+                      <div className="student-course-info">
+                        <h3>{group.name}</h3>
+                        <p className="student-course-teacher">
+                          {group.teacher?.first_name || group.teacher?.email || 'Не указан'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="student-course-meta">
+                      <span className="student-course-students">
+                        👥 {group.student_count || 0} {getStudentsText(group.student_count || 0)}
+                      </span>
+                    </div>
+
+                    <div className="student-progress-container">
+                      <div className="student-progress-bar">
+                        <div className="student-progress-fill" style={{width: '75%'}} />
+                      </div>
+                      <span className="student-progress-text">75%</span>
+                    </div>
+
+                    <div className="student-card-footer">
+                      <span className="student-status-badge in-progress">В процессе</span>
+                      <button className="student-primary-btn">Перейти к курсу</button>
                     </div>
                   </div>
                 ))}

@@ -23,78 +23,84 @@ const Button = ({
 }) => {
   const baseStyles = {
     border: 'none',
-    borderRadius: 'var(--radius-lg)',
+    borderRadius: '16px',
     cursor: disabled || loading ? 'not-allowed' : 'pointer',
-    fontWeight: '600',
-    transition: 'background-color var(--transition-base), box-shadow var(--transition-base)',
+    fontWeight: '500',
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 'var(--space-sm)',
+    gap: '8px',
     opacity: disabled || loading ? 0.5 : 1,
-    boxShadow: 'var(--shadow-sm)',
-    fontFamily: 'inherit',
+    fontFamily: 'Plus Jakarta Sans, Inter, -apple-system, BlinkMacSystemFont, sans-serif',
     transform: 'none',
+    whiteSpace: 'nowrap',
   };
 
   const variants = {
     primary: {
-      background: 'linear-gradient(135deg, #0b2b65 0%, #0a1f4d 100%)',
-      color: 'white',
-      boxShadow: '0 8px 20px -10px rgba(30, 58, 138, 0.55)',
+      backgroundColor: '#4F46E5', /* Indigo-600 */
+      color: '#F8FAFC', /* Slate-50 inverted text */
+      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+      border: 'none',
     },
     secondary: {
-      backgroundColor: '#e0e7ff',
-      color: '#0f1f4b',
-      border: '1px solid #1e3a8a',
-      boxShadow: '0 6px 18px -12px rgba(30, 58, 138, 0.35)',
+      backgroundColor: '#F1F5F9',
+      color: '#1E293B', /* Slate-800 */
+      border: '1px solid #E2E8F0',
+      boxShadow: 'none',
     },
     danger: {
-      background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
-      color: 'white',
-      boxShadow: '0 6px 16px -10px rgba(239, 68, 68, 0.45)',
+      backgroundColor: '#F43F5E', /* Rose-500 */
+      color: '#F8FAFC',
+      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.08)',
+      border: 'none',
     },
     success: {
-      backgroundColor: '#10b981',
-      color: 'white',
-      boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)',
+      backgroundColor: '#10B981', /* Emerald-500 */
+      color: '#F8FAFC',
+      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.08)',
+      border: 'none',
     },
     outline: {
       backgroundColor: 'transparent',
-      color: '#1e3a8a',
-      border: '2px solid #1e3a8a',
-      boxShadow: '0 6px 18px -14px rgba(30, 58, 138, 0.45)',
+      color: '#4F46E5', /* Indigo-600 */
+      border: '2px solid #4F46E5',
+      boxShadow: 'none',
     },
     text: {
       backgroundColor: 'transparent',
-      color: '#1e3a8a',
+      color: '#4F46E5', /* Indigo-600 */
       boxShadow: 'none',
-      textDecoration: 'underline',
+      border: 'none',
     },
   };
 
   const sizes = {
     small: {
-      padding: 'var(--space-sm) var(--space-md)',
+      padding: '10px 16px',
       fontSize: '0.875rem',
+      minHeight: '36px',
     },
     medium: {
-      padding: 'var(--space-sm) var(--space-lg)',
+      padding: '12px 24px',
       fontSize: '0.9375rem',
+      minHeight: '44px',
     },
     large: {
-      padding: 'var(--space-md) var(--space-xl)',
+      padding: '14px 32px',
       fontSize: '1rem',
+      minHeight: '52px',
     },
   };
 
   const hoverStyles = {
-    primary: 'linear-gradient(135deg, #103779 0%, #0c265b 100%)',
-    secondary: '#cbd5f5',
-    danger: '#dc2626',
-    success: '#059669',
-    outline: 'rgba(30, 58, 138, 0.08)',
-    text: 'rgba(30, 58, 138, 0.12)',
+    primary: '#4338CA', /* Indigo-700 */
+    secondary: '#F8FAFC',
+    danger: '#E11D48', /* Rose-600 */
+    success: '#059669', /* Emerald-600 */
+    outline: '#E0E7FF', /* Indigo-100 */
+    text: '#F1F5F9',
   };
 
   const safeVariant = variants[variant] ? variant : 'primary';

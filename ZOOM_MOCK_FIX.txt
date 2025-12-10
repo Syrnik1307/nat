@@ -1,0 +1,30 @@
+--- QUICK FIX: Mock mode для тестовых Zoom аккаунтов ---
+
+В файле teaching_panel/schedule/views.py, метод _start_zoom_via_pool:
+
+После строки:
+    zoom_account.acquire()
+
+Добавить проверку на тестовый аккаунт:
+
+    # Mock mode для тестовых аккаунтов
+    if zoom_account.api_key == 'test_api_key' or zoom_account.zoom_user_id == 'test_zoom_user_id':
+        import uuid
+        mock_meeting_id = str(uuid.uuid4())[:10]
+        meeting_data = {
+            'id': mock_meeting_id,
+            'start_url': f'https://zoom.us/s/{mock_meeting_id}?zak=mock_token',
+            'join_url': f'https://zoom.us/j/{mock_meeting_id}',
+            'password': '123456'
+        }
+        logger.info(f"Created MOCK Zoom meeting: {mock_meeting_id} (test account)")
+    else:
+        meeting_data = my_zoom_api_client.create_meeting(
+            user_id=zoom_account.zoom_user_id or None,
+            topic=f"{lesson.group.name} - {lesson.title}",
+            start_time=lesson.start_time,
+            duration=lesson.duration(),
+            auto_record=lesson.record_lesson
+        )
+
+Это позволит создавать уроки с фейковыми ссылками для демо/теста.

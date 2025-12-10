@@ -1,59 +1,83 @@
-/* Student Home Page Styles */
+/* ================================================
+   STUDENT DASHBOARD - "FOCUS" INTERFACE
+   Premium Minimalist Design
+   ================================================ */
 
 .student-home {
   min-height: 100vh;
-  background: #f8f9fa;
+  background: #F8FAFC; /* Slate-50 */
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
-/* (Student navigation styles moved to StudentNavBar.css) */
-
-/* Main Content */
+/* Main Content - Centered, Simplified */
 .student-main-content {
-  padding: 2rem;
-}
-
-.student-container {
-  max-width: 1200px;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  max-width: 1000px; /* Narrower for focus */
   margin: 0 auto;
 }
 
-.student-page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 1.5rem 0;
+.student-container {
+  max-width: 100%;
 }
 
-/* Today Status */
+/* Welcome Heading - Friendly & Encouraging */
+.student-page-title {
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  font-weight: 700;
+  color: #0F172A; /* Dark slate for headings */
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.02em;
+}
+
+/* Greeting Message */
+.student-greeting {
+  font-size: 1.125rem;
+  color: #64748B; /* Slate-500 */
+  margin-bottom: 2rem;
+  font-weight: 400;
+}
+
+/* Today Status - Encouraging Banner */
 .student-today-status {
+  background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
+  border: 1px solid #C7D2FE;
+  border-radius: 20px;
+  padding: 1.75rem;
+  margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1.25rem;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  margin-bottom: 1rem;
+  gap: 1.25rem;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.08);
 }
 
 .student-status-icon {
-  font-size: 2.5rem;
+  font-size: 3rem;
+  filter: drop-shadow(0 2px 4px rgba(79, 70, 229, 0.2));
 }
 
 .student-status-text {
-  font-size: 1rem;
-  color: #64748b;
+  flex: 1;
+}
+
+.student-status-text h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0 0 0.25rem 0;
 }
 
 .student-status-date {
+  font-size: 0.9375rem;
+  color: #4F46E5; /* Indigo accent */
   font-weight: 600;
-  color: #1e293b;
 }
 
 .student-status-message {
-  font-size: 0.9375rem;
-  color: #64748b;
-  margin: 0 0 2rem 0;
+  font-size: 1rem;
+  color: #64748B;
+  margin: 0.5rem 0 2rem 0;
+  font-weight: 400;
+  line-height: 1.6;
 }
 
 /* Courses Section */
@@ -78,109 +102,252 @@
   margin: 0;
 }
 
+/* Status Badges - Soft Pastels */
+.student-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.student-status-badge.pending {
+  background: #FEF3C7; /* Soft Yellow */
+  color: #92400E;
+}
+
+.student-status-badge.completed {
+  background: #D1FAE5; /* Soft Green */
+  color: #065F46;
+}
+
+.student-status-badge.in-progress {
+  background: #DBEAFE; /* Soft Blue */
+  color: #1E40AF;
+}
+
+.student-status-badge.overdue {
+  background: #FEE2E2; /* Soft Red */
+  color: #991B1B;
+}
+
+/* Primary Action Buttons - Large & Wide */
+.student-primary-btn {
+  width: 100%;
+  padding: 1rem 2rem;
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.student-primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+  background: linear-gradient(135deg, #4338CA 0%, #4F46E5 100%);
+}
+
+.student-primary-btn:active {
+  transform: translateY(0);
+}
+
 .student-link-button {
   background: none;
   border: none;
-  color: #1e3a8a;
+  color: #4F46E5; /* Indigo */
   text-decoration: none;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.student-link-button:hover {
-  color: #0369a1;
-}
-
-/* Empty State */
-.student-empty-state {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: #94a3b8;
-}
-
-.student-empty-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
-}
-
-.student-join-first-btn {
-  margin-top: 1.5rem;
-  padding: 0.875rem 2rem;
-  background: #1e3a8a;
-  color: white;
-  border: none;
-  border-radius: 10px;
   font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.student-link-button:hover {
+  color: #4338CA; /* Indigo-700 */
+  text-decoration: underline;
+}
+
+/* Empty State - Encouraging */
+.student-empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 20px;
+  border: 2px dashed #E2E8F0;
+}
+
+.student-empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.6;
+  filter: grayscale(0.3);
+}
+
+.student-empty-state h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0F172A;
+  margin-bottom: 0.5rem;
+}
+
+.student-empty-state p {
+  font-size: 0.9375rem;
+  color: #64748B;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.student-join-first-btn {
+  padding: 1rem 2.5rem;
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .student-join-first-btn:hover {
-  background: #0369a1;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+  background: linear-gradient(135deg, #4338CA 0%, #4F46E5 100%);
 }
 
-/* Courses Grid */
+/* Courses Grid - Quest/Achievement Style */
 .student-courses-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.5rem;
 }
 
 .student-course-card {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  transition: all 0.2s ease;
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 20px; /* Extra rounded for friendly feel */
+  padding: 1.75rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.student-course-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #4F46E5 0%, #818CF8 100%);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
 }
 
 .student-course-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(79, 70, 229, 0.1);
+  transform: translateY(-4px);
+  border-color: #C7D2FE;
+}
+
+.student-course-card:hover::before {
+  transform: scaleX(1);
+}
+
+/* Course Card Header */
+.student-course-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .student-course-logo {
-  width: 60px;
-  height: 60px;
-  background: var(--primary-600);
-  border-radius: 10px;
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%);
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  font-size: 2rem;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
 }
 
 .student-course-logo img {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
 }
 
 .student-course-info h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0 0 0.25rem 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0 0 0.375rem 0;
+  letter-spacing: -0.01em;
 }
 
-.student-course-progress {
-  font-size: 0.875rem;
-  color: #64748b;
-  margin: 0;
+.student-course-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+  color: #64748B;
 }
 
 .student-course-students {
-  font-size: 0.875rem;
-  color: #94a3b8;
-  margin: 0.25rem 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* Progress Bar at Bottom */
+.student-course-progress-container {
+  margin-top: 1.25rem;
+}
+
+.student-course-progress-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  color: #64748B;
+  font-weight: 500;
+}
+
+.student-course-progress-bar {
+  height: 8px;
+  background: #F1F5F9;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.student-course-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4F46E5 0%, #818CF8 100%);
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 8px rgba(79, 70, 229, 0.3);
 }
 
 /* Responsive */

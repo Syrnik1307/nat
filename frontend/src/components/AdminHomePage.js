@@ -7,7 +7,7 @@ import StatusMessages from './StatusMessages';
 import ZoomPoolManager from '../modules/core/zoom/ZoomPoolManager';
 import ZoomPoolStats from './ZoomPoolStats';
 import SystemSettings from './SystemSettings';
-import './AdminHomePage.css';
+import '../styles/AdminPanel.css';
 import StorageQuotaModal from '../modules/Admin/StorageQuotaModal';
 import SubscriptionsModal from '../modules/Admin/SubscriptionsModal';
 import StorageStats from './StorageStats';
@@ -175,11 +175,51 @@ const AdminHomePage = () => {
 
   return (
     <div className="admin-home-page">
-      <div className="admin-content">
+      {/* Fixed Sidebar */}
+      <aside className="admin-sidebar">
+        <div className="admin-sidebar-logo">
+          <h2>
+            <span className="brand-easy">Easy</span> Teaching
+          </h2>
+        </div>
+        <nav className="admin-sidebar-nav">
+          <a className="admin-nav-item active">
+            <span className="admin-nav-icon">📊</span>
+            Dashboard
+          </a>
+          <a className="admin-nav-item" onClick={() => setShowTeachersManage(true)}>
+            <span className="admin-nav-icon">👨‍🏫</span>
+            Учителя
+          </a>
+          <a className="admin-nav-item" onClick={() => setShowStudentsManage(true)}>
+            <span className="admin-nav-icon">👨‍🎓</span>
+            Ученики
+          </a>
+          <a className="admin-nav-item" onClick={() => setShowZoomManager(true)}>
+            <span className="admin-nav-icon">📹</span>
+            Zoom Pool
+          </a>
+          <a className="admin-nav-item" onClick={() => setShowSubscriptionsModal(true)}>
+            <span className="admin-nav-icon">💳</span>
+            Подписки
+          </a>
+          <a className="admin-nav-item" onClick={() => setShowStorageModal(true)}>
+            <span className="admin-nav-icon">💾</span>
+            Хранилище
+          </a>
+          <a className="admin-nav-item" onClick={() => setShowStatusMessages(true)}>
+            <span className="admin-nav-icon">📢</span>
+            Сообщения
+          </a>
+        </nav>
+      </aside>
+
+      {/* Main Content */}
+      <main className="admin-main-content">
         {/* Header */}
         <div className="admin-header">
           <div className="admin-welcome">
-            <h1>🎯 Панель администратора</h1>
+            <h1>Панель управления</h1>
             <p>Добро пожаловать, {user?.first_name || 'Администратор'}!</p>
           </div>
           <div className="admin-user-info">
@@ -190,120 +230,70 @@ const AdminHomePage = () => {
         </div>
 
         {/* Statistics Grid */}
-        <div className="admin-stats-grid">
-        <StatCard
-          icon="⚠"
-          label="Всего пользователей"
-          value={stats.total_users}
-          color="#2563eb"
-        />
-        <StatCard
-          icon="👨‍🏫"
-          label="Учителей"
-          value={stats.teachers}
-          subValue={stats.teachers_online}
-          color="#059669"
-        />
-        <StatCard
-          icon="👨‍🎓"
-          label="Учеников"
-          value={stats.students}
-          subValue={stats.students_online}
-          color="#f59e0b"
-        />
-        <StatCard
-          icon="📚"
-          label="Групп"
-          value={stats.groups}
-          color="#8b5cf6"
-        />
-        <StatCard
-          icon="📅"
-          label="Занятий проведено"
-          value={stats.lessons}
-          color="#ec4899"
-        />
-        
-      </div>
-
-      {/* Quick Actions */}
-      <div className="admin-section">
-        <h2>⚡ Быстрые действия</h2>
-        <div className="admin-quick-actions">
-          <QuickAction
-            icon="➕"
-            label="Добавить пользователя"
-            onClick={() => setShowCreateTeacher(true)}
-            color="#2563eb"
-          />
-          <QuickAction
-            icon="👨‍🏫"
-            label="Управление учителями"
-            onClick={() => setShowTeachersManage(true)}
-            color="#059669"
-          />
-          <QuickAction
-            icon="☎"
-            label="Управление учениками"
-            onClick={() => setShowStudentsManage(true)}
-            color="#8b5cf6"
-          />
-          <QuickAction
-            icon="▪"
-            label="Статистика"
-            onClick={() => setShowGrowthStats(true)}
-            color="#3b82f6"
-          />
-          <QuickAction
-            icon="📢"
-            label="Сообщения статус-бара"
-            onClick={() => setShowStatusMessages(true)}
-            color="#f59e0b"
-          />
+        <div className="admin-stats">
+          <div className="admin-stat-card">
+            <span className="admin-stat-label">Всего пользователей</span>
+            <div className="admin-stat-value">{stats.total_users}</div>
+          </div>
           
-          <QuickAction
-            icon="💾"
-            label="Управление хранилищем"
-            onClick={() => setShowStorageModal(true)}
-            color="#ef4444"
-          />
+          <div className="admin-stat-card">
+            <span className="admin-stat-label">Учителя</span>
+            <div className="admin-stat-value">{stats.teachers}</div>
+            {stats.teachers_online > 0 && (
+              <div className="admin-stat-change positive">
+                <span className="admin-stat-change-icon">•</span>
+                {stats.teachers_online} онлайн
+              </div>
+            )}
+          </div>
           
-          <QuickAction
-            icon="💳"
-            label="Управление подписками"
-            onClick={() => setShowSubscriptionsModal(true)}
-            color="#8b5cf6"
-          />
+          <div className="admin-stat-card">
+            <span className="admin-stat-label">Ученики</span>
+            <div className="admin-stat-value">{stats.students}</div>
+            {stats.students_online > 0 && (
+              <div className="admin-stat-change positive">
+                <span className="admin-stat-change-icon">•</span>
+                {stats.students_online} онлайн
+              </div>
+            )}
+          </div>
           
-          <QuickAction
-            icon="📚"
-            label="Управление группами"
-            onClick={() => console.log('Manage groups')}
-            color="#8b5cf6"
-          />
-          <QuickAction
-            icon="○"
-            label="Zoom аккаунты"
-            onClick={() => setShowZoomManager(true)}
-            color="#10b981"
-          />
-          <QuickAction
-            icon="📊"
-            label="Аналитика Zoom Pool"
-            onClick={() => setShowZoomStats(true)}
-            color="#6366f1"
-          />
-          <QuickAction
-            icon="📊"
-            label="Статистика Google Drive"
-            onClick={() => setShowStorageStats(true)}
-            color="#ea4335"
-          />
+          <div className="admin-stat-card">
+            <span className="admin-stat-label">Группы</span>
+            <div className="admin-stat-value">{stats.groups}</div>
+          </div>
+          
+          <div className="admin-stat-card">
+            <span className="admin-stat-label">Занятий проведено</span>
+            <div className="admin-stat-value">{stats.lessons}</div>
+          </div>
         </div>
-      </div>
 
-      {/* Create Teacher Modal */}
-      {showCreateTeacher && (
+        {/* Quick Actions */}
+        <div className="admin-quick-actions">
+          <div className="admin-quick-action-card" onClick={() => setShowCreateTeacher(true)}>
+            <div className="admin-quick-action-icon">➕</div>
+            <h3>Создать пользователя</h3>
+          </div>
+          
+          <div className="admin-quick-action-card" onClick={() => setShowGrowthStats(true)}>
+            <div className="admin-quick-action-icon">📈</div>
+            <h3>Динамика роста</h3>
+          </div>
+          
+          <div className="admin-quick-action-card" onClick={() => setShowZoomStats(true)}>
+            <div className="admin-quick-action-icon">📊</div>
+            <h3>Zoom аналитика</h3>
+          </div>
+          
+          <div className="admin-quick-action-card" onClick={() => setShowStorageStats(true)}>
+            <div className="admin-quick-action-icon">💾</div>
+            <h3>Google Drive</h3>
+          </div>
+        </div>
+
+        {/* Create Teacher Modal */}
+        {showCreateTeacher && (
         <div className="admin-modal-overlay" onClick={() => setShowCreateTeacher(false)}>
           <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -504,8 +494,8 @@ const AdminHomePage = () => {
             <div className="status-value">Работает</div>
           </div>
         </div>
-      </div>
-    </div> {/* End admin-content */}
+      </div> {/* End admin-section */}
+      </main>
 
       {/* Modals */}
       {showTeachersManage && (

@@ -1,10 +1,101 @@
+/* ================================================
+   ADMIN PANEL - "CONTROL" INTERFACE
+   Premium Minimalist Design - High Data Density
+   ================================================ */
+
 .admin-home-page {
   min-height: 100vh;
-  background: var(--gray-100);
-  padding: 0;
+  background: #F8FAFC; /* Slate-50 */
+  display: flex;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
-.admin-home-page > :not(.status-bar) {
+/* Fixed Sidebar Navigation - Dark Navy */
+.admin-sidebar {
+  width: 260px;
+  background: #0F172A; /* Slate-900 */
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 100;
+}
+
+.admin-sidebar-logo {
+  padding: 1.75rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-sidebar-logo h2 {
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.admin-sidebar-logo span.brand-easy {
+  color: #818CF8; /* Indigo-400 for dark bg */
+}
+
+.admin-sidebar-nav {
+  flex: 1;
+  padding: 1.5rem 0;
+  overflow-y: auto;
+}
+
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1.5rem;
+  color: #E2E8F0; /* Slate-200 */
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  text-decoration: none;
+}
+
+.admin-nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #4F46E5; /* Indigo accent */
+  transform: scaleY(0);
+  transition: transform 0.2s ease;
+}
+
+.admin-nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.admin-nav-item.active {
+  background: rgba(224, 231, 255, 0.1); /* Indigo-100 with opacity */
+  color: #C7D2FE; /* Indigo-200 */
+}
+
+.admin-nav-item.active::before {
+  transform: scaleY(1);
+}
+
+.admin-nav-icon {
+  font-size: 1.25rem;
+}
+
+/* Main Content Area */
+.admin-main-content {
+  margin-left: 260px;
+  flex: 1;
   padding: 2rem;
 }
 
@@ -19,13 +110,15 @@
 .admin-welcome h1 {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #0F172A; /* Dark slate */
   margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
 }
 
 .admin-welcome p {
-  color: var(--text-secondary);
+  color: #64748B; /* Slate-500 */
   font-size: 1rem;
+  font-weight: 400;
 }
 
 .admin-user-info {

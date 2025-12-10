@@ -212,12 +212,14 @@ const TeacherHomePage = () => {
     const totalStudents = stats?.total_students || 0;
     const totalGroups = stats?.total_groups || 0;
     const lessonsCount = stats?.total_lessons || 0;
+    const teachingMinutes = stats?.teaching_minutes || 0;
     const portalMinutes = stats?.portal_minutes || 0;
 
     return {
       totalStudents,
       totalGroups,
       lessonsCount,
+      teachingMinutes,
       portalMinutes,
     };
   }, [stats]);
@@ -249,14 +251,14 @@ const TeacherHomePage = () => {
           top: '80px',
           right: '20px',
           zIndex: 9999,
-          background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
-          color: 'white',
+          background: 'linear-gradient(135deg, #f59e0b 0%, #fcd34d 100%)',
+          color: '#0f172a',
           padding: '16px 24px',
           borderRadius: '12px',
-          boxShadow: '0 10px 40px rgba(37, 99, 235, 0.4)',
+          boxShadow: '0 10px 40px rgba(245, 158, 11, 0.35)',
           animation: 'slideInRight 0.5s ease',
           maxWidth: '400px',
-          border: '2px solid rgba(255, 255, 255, 0.3)'
+          border: '2px solid rgba(15, 23, 42, 0.12)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ fontSize: '24px' }}>🎉</div>

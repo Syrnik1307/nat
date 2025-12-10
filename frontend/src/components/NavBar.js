@@ -51,7 +51,14 @@ const NavBar = () => {
       <nav style={styles.nav}>
         <div style={styles.container}>
           <div style={styles.left}>
-            📚 Easy Teaching
+            <span style={{ 
+              fontWeight: '800', 
+              fontStyle: 'italic', 
+              letterSpacing: '-0.02em',
+              fontFamily: "'Plus Jakarta Sans', sans-serif"
+            }}>
+              <span style={{ color: '#4F46E5' }}>Easy</span> <span style={{ color: '#1E293B' }}>Teaching</span>
+            </span>
           </div>
           <div style={styles.center}>
             <Link style={styles.link} to="/">🏠 Главная</Link>
