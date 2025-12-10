@@ -483,15 +483,19 @@ const AuthPage = () => {
     setErrors({});
   };
 
-  // === РЕНДЕР: ШАГ 0 - ВЫБОР РОЛИ ===
-  if (step === 0) {
+  // === ШАГ 1: ВЫБОР РОЛИ ===
+  if (step === 'role') {
     return (
       <>
         <div className="auth-container">
+          <div className="auth-brand">
+            <h1>Easy Teaching</h1>
+          </div>
+          
           <div className="auth-content">
             <div className="auth-header">
-              <h1 className="auth-title">Вход</h1>
-              <p className="auth-subtitle">Выберите вашу роль</p>
+              <h1 className="auth-title">Добро пожаловать!</h1>
+              <p className="auth-subtitle">Выберите вашу роль для входа</p>
             </div>
 
             <div className="role-selection">

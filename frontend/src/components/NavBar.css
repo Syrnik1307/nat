@@ -1,87 +1,155 @@
-/* 🌨️ INTEGRATED TRANSPARENT NAVBAR - Soft Premium */
+/* ================================================
+   PREMIUM MINIMALIST NAVIGATION BAR - REDESIGNED
+   ================================================ */
 
-/* Навигационная панель - интегрированная прозрачная */
 .navbar-new {
-  background: transparent;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: #FFFFFF;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
   position: sticky;
   top: 0;
   z-index: 1000;
-  box-shadow: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.3s ease;
+}
+
+.navbar-new:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06);
 }
 
 .navbar-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 var(--space-xl);
+  padding: 0 clamp(1rem, 3vw, 2rem);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 80px;
-  gap: 32px;
+  height: 70px;
+  gap: 2rem;
 }
 
+/* Left: Brand Logo */
 .navbar-logo {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 0.75rem;
 }
 
-/* Навигационные ссылки - крупные с разрядкой */
-.navbar-link {
-  color: var(--bg-paper);
-  text-decoration: none;
-  padding: 12px var(--space-md);
-  border-radius: var(--radius-button);
-  transition: all var(--transition-base);
-  font-weight: 500;
-  font-size: 18px;
-  letter-spacing: 0.02em;
+.navbar-logo h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  font-style: italic;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  margin: 0;
+}
+
+/* Center: Navigation Links - LARGER */
+.navbar-center {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 0.5rem;
+  flex: 1;
+  justify-content: center;
+}
+
+.navbar-link {
+  color: var(--text-main);
+  text-decoration: none;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-lg);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   position: relative;
 }
 
 .navbar-link:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--bg-paper);
+  background: var(--bg-secondary);
+  color: var(--color-primary);
 }
 
-/* 🔥 АКТИВНАЯ ССЫЛКА - Благородное золото */
+/* Active Link - Indigo with subtle indicator */
 .navbar-link.active {
-  background: rgba(251, 191, 36, 0.15);
-  color: #fbbf24;
-  border-left: 3px solid #fbbf24;
-  padding-left: calc(var(--space-md) - 3px);
-  box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
-  animation: glowPulse 2s ease-in-out infinite;
+  background: rgba(79, 70, 229, 0.08);
+  color: var(--color-primary);
+  font-weight: 600;
 }
 
-@keyframes glowPulse {
-  0%, 100% {
-    box-shadow: var(--glow-accent);
-  }
-  50% {
-    box-shadow: var(--glow-accent-strong);
-  }
-}
-
-.navbar-link.active::before {
+.navbar-link.active::after {
   content: '';
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: linear-gradient(180deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%);
-  box-shadow: 0 0 10px var(--accent-primary);
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 3px;
+  background: var(--color-primary);
+  border-radius: 3px 3px 0 0;
 }
 
+/* Right: Icon Actions + Profile */
 .navbar-right {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: 0.75rem;
+}
+
+/* Icon Buttons - Notifications & Messages */
+.navbar-icon-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navbar-icon-button:hover {
+  background: var(--bg-secondary);
+  color: var(--color-primary);
+}
+
+.navbar-icon-button svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Notification Badge */
+.navbar-icon-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background: var(--color-error);
+  border-radius: 50%;
+  border: 2px solid white;
+  animation: pulseBadge 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulseBadge {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
 }
 
 .navbar-profile {

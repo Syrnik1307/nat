@@ -48,39 +48,73 @@ const NavBar = () => {
 
   return (
     <>
-      <nav style={styles.nav}>
-        <div style={styles.container}>
-          <div style={styles.left}>
-            <span style={{ 
-              fontWeight: '800', 
-              fontStyle: 'italic', 
-              letterSpacing: '-0.02em',
-              fontFamily: "'Plus Jakarta Sans', sans-serif"
-            }}>
-              <span style={{ color: '#4F46E5' }}>Easy</span> <span style={{ color: '#1E293B' }}>Teaching</span>
-            </span>
+      <nav className="navbar-new">
+        <div className="navbar-container">
+          {/* Left: Brand Logo */}
+          <div className="navbar-logo">
+            <h1>Easy Teaching</h1>
           </div>
-          <div style={styles.center}>
-            <Link style={styles.link} to="/">🏠 Главная</Link>
-            {accessTokenValid && role === 'teacher' && <Link style={styles.link} to="/teacher">👨‍🏫 Преподаватель</Link>}
-            {accessTokenValid && role === 'teacher' && <Link style={styles.linkHighlight} to="/groups/manage">Группы и ученики</Link>}
-            {accessTokenValid && role === 'teacher' && <Link style={styles.link} to="/homework/manage">📝 Домашки</Link>}
-            {accessTokenValid && role === 'teacher' && <Link style={styles.link} to="/recurring-lessons/manage">Расписание</Link>}
-            {accessTokenValid && role === 'teacher' && <Link style={styles.link} to="/calendar">📆 Календарь</Link>}
-            {accessTokenValid && role === 'student' && <Link style={styles.link} to="/student">📚 Ученик</Link>}
-            {accessTokenValid && role === 'student' && <Link style={styles.link} to="/homework">📝 Мои ДЗ</Link>}
-            {accessTokenValid && role === 'student' && <Link style={styles.link} to="/calendar">📆 Календарь</Link>}
-            {accessTokenValid && role === 'admin' && <Link style={styles.linkHighlight} to="/admin-home">🔧 Админ-панель</Link>}
+
+          {/* Center: Navigation Links */}
+          <div className="navbar-center">
+            <Link className="navbar-link" to="/">Главная</Link>
+            {accessTokenValid && role === 'teacher' && (
+              <>
+                <Link className="navbar-link" to="/groups/manage">Занятия</Link>
+                <Link className="navbar-link" to="/homework/manage">ДЗ</Link>
+                <Link className="navbar-link" to="/recurring-lessons/manage">Расписание</Link>
+                <Link className="navbar-link" to="/calendar">Календарь</Link>
+                <Link className="navbar-link" to="/teacher-recordings">Записи</Link>
+              </>
+            )}
+            {accessTokenValid && role === 'student' && (
+              <>
+                <Link className="navbar-link" to="/student">Мои курсы</Link>
+                <Link className="navbar-link" to="/homework">ДЗ</Link>
+                <Link className="navbar-link" to="/calendar">Календарь</Link>
+              </>
+            )}
+            {accessTokenValid && role === 'admin' && (
+              <>
+                <Link className="navbar-link" to="/admin-home">Панель</Link>
+                <Link className="navbar-link" to="/groups/manage">Группы</Link>
+              </>
+            )}
           </div>
-          <div style={styles.right}>
-            {!accessTokenValid && <Link style={styles.loginBtn} to="/login">Войти</Link>}
-            {!accessTokenValid && <Link style={styles.registerBtn} to="/register">Регистрация</Link>}
+
+          {/* Right: Actions & Profile */}
+          <div className="navbar-right">
+            {!accessTokenValid && (
+              <>
+                <Link className="navbar-link" to="/login">Войти</Link>
+              </>
+            )}
             {accessTokenValid && (
-              <div style={styles.userSection}>
-                <div style={styles.avatar}>
-                  <span style={styles.avatarText}>👤</span>
+              <>
+                {/* Notifications Icon */}
+                <button className="navbar-icon-button" title="Уведомления">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                  <span className="navbar-icon-badge"></span>
+                </button>
+
+                {/* Messages Icon */}
+                <button className="navbar-icon-button" title="Сообщения">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </button>
+
+                {/* Profile */}
+                <div className="navbar-profile">
+                  <button className="navbar-profile-button">
+                    <span>👤</span>
+                    <span>Профиль</span>
+                  </button>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -101,104 +135,6 @@ const NavBar = () => {
       )}
     </>
   );
-};
-
-const styles = {
-  nav: { 
-    background:'#fff', 
-    borderBottom:'1px solid #e5e7eb',
-    position:'sticky', 
-    top:0, 
-    zIndex:100,
-    boxShadow:'0 1px 3px rgba(0,0,0,0.05)'
-  },
-  container: {
-    display:'flex', 
-    alignItems:'center', 
-    justifyContent:'space-between', 
-    padding:'0.75rem 2rem',
-    maxWidth:'1400px',
-    margin:'0 auto'
-  },
-  left: { 
-    display:'flex',
-    alignItems:'center',
-    fontWeight:600,
-    fontSize:'1.1rem',
-    color:'#111827'
-  },
-  center: { 
-    display:'flex', 
-    gap:'2rem',
-    alignItems:'center'
-  },
-  right: { 
-    display:'flex', 
-    gap:'1rem',
-    alignItems:'center'
-  },
-  link: { 
-    color:'#374151', 
-    textDecoration:'none', 
-    fontSize:'0.95rem',
-    fontWeight:500,
-    transition:'color 0.2s ease',
-    ':hover': {
-      color:'#FF6B35'
-    }
-  },
-  linkHighlight: {
-    color:'#FF6B35',
-    textDecoration:'none',
-    fontSize:'0.95rem',
-    fontWeight:600,
-    padding:'0.5rem 1rem',
-    background:'#fff7ed',
-    borderRadius:8,
-    border:'1px solid #ffedd5',
-    transition:'all 0.2s ease'
-  },
-  loginBtn: { 
-    color:'#fff', 
-    background:'#FF6B35', 
-    padding:'0.5rem 1.25rem', 
-    textDecoration:'none', 
-    borderRadius:8,
-    fontSize:'0.9rem',
-    fontWeight:500,
-    transition:'all 0.2s ease'
-  },
-  registerBtn: {
-    color:'#FF6B35',
-    background:'transparent',
-    border:'1px solid #FF6B35',
-    padding:'0.5rem 1.25rem',
-    textDecoration:'none',
-    borderRadius:8,
-    fontSize:'0.9rem',
-    fontWeight:500,
-    transition:'all 0.2s ease'
-  },
-  userSection: {
-    display:'flex',
-    alignItems:'center',
-    gap:'0.75rem'
-  },
-  avatar: {
-    width:'36px',
-    height:'36px',
-    borderRadius:'50%',
-    background:'#f3f4f6',
-    display:'flex',
-    alignItems:'center',
-    justifyContent:'center',
-    cursor:'pointer',
-    border:'2px solid #e5e7eb',
-    transition:'all 0.2s ease'
-  },
-  avatarText: {
-    fontSize:'1.25rem'
-  }
 };
 
 export default NavBar;
