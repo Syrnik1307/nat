@@ -256,7 +256,7 @@
 }
 
 .new-badge {
-    background: linear-gradient(135deg, var(--color-error) 0%, #dc2626 100%);
+    background: linear-gradient(135deg, var(--color-error) 0%, var(--color-error) 100%);
     color: white;
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
     animation: bounce 1s infinite;
@@ -345,7 +345,7 @@
 .error-message {
     text-align: center;
     padding: 48px;
-    color: #ef4444;
+    color: var(--color-error);
     font-size: 18px;
     background: rgba(239, 68, 68, 0.15);
     border-radius: 12px;

@@ -11,7 +11,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  background: #ffffff;
+  background: var(--bg-paper);
   border-radius: 18px;
   padding: 1.75rem;
   box-shadow: var(--shadow-sm);
@@ -68,7 +68,7 @@
 
 .ht-progress-label {
   font-size: 0.85rem;
-  color: #0c1e3a;
+  color: var(--color-primary-dark);
   font-weight: 600;
 }
 
@@ -78,7 +78,7 @@
   font-size: 0.85rem;
   font-weight: 600;
   background: rgba(148, 163, 184, 0.2);
-  color: #475569;
+  color: var(--text-muted);
 }
 
 .ht-saving-indicator.saving {
@@ -93,7 +93,7 @@
 
 .ht-saving-indicator.error {
   background: rgba(239, 68, 68, 0.2);
-  color: #b91c1c;
+  color: var(--color-error);
 }
 
 .ht-layout {
@@ -113,7 +113,7 @@
   position: sticky;
   top: 2rem;
   align-self: flex-start;
-  background: #ffffff;
+  background: var(--bg-paper);
   padding: 1.25rem;
   border-radius: 16px;
   box-shadow: var(--shadow-sm);
@@ -130,7 +130,7 @@
   border-radius: 12px;
   height: 48px;
   background: rgba(148, 163, 184, 0.15);
-  color: #334155;
+  color: var(--text-main);
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
@@ -149,7 +149,7 @@
 
 .ht-question-nav-item.current {
   background: rgba(37, 99, 235, 0.2);
-  color: #0c1e3a;
+  color: var(--color-primary-dark);
   box-shadow: var(--shadow-sm);
 }
 
@@ -160,7 +160,7 @@
 }
 
 .ht-question-card {
-  background: #ffffff;
+  background: var(--bg-paper);
   border-radius: 18px;
   padding: 2rem;
   box-shadow: var(--shadow-md);
@@ -173,7 +173,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.95rem;
 }
 
@@ -193,7 +193,7 @@
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-main);
   line-height: 1.6;
 }
 
@@ -233,7 +233,7 @@
   background: rgba(37, 99, 235, 0.08);
   padding: 0.75rem 1rem;
   border-radius: 12px;
-  color: #0c1e3a;
+  color: var(--color-primary-dark);
 }
 
 .ht-sub-questions {
@@ -343,7 +343,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #ffffff;
+  background: var(--bg-paper);
   padding: 1.5rem 2rem;
   border-radius: 18px;
   box-shadow: var(--shadow-sm);
@@ -360,19 +360,19 @@
 }
 
 .ht-state {
-  background: #ffffff;
+  background: var(--bg-paper);
   padding: 2rem;
   border-radius: 16px;
   text-align: center;
-  color: #475569;
+  color: var(--text-muted);
 }
 
 .ht-state.ht-loading {
-  color: #1e3a8a;
+  color: var(--color-primary);
 }
 
 .ht-state.ht-error {
-  color: #b91c1c;
+  color: var(--color-error);
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 

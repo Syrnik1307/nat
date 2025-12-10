@@ -2,7 +2,7 @@
   width: 100%;
   border-radius: 12px;
   overflow: hidden;
-  background: #F8FAFC;
+  background: var(--bg-app);
   padding: 1rem;
 }
 
@@ -31,7 +31,7 @@
 .media-preview-empty p,
 .media-preview-error p,
 .media-preview-loading p {
-  color: #64748B;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -39,8 +39,8 @@
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #E2E8F0;
-  border-top-color: #1e3a8a;
+  border: 4px solid var(--border-light);
+  border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
@@ -54,7 +54,7 @@
 .btn-retry {
   margin-top: 1rem;
   padding: 0.5rem 1rem;
-  background: #1e3a8a;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 8px;

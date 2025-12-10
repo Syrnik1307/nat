@@ -32,7 +32,7 @@
   justify-content: space-between;
   padding: 1.5rem;
   border-bottom: 1px solid var(--border-gray);
-  background: linear-gradient(135deg, #1e3a8a 0%, #0c1e3a 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   color: white;
 }
 

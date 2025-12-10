@@ -5,7 +5,7 @@
 
 .student-home {
   min-height: 100vh;
-  background: #F8FAFC; /* Slate-50 */
+  background: var(--bg-app); /* Slate-50 */
   font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
@@ -24,7 +24,7 @@
 .student-page-title {
   font-size: clamp(1.75rem, 5vw, 2.5rem);
   font-weight: 700;
-  color: #0F172A; /* Dark slate for headings */
+  color: var(--text-main); /* Dark slate for headings */
   margin: 0 0 0.5rem 0;
   letter-spacing: -0.02em;
 }
@@ -32,15 +32,15 @@
 /* Greeting Message */
 .student-greeting {
   font-size: 1.125rem;
-  color: #64748B; /* Slate-500 */
+  color: var(--text-muted); /* Slate-500 */
   margin-bottom: 2rem;
   font-weight: 400;
 }
 
 /* Today Status - Encouraging Banner */
 .student-today-status {
-  background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
-  border: 1px solid #C7D2FE;
+  background: linear-gradient(135deg, var(--color-primary-subtle) 0%, var(--color-primary-subtle) 100%);
+  border: 1px solid var(--color-primary-subtle);
   border-radius: 20px;
   padding: 1.75rem;
   margin-bottom: 1.5rem;
@@ -62,19 +62,19 @@
 .student-status-text h3 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #0F172A;
+  color: var(--text-main);
   margin: 0 0 0.25rem 0;
 }
 
 .student-status-date {
   font-size: 0.9375rem;
-  color: #4F46E5; /* Indigo accent */
+  color: var(--color-primary); /* Indigo accent */
   font-weight: 600;
 }
 
 .student-status-message {
   font-size: 1rem;
-  color: #64748B;
+  color: var(--text-muted);
   margin: 0.5rem 0 2rem 0;
   font-weight: 400;
   line-height: 1.6;
@@ -98,7 +98,7 @@
 .student-section-header h2 {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-main);
   margin: 0;
 }
 
@@ -116,30 +116,30 @@
 }
 
 .student-status-badge.pending {
-  background: #FEF3C7; /* Soft Yellow */
-  color: #92400E;
+  background: var(--color-warning-light); /* Soft Yellow */
+  color: var(--color-warning);
 }
 
 .student-status-badge.completed {
-  background: #D1FAE5; /* Soft Green */
-  color: #065F46;
+  background: var(--color-success-light); /* Soft Green */
+  color: var(--color-success);
 }
 
 .student-status-badge.in-progress {
-  background: #DBEAFE; /* Soft Blue */
-  color: #1E40AF;
+  background: var(--color-info-light); /* Soft Blue */
+  color: var(--color-primary);
 }
 
 .student-status-badge.overdue {
-  background: #FEE2E2; /* Soft Red */
-  color: #991B1B;
+  background: var(--color-error-light); /* Soft Red */
+  color: var(--color-error);
 }
 
 /* Primary Action Buttons - Large & Wide */
 .student-primary-btn {
   width: 100%;
   padding: 1rem 2rem;
-  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: white;
   border: none;
   border-radius: 16px;
@@ -154,7 +154,7 @@
 .student-primary-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
-  background: linear-gradient(135deg, #4338CA 0%, #4F46E5 100%);
+  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
 }
 
 .student-primary-btn:active {
@@ -164,7 +164,7 @@
 .student-link-button {
   background: none;
   border: none;
-  color: #4F46E5; /* Indigo */
+  color: var(--color-primary); /* Indigo */
   text-decoration: none;
   font-size: 0.9375rem;
   font-weight: 600;
@@ -174,7 +174,7 @@
 }
 
 .student-link-button:hover {
-  color: #4338CA; /* Indigo-700 */
+  color: var(--color-primary-dark); /* Indigo-700 */
   text-decoration: underline;
 }
 
@@ -184,7 +184,7 @@
   padding: 4rem 2rem;
   background: white;
   border-radius: 20px;
-  border: 2px dashed #E2E8F0;
+  border: 2px dashed var(--border-light);
 }
 
 .student-empty-icon {
@@ -197,20 +197,20 @@
 .student-empty-state h3 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #0F172A;
+  color: var(--text-main);
   margin-bottom: 0.5rem;
 }
 
 .student-empty-state p {
   font-size: 0.9375rem;
-  color: #64748B;
+  color: var(--text-muted);
   margin-bottom: 2rem;
   line-height: 1.6;
 }
 
 .student-join-first-btn {
   padding: 1rem 2.5rem;
-  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: white;
   border: none;
   border-radius: 16px;
@@ -225,7 +225,7 @@
 .student-join-first-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
-  background: linear-gradient(135deg, #4338CA 0%, #4F46E5 100%);
+  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
 }
 
 /* Courses Grid - Quest/Achievement Style */
@@ -237,7 +237,7 @@
 
 .student-course-card {
   background: white;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--border-light);
   border-radius: 20px; /* Extra rounded for friendly feel */
   padding: 1.75rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -254,7 +254,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #4F46E5 0%, #818CF8 100%);
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.3s ease;
@@ -263,7 +263,7 @@
 .student-course-card:hover {
   box-shadow: 0 10px 25px rgba(79, 70, 229, 0.1);
   transform: translateY(-4px);
-  border-color: #C7D2FE;
+  border-color: var(--color-primary-subtle);
 }
 
 .student-course-card:hover::before {
@@ -281,7 +281,7 @@
 .student-course-logo {
   width: 64px;
   height: 64px;
-  background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%);
+  background: linear-gradient(135deg, var(--color-primary-subtle) 0%, var(--color-primary-subtle) 100%);
   border-radius: 16px;
   display: flex;
   align-items: center;
@@ -300,7 +300,7 @@
 .student-course-info h3 {
   font-size: 1.125rem;
   font-weight: 700;
-  color: #0F172A;
+  color: var(--text-main);
   margin: 0 0 0.375rem 0;
   letter-spacing: -0.01em;
 }
@@ -310,7 +310,7 @@
   align-items: center;
   gap: 0.75rem;
   font-size: 0.8125rem;
-  color: #64748B;
+  color: var(--text-muted);
 }
 
 .student-course-students {
@@ -330,13 +330,13 @@
   align-items: center;
   margin-bottom: 0.5rem;
   font-size: 0.75rem;
-  color: #64748B;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .student-course-progress-bar {
   height: 8px;
-  background: #F1F5F9;
+  background: var(--bg-surface);
   border-radius: 999px;
   overflow: hidden;
   position: relative;
@@ -344,7 +344,7 @@
 
 .student-course-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4F46E5 0%, #818CF8 100%);
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   border-radius: 999px;
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 0 8px rgba(79, 70, 229, 0.3);

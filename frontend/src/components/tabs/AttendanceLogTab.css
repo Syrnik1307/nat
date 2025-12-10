@@ -20,12 +20,12 @@
   margin: 0;
   font-size: 1.15rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .toolbar-subtitle {
   margin: 0.15rem 0 0;
-  color: #475569;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
@@ -41,7 +41,7 @@
   border-radius: 12px;
   padding: 0.55rem 1rem;
   font-weight: 600;
-  background: #1e3a8a;
+  background: var(--color-primary);
   color: #fff;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -56,7 +56,7 @@
 
 .toolbar-btn.ghost {
   background: #fff;
-  color: #1e3a8a;
+  color: var(--color-primary);
   border: 1px solid rgba(37, 99, 235, 0.25);
   box-shadow: none;
 }
@@ -69,7 +69,7 @@
   background: #fff;
   cursor: pointer;
   font-size: 1.2rem;
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .attendance-stats-grid {
@@ -82,7 +82,7 @@
   background: #fff;
   border-radius: 18px;
   padding: 1rem 1.25rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-light);
   box-shadow: 0 25px 45px rgba(15, 23, 42, 0.06);
   display: flex;
   flex-direction: column;
@@ -91,30 +91,30 @@
 
 .stat-label {
   font-size: 0.85rem;
-  color: #475569;
+  color: var(--text-muted);
 }
 
 .stat-value {
   font-size: 1.9rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .stat-value.accent {
-  color: #1e3a8a;
+  color: var(--color-primary);
 }
 
 .stat-value.danger {
-  color: #dc2626;
+  color: var(--color-error);
 }
 
 .stat-hint {
   font-size: 0.8rem;
-  color: #94a3b8;
+  color: var(--text-light);
 }
 
 .table-wrapper {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-light);
   border-radius: 20px;
   overflow: auto;
   background: #fff;
@@ -132,14 +132,14 @@
 .attendance-table.modern thead th {
   position: sticky;
   top: 0;
-  background: #f8fafc;
+  background: var(--bg-app);
   padding: 0.85rem 0.75rem;
   text-align: center;
   font-size: 0.74rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #475569;
-  border-bottom: 1px solid #e2e8f0;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .attendance-table .student-col {
@@ -150,7 +150,7 @@
   width: 240px;
   min-width: 240px;
   text-align: left;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid var(--border-light);
 }
 
 .attendance-table .presence-col {
@@ -160,7 +160,7 @@
   z-index: 2;
   width: 160px;
   min-width: 160px;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid var(--border-light);
 }
 
 .lesson-col {
@@ -169,16 +169,16 @@
 
 .lesson-index {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .lesson-date {
-  color: #94a3b8;
+  color: var(--text-light);
   font-size: 0.75rem;
 }
 
 .attendance-table tbody tr {
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--bg-surface);
 }
 
 .attendance-table tbody td {
@@ -201,8 +201,8 @@
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: #e0e7ff;
-  color: #4338ca;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-dark);
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -217,12 +217,12 @@
 
 .student-name {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .student-email {
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: var(--text-light);
 }
 
 .presence-chip {
@@ -231,8 +231,8 @@
   justify-content: center;
   padding: 0.3rem 0.8rem;
   border-radius: 999px;
-  background: #eef2ff;
-  color: #3730a3;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-dark);
   font-weight: 600;
 }
 
@@ -240,7 +240,7 @@
   display: block;
   margin-top: 0.3rem;
   font-size: 0.78rem;
-  color: #94a3b8;
+  color: var(--text-light);
 }
 
 .attendance-cell-modern {
@@ -265,8 +265,8 @@
   margin: 0 auto 0.3rem;
   font-size: 1.2rem;
   font-weight: 700;
-  background: #f8fafc;
-  color: #94a3b8;
+  background: var(--bg-app);
+  color: var(--text-light);
 }
 
 .status-pill.small {
@@ -283,30 +283,30 @@
 
 .status-absent .status-pill,
 .status-pill.status-absent {
-  background: #fef2f2;
-  color: #b91c1c;
+  background: var(--color-error-light);
+  color: var(--color-error);
 }
 
 .status-watched .status-pill,
 .status-pill.status-watched {
-  background: #eff6ff;
-  color: #0c1e3a;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-dark);
 }
 
 .status-empty .status-pill {
-  background: #f8fafc;
-  color: #94a3b8;
+  background: var(--bg-app);
+  color: var(--text-light);
 }
 
 .status-pill.status-empty {
-  background: #f8fafc;
-  color: #94a3b8;
+  background: var(--bg-app);
+  color: var(--text-light);
 }
 
 .status-caption {
   display: block;
   font-size: 0.7rem;
-  color: #94a3b8;
+  color: var(--text-light);
 }
 
 .auto-badge {
@@ -316,7 +316,7 @@
   font-size: 0.55rem;
   text-transform: uppercase;
   background: #e0f2fe;
-  color: #0369a1;
+  color: var(--color-primary-dark);
   padding: 0.1rem 0.35rem;
   border-radius: 999px;
 }
@@ -333,17 +333,17 @@
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-light);
   border-radius: 16px;
   padding: 0.75rem 1rem;
-  background: #f8fafc;
+  background: var(--bg-app);
 }
 
 .legend-item {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  color: #475569;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
@@ -353,19 +353,19 @@
   text-align: center;
   padding: 3rem 2rem;
   border-radius: 18px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-light);
   background: #fff;
-  color: #475569;
+  color: var(--text-muted);
 }
 
 .tab-error {
-  border-color: #fecaca;
-  background: #fef2f2;
-  color: #b91c1c;
+  border-color: var(--color-error-light);
+  background: var(--color-error-light);
+  color: var(--color-error);
 }
 
 .tab-empty {
-  color: #94a3b8;
+  color: var(--text-light);
 }
 
 @media (max-width: 768px) {

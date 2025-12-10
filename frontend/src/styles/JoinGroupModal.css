@@ -33,7 +33,7 @@
   border: none;
   font-size: 2rem;
   cursor: pointer;
-  color: #64748b;
+  color: var(--text-muted);
   line-height: 1;
   padding: 0;
   width: 32px;
@@ -46,8 +46,8 @@
 }
 
 .join-modal-close:hover {
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--bg-surface);
+  color: var(--text-main);
 }
 
 .join-modal-icon {
@@ -58,11 +58,11 @@
 .join-modal-content h2 {
   margin: 0 0 0.5rem 0;
   font-size: 1.5rem;
-  color: #1e293b;
+  color: var(--text-main);
 }
 
 .join-modal-subtitle {
-  color: #64748b;
+  color: var(--text-muted);
   margin: 0 0 2rem 0;
   font-size: 0.9375rem;
 }
@@ -78,10 +78,10 @@
   font-weight: 700;
   letter-spacing: 0.2em;
   text-align: center;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--border-light);
   border-radius: 12px;
-  background: #f8fafc;
-  color: #1e3a8a;
+  background: var(--bg-app);
+  color: var(--color-primary);
   font-family: 'Courier New', monospace;
   text-transform: uppercase;
   transition: all 0.2s ease;
@@ -89,13 +89,13 @@
 
 .join-code-input:focus {
   outline: none;
-  border-color: #1e3a8a;
+  border-color: var(--color-primary);
   background: white;
   box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
 }
 
 .join-code-input::placeholder {
-  color: #94a3b8;
+  color: var(--text-light);
   letter-spacing: normal;
   font-weight: 400;
   font-size: 1rem;
@@ -103,10 +103,10 @@
 
 .join-error-message {
   padding: 0.875rem 1rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error-light);
   border-radius: 10px;
-  color: #dc2626;
+  color: var(--color-error);
   font-size: 0.875rem;
   margin-bottom: 1rem;
   text-align: left;
@@ -114,10 +114,10 @@
 
 .join-success-message {
   padding: 0.875rem 1rem;
-  background: #f0fdf4;
+  background: var(--color-success-light);
   border: 1px solid #bbf7d0;
   border-radius: 10px;
-  color: #16a34a;
+  color: var(--color-success);
   font-size: 0.875rem;
   margin-bottom: 1rem;
   text-align: left;
@@ -132,9 +132,9 @@
 .join-cancel-btn {
   flex: 1;
   padding: 0.875rem 1.25rem;
-  background: #f8fafc;
-  color: #64748b;
-  border: 2px solid #e2e8f0;
+  background: var(--bg-app);
+  color: var(--text-muted);
+  border: 2px solid var(--border-light);
   border-radius: 10px;
   font-size: 0.9375rem;
   font-weight: 600;
@@ -143,9 +143,9 @@
 }
 
 .join-cancel-btn:hover:not(:disabled) {
-  background: #f1f5f9;
-  color: #334155;
-  border-color: #cbd5e1;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border-color: var(--border-light);
 }
 
 .join-cancel-btn:disabled {
@@ -156,7 +156,7 @@
 .join-submit-btn {
   flex: 1;
   padding: 0.875rem 1.25rem;
-  background: #1e3a8a;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 10px;
@@ -167,7 +167,7 @@
 }
 
 .join-submit-btn:hover:not(:disabled) {
-  background: #0369a1;
+  background: var(--color-primary-dark);
   transform: translateY(-1px);
 }
 
@@ -182,14 +182,14 @@
 
 .join-help-text {
   padding-top: 1.5rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border-light);
   text-align: left;
 }
 
 .join-help-text p {
   margin: 0 0 0.5rem 0;
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
@@ -199,8 +199,8 @@
 
 /* Group Preview Styles */
 .join-group-preview {
-  background: #f8fafc;
-  border: 2px solid #e2e8f0;
+  background: var(--bg-app);
+  border: 2px solid var(--border-light);
   border-radius: 12px;
   padding: 1.5rem;
   margin: 1.5rem 0;
@@ -210,13 +210,13 @@
 .join-group-name {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-main);
   margin-bottom: 0.5rem;
 }
 
 .join-group-description {
   font-size: 0.9375rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin-bottom: 1rem;
   line-height: 1.5;
 }
@@ -238,13 +238,13 @@
 
 .join-stat-label {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .join-stat-value {
   font-size: 0.9375rem;
-  color: #1e293b;
+  color: var(--text-main);
   font-weight: 600;
 }
 

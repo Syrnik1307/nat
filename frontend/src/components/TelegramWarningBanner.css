@@ -60,7 +60,7 @@
   margin: 0 0 8px;
   font-size: 20px;
   font-weight: 700;
-  color: #e65100;
+  color: var(--color-warning);
 }
 
 .banner-text {
@@ -71,7 +71,7 @@
 }
 
 .banner-text strong {
-  color: #e65100;
+  color: var(--color-warning);
 }
 
 .banner-actions {
@@ -134,11 +134,11 @@
 }
 
 .banner-message.success {
-  color: #2e7d32;
+  color: var(--color-success);
 }
 
 .banner-message.error {
-  color: #c62828;
+  color: var(--color-error);
 }
 
 .banner-secondary-link {

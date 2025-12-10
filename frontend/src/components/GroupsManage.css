@@ -142,12 +142,12 @@
 }
 
 .gm-btn-primary {
-  background: #1e3a8a;
+  background: var(--color-primary);
   color: #fff;
 }
 
 .gm-btn-primary:hover {
-  background: #0c1e3a;
+  background: var(--color-primary-dark);
 }
 
 .gm-btn-surface {

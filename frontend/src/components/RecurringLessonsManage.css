@@ -19,7 +19,7 @@
 .rl-title {
   font-size: 1.875rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-main);
   margin: 0;
   letter-spacing: -0.02em;
 }
@@ -33,9 +33,9 @@
 }
 
 .rl-filter {
-  background: #f9fafb;
-  color: #6b7280;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-app);
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
   padding: 0.625rem 1rem;
   border-radius: 8px;
   font-size: 0.875rem;
@@ -45,20 +45,20 @@
 }
 
 .rl-filter:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--bg-surface);
+  color: var(--text-main);
 }
 
 .rl-filter.active {
-  background: #111827;
+  background: var(--text-main);
   color: white;
-  border-color: #111827;
+  border-color: var(--text-main);
 }
 
 /* Form Card */
 .rl-form-card {
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 2rem;
@@ -68,7 +68,7 @@
 .rl-form-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-main);
   margin: 0 0 1.5rem 0;
 }
 
@@ -98,14 +98,14 @@
 
 .rl-empty {
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 12px;
   padding: 3rem 1.5rem;
   text-align: center;
 }
 
 .rl-empty p {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.875rem;
   margin: 0;
 }
@@ -119,7 +119,7 @@
 
 .rl-card {
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 12px;
   padding: 1.25rem;
   transition: all 0.2s ease;
@@ -139,13 +139,13 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--bg-surface);
 }
 
 .rl-card-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-main);
   margin: 0;
   flex: 1;
 }
@@ -165,12 +165,12 @@
 }
 
 .rl-card-label {
-  color: #6b7280;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .rl-card-value {
-  color: #111827;
+  color: var(--text-main);
   font-weight: 500;
   text-align: right;
 }
@@ -179,7 +179,7 @@
   display: flex;
   gap: 0.5rem;
   padding-top: 1rem;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--bg-surface);
   flex-wrap: wrap;
 }
 
@@ -194,13 +194,13 @@
 }
 
 .rl-loading {
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .rl-error {
-  color: #dc2626;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  color: var(--color-error);
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error-light);
   border-radius: 8px;
 }
 

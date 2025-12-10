@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1e3a8a 0%, #0c1e3a 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   padding: 2rem;
 }
 
@@ -35,13 +35,13 @@
 }
 
 .mock-subtitle {
-  color: #6B7280;
+  color: var(--text-muted);
   font-size: 1rem;
   margin-bottom: 2rem;
 }
 
 .mock-info {
-  background: #F3F4F6;
+  background: var(--bg-surface);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 2rem;
@@ -53,7 +53,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 0;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .info-row:last-child {
@@ -72,13 +72,13 @@
 }
 
 .info-row .value.success {
-  color: #1e3a8a;
+  color: var(--color-primary);
   font-weight: 600;
 }
 
 .mock-notice {
-  background: #EFF6FF;
-  border-left: 4px solid #1e3a8a;
+  background: var(--color-primary-subtle);
+  border-left: 4px solid var(--color-primary);
   border-radius: 8px;
   padding: 1rem;
   display: flex;
@@ -94,7 +94,7 @@
 
 .notice-text strong {
   display: block;
-  color: #0c1e3a;
+  color: var(--color-primary-dark);
   margin-bottom: 0.5rem;
 }
 
@@ -110,18 +110,18 @@
 }
 
 .mock-redirect p {
-  color: #6B7280;
+  color: var(--text-muted);
   margin-bottom: 1rem;
   font-size: 0.95rem;
 }
 
 .mock-redirect strong {
-  color: #4F46E5;
+  color: var(--color-primary);
   font-size: 1.1rem;
 }
 
 .skip-button {
-  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: white;
   border: none;
   padding: 12px 32px;

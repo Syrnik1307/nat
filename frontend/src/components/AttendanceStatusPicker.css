@@ -4,7 +4,7 @@
   background: white;
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 5px 10px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   animation: popIn 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -36,7 +36,7 @@
   border: none;
   cursor: pointer;
   font-size: 0.9rem;
-  color: #374151;
+  color: var(--text-main);
   border-radius: 8px;
   transition: all 0.15s ease;
   text-align: left;
@@ -45,13 +45,13 @@
 }
 
 .picker-option:hover:not(:disabled) {
-  background-color: #f3f4f6;
-  color: #111827;
+  background-color: var(--bg-surface);
+  color: var(--text-main);
 }
 
 .picker-option.selected {
   background-color: rgba(37, 99, 235, 0.1);
-  color: #1e3a8a;
+  color: var(--color-primary);
   font-weight: 600;
 }
 

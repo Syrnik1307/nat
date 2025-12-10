@@ -15,7 +15,7 @@
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #f0f9ff 0%, #f8fafc 100%);
+  background: linear-gradient(135deg, #f0f9ff 0%, var(--bg-app) 100%);
   border: 1px solid #bfdbfe;
   border-radius: 12px;
 }
@@ -28,7 +28,7 @@
 
 .stat-label {
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--text-muted);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -37,7 +37,7 @@
 .stat-value {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #1e3a8a;
+  color: var(--color-primary);
   line-height: 1;
 }
 
@@ -48,7 +48,7 @@
 .table-wrapper {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 12px;
   background: white;
 }
@@ -60,8 +60,8 @@
 }
 
 .rating-table thead {
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-  border-bottom: 2px solid #d1d5db;
+  background: linear-gradient(135deg, var(--bg-surface) 0%, var(--border-light) 100%);
+  border-bottom: 2px solid var(--border-medium);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -71,8 +71,8 @@
   padding: 1rem 0.75rem;
   text-align: left;
   font-weight: 600;
-  color: #374151;
-  border-right: 1px solid #d1d5db;
+  color: var(--text-main);
+  border-right: 1px solid var(--border-medium);
 }
 
 .rating-table th:last-child {
@@ -88,16 +88,16 @@
   min-width: 200px;
   position: sticky;
   left: 0;
-  background: #f9fafb;
+  background: var(--bg-app);
   z-index: 11;
-  border-right: 2px solid #d1d5db;
+  border-right: 2px solid var(--border-medium);
 }
 
 .rating-table th.points-col {
   min-width: 80px;
   text-align: right;
   font-weight: 700;
-  color: #1e3a8a;
+  color: var(--color-primary);
 }
 
 .rating-table th.breakdown-col {
@@ -111,7 +111,7 @@
    ================================================ */
 
 .rating-table tbody tr {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-light);
   transition: background-color 0.15s ease;
 }
 
@@ -121,7 +121,7 @@
 
 .rating-table td {
   padding: 0.75rem;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--border-light);
 }
 
 .rating-table td:last-child {
@@ -133,7 +133,7 @@
   left: 0;
   background: white;
   z-index: 9;
-  border-right: 2px solid #d1d5db;
+  border-right: 2px solid var(--border-medium);
   padding: 0.5rem;
 }
 
@@ -164,7 +164,7 @@
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, #1e3a8a 0%, #0c1e3a 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   color: white;
   font-weight: 700;
   font-size: 0.9rem;
@@ -189,7 +189,7 @@
 }
 
 .student-link:hover {
-  color: #1e3a8a;
+  color: var(--color-primary);
 }
 
 .student-avatar {
@@ -207,7 +207,7 @@
 
 .student-info .name {
   font-weight: 600;
-  color: #111827;
+  color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -215,7 +215,7 @@
 
 .student-info .email {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--text-light);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -232,7 +232,7 @@
 .points-value {
   font-weight: 700;
   font-size: 1.125rem;
-  color: #1e3a8a;
+  color: var(--color-primary);
   display: inline-block;
   min-width: 2.5rem;
   text-align: right;
@@ -244,7 +244,7 @@
 
 .breakdown-value {
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-muted);
   display: inline-block;
   min-width: 2rem;
   text-align: right;
@@ -256,14 +256,14 @@
 
 .rating-legend {
   padding: 1.25rem;
-  background: #fef3c7;
+  background: var(--color-warning-light);
   border: 1px solid #fcd34d;
   border-radius: 12px;
 }
 
 .legend-title {
   font-weight: 600;
-  color: #92400e;
+  color: var(--color-warning);
   margin-bottom: 0.75rem;
   font-size: 0.9rem;
 }
@@ -298,19 +298,19 @@
 .tab-empty {
   text-align: center;
   padding: 3rem 2rem;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 1rem;
 }
 
 .tab-error {
-  color: #991b1b;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  color: var(--color-error);
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error-light);
   border-radius: 12px;
 }
 
 .tab-empty {
-  color: #9ca3af;
+  color: var(--text-light);
 }
 
 /* ================================================

@@ -32,7 +32,7 @@
 .modal-content,
 [class*="modal-content"],
 [class*="Modal-content"] {
-  background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 50%, #2563eb 100%) !important;
+  background: linear-gradient(180deg, var(--text-main) 0%, var(--color-primary) 50%, var(--color-info) 100%) !important;
   border: 3px solid rgba(255, 255, 255, 0.4) !important;
   border-radius: 20px !important;
   box-shadow: 0 25px 70px rgba(0, 0, 0, 0.5), 
@@ -80,7 +80,7 @@
 }
 
 .confirm-modal-btn-confirm {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  background: linear-gradient(135deg, var(--color-success) 0%, var(--color-success) 100%) !important;
   border: 2px solid rgba(255, 255, 255, 0.4) !important;
   box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4) !important;
 }

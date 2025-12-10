@@ -29,7 +29,7 @@
 
 /* Навигационные ссылки - крупные с разрядкой */
 .navbar-link {
-  color: #FFFFFF;
+  color: var(--bg-paper);
   text-decoration: none;
   padding: 12px var(--space-md);
   border-radius: var(--radius-button);
@@ -45,7 +45,7 @@
 
 .navbar-link:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #FFFFFF;
+  color: var(--bg-paper);
 }
 
 /* 🔥 АКТИВНАЯ ССЫЛКА - Благородное золото */
@@ -166,7 +166,7 @@
 
 .navbar-dropdown-button:hover {
   background: var(--color-error-light);
-  color: #dc2626;
+  color: var(--color-error);
 }
 
 /* Баннер сообщений */
@@ -225,7 +225,7 @@
     height: 100vh;
     width: 290px;
     max-width: 85vw;
-    background: #ffffff;
+    background: var(--bg-paper);
     flex-direction: column;
     align-items: stretch;
     gap: 0;
@@ -245,7 +245,7 @@
   .nav-dropdown-trigger {
     border-radius: 0;
     border: none;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--border-light);
     padding: 1rem 1.5rem;
     font-size: 1rem;
     justify-content: flex-start;
@@ -256,11 +256,11 @@
   .nav-link:hover,
   .nav-dropdown-trigger:hover {
     transform: none;
-    background: #f8fafc;
+    background: var(--bg-app);
   }
 
   .nav-link.active {
-    border-left-color: #1e3a8a;
+    border-left-color: var(--color-primary);
     background: #f0f9ff;
   }
 
@@ -275,12 +275,12 @@
     box-shadow: none;
     padding: 0;
     animation: none;
-    background: #f8fafc;
+    background: var(--bg-app);
   }
 
   .nav-dropdown-item {
     padding: 0.9rem 2.5rem;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--border-light);
   }
 
   .mobile-menu-overlay {
@@ -291,8 +291,8 @@
 /* ================= ДОБАВЛЕНЫ СТИЛИ ПОД СУЩЕСТВУЮЩУЮ РАЗМЕТКУ ================= */
 /* Основная навигационная панель */
 .navbar {
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--bg-paper);
+  border-bottom: 1px solid var(--border-light);
   box-shadow: 0 8px 20px rgba(37, 99, 235, 0.10);
   font-family: var(--font-main);
   position: sticky;
@@ -317,7 +317,7 @@
   letter-spacing: 0.3px; 
   font-weight: 700; 
   font-size: 1.1rem; 
-  color: #1e3a8a;
+  color: var(--color-primary);
 } 
 .easy-teaching-logo {
   display: flex !important;
@@ -414,7 +414,7 @@
 /* Контраст на цветном фоне: корректируем прилипание к краю */
 .navbar .nav-link,
 .navbar .nav-dropdown-trigger {
-  color: #1e293b;
+  color: var(--text-main);
 }
 .navbar .nav-link:hover,
 .navbar .nav-dropdown-trigger:hover {
@@ -432,19 +432,19 @@
 
 /* Активная кнопка */
 .nav-link.active { 
-  background: #1e3a8a;
+  background: var(--color-primary);
   color: #fff;
   box-shadow: 0 3px 10px rgba(30, 58, 138, 0.3);
 }
 
 .nav-link-highlight {
-  background: #1e3a8a;
+  background: var(--color-primary);
   color: #fff;
   border-color: transparent;
   box-shadow: 0 2px 8px rgba(30, 58, 138, 0.3);
 }
 .nav-link-highlight:hover { 
-  background: #0c1e3a;
+  background: var(--color-primary-dark);
   border-color: transparent;
   box-shadow: 0 4px 12px rgba(30, 58, 138, 0.4);
 }.nav-icon {font-size: 1.05rem; line-height: 1;}
@@ -460,8 +460,8 @@
   top: calc(100% + .5rem);
   left: 0;
   min-width: 190px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
   border-radius: 12px;
   box-shadow: 0 10px 30px -5px rgba(0,0,0,0.2), 0 4px 6px -2px rgba(0,0,0,0.1);
   padding: .5rem .5rem;
@@ -484,7 +484,7 @@
 
 .nav-dropdown-item {
   text-decoration: none;
-  color: #334155;
+  color: var(--text-main);
   padding: .7rem .75rem;
   border-radius: 10px;
   font-size: .9rem;
@@ -495,7 +495,7 @@
   transition: all 0.18s ease;
 }
 .nav-dropdown-item:hover {
-  background: #f3f4f6;
+  background: var(--bg-surface);
   transform: translateX(2px);
 }
 
@@ -508,7 +508,7 @@
   color: #fff;
   text-decoration: none;
   padding: .6rem 1.2rem;
-  background: #1e3a8a;
+  background: var(--color-primary);
   border-radius: 8px;
   font-weight: 600;
   font-size: .9rem;
@@ -517,7 +517,7 @@
   border: none;
 }
 .btn-login:hover {
-  background: #0c1e3a;
+  background: var(--color-primary-dark);
   box-shadow: 0 4px 12px rgba(30, 58, 138, 0.4);
   transform: translateY(-1px);
 }
@@ -554,12 +554,12 @@
   height: 32px; 
   border-radius: 50%; 
   overflow: hidden; 
-  background: #eef2ff; /* мягкий фон вместо градиента */
-  border: 1px solid #e5e7eb;
+  background: var(--color-primary-subtle); /* мягкий фон вместо градиента */
+  border: 1px solid var(--border-light);
   display: flex; 
   align-items: center; 
   justify-content: center; 
-  color: #1e293b; 
+  color: var(--text-main); 
   font-size: 0.9rem; 
   font-weight: 700; 
   box-shadow: none;
@@ -574,7 +574,7 @@
 
 .profile-name {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-main);
   letter-spacing: 0.2px;
 }
 
@@ -582,7 +582,7 @@
   font-size: .7rem; 
   opacity: .6; 
   transition: transform .2s ease, opacity .2s ease;
-  color: #475569;
+  color: var(--text-muted);
 }
 .chevron.open {transform: rotate(180deg); opacity:1;}
 
@@ -590,8 +590,8 @@
   position: absolute;
   top: calc(100% + .7rem);
   right: 0;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
   border-radius: 14px;
   box-shadow: 0 10px 30px -5px rgba(0,0,0,0.15), 0 4px 6px -2px rgba(0,0,0,0.08);
   min-width: 240px;
@@ -619,7 +619,7 @@
   padding: .6rem .7rem .5rem; 
   display: flex; 
   align-items: center;
-  background: #ffffff;
+  background: var(--bg-paper);
   border-radius: 10px;
   margin-bottom: 0.3rem;
 }
@@ -627,7 +627,7 @@
 .user-name {
   font-weight: 700; 
   font-size: 1rem; 
-  color: #1e293b; 
+  color: var(--text-main); 
   margin: 0;
   letter-spacing: 0.3px;
 }
@@ -635,20 +635,20 @@
   font-size: .75rem; 
   text-transform: uppercase; 
   letter-spacing: .8px; 
-  color: #64748b; 
+  color: var(--text-muted); 
   margin: 0;
   font-weight: 600;
 }
 .dropdown-divider {
   height: 1px; 
-  background: linear-gradient(90deg, transparent, #e2e8f0, transparent); 
+  background: linear-gradient(90deg, transparent, var(--border-light), transparent); 
   margin: .35rem .3rem .4rem;
 }
 
 .dropdown-item {
   background: none;
   border: none;
-  color: #334155;
+  color: var(--text-main);
   display: flex;
   align-items: center;
   gap: .7rem;
@@ -662,8 +662,8 @@
   position: relative;
 }
 .dropdown-item:hover {
-  background: #f3f4f6;
-  color: #1e293b;
+  background: var(--bg-surface);
+  color: var(--text-main);
   transform: translateX(2px);
 }
 .dropdown-item span:first-child {
@@ -673,12 +673,12 @@
 }
 
 .dropdown-item:last-child {
-  color: #dc2626;
+  color: var(--color-error);
   margin-top: 0.2rem;
 }
 .dropdown-item:last-child:hover {
-  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-  color: #b91c1c;
+  background: linear-gradient(135deg, var(--color-error-light) 0%, var(--color-error-light) 100%);
+  color: var(--color-error);
 }
 
 /* Статус баннер */
@@ -748,7 +748,7 @@
     padding: 11px;
     border-radius: 16px;
     border: 1px solid #d2b7ff;
-    background: #ffffff;
+    background: var(--bg-paper);
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.1);
     cursor: pointer;
     flex-direction: column;
@@ -785,7 +785,7 @@
     width: min(320px, 90vw);
     max-width: 90vw;
     border-radius: 20px 0 0 20px;
-    border-left: 1px solid #e2e8f0;
+    border-left: 1px solid var(--border-light);
     padding: 80px 1.5rem 24px;
     align-items: flex-start;
     gap: 0.4rem;

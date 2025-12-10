@@ -22,7 +22,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
+  background: var(--bg-surface);
   border-radius: 12px;
   flex-shrink: 0;
 }
@@ -37,7 +37,7 @@
 .student-email {
   margin: 0;
   font-size: 0.9rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* ================================================
@@ -57,15 +57,15 @@
   align-items: center;
   gap: 0.5rem;
   padding: 1.25rem 1rem;
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-  border: 1px solid #d1d5db;
+  background: linear-gradient(135deg, var(--bg-surface) 0%, var(--border-light) 100%);
+  border: 1px solid var(--border-medium);
   border-radius: 12px;
   text-align: center;
   transition: all 0.2s ease;
 }
 
 .stat-card:hover {
-  border-color: #1e3a8a;
+  border-color: var(--color-primary);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
 }
 
@@ -77,7 +77,7 @@
 
 .stat-label {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--text-muted);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -86,13 +86,13 @@
 .stat-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1e3a8a;
+  color: var(--color-primary);
   line-height: 1;
 }
 
 .stat-detail {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--text-light);
   font-weight: 400;
   text-transform: none;
 }
@@ -109,7 +109,7 @@
   margin: 0 0 1rem 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-main);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -118,15 +118,15 @@
 .error-item {
   margin-bottom: 1.25rem;
   padding: 1rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error-light);
   border-radius: 12px;
 }
 
 .error-type {
   display: block;
   font-weight: 600;
-  color: #991b1b;
+  color: var(--color-error);
   margin-bottom: 0.5rem;
 }
 
@@ -147,7 +147,7 @@
   content: '✕';
   position: absolute;
   left: 0;
-  color: #dc2626;
+  color: var(--color-error);
   font-weight: bold;
 }
 
@@ -173,7 +173,7 @@
 }
 
 .edit-btn {
-  background: #1e3a8a;
+  background: var(--color-primary);
   color: white;
   border: none;
   padding: 0.5rem 0.75rem;
@@ -187,19 +187,19 @@
 }
 
 .edit-btn:hover {
-  background: #0c1e3a;
+  background: var(--color-primary-dark);
 }
 
 .notes-display {
   padding: 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-app);
+  border: 1px solid var(--border-light);
   border-radius: 12px;
 }
 
 .notes-text {
   margin: 0;
-  color: #374151;
+  color: var(--text-main);
   line-height: 1.6;
   white-space: pre-wrap;
   word-wrap: break-word;
@@ -207,7 +207,7 @@
 
 .notes-empty {
   margin: 0;
-  color: #9ca3af;
+  color: var(--text-light);
   font-style: italic;
 }
 
@@ -224,18 +224,18 @@
 .notes-textarea {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-medium);
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.9rem;
-  color: #111827;
+  color: var(--text-main);
   resize: vertical;
   transition: border-color 0.2s ease;
 }
 
 .notes-textarea:focus {
   outline: none;
-  border-color: #1e3a8a;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
@@ -256,12 +256,12 @@
 }
 
 .btn-primary {
-  background: #1e3a8a;
+  background: var(--color-primary);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #0c1e3a;
+  background: var(--color-primary-dark);
 }
 
 .btn-primary:disabled {
@@ -270,12 +270,12 @@
 }
 
 .btn-secondary {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--border-light);
+  color: var(--text-main);
 }
 
 .btn-secondary:hover {
-  background: #d1d5db;
+  background: var(--border-medium);
 }
 
 /* ================================================
@@ -287,14 +287,14 @@
 .error-message {
   text-align: center;
   padding: 2rem;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.95rem;
 }
 
 .error-message {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error-light);
+  color: var(--color-error);
   border-radius: 12px;
   margin-bottom: 1.5rem;
 }

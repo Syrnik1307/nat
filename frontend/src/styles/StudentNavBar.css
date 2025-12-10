@@ -1,8 +1,8 @@
 /* Student navigation bar shared styles */
 
 .student-navbar {
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--bg-paper);
+  border-bottom: 1px solid var(--border-light);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -41,7 +41,7 @@
 }
 
 .student-nav-link {
-  color: #64748b;
+  color: var(--text-muted);
   text-decoration: none;
   padding: 0.65rem 1.1rem;
   border-radius: 11px;
@@ -49,23 +49,23 @@
   font-weight: 500;
   transition: all 0.2s ease;
   white-space: nowrap;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
   box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
 .student-nav-link:hover {
-  background: #f9fafb;
-  color: #334155;
-  border-color: #cbd5e1;
+  background: var(--bg-app);
+  color: var(--text-main);
+  border-color: var(--border-light);
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0,0,0,0.08);
 }
 
 .student-nav-link.active {
   background: #f0f9ff;
-  color: #1e3a8a;
-  border-color: #bae6fd;
+  color: var(--color-primary);
+  border-color: var(--color-primary-subtle);
   box-shadow: 0 2px 6px rgba(30, 58, 138, 0.2);
 }
 
@@ -81,8 +81,8 @@
 }
 
 .student-profile-button {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
   cursor: pointer;
   padding: 0.5rem 1rem;
   display: flex;
@@ -94,8 +94,8 @@
 }
 
 .student-profile-button:hover {
-  background: #f9fafb;
-  border-color: #cbd5e1;
+  background: var(--bg-app);
+  border-color: var(--border-light);
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   transform: translateY(-1px);
 }
@@ -112,7 +112,7 @@
   font-size: 0.95rem;
   font-weight: 700;
   box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25), 0 0 0 1px rgba(139, 92, 246, 0.1);
-  border: 2px solid #ffffff;
+  border: 2px solid var(--bg-paper);
   transition: all 0.2s ease;
 }
 
@@ -125,7 +125,7 @@
   position: absolute;
   top: calc(100% + 0.7rem);
   right: 0;
-  background: #ffffff;
+  background: var(--bg-paper);
   border-radius: 14px;
   box-shadow: 0 10px 30px -5px rgba(0,0,0,0.15), 0 4px 6px -2px rgba(0,0,0,0.08);
   min-width: 240px;
@@ -136,7 +136,7 @@
   flex-direction: column;
   gap: 0.3rem;
   animation: dropdownFadeIn 0.2s ease;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
 }
 
 @keyframes dropdownFadeIn {
@@ -152,10 +152,10 @@
 
 .student-profile-header {
   padding: 0.6rem 0.7rem 0.5rem;
-  background: #ffffff;
+  background: var(--bg-paper);
   font-weight: 700;
   font-size: 1rem;
-  color: #1e293b;
+  color: var(--text-main);
   border-radius: 10px;
   margin-bottom: 0.3rem;
   letter-spacing: 0.3px;
@@ -169,7 +169,7 @@
   text-align: left;
   background: none;
   border: none;
-  color: #334155;
+  color: var(--text-main);
   text-decoration: none;
   font-size: 0.88rem;
   font-weight: 500;
@@ -179,13 +179,13 @@
 }
 
 .student-dropdown-item:hover {
-  background: #f3f4f6;
-  color: #1e293b;
+  background: var(--bg-surface);
+  color: var(--text-main);
   transform: translateX(2px);
 }
 
 .student-logout {
-  color: #dc2626;
+  color: var(--color-error);
   border-top: 1px solid transparent;
   margin-top: 0.2rem;
   display: flex;
@@ -200,8 +200,8 @@
 }
 
 .student-logout:hover {
-  background: #fef2f2;
-  color: #b91c1c;
+  background: var(--color-error-light);
+  color: var(--color-error);
 }
 
 @media (max-width: 968px) {

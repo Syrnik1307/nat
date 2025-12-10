@@ -9,19 +9,19 @@
   border-radius: 12px;
   padding: 2rem;
   text-align: center;
-  background: #f8fafc;
+  background: var(--bg-app);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .file-uploader-dropzone:hover {
-  border-color: #1e3a8a;
-  background: #eff6ff;
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
 }
 
 .file-uploader-dropzone.dragging {
-  border-color: #1e3a8a;
-  background: #dbeafe;
+  border-color: var(--color-primary);
+  background: var(--color-info-light);
   border-style: solid;
 }
 
@@ -44,12 +44,12 @@
 
 .file-uploader-text span {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .file-uploader-hint {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--text-light);
 }
 
 /* Progress */
@@ -62,7 +62,7 @@
 .file-uploader-progress-bar {
   width: 100%;
   height: 8px;
-  background: #e5e7eb;
+  background: var(--border-light);
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 0.5rem;
@@ -76,13 +76,13 @@
 
 .file-uploader-progress-text {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* Preview */
 
 .file-uploader-preview {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 12px;
   padding: 1rem;
   background: white;
@@ -94,7 +94,7 @@
   object-fit: contain;
   border-radius: 8px;
   margin-bottom: 1rem;
-  background: #f9fafb;
+  background: var(--bg-app);
 }
 
 .file-uploader-preview audio {
@@ -118,9 +118,9 @@
   margin-top: 0.75rem;
   padding: 0.75rem 1rem;
   border-radius: 8px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error-light);
+  color: var(--color-error);
   font-size: 0.875rem;
   text-align: center;
 }

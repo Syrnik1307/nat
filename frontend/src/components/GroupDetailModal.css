@@ -18,7 +18,7 @@
 }
 
 .modal-content {
-  background: #ffffff !important;
+  background: var(--bg-paper) !important;
   border-radius: 18px;
   max-width: 1040px;
   width: 94%;
@@ -28,8 +28,8 @@
   box-shadow: 0 16px 48px rgba(15, 23, 42, 0.18) !important;
   animation: slideUp 0.25s ease-out;
   overflow: hidden;
-  border: 1px solid #e5e7eb !important;
-  color: #111827 !important;
+  border: 1px solid var(--border-light) !important;
+  color: var(--text-main) !important;
 }
 
 .modal-content * {
@@ -55,8 +55,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 1.25rem 1.75rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: #ffffff;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-paper);
   border-radius: 18px 18px 0 0;
   flex-shrink: 0;
 }
@@ -72,25 +72,25 @@
   margin: 0;
   font-size: 1.35rem;
   font-weight: 700;
-  color: #111827 !important;
+  color: var(--text-main) !important;
   text-shadow: none !important;
 }
 
 .group-students-count {
   font-size: 0.875rem;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: var(--text-muted);
+  background: var(--bg-surface);
   padding: 0.4rem 0.8rem;
   border-radius: 12px;
   font-weight: 500;
 }
 
 .modal-close-btn {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-app);
+  border: 1px solid var(--border-light);
   font-size: 1.25rem;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--text-muted);
   padding: 0.4rem 0.65rem;
   display: flex;
   align-items: center;
@@ -101,7 +101,7 @@
 
 .modal-close-btn:hover {
   background: #eef2f7;
-  color: #111827;
+  color: var(--text-main);
   box-shadow: 0 6px 18px rgba(0,0,0,0.06);
 }
 
@@ -112,8 +112,8 @@
 .tabs-nav {
   display: flex;
   gap: 1.25rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: #ffffff;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-paper);
   padding: 0 1.75rem;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -129,12 +129,12 @@
 }
 
 .tabs-nav::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: var(--border-medium);
   border-radius: 2px;
 }
 
 .tabs-nav::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: var(--text-light);
 }
 
 
@@ -145,7 +145,7 @@
   outline: none;
   font-size: 0.98rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-muted);
   padding: 0.85rem 0;
   cursor: pointer;
   position: relative;
@@ -154,11 +154,11 @@
 }
 
 .tab-button:hover {
-  color: #1e3a8a;
+  color: var(--color-primary);
 }
 
 .tab-button.active {
-  color: #0f172a;
+  color: var(--text-main);
 }
 
 .tab-button.active::after {
@@ -169,7 +169,7 @@
   bottom: -1px;
   width: 100%;
   height: 3px;
-  background: linear-gradient(90deg, #1e3a8a, #2563eb);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-info));
   border-radius: 999px;
 }
 
@@ -194,7 +194,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 1.75rem;
-  background: #ffffff;
+  background: var(--bg-paper);
   min-height: 0;
 }
 
@@ -207,12 +207,12 @@
 }
 
 .modal-body::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: var(--border-medium);
   border-radius: 4px;
 }
 
 .modal-body::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: var(--text-light);
 }
 
 /* ================================================
@@ -222,15 +222,15 @@
 .placeholder {
   text-align: center;
   padding: 3rem 2rem;
-  color: #9ca3af;
+  color: var(--text-light);
   font-size: 1rem;
   line-height: 1.6;
 }
 
 .error-message {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error-light);
+  color: var(--color-error);
   padding: 1rem;
   border-radius: 12px;
   margin-bottom: 1.5rem;

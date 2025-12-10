@@ -6,10 +6,10 @@
 
 .hc-fancy-select-trigger {
   width: 100%;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   padding: 0.625rem 0.875rem;
-  background: #ffffff;
+  background: var(--bg-paper);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -19,18 +19,18 @@
 }
 
 .hc-fancy-select-trigger:hover:not(:disabled) {
-  border-color: #d1d5db;
+  border-color: var(--border-medium);
 }
 
 .hc-fancy-select.is-open .hc-fancy-select-trigger {
-  border-color: #111827;
+  border-color: var(--text-main);
   box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
 }
 
 .hc-fancy-select.is-disabled .hc-fancy-select-trigger {
   opacity: 0.5;
   cursor: not-allowed;
-  background: #f9fafb;
+  background: var(--bg-app);
 }
 
 .hc-fancy-select-content {
@@ -46,19 +46,19 @@
 .hc-fancy-select-value {
   font-size: 0.875rem;
   font-weight: 400;
-  color: #111827;
+  color: var(--text-main);
 }
 
 .hc-fancy-select-value.is-set {
-  color: #111827;
+  color: var(--text-main);
   font-weight: 400;
 }
 
 .hc-fancy-select-badge {
   font-size: 0.75rem;
   font-weight: 500;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: var(--text-muted);
+  background: var(--bg-surface);
   padding: 0.125rem 0.5rem;
   border-radius: 4px;
 }
@@ -66,8 +66,8 @@
 .hc-fancy-select-chevron {
   width: 0.5rem;
   height: 0.5rem;
-  border-left: 1.5px solid #6b7280;
-  border-bottom: 1.5px solid #6b7280;
+  border-left: 1.5px solid var(--text-muted);
+  border-bottom: 1.5px solid var(--text-muted);
   transform: rotate(-45deg);
   transition: transform 0.2s ease;
 }
@@ -82,8 +82,8 @@
   left: 0;
   right: 0;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
+  border: 1px solid var(--border-light);
+  background: var(--bg-paper);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
   padding: 0.5rem;
   display: flex;
@@ -111,27 +111,27 @@
 
 .hc-fancy-option:hover,
 .hc-fancy-option.is-highlighted {
-  background: #f3f4f6;
-  color: #111827;
+  background: var(--bg-surface);
+  color: var(--text-main);
 }
 
 .hc-fancy-option.is-selected {
-  background: #f9fafb;
-  color: #111827;
+  background: var(--bg-app);
+  color: var(--text-main);
   font-weight: 600;
 }
 
 .hc-fancy-check {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .hc-fancy-select-loading,
 .hc-fancy-select-empty {
   padding: 1rem;
   text-align: center;
-  color: #9ca3af;
+  color: var(--text-light);
   font-size: 0.9rem;
 }
 
@@ -142,9 +142,9 @@
   margin-top: 0.5rem;
   padding: 0.75rem 1rem;
   border-radius: 8px;
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--color-error-light);
+  color: var(--color-error);
   font-size: 0.85rem;
-  border: 1px solid #fecaca;
+  border: 1px solid var(--color-error-light);
 }
 

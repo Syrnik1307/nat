@@ -82,15 +82,15 @@
 }
 
 .teacher-stat-success .teacher-stat-value {
-  color: #1e3a8a;
+  color: var(--color-primary);
 }
 
 .teacher-stat-warning .teacher-stat-value {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .teacher-stat-danger .teacher-stat-value {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 /* Фильтры */
@@ -114,7 +114,7 @@
 .teacher-search-input {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--border-light);
   border-radius: 8px;
   font-size: 1rem;
   transition: all 0.2s;
@@ -122,7 +122,7 @@
 
 .teacher-search-input:focus {
   outline: none;
-  border-color: #1e3a8a;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
 }
 
@@ -134,13 +134,13 @@
 
 .teacher-filter-group label {
   font-weight: 600;
-  color: #374151;
+  color: var(--text-main);
   white-space: nowrap;
 }
 
 .teacher-filter-select {
   padding: 0.75rem 1rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--border-light);
   border-radius: 8px;
   font-size: 1rem;
   background: white;
@@ -151,7 +151,7 @@
 
 .teacher-filter-select:focus {
   outline: none;
-  border-color: #1e3a8a;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
 }
 
@@ -189,8 +189,8 @@
 .teacher-spinner {
   width: 50px;
   height: 50px;
-  border: 4px solid #f3f4f6;
-  border-top-color: #1e3a8a;
+  border: 4px solid var(--bg-surface);
+  border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: teacher-spin 1s linear infinite;
   margin: 0 auto 1rem;
@@ -203,7 +203,7 @@
 }
 
 .teacher-recordings-loading p {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 1.1rem;
 }
 
@@ -217,14 +217,14 @@
 }
 
 .teacher-recordings-error p {
-  color: #ef4444;
+  color: var(--color-error);
   font-size: 1.1rem;
   margin-bottom: 1.5rem;
 }
 
 .teacher-retry-btn {
   padding: 0.75rem 2rem;
-  background: #ef4444;
+  background: var(--color-error);
   color: white;
   border: none;
   border-radius: 8px;
@@ -235,7 +235,7 @@
 }
 
 .teacher-retry-btn:hover {
-  background: #dc2626;
+  background: var(--color-error);
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
 }
@@ -257,12 +257,12 @@
 
 .teacher-recordings-empty h3 {
   font-size: 1.5rem;
-  color: #374151;
+  color: var(--text-main);
   margin-bottom: 0.5rem;
 }
 
 .teacher-recordings-empty p {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 1.1rem;
   max-width: 500px;
   margin: 0 auto;
@@ -275,12 +275,12 @@
   border-radius: 8px;
   margin-bottom: 1.5rem;
   font-size: 1rem;
-  color: #374151;
+  color: var(--text-main);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .teacher-recordings-count strong {
-  color: #1e3a8a;
+  color: var(--color-primary);
   font-weight: 700;
 }
 
@@ -378,7 +378,7 @@
 .teacher-upload-btn {
   padding: 0.75rem 1.5rem;
   background: white;
-  color: #1e3a8a;
+  color: var(--color-primary);
   border: 2px solid white;
   border-radius: 8px;
   font-size: 1rem;
@@ -392,7 +392,7 @@
 .teacher-upload-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  background: #f9fafb;
+  background: var(--bg-app);
 }
 
 /* Upload modal */
@@ -436,13 +436,13 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .teacher-upload-modal-header h2 {
   margin: 0;
   font-size: 1.5rem;
-  color: #111827;
+  color: var(--text-main);
   font-weight: 700;
 }
 
@@ -450,7 +450,7 @@
   background: none;
   border: none;
   font-size: 1.5rem;
-  color: #9ca3af;
+  color: var(--text-light);
   cursor: pointer;
   padding: 0.25rem 0.5rem;
   line-height: 1;
@@ -458,7 +458,7 @@
 }
 
 .teacher-modal-close:hover {
-  color: #374151;
+  color: var(--text-main);
 }
 
 .teacher-upload-form {
@@ -473,7 +473,7 @@
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-main);
   font-size: 0.95rem;
 }
 
@@ -481,7 +481,7 @@
 .teacher-upload-select {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--border-light);
   border-radius: 8px;
   font-size: 1rem;
   transition: all 0.2s;
@@ -491,7 +491,7 @@
 .teacher-upload-input:focus,
 .teacher-upload-select:focus {
   outline: none;
-  border-color: #1e3a8a;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -499,7 +499,7 @@
   display: block;
   margin-top: 0.5rem;
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .teacher-upload-actions {
@@ -508,7 +508,7 @@
   justify-content: flex-end;
   margin-top: 2rem;
   padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border-light);
 }
 
 .teacher-cancel-btn,
@@ -523,12 +523,12 @@
 }
 
 .teacher-cancel-btn {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--bg-surface);
+  color: var(--text-main);
 }
 
 .teacher-cancel-btn:hover:not(:disabled) {
-  background: #e5e7eb;
+  background: var(--border-light);
 }
 
 .teacher-submit-btn {
@@ -549,23 +549,23 @@
 
 /* Dropzone */
 .teacher-dropzone {
-  border: 3px dashed #cbd5e1;
+  border: 3px dashed var(--border-light);
   border-radius: 12px;
   padding: 3rem 2rem;
   text-align: center;
   transition: all 0.3s;
-  background: #f8fafc;
+  background: var(--bg-app);
   cursor: pointer;
 }
 
 .teacher-dropzone:hover {
-  border-color: #1e3a8a;
-  background: #f1f5f9;
+  border-color: var(--color-primary);
+  background: var(--bg-surface);
 }
 
 .teacher-dropzone-active {
-  border-color: #1e3a8a;
-  background: #eef2ff;
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
   transform: scale(1.02);
 }
 
@@ -577,7 +577,7 @@
 
 .teacher-dropzone-text {
   font-size: 1.1rem;
-  color: #475569;
+  color: var(--text-muted);
   margin-bottom: 1rem;
 }
 
@@ -608,7 +608,7 @@
 
 .teacher-dropzone-hint {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--text-light);
   margin-top: 0.5rem;
 }
 
@@ -619,7 +619,7 @@
   gap: 1rem;
   padding: 1rem;
   background: white;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--border-light);
   border-radius: 8px;
 }
 
@@ -634,19 +634,19 @@
 
 .teacher-file-name {
   font-weight: 600;
-  color: #374151;
+  color: var(--text-main);
   margin-bottom: 0.25rem;
   word-break: break-word;
 }
 
 .teacher-file-size {
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .teacher-file-remove {
-  background: #fee2e2;
-  color: #dc2626;
+  background: var(--color-error-light);
+  color: var(--color-error);
   border: none;
   width: 32px;
   height: 32px;
@@ -658,7 +658,7 @@
 }
 
 .teacher-file-remove:hover {
-  background: #fecaca;
+  background: var(--color-error-light);
   transform: scale(1.1);
 }
 
@@ -674,19 +674,19 @@
   flex: 1;
   min-width: 150px;
   padding: 0.75rem 1rem;
-  background: #f3f4f6;
-  border: 2px solid #e5e7eb;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-light);
   border-radius: 8px;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .teacher-privacy-tab:hover {
-  background: #e5e7eb;
-  border-color: #d1d5db;
+  background: var(--border-light);
+  border-color: var(--border-medium);
 }
 
 .teacher-privacy-tab.active {
@@ -698,13 +698,13 @@
 .teacher-privacy-selector {
   margin-top: 1rem;
   padding: 1rem;
-  background: #f9fafb;
+  background: var(--bg-app);
   border-radius: 8px;
 }
 
 .teacher-privacy-hint {
   font-size: 0.9rem;
-  color: #6b7280;
+  color: var(--text-muted);
   margin-bottom: 0.75rem;
 }
 
@@ -722,40 +722,40 @@
   gap: 0.75rem;
   padding: 0.75rem;
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .teacher-checkbox-item:hover {
-  background: #f9fafb;
-  border-color: #1e3a8a;
+  background: var(--bg-app);
+  border-color: var(--color-primary);
 }
 
 .teacher-checkbox-item input[type="checkbox"] {
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: #1e3a8a;
+  accent-color: var(--color-primary);
 }
 
 .teacher-checkbox-item span {
   font-size: 0.95rem;
-  color: #374151;
+  color: var(--text-main);
 }
 
 /* Upload progress */
 .teacher-upload-progress {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border-light);
 }
 
 .teacher-progress-bar {
   width: 100%;
   height: 8px;
-  background: #e5e7eb;
+  background: var(--border-light);
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 0.5rem;
@@ -772,6 +772,6 @@
   text-align: center;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #1e3a8a;
+  color: var(--color-primary);
 }
 

@@ -442,11 +442,11 @@
 }
 
 .summary-value.success {
-    color: #1e3a8a;
+    color: var(--color-primary);
 }
 
 .summary-value.danger {
-    color: #ef4444;
+    color: var(--color-error);
 }
 
 /* Таблица учеников */
@@ -506,13 +506,13 @@
 
 .badge-success {
     background: rgba(30, 58, 138, 0.3);
-    color: #1e3a8a;
+    color: var(--color-primary);
     border: 1px solid rgba(30, 58, 138, 0.5);
 }
 
 .badge-danger {
     background: rgba(239, 68, 68, 0.3);
-    color: #ef4444;
+    color: var(--color-error);
     border: 1px solid rgba(239, 68, 68, 0.5);
 }
 
@@ -527,7 +527,7 @@
 .error-message {
     text-align: center;
     padding: 48px;
-    color: #ef4444;
+    color: var(--color-error);
     font-size: 16px;
     background: rgba(239, 68, 68, 0.1);
     border-radius: 8px;

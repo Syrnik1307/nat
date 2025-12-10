@@ -52,7 +52,7 @@
 }
 
 .sub-card {
-  background: #f9fafb;
+  background: var(--bg-app);
   border-radius: 8px;
   padding: 1.25rem;
 }
@@ -71,19 +71,19 @@
 }
 
 .status-badge.status-active {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
 
 .status-badge.status-pending {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
 }
 
 .status-badge.status-cancelled,
 .status-badge.status-expired {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--color-error-light);
+  color: var(--color-error);
 }
 
 /* Убрали бейдж плана для минималистичного вида */
@@ -98,7 +98,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .detail-row:last-child {
@@ -107,26 +107,26 @@
 
 .detail-row .label {
   font-weight: 500;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .detail-row .value {
-  color: #111827;
+  color: var(--text-main);
   font-weight: 600;
 }
 
 .days-left {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .days-left.warning {
-  color: #dc2626;
+  color: var(--color-error);
   font-weight: 700;
 }
 
 .storage-extra {
-  color: #1e3a8a;
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -141,7 +141,7 @@
 .pay-btn,
 .toggle-renew-btn {
   padding: 0.45rem 0.85rem;
-  background: #6366f1;
+  background: var(--color-primary-light);
   color: white;
   border: none;
   border-radius: 8px;
@@ -174,12 +174,12 @@
 }
 
 .pay-btn:hover:not(:disabled) {
-  background: #4f46e5;
+  background: var(--color-primary);
   box-shadow: 0 4px 12px rgba(99,102,241,0.3);
 }
 
 .pay-btn:disabled {
-  background: #6366f1;
+  background: var(--color-primary-light);
   cursor: not-allowed;
   box-shadow: none;
   opacity: 0.6;
@@ -190,16 +190,16 @@
 }
 
 .toggle-renew-btn.renew-enabled:hover:not(:disabled) {
-  background: #ef4444;
+  background: var(--color-error);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 .toggle-renew-btn.renew-disabled {
-  background: #1e3a8a;
+  background: var(--color-primary);
 }
 
 .toggle-renew-btn.renew-disabled:hover:not(:disabled) {
-  background: #0c1e3a;
+  background: var(--color-primary-dark);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
@@ -226,21 +226,21 @@
   position: relative;
   width: 100%;
   height: 12px;
-  background: #e5e7eb;
+  background: var(--border-light);
   border-radius: 999px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #6366f1 0%, #1e3a8a 100%);
+  background: linear-gradient(90deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
   transition: width 0.4s ease;
 }
 
 .progress-meta {
   margin-top: 0.5rem;
   font-size: 0.9rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* Хранилище */
@@ -255,18 +255,18 @@
 .storage-section h2 {
   margin-top: 0;
   font-size: 1.25rem;
-  color: #374151;
+  color: var(--text-main);
 }
 
 .storage-card {
-  background: #f9fafb;
+  background: var(--bg-app);
   border-radius: 8px;
   padding: 1.25rem;
 }
 
 .storage-card p {
   margin-top: 0;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .storage-input-group {
@@ -282,12 +282,12 @@
   flex-direction: column;
   gap: 0.5rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-main);
 }
 
 .storage-input-group input {
   padding: 0.625rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-medium);
   border-radius: 6px;
   font-size: 1rem;
   width: 120px;
@@ -295,8 +295,8 @@
 
 .storage-price {
   padding: 0.625rem 1rem;
-  background: #e0e7ff;
-  color: #3730a3;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-dark);
   border-radius: 6px;
   font-weight: 600;
   font-size: 1rem;
@@ -304,7 +304,7 @@
 
 .buy-storage-btn {
   padding: 0.75rem 1.5rem;
-  background: #1e3a8a;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 8px;
@@ -315,11 +315,11 @@
 }
 
 .buy-storage-btn:hover:not(:disabled) {
-  background: #0c1e3a;
+  background: var(--color-primary-dark);
 }
 
 .buy-storage-btn:disabled {
-  background: #d1d5db;
+  background: var(--border-medium);
   cursor: not-allowed;
 }
 
@@ -333,7 +333,7 @@
   align-items: center;
   padding: 4rem;
   font-size: 1.25rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* Адаптивность */

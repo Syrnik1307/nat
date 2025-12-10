@@ -2,8 +2,8 @@
   position: sticky;
   top: 12px;
   z-index: 100;
-  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
-  border: 2px solid #EF4444;
+  background: linear-gradient(135deg, var(--color-error-light) 0%, var(--color-error-light) 100%);
+  border: 2px solid var(--color-error);
   border-radius: 16px;
   padding: 16px 24px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -14,13 +14,13 @@
 }
 
 .subscription-banner.expired {
-  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
-  border-bottom: 2px solid #EF4444;
+  background: linear-gradient(135deg, var(--color-error-light) 0%, var(--color-error-light) 100%);
+  border-bottom: 2px solid var(--color-error);
 }
 
 .subscription-banner.warning {
-  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
-  border-bottom: 2px solid #EF4444;
+  background: linear-gradient(135deg, var(--color-error-light) 0%, var(--color-error-light) 100%);
+  border-bottom: 2px solid var(--color-error);
 }
 
 .banner-content {
@@ -60,7 +60,7 @@
 }
 
 .pay-button {
-  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -75,7 +75,7 @@
 .pay-button:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
-  background: linear-gradient(135deg, #4338CA 0%, #4F46E5 100%);
+  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
 }
 
 .pay-button:active {

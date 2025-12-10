@@ -62,7 +62,7 @@
 
 .summary-stats {
   background: white;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--border-light);
   border-radius: 16px;
   padding: 1.75rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -72,13 +72,13 @@
 .summary-stats:hover {
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.08);
   transform: translateY(-2px);
-  border-color: #C7D2FE;
+  border-color: var(--color-primary-subtle);
 }
 
 .summary-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #0F172A;
+  color: var(--text-main);
   margin: 0 0 1.5rem 0;
   letter-spacing: -0.02em;
 }
@@ -268,18 +268,18 @@
   }
 
   .pine .garland .bulb.red { 
-    color: #ef4444;
-    background: radial-gradient(circle at 30% 30%, #fca5a5, #ef4444 45%, #dc2626 75%, #991b1b);
+    color: var(--color-error);
+    background: radial-gradient(circle at 30% 30%, #fca5a5, var(--color-error) 45%, var(--color-error) 75%, var(--color-error));
     animation-delay: 0s; 
   }
   .pine .garland .bulb.yellow { 
     color: #fbbf24;
-    background: radial-gradient(circle at 30% 30%, #fef08a, #fbbf24 45%, #f59e0b 75%, #d97706);
+    background: radial-gradient(circle at 30% 30%, #fef08a, #fbbf24 45%, var(--color-warning) 75%, var(--color-warning));
     animation-delay: 0.4s; 
   }
   .pine .garland .bulb.blue { 
-    color: #3b82f6;
-    background: radial-gradient(circle at 30% 30%, #93c5fd, #3b82f6 45%, #2563eb 75%, #1d4ed8);
+    color: var(--color-info);
+    background: radial-gradient(circle at 30% 30%, #93c5fd, var(--color-info) 45%, var(--color-info) 75%, var(--color-primary));
     animation-delay: 0.8s; 
   }
   .pine .garland .bulb.pink { 
@@ -386,9 +386,9 @@
   transform: scale(1.05);
 }
 
-.summary-icon.students { background: #E0E7FF; color: #4F46E5; } /* Indigo-100 / Indigo-600 */
-.summary-icon.lessons { background: #FEF3C7; color: #F59E0B; } /* Amber-100 / Amber-500 */
-.summary-icon.attendance { background: #D1FAE5; color: #10B981; } /* Emerald-100 / Emerald-500 */
+.summary-icon.students { background: var(--color-primary-subtle); color: var(--color-primary); } /* Indigo-100 / Indigo-600 */
+.summary-icon.lessons { background: var(--color-warning-light); color: var(--color-warning); } /* Amber-100 / Amber-500 */
+.summary-icon.attendance { background: var(--color-success-light); color: var(--color-success); } /* Emerald-100 / Emerald-500 */
 .summary-icon.homework { background: #FCE7F3; color: #EC4899; } /* Pink-100 / Pink-500 */
 
 .summary-copy {
@@ -401,7 +401,7 @@
 .summary-label {
   font-size: 0.8125rem;
   text-transform: uppercase;
-  color: #64748B; /* Slate-500 */
+  color: var(--text-muted); /* Slate-500 */
   letter-spacing: 0.05em;
   font-weight: 600;
 }
@@ -409,7 +409,7 @@
 .summary-value {
   font-size: 2rem;
   font-weight: 700;
-  color: #4F46E5; /* Indigo-600 */
+  color: var(--color-primary); /* Indigo-600 */
   line-height: 1;
   letter-spacing: -0.02em;
 }
@@ -426,8 +426,8 @@
 
 .teacher-home-page {
   min-height: 100vh;
-  background: #F8FAFC; /* Slate-50 */
-  color: #0F172A;
+  background: var(--bg-app); /* Slate-50 */
+  color: var(--text-main);
   padding: 2rem;
   font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
@@ -444,7 +444,7 @@
   padding: 2rem;
   background: white;
   border-radius: 16px;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--border-light);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -456,14 +456,14 @@
 .page-title {
   font-size: 2rem;
   font-weight: 700;
-  color: #0F172A;
+  color: var(--text-main);
   margin: 0 0 0.5rem 0;
   letter-spacing: -0.02em;
 }
 
 .page-subtitle {
   font-size: 1rem;
-  color: #64748B;
+  color: var(--text-muted);
   margin: 0;
   font-weight: 400;
 }
@@ -479,9 +479,9 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1.5rem;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--border-light);
   border-radius: 12px;
-  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: white;
   font-weight: 600;
   font-size: 0.95rem;
@@ -537,28 +537,28 @@
 }
 
 .btn-primary {
-  background: linear-gradient(to right, #F59E0B, #D97706);
-  color: #ffffff;
+  background: linear-gradient(to right, var(--color-warning), var(--color-warning));
+  color: var(--bg-paper);
   box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
   border-color: transparent;
 }
 
 .btn-primary:hover {
-  box-shadow: 0 0 15px #F59E0B;
+  box-shadow: 0 0 15px var(--color-warning);
   transform: translateY(-2px);
 }
 
 .btn-secondary {
   background: white;
-  color: #4F46E5;
-  border: 1px solid #E2E8F0;
+  color: var(--color-primary);
+  border: 1px solid var(--border-light);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-secondary:hover {
-  background: #F8FAFC;
-  border-color: #C7D2FE;
+  background: var(--bg-app);
+  border-color: var(--color-primary-subtle);
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.12);
   transform: translateY(-2px);
 }
@@ -596,8 +596,8 @@
   position: sticky;
   top: 12px;
   z-index: 1;
-  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
-  border: 1px solid #F59E0B;
+  background: linear-gradient(135deg, var(--color-warning-light) 0%, #FDE68A 100%);
+  border: 1px solid var(--color-warning);
   border-radius: 16px;
   padding: 1rem 1.5rem;
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
@@ -1188,7 +1188,7 @@
   width: 26px;
   height: calc(40px + 130px * var(--growth-progress));
   border-radius: 12px 12px 6px 6px;
-  background: linear-gradient(180deg, #94a3b8 0%, #64748b 45%, #475569 100%);
+  background: linear-gradient(180deg, var(--text-light) 0%, var(--text-muted) 45%, var(--text-muted) 100%);
   opacity: 0;
   transform-origin: bottom center;
   transition: opacity 0.6s ease, transform 0.6s ease;
@@ -1553,7 +1553,7 @@
 .section-title {
   font-size: 1.8rem;
   font-weight: 700;
-  color: #1E293B;
+  color: var(--text-main);
   margin: 0;
   display: flex;
   align-items: center;
@@ -1853,7 +1853,7 @@
   padding: 1.5rem;
   background: white;
   border-radius: 16px;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--border-light);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1875,7 +1875,7 @@
 .stat-number {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #4F46E5; /* Indigo-600 */
+  color: var(--color-primary); /* Indigo-600 */
   line-height: 1;
   letter-spacing: -0.02em;
 }

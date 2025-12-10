@@ -30,7 +30,7 @@
   align-items: center;
   padding: 20px 30px;
   border-bottom: 1px solid #e0e0e0;
-  background: linear-gradient(135deg, #1e3a8a 0%, #0c1e3a 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   color: white;
 }
 
@@ -88,7 +88,7 @@
 .card-value {
   font-size: 32px;
   font-weight: 700;
-  color: #1e3a8a;
+  color: var(--color-primary);
 }
 
 .teachers-table-wrapper {
@@ -115,7 +115,7 @@
   text-align: left;
   font-weight: 600;
   color: #333;
-  border-bottom: 2px solid #1e3a8a;
+  border-bottom: 2px solid var(--color-primary);
   white-space: nowrap;
 }
 
@@ -140,7 +140,7 @@
 
 .size-cell {
   font-size: 15px;
-  color: #1e3a8a;
+  color: var(--color-primary);
 }
 
 .breakdown-cell {

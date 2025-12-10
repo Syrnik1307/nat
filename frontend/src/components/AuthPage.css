@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%); /* Slate-50 gradient */
+  background: linear-gradient(135deg, var(--bg-app) 0%, var(--bg-surface) 100%); /* Slate-50 gradient */
   padding: clamp(1.5rem, 5vw, 3rem);
   position: relative;
   overflow: hidden;
@@ -90,7 +90,7 @@
 .back-button {
   background: transparent !important;
   border: none !important;
-  color: #6b7280 !important;
+  color: var(--text-muted) !important;
   font-size: 0.85rem !important;
   font-weight: 500 !important;
   cursor: pointer !important;
@@ -144,7 +144,7 @@
 }
 
 .role-card:hover {
-  border-color: #4F46E5; /* Indigo-600 */
+  border-color: var(--color-primary); /* Indigo-600 */
   background: white;
   transform: translateY(-4px) scale(1.02);
   box-shadow: var(--shadow-lg);
@@ -156,7 +156,7 @@
 
 .role-card:focus {
   outline: none;
-  border-color: #4F46E5; /* Indigo-600 */
+  border-color: var(--color-primary); /* Indigo-600 */
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
 }
 
@@ -238,7 +238,7 @@
 .form-group input:focus,
 .form-group textarea:focus,
 .form-group select:focus {
-  border-color: #4F46E5; /* Indigo-600 */
+  border-color: var(--color-primary); /* Indigo-600 */
   background: white;
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
   outline: none;
@@ -305,7 +305,7 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--text-muted);
   cursor: pointer;
   user-select: none;
 }
@@ -314,13 +314,13 @@
   width: 1rem;
   height: 1rem;
   cursor: pointer;
-  accent-color: #1e3a8a;
+  accent-color: var(--color-primary);
 }
 
 .link-button {
   background: transparent;
   border: none;
-  color: #4F46E5; /* Indigo-600 */
+  color: var(--color-primary); /* Indigo-600 */
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -331,7 +331,7 @@
 }
 
 .link-button:hover {
-  color: #4338CA; /* Indigo-700 */
+  color: var(--color-primary-dark); /* Indigo-700 */
   text-decoration: underline;
 }
 
@@ -356,7 +356,7 @@
 
 .captcha-container {
   padding: 1rem;
-  background: #fef3c7;
+  background: var(--color-warning-light);
   border: 1px solid #fcd34d;
   border-radius: 8px;
 }
@@ -373,7 +373,7 @@
 
 .captcha-note {
   font-size: 0.75rem;
-  color: #92400e;
+  color: var(--color-warning);
   text-align: center;
   margin: 0.5rem 0 0 0;
 }
@@ -401,7 +401,7 @@
   background: #ECFDF5; /* Emerald-50 */
   border: 1px solid #86EFAC;
   border-radius: 16px;
-  color: #10B981; /* Emerald-500 */
+  color: var(--color-success); /* Emerald-500 */
   font-size: 0.875rem;
   font-weight: 500;
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -428,7 +428,7 @@
 .submit-button {
   width: 100%;
   padding: 0.825rem 1.25rem;
-  background: #1e3a8a;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 8px;
@@ -440,7 +440,7 @@
 }
 
 .submit-button:hover:not(:disabled) {
-  background: #0c1e3a;
+  background: var(--color-primary-dark);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
   transform: translateY(-1px);
 }
@@ -461,13 +461,13 @@
 .auth-switch {
   text-align: center;
   padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border-light);
 }
 
 .auth-switch p {
   margin: 0;
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* ================================================
@@ -476,7 +476,7 @@
 
 .auth-content input::placeholder,
 .auth-content textarea::placeholder {
-  color: #9ca3af;
+  color: var(--text-light);
   opacity: 1;
 }
 
@@ -504,16 +504,16 @@
 .sms-resend p {
   margin: 0;
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .sms-note {
   font-size: 0.8rem;
-  color: #9ca3af;
+  color: var(--text-light);
   text-align: center;
   margin: 0;
   padding: 0.75rem;
-  background: #f3f4f6;
+  background: var(--bg-surface);
   border-radius: 8px;
 }
 
@@ -536,7 +536,7 @@
 
 .reset-modal p {
   font-size: 0.9rem;
-  color: #6b7280;
+  color: var(--text-muted);
   margin: 0;
   line-height: 1.5;
 }

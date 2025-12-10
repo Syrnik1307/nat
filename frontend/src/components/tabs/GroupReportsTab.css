@@ -14,9 +14,9 @@
   margin: 0;
   font-size: 1.25rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-main);
   padding-bottom: 1rem;
-  border-bottom: 2px solid #1e3a8a;
+  border-bottom: 2px solid var(--color-primary);
 }
 
 /* ================================================
@@ -28,7 +28,7 @@
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.5rem;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #f0f9ff 0%, #f8fafc 100%);
+  background: linear-gradient(135deg, #f0f9ff 0%, var(--bg-app) 100%);
   border: 1px solid #bfdbfe;
   border-radius: 12px;
 }
@@ -41,7 +41,7 @@
 
 .info-label {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--text-muted);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -50,7 +50,7 @@
 .info-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--text-main);
 }
 
 /* ================================================
@@ -67,19 +67,19 @@
   margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-main);
 }
 
 .stat-card {
   padding: 1.5rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 12px;
   background: white;
   transition: all 0.2s ease;
 }
 
 .stat-card:hover {
-  border-color: #1e3a8a;
+  border-color: var(--color-primary);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
 }
 
@@ -92,7 +92,7 @@
 
 .stat-name {
   font-weight: 600;
-  color: #111827;
+  color: var(--text-main);
   font-size: 1rem;
   position: relative;
   padding-left: 1rem;
@@ -106,7 +106,7 @@
   transform: translateY(-50%);
   width: 4px;
   height: 16px;
-  background: #1e3a8a;
+  background: var(--color-primary);
   border-radius: 2px;
 }
 
@@ -117,7 +117,7 @@
 .progress-bar {
   position: relative;
   height: 32px;
-  background-color: #e5e7eb;
+  background-color: var(--border-light);
   border-radius: 8px;
   overflow: hidden;
   display: flex;
@@ -140,13 +140,13 @@
   z-index: 1;
   font-weight: 700;
   font-size: 0.9rem;
-  color: #111827;
+  color: var(--text-main);
   margin-left: auto;
 }
 
 .stat-description {
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* ================================================
@@ -176,14 +176,14 @@
 
 .recommendation-item.warning {
   background: #fffbeb;
-  border-left-color: #ef4444;
-  color: #92400e;
+  border-left-color: var(--color-error);
+  color: var(--color-warning);
 }
 
 .recommendation-item.success {
-  background: #f0fdf4;
-  border-left-color: #1e3a8a;
-  color: #15803d;
+  background: var(--color-success-light);
+  border-left-color: var(--color-primary);
+  color: var(--color-success);
 }
 
 .recommendation-icon {
@@ -207,16 +207,16 @@
 
 .report-note {
   padding: 1rem;
-  background: #f9fafb;
-  border: 1px dashed #d1d5db;
+  background: var(--bg-app);
+  border: 1px dashed var(--border-medium);
   border-radius: 12px;
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--text-muted);
   line-height: 1.6;
 }
 
 .report-note strong {
-  color: #374151;
+  color: var(--text-main);
 }
 
 /* ================================================
@@ -228,19 +228,19 @@
 .tab-empty {
   text-align: center;
   padding: 3rem 2rem;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 1rem;
 }
 
 .tab-error {
-  color: #991b1b;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  color: var(--color-error);
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error-light);
   border-radius: 12px;
 }
 
 .tab-empty {
-  color: #9ca3af;
+  color: var(--text-light);
 }
 
 /* ================================================
