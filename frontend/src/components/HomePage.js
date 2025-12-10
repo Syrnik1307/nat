@@ -3,6 +3,7 @@ import { useAuth } from '../auth';
 import { getTeacherStatsSummary, getLessons, getGroups, getHomeworkList } from '../apiService';
 import { Link } from 'react-router-dom';
 import SupportWidget from './SupportWidget';
+import './HomePage.css';
 
 const HomePage = () => {
   const { accessTokenValid, role } = useAuth();
@@ -61,15 +62,15 @@ const HomePage = () => {
 
   if (!accessTokenValid) {
     return (
-      <div style={styles.heroWrap}>
-        <div style={styles.heroCard}>
-          <h1 style={styles.heroTitle}>Добро пожаловать в Easy Teaching</h1>
-          <p style={styles.heroSubtitle}>Расписание, задания, аналитика и Zoom – всё в одном месте.</p>
-          <div style={{ display:'flex', gap:'1rem', marginTop:'1.5rem' }}>
-            <a href="/login" style={styles.ctaPrimary}>Войти</a>
-            <a href="https://docs.example.com" style={styles.ctaSecondary}>Документация</a>
+      <div className="home-hero-wrap">
+        <div className="home-hero-card">
+          <h1 className="home-hero-title">Добро пожаловать в Easy Teaching</h1>
+          <p className="home-hero-subtitle">Расписание, задания, аналитика и Zoom – всё в одном месте.</p>
+          <div className="home-cta-buttons">
+            <a href="/login" className="home-cta-primary">Войти</a>
+            <a href="https://docs.example.com" className="home-cta-secondary">Документация</a>
           </div>
-          <div style={styles.featureGrid}>
+          <div className="home-feature-grid">
             <Feature icon="" title="Расписание" text="Гибкое расписание и повторяющиеся занятия" />
             <Feature icon="" title="Домашки" text="Автоматическая проверка и баллы" />
             <Feature icon="" title="Аналитика" text="Посещаемость и успеваемость" />
@@ -81,36 +82,36 @@ const HomePage = () => {
   }
 
   return (
-    <div style={styles.pageContainer}>
-      <div style={styles.pageHeader}>
-        <h1 style={styles.pageTitle}>Главная</h1>
-        <div style={styles.filterTabs}>
+    <div className="home-page-container">
+      <div className="home-page-header">
+        <h1 className="home-page-title">Главная</h1>
+        <div className="home-filter-tabs">
           <button 
-            style={{...styles.filterTab, ...(activeFilter === 'day' ? styles.filterTabActive : {})}}
+            className={`home-filter-tab ${activeFilter === 'day' ? 'active' : ''}`}
             onClick={() => setActiveFilter('day')}
           >
             На день
           </button>
           <button 
-            style={{...styles.filterTab, ...(activeFilter === 'week' ? styles.filterTabActive : {})}}
+            className={`home-filter-tab ${activeFilter === 'week' ? 'active' : ''}`}
             onClick={() => setActiveFilter('week')}
           >
             На неделю
           </button>
           <button 
-            style={{...styles.filterTab, ...(activeFilter === 'month' ? styles.filterTabActive : {})}}
+            className={`home-filter-tab ${activeFilter === 'month' ? 'active' : ''}`}
             onClick={() => setActiveFilter('month')}
           >
             На месяц
           </button>
           <button 
-            style={{...styles.filterTab, ...(activeFilter === 'quarter' ? styles.filterTabActive : {})}}
+            className={`home-filter-tab ${activeFilter === 'quarter' ? 'active' : ''}`}
             onClick={() => setActiveFilter('quarter')}
           >
             На квартал
           </button>
           <button 
-            style={{...styles.filterTab, ...(activeFilter === 'year' ? styles.filterTabActive : {})}}
+            className={`home-filter-tab ${activeFilter === 'year' ? 'active' : ''}`}
             onClick={() => setActiveFilter('year')}
           >
             На год
@@ -118,13 +119,13 @@ const HomePage = () => {
         </div>
       </div>
 
-      {loading && <div style={styles.loading}>Загрузка...</div>}
+      {loading && <div className="home-loading">Загрузка...</div>}
 
-      <div style={styles.mainGrid}>
-        <div style={styles.mainContent}>
+      <div className="home-main-grid">
+        <div className="home-main-content">
           {role === 'teacher' && teacherStats && (
-            <section style={styles.statsSection}>
-              <div style={styles.statsGrid}>
+            <section className="home-stats-section">
+              <div className="home-stats-grid-dashboard">
                 <StatCard icon="" label="Уроков" value={teacherStats.total_lessons} color="#FF6B35" />
                 <StatCard icon="⏱️" label="Средняя длит." value={`${Math.round((teacherStats.average_duration_seconds || 0) / 60)} мин`} color="#2563eb" />
                 <StatCard icon="" label="Записано" value={`${teacherStats.recording_ratio_percent}%`} color="#16a34a" />
@@ -133,14 +134,14 @@ const HomePage = () => {
             </section>
           )}
 
-          <section style={styles.lessonsSection}>
-            <h2 style={styles.sectionTitle}>
+          <section className="home-lessons-section">
+            <h2 className="home-section-title">
               Расписание
               {role === 'teacher' && (
-                <Link to="/recurring-lessons/manage" style={styles.linkSmall}> → Управление</Link>
+                <Link to="/recurring-lessons/manage" className="home-link-small"> → Управление</Link>
               )}
             </h2>
-            <div style={styles.lessonsList}>
+            <div className="home-lessons-list">
               {upcomingLessons.map(l => (
                 <LessonCard 
                   key={l.id}
@@ -158,8 +159,8 @@ const HomePage = () => {
                 />
               ))}
               {upcomingLessons.length === 0 && (
-                <div style={styles.emptyState}>
-                  <div style={styles.emptyIcon}></div>
+                <div className="home-empty-state">
+                  <div className="home-empty-icon"></div>
                   <p>Сегодня нет занятий</p>
                 </div>
               )}
@@ -167,14 +168,14 @@ const HomePage = () => {
           </section>
         </div>
 
-        <aside style={styles.sidebar}>
+        <aside className="home-sidebar">
           {(role === 'student' || homework.length > 0) && (
-            <div style={styles.sidebarCard}>
-              <h3 style={styles.sidebarTitle}>
+            <div className="home-sidebar-card">
+              <h3 className="home-sidebar-title">
                 <span></span>
                 Нужно сделать
               </h3>
-              <div style={styles.tasksList}>
+              <div className="home-tasks-list">
                 {homework.slice(0, 5).map((hw, idx) => (
                   <TaskItem 
                     key={hw.id || idx}
@@ -194,12 +195,12 @@ const HomePage = () => {
             </div>
           )}
 
-          <div style={styles.sidebarCard}>
-            <h3 style={styles.sidebarTitle}>
+          <div className="home-sidebar-card">
+            <h3 className="home-sidebar-title">
               <span></span>
               Мои группы
             </h3>
-            <div style={styles.groupsList}>
+            <div className="home-groups-list">
               {groups.slice(0, 3).map(g => (
                 <GroupItem 
                   key={g.id}
@@ -227,82 +228,68 @@ const HomePage = () => {
   );
 };
 
-const Feature = ({ icon, title, text }) => (
-  <div style={styles.featureItem}>
-    <div style={styles.featureIcon}>{icon}</div>
-    <div style={{ fontWeight:600, color:'#111827' }}>{title}</div>
-    <div style={{ fontSize:'0.85rem', color:'#6b7280' }}>{text}</div>
+const Feature = ({icon, title, text}) => (
+  <div className="home-feature-item">
+    <div className="home-feature-icon-box">{icon}</div>
+    <div className="home-feature-title">{title}</div>
+    <div className="home-feature-text">{text}</div>
   </div>
 );
 
 const StatCard = ({ icon, label, value, color }) => (
-  <div style={{...styles.statCard, borderLeft:`4px solid ${color}`}}>
-    <div style={styles.statIcon}>{icon}</div>
+  <div className="home-stat-card" style={{borderLeft: `4px solid ${color}`}}>
+    <div className="home-stat-icon">{icon}</div>
     <div>
-      <div style={styles.statValue}>{value}</div>
-      <div style={styles.statLabel}>{label}</div>
+      <div className="home-stat-value">{value}</div>
+      <div className="home-stat-label">{label}</div>
     </div>
   </div>
 );
 
-const LessonCard = ({ title, time, group, location, teacher }) => (
-  <div style={styles.lessonCard}>
-    <div style={styles.lessonHeader}>
+const LessonCard = ({title, time, group, location, teacher}) => (
+  <div className="home-lesson-card">
+    <div className="home-lesson-header">
       <div>
-        <div style={styles.lessonTitle}>{title}</div>
-        <div style={styles.lessonTeacher}>Учитель: {teacher}</div>
-        <div style={styles.lessonGroup}>Группа: {group}</div>
+        <div className="home-lesson-title">{title}</div>
+        <div className="home-lesson-teacher">Учитель: {teacher}</div>
+        <div className="home-lesson-group">Группа: {group}</div>
       </div>
-      <div style={styles.lessonTime}>{time}</div>
+      <div className="home-lesson-time">{time}</div>
     </div>
-    <div style={styles.lessonMeta}>
-      <div style={styles.lessonMetaItem}>
+    <div className="home-lesson-meta">
+      <div className="home-lesson-meta-item">
         <span>📍</span>
         <span>{location}</span>
       </div>
-      <div style={styles.lessonMetaItem}>
+      <div className="home-lesson-meta-item">
         <span></span>
         <span>Занятие онлайн</span>
       </div>
     </div>
-    <div style={styles.lessonActions}>
-      <button style={styles.btnOutline}>Отметить посещение</button>
-      <button style={styles.btnOutline}>Начать занятие</button>
+    <div className="home-lesson-actions">
+      <button className="home-btn-outline">Отметить посещение</button>
+      <button className="home-btn-outline">Начать занятие</button>
     </div>
   </div>
 );
 
 const TaskItem = ({ title, deadline, count }) => (
-  <div style={styles.taskItem}>
-    <div style={styles.taskTitle}>{title} ({count})</div>
-    <div style={styles.taskDeadline}>⏰ {deadline}</div>
+  <div className="home-task-item">
+    <div className="home-task-title">{title} ({count})</div>
+    <div className="home-task-deadline">⏰ {deadline}</div>
   </div>
 );
 
 const GroupItem = ({ name, students, attendance, homework }) => (
-  <div style={styles.groupItem}>
-    <div style={styles.groupName}>{name}</div>
-    <div style={styles.groupInfo}>
+  <div className="home-group-item">
+    <div className="home-group-name">{name}</div>
+    <div className="home-group-info">
       Учеников: {students} • Посещаемость: {attendance}% • Домашнее задание: {homework}%
     </div>
   </div>
 );
 
-const styles = {
-  heroWrap: { 
-    display:'flex', 
-    justifyContent:'center', 
-    padding:'4rem 2rem',
-    background:'linear-gradient(135deg, #fff7ed 0%, #ffffff 100%)'
-  },
-  heroCard: { 
-    maxWidth:1000, 
-    width:'100%', 
-    background:'#ffffff', 
-    borderRadius:20, 
-    padding:'3rem', 
-    boxShadow:'0 20px 40px rgba(0,0,0,0.08)'
-  },
+export default HomePage;
   heroTitle: { 
     fontSize:'2.5rem', 
     margin:'0 0 1rem', 
@@ -607,7 +594,3 @@ const styles = {
     textDecoration:'none',
     marginLeft:'0.75rem',
     fontWeight:500
-  }
-};
-
-export default HomePage;
