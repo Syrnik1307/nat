@@ -2,8 +2,9 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
-  background: #f9fafb;
+  background: var(--bg-app);
   min-height: 100vh;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
 .sub-header {
@@ -15,8 +16,8 @@
 
 .back-btn {
   padding: 0.5rem 1rem;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.95rem;
@@ -24,29 +25,30 @@
 }
 
 .back-btn:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
+  background: var(--bg-surface);
+  border-color: var(--border-medium);
 }
 
 .sub-header h1 {
   margin: 0;
   font-size: 1.75rem;
-  color: #111827;
+  color: var(--text-main);
 }
 
 /* Текущая подписка */
 .current-subscription {
-  background: white;
+  background: var(--bg-paper);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 2rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-light);
 }
 
 .current-subscription h2 {
   margin-top: 0;
   font-size: 1.25rem;
-  color: #374151;
+  color: var(--text-main);
 }
 
 .sub-card {

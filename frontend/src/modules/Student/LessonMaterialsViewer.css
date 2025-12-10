@@ -216,7 +216,7 @@
 }
 
 .material-card.viewed::before {
-    background: linear-gradient(90deg, #1e3a8a 0%, #0c1e3a 100%);
+    background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
 }
 
 /* Стили для непросмотренных материалов */
@@ -250,13 +250,13 @@
 }
 
 .viewed-badge {
-    background: linear-gradient(135deg, #1e3a8a 0%, #0c1e3a 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
     color: white;
-    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.4);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
 }
 
 .new-badge {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    background: linear-gradient(135deg, var(--color-error) 0%, #dc2626 100%);
     color: white;
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
     animation: bounce 1s infinite;
@@ -326,12 +326,12 @@
 }
 
 .material-card.viewed .btn-open-material {
-    background: linear-gradient(135deg, #1e3a8a 0%, #0c1e3a 100%);
-    box-shadow: 0 4px 15px rgba(30, 58, 138, 0.4);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
 }
 
 .material-card.viewed .btn-open-material:hover {
-    box-shadow: 0 6px 20px rgba(30, 58, 138, 0.6);
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6);
 }
 
 /* Загрузка и ошибка */

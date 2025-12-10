@@ -1013,7 +1013,7 @@ input[type="datetime-local"]:invalid {
 }
 
 .dtp-day.selected {
-  background: linear-gradient(135deg, #1e3a8a, #0c1e3a);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   color: #ffffff;
   box-shadow: 0 12px 18px -12px rgba(30, 58, 138, 0.8);
 }

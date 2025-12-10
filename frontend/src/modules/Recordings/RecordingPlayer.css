@@ -27,7 +27,7 @@
 .recording-player-shell {
   width: min(1200px, 100%);
   max-height: 90vh;
-  background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 64, 175, 0.92));
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(79, 70, 229, 0.92));
   border-radius: 32px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #e2e8f0;
@@ -247,7 +247,7 @@
 .media-wave .wave-bar {
   width: 6px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #1e3a8a, #0c1e3a);
+  background: linear-gradient(180deg, var(--color-primary), var(--color-primary-dark));
   animation: wave-pulse 1.4s ease-in-out infinite;
   opacity: 0.85;
 }
@@ -340,7 +340,7 @@
 }
 
 .player-action-btn.primary {
-  background: linear-gradient(120deg, #1e3a8a, #0c1e3a);
+  background: linear-gradient(120deg, var(--color-primary), var(--color-primary-dark));
   color: #f8fafc;
   box-shadow: 0 15px 35px rgba(37, 99, 235, 0.35);
 }
