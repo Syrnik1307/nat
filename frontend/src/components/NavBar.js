@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
-import './Navbar.css';
+import './NavBar.css';
 
 const NavBar = () => {
   const { accessTokenValid, role, logout } = useAuth();
