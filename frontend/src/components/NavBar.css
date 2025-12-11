@@ -292,7 +292,7 @@
   }
 
   .burger-button {
-    display: flex;
+    display: flex !important;
     order: 4;
   }
 
@@ -363,7 +363,8 @@
   }
 
   .mobile-menu-overlay {
-    display: block;
+    display: block !important;
+    z-index: 5100 !important;
   }
 }
 
@@ -446,7 +447,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  z-index: 950;
+  z-index: 5300;
 }
 
 .burger-line {
@@ -866,6 +867,7 @@
     padding: 80px 1.5rem 24px;
     align-items: flex-start;
     gap: 0.4rem;
+    z-index: 5200 !important;
   }
 
   /* Мобильный профиль */
