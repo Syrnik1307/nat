@@ -543,7 +543,7 @@ const AttendanceLogPage = () => {
                 >
                   <div className="grid-cell student-cell">
                     <span className="avatar-circle">
-                      {row.student.name?.[0] || '👤'}
+                      {(row.student.name || '?').charAt(0).toUpperCase()}
                     </span>
                     <div className="student-details">
                       <span className="student-name">{row.student.name}</span>

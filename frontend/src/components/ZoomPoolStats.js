@@ -76,7 +76,7 @@ const ZoomPoolStats = () => {
             />
             <span>Автообновление (30с)</span>
           </label>
-          <button onClick={loadStats} className="refresh-btn">🔄 Обновить</button>
+          <button onClick={loadStats} className="refresh-btn">Обновить</button>
         </div>
       </div>
 

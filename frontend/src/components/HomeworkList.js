@@ -54,7 +54,7 @@ const HomeworkList = () => {
                 <div style={{flex:1}}>
                   <strong style={{fontSize:'1.05rem', color:'#1e293b'}}>{hw.title}</strong><br />
                   <div style={{marginTop:'0.5rem', display:'flex', gap:'1rem', alignItems:'center'}}>
-                    <small style={{color:'#64748b'}}>📚 Урок: {hw.lesson || hw.lesson_id || 'Не указан'}</small>
+                    <small style={{color:'#64748b'}}>Урок: {hw.lesson || hw.lesson_id || 'Не указан'}</small>
                     {hw.deadline && (
                       <small style={{color:'#ef4444', fontWeight:'500'}}>
                         ⏰ Срок: {new Date(hw.deadline).toLocaleDateString('ru-RU')}

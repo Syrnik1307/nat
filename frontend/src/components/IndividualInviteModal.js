@@ -119,7 +119,7 @@ const IndividualInviteModal = ({ code, onClose }) => {
               onClick={() => setShowConfirm(true)}
               disabled={regenerating}
             >
-              🔄 Сгенерировать новый код
+              Сгенерировать новый код
             </button>
             <button className="invite-done-btn" onClick={onClose}>
               Закрыть

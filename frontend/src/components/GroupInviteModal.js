@@ -127,7 +127,7 @@ const GroupInviteModal = ({ group, onClose }) => {
             onClick={handleRegenerateClick}
             disabled={regenerating}
           >
-            {regenerating ? 'Генерация...' : '🔄 Создать новый код'}
+            {regenerating ? 'Генерация...' : 'Создать новый код'}
           </button>
           <button className="invite-done-btn" onClick={onClose}>
             Готово

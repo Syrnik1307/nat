@@ -215,7 +215,7 @@ const ChatList = ({ onChatSelect, currentUserId, currentUserRole }) => {
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
             />
-            {loading && <span className="search-loader">🔄</span>}
+            {loading && <span className="search-loader">...</span>}
           </div>
 
           {searchQuery.length > 0 && searchQuery.length < 2 && (
@@ -235,7 +235,7 @@ const ChatList = ({ onChatSelect, currentUserId, currentUserRole }) => {
                   className="search-result-item"
                   onClick={() => createPrivateChat(user.id)}
                 >
-                  <div className="search-result-avatar">👤</div>
+                  <div className="search-result-avatar">{(user.name || '?').charAt(0).toUpperCase()}</div>
                   
                   <div className="search-result-content">
                     <div className="search-result-name">

@@ -169,7 +169,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
                 setChatName('');
               }}
             >
-              📚 Из учебной группы
+              Из учебной группы
             </button>
             <button
               className={`mode-tab ${mode === 'custom' ? 'active' : ''}`}
@@ -208,7 +208,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
           
           {loading && !selectedGroup ? (
             <div className="loading-indicator">
-              <span className="loader-icon">🔄</span>
+              <span className="loader-icon">...</span>
               Загрузка групп...
             </div>
           ) : (

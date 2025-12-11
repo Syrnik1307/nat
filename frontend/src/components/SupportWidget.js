@@ -184,7 +184,7 @@ const SupportWidget = () => {
         {unreadCount > 0 && (
           <span className="support-fab-badge">{unreadCount}</span>
         )}
-        {isOpen ? '✕' : '💬'}
+        {isOpen ? '×' : 'Чат'}
       </button>
 
       {/* Виджет поддержки */}
@@ -196,7 +196,7 @@ const SupportWidget = () => {
               className="support-widget-close"
               onClick={() => setIsOpen(false)}
             >
-              ✕
+              ×
             </button>
           </div>
 

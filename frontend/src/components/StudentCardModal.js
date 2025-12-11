@@ -78,7 +78,9 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
               <h2 className="modal-title">Загрузка...</h2>
             ) : card ? (
               <div className="student-header">
-                <div className="student-avatar-large">👤</div>
+                <div className="student-avatar-large">
+                  {(student?.first_name || student?.name || '?').charAt(0).toUpperCase()}
+                </div>
                 <div className="student-header-info">
                   <h2 className="modal-title">{card.name}</h2>
                   <p className="student-email">{card.email}</p>
@@ -134,7 +136,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
 
                 {!isIndividual && (
                   <div className="stat-card">
-                    <span className="stat-icon">⭐</span>
+                    <span className="stat-icon">•</span>
                     <span className="stat-label">Место в группе</span>
                     <span className="stat-value">—</span>
                     <span className="stat-detail">Из рейтинга группы</span>
