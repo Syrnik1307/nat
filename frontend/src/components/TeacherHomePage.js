@@ -365,14 +365,14 @@ const TeacherHomePage = () => {
             </div>
           </div>
 
-          {/* Groups Section - Premium Cards */}
+          {/* Students & Groups Section */}
           <div className="section-card">
             <div className="section-header">
               <div className="section-title-group">
                 <div className="section-icon-wrapper">
                   <IconUsers size={18} />
                 </div>
-                <h3 className="section-title">Группы</h3>
+                <h3 className="section-title">Ученики</h3>
               </div>
               <Link to="/groups/manage" className="section-link">
                 Управление
@@ -474,79 +474,59 @@ const TeacherHomePage = () => {
             </div>
           </div>
 
-          {/* Progress Card - Expanded */}
-          <div className="progress-card">
-            <div className="progress-header">
-              <div className="progress-icon-wrapper">
-                <IconTarget size={20} />
+          {/* Quick Actions Card */}
+          <div className="quick-actions-card">
+            <div className="quick-actions-header">
+              <div className="quick-actions-icon-wrapper">
+                <IconTrendingUp size={20} />
               </div>
-              <h3 className="progress-title">Прогресс</h3>
+              <h3 className="quick-actions-title">Быстрые действия</h3>
             </div>
             
-            <div className="progress-list">
-              <div className="progress-item">
-                <div className="progress-item-header">
-                  <div className="progress-item-label">
-                    <IconClock size={16} />
-                    <span>Часов на платформе</span>
-                  </div>
-                  <span className="progress-item-value">{Math.round((stats?.portal_minutes || 0) / 60)}</span>
+            <div className="quick-actions-list">
+              <Link to="/groups/manage" className="quick-action-item">
+                <div className="quick-action-icon">
+                  <IconUsers size={18} />
                 </div>
-                <div className="progress-bar-track">
-                  <div 
-                    className="progress-bar-fill"
-                    style={{ width: `${Math.min((stats?.portal_minutes || 0) / 60, 100)}%` }}
-                  ></div>
+                <div className="quick-action-content">
+                  <span className="quick-action-label">Добавить ученика</span>
+                  <span className="quick-action-hint">Создать группу или индивидуального</span>
                 </div>
-              </div>
+                <IconChevronRight size={18} className="quick-action-arrow" />
+              </Link>
 
-              <div className="progress-item">
-                <div className="progress-item-header">
-                  <div className="progress-item-label">
-                    <IconVideo size={16} />
-                    <span>Часов занятий</span>
-                  </div>
-                  <span className="progress-item-value">{Math.round((stats?.teaching_minutes || 0) / 60)}</span>
+              <Link to="/recurring-lessons/manage" className="quick-action-item">
+                <div className="quick-action-icon">
+                  <IconCalendar size={18} />
                 </div>
-                <div className="progress-bar-track">
-                  <div 
-                    className="progress-bar-fill"
-                    style={{ width: `${Math.min((stats?.teaching_minutes || 0) / 60, 100)}%` }}
-                  ></div>
+                <div className="quick-action-content">
+                  <span className="quick-action-label">Расписание</span>
+                  <span className="quick-action-hint">Настроить регулярные занятия</span>
                 </div>
-              </div>
+                <IconChevronRight size={18} className="quick-action-arrow" />
+              </Link>
 
-              <div className="progress-item">
-                <div className="progress-item-header">
-                  <div className="progress-item-label">
-                    <IconFolder size={16} />
-                    <span>Активные группы</span>
-                  </div>
-                  <span className="progress-item-value">{stats?.total_groups || 0}</span>
+              <Link to="/recordings" className="quick-action-item">
+                <div className="quick-action-icon">
+                  <IconDisc size={18} />
                 </div>
-                <div className="progress-bar-track">
-                  <div 
-                    className="progress-bar-fill"
-                    style={{ width: `${Math.min((stats?.total_groups || 0) * 20, 100)}%` }}
-                  ></div>
+                <div className="quick-action-content">
+                  <span className="quick-action-label">Записи уроков</span>
+                  <span className="quick-action-hint">Просмотреть и поделиться</span>
                 </div>
-              </div>
+                <IconChevronRight size={18} className="quick-action-arrow" />
+              </Link>
 
-              <div className="progress-item">
-                <div className="progress-item-header">
-                  <div className="progress-item-label">
-                    <IconUsers size={16} />
-                    <span>Всего учеников</span>
-                  </div>
-                  <span className="progress-item-value">{stats?.total_students || 0}</span>
+              <Link to="/homework" className="quick-action-item">
+                <div className="quick-action-icon">
+                  <IconBook size={18} />
                 </div>
-                <div className="progress-bar-track">
-                  <div 
-                    className="progress-bar-fill"
-                    style={{ width: `${Math.min((stats?.total_students || 0) * 5, 100)}%` }}
-                  ></div>
+                <div className="quick-action-content">
+                  <span className="quick-action-label">Домашние задания</span>
+                  <span className="quick-action-hint">Создать и проверить ДЗ</span>
                 </div>
-              </div>
+                <IconChevronRight size={18} className="quick-action-arrow" />
+              </Link>
             </div>
           </div>
         </div>
@@ -653,11 +633,11 @@ const globalStyles = `
   /* === GRID LAYOUT === */
   .dashboard-grid {
     display: grid;
-    grid-template-columns: 1fr 360px;
+    grid-template-columns: 1fr 340px;
     gap: 1.5rem;
     max-width: 1240px;
     margin: 0 auto;
-    align-items: start;
+    align-items: stretch;
   }
 
   .dashboard-left {
@@ -670,8 +650,6 @@ const globalStyles = `
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    position: sticky;
-    top: 1.5rem;
   }
 
   /* === HERO CARD === */
@@ -925,8 +903,8 @@ const globalStyles = `
   /* === GROUPS GRID === */
   .groups-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.875rem;
   }
 
   .group-card {
@@ -939,6 +917,7 @@ const globalStyles = `
     border: 1px solid var(--color-border);
     transition: all 0.25s ease;
     position: relative;
+    height: 100%;
   }
 
   .group-card:hover {
@@ -948,12 +927,13 @@ const globalStyles = `
   }
 
   .group-cover {
-    height: 72px;
+    height: 64px;
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
     overflow: hidden;
+    flex-shrink: 0;
   }
 
   .group-cover-0 { background: linear-gradient(135deg, var(--indigo-600), var(--indigo-400)); }
@@ -979,13 +959,17 @@ const globalStyles = `
   }
 
   .group-name {
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--color-text-primary);
     margin: 0 0 0.5rem 0;
-    white-space: nowrap;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
+    word-break: break-word;
+    min-height: 2.4em;
   }
 
   .group-meta {
@@ -1132,23 +1116,24 @@ const globalStyles = `
     letter-spacing: 0.4px;
   }
 
-  /* === PROGRESS CARD (Expanded) === */
-  .progress-card {
+  /* === QUICK ACTIONS CARD === */
+  .quick-actions-card {
     background: var(--color-card);
     border-radius: var(--radius-lg);
     padding: 1.5rem;
     box-shadow: var(--shadow-md);
     border: 1px solid var(--color-border);
+    flex: 1;
   }
 
-  .progress-header {
+  .quick-actions-header {
     display: flex;
     align-items: center;
     gap: 0.625rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
   }
 
-  .progress-icon-wrapper {
+  .quick-actions-icon-wrapper {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1159,62 +1144,76 @@ const globalStyles = `
     color: var(--indigo-600);
   }
 
-  .progress-title {
+  .quick-actions-title {
     font-size: 1rem;
     font-weight: 600;
     color: var(--color-text-primary);
     margin: 0;
   }
 
-  .progress-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-  }
-
-  .progress-item {
+  .quick-actions-list {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
   }
 
-  .progress-item-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .progress-item-label {
+  .quick-action-item {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.8rem;
-    color: var(--color-text-secondary);
-    font-weight: 500;
+    gap: 0.875rem;
+    padding: 0.875rem 1rem;
+    background: var(--slate-50);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
   }
 
-  .progress-item-label svg {
-    color: var(--indigo-400);
+  .quick-action-item:hover {
+    background: var(--indigo-50);
+    border-color: var(--indigo-200);
   }
 
-  .progress-item-value {
-    font-size: 0.8rem;
-    color: var(--color-text-primary);
+  .quick-action-item:hover .quick-action-arrow {
+    transform: translateX(3px);
+    color: var(--color-primary);
+  }
+
+  .quick-action-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: var(--indigo-100);
+    border-radius: var(--radius-sm);
+    color: var(--indigo-600);
+    flex-shrink: 0;
+  }
+
+  .quick-action-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .quick-action-label {
+    font-size: 0.875rem;
     font-weight: 600;
+    color: var(--color-text-primary);
   }
 
-  .progress-bar-track {
-    height: 6px;
-    background: var(--slate-100);
-    border-radius: 100px;
-    overflow: hidden;
+  .quick-action-hint {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
   }
 
-  .progress-bar-fill {
-    height: 100%;
-    background: var(--gradient-primary);
-    border-radius: 100px;
-    transition: width 0.5s ease;
+  .quick-action-arrow {
+    color: var(--color-text-muted);
+    transition: all 0.2s ease;
+    flex-shrink: 0;
   }
 
   /* === RESPONSIVE === */
@@ -1224,7 +1223,6 @@ const globalStyles = `
     }
 
     .dashboard-right {
-      position: static;
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 1rem;
@@ -1245,7 +1243,7 @@ const globalStyles = `
     }
 
     .groups-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(2, 1fr);
     }
 
     .dashboard-right {
@@ -1253,7 +1251,15 @@ const globalStyles = `
     }
 
     .stats-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .quick-actions-list {
+      gap: 0.375rem;
+    }
+
+    .quick-action-hint {
+      display: none;
     }
   }
 
