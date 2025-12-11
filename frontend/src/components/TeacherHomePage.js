@@ -702,37 +702,14 @@ const globalStyles = `
     --radius-xl: 18px;
   }
 
-  /* === DASHBOARD CONTAINER - Aurora Background === */
+  /* === DASHBOARD CONTAINER === */
   .dashboard-container {
     font-family: var(--font-family);
-    background: radial-gradient(circle at 20% 20%, rgba(224, 231, 255, 0.5), transparent 40%),
-                radial-gradient(circle at 80% 10%, rgba(221, 214, 254, 0.45), transparent 40%),
-                radial-gradient(circle at 40% 80%, rgba(191, 219, 254, 0.35), transparent 45%),
-                #f8fafc;
+    background: transparent;
     min-height: 100vh;
     padding: 1.5rem;
     position: relative;
     overflow-x: hidden;
-  }
-
-  .dashboard-container::before {
-    content: '';
-    position: fixed;
-    inset: -15%;
-    background: radial-gradient(780px at 15% 20%, rgba(224, 231, 255, 0.5), transparent 55%),
-                radial-gradient(720px at 85% 5%, rgba(221, 214, 254, 0.45), transparent 55%),
-                radial-gradient(760px at 40% 85%, rgba(191, 219, 254, 0.35), transparent 60%);
-    filter: blur(60px);
-    opacity: 0.75;
-    animation: auroraFloat 18s ease-in-out infinite alternate;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  @keyframes auroraFloat {
-    0% { transform: translate3d(0, 0, 0) scale(1); }
-    50% { transform: translate3d(4%, -3%, 0) scale(1.05); }
-    100% { transform: translate3d(-3%, 4%, 0) scale(1.02); }
   }
 
   .dashboard-container > * {
