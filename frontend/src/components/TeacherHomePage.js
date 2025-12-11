@@ -112,6 +112,61 @@ const IconGraduationCap = ({ size = 24, className = '' }) => (
   </svg>
 );
 
+const IconBeaker = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M4.5 3h15M6 3v15.4a2 2 0 0 0 .7 1.5l4.6 4.3a2 2 0 0 0 2.8 0l4.6-4.3a2 2 0 0 0 .7-1.5V3"/>
+    <path d="M6 14h12"/>
+  </svg>
+);
+
+const IconCalculator = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect width="16" height="20" x="4" y="2" rx="2"/>
+    <line x1="8" x2="16" y1="6" y2="6"/>
+    <line x1="16" x2="16" y1="14" y2="14"/>
+    <path d="M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"/>
+  </svg>
+);
+
+const IconLanguages = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/>
+  </svg>
+);
+
+const IconPalette = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
+    <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+    <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
+    <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
+    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+  </svg>
+);
+
+const IconMusic = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M9 18V5l12-2v13"/>
+    <circle cx="6" cy="18" r="3"/>
+    <circle cx="18" cy="16" r="3"/>
+  </svg>
+);
+
+const IconAtom = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="1"/>
+    <path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5Z"/>
+    <path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5Z"/>
+  </svg>
+);
+
+const IconCode = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="16 18 22 12 16 6"/>
+    <polyline points="8 6 2 12 8 18"/>
+  </svg>
+);
+
 // =====================================================
 // MAIN COMPONENT
 // =====================================================
@@ -199,6 +254,49 @@ const TeacherHomePage = () => {
   const getGroupColorIndex = (name) => {
     const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return hash % 6;
+  };
+
+  // Smart icon selection based on group name
+  const getGroupIcon = (name) => {
+    const lowerName = name.toLowerCase();
+    
+    // Математика
+    if (lowerName.includes('математ') || lowerName.includes('алгебр') || lowerName.includes('геометр')) {
+      return <IconCalculator size={28} className="group-cover-icon" />;
+    }
+    // Физика, Химия, Биология
+    if (lowerName.includes('физик') || lowerName.includes('хими') || lowerName.includes('биолог')) {
+      return <IconBeaker size={28} className="group-cover-icon" />;
+    }
+    // Информатика, Программирование
+    if (lowerName.includes('информат') || lowerName.includes('программ') || lowerName.includes('it') || lowerName.includes('код')) {
+      return <IconCode size={28} className="group-cover-icon" />;
+    }
+    // Языки
+    if (lowerName.includes('язык') || lowerName.includes('english') || lowerName.includes('русск') || lowerName.includes('литерат')) {
+      return <IconLanguages size={28} className="group-cover-icon" />;
+    }
+    // Музыка
+    if (lowerName.includes('музык') || lowerName.includes('вокал') || lowerName.includes('гитар')) {
+      return <IconMusic size={28} className="group-cover-icon" />;
+    }
+    // Искусство, Рисование
+    if (lowerName.includes('рисован') || lowerName.includes('искусств') || lowerName.includes('живопис')) {
+      return <IconPalette size={28} className="group-cover-icon" />;
+    }
+    // Физика (атом)
+    if (lowerName.includes('атом') || lowerName.includes('ядерн')) {
+      return <IconAtom size={28} className="group-cover-icon" />;
+    }
+    
+    // По умолчанию - выпускной колпак
+    return <IconGraduationCap size={28} className="group-cover-icon" />;
+  };
+
+  // Clean group name from emojis
+  const cleanGroupName = (name) => {
+    // Remove all emojis and extra spaces
+    return name.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
   };
 
   if (loading) {
@@ -383,6 +481,7 @@ const TeacherHomePage = () => {
               {groups.length > 0 ? (
                 groups.map((group) => {
                   const colorIndex = getGroupColorIndex(group.name);
+                  const cleanName = cleanGroupName(group.name);
                   return (
                     <Link
                       key={group.id}
@@ -390,7 +489,7 @@ const TeacherHomePage = () => {
                       className="group-card"
                     >
                       <div className={`group-cover group-cover-${colorIndex}`}>
-                        <IconGraduationCap size={28} className="group-cover-icon" />
+                        {getGroupIcon(group.name)}
                         <svg className="group-pattern" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
                           <defs>
                             <pattern id={`pattern-${group.id}`} x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
@@ -401,7 +500,7 @@ const TeacherHomePage = () => {
                         </svg>
                       </div>
                       <div className="group-body">
-                        <h4 className="group-name">{group.name}</h4>
+                        <h4 className="group-name">{cleanName}</h4>
                         <div className="group-meta">
                           <IconUser size={14} />
                           <span>{group.students?.length || 0} учеников</span>
