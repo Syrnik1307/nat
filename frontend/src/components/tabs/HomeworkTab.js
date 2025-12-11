@@ -132,9 +132,9 @@ const HomeworkTab = ({ groupId }) => {
                   alignItems: 'center',
                   gap: '0.5rem'
                 }}>
-                  <span>👤 {submission.student_name || 'Ученик'}</span>
+                  <span>{submission.student_name || 'Ученик'}</span>
                   {submission.submitted_at && (
-                    <span>• 📅 {new Date(submission.submitted_at).toLocaleDateString('ru-RU')}</span>
+                    <span>- {new Date(submission.submitted_at).toLocaleDateString('ru-RU')}</span>
                   )}
                 </div>
               </div>

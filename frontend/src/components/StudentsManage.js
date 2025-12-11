@@ -133,11 +133,11 @@ const StudentsManage = ({ onClose }) => {
     <div className="students-manage-overlay" onClick={onClose}>
       <div className="students-manage-modal" onClick={(e) => e.stopPropagation()}>
         <div className="sm-header">
-          <h2>🎓 Управление учениками</h2>
-          <button className="sm-refresh" onClick={loadStudents} title="Обновить список">
-            🔄
-          </button>
-          <button className="sm-close" onClick={onClose}>✕</button>
+            <h2>Управление учениками</h2>
+            <button className="sm-refresh" onClick={loadStudents} title="Обновить список">
+              Обновить
+            </button>
+            <button className="sm-close" onClick={onClose}>X</button>
         </div>
 
         <div className="sm-content">

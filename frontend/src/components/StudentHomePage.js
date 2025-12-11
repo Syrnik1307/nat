@@ -131,7 +131,7 @@ const StudentHomePage = () => {
 
           {/* Today's status */}
           <div className="student-today-status">
-            <div className="student-status-icon">📅</div>
+            <div className="student-status-icon">CAL</div>
             <div className="student-status-content">
               <h3>Сегодня</h3>
               <p className="student-status-date">{formatTodayDate()}</p>
@@ -139,7 +139,7 @@ const StudentHomePage = () => {
           </div>
 
           <div className="student-lessons-today">
-            <span className="student-lessons-icon">{hasLessonsToday ? '✨' : '🌙'}</span>
+            <span className="student-lessons-icon">{hasLessonsToday ? '+' : '-'}</span>
             <p className="student-status-message">{message}</p>
           </div>
 
@@ -165,7 +165,7 @@ const StudentHomePage = () => {
                 {groups.map(group => (
                   <div key={group.id} className="student-course-card">
                     <div className="student-course-header">
-                      <div className="student-course-icon">📚</div>
+                      <div className="student-course-icon">COURSE</div>
                       <div className="student-course-info">
                         <h3>{group.name}</h3>
                         <p className="student-course-teacher">
@@ -176,7 +176,7 @@ const StudentHomePage = () => {
                     
                     <div className="student-course-meta">
                       <span className="student-course-students">
-                        👥 {group.student_count || 0} {getStudentsText(group.student_count || 0)}
+                        {group.student_count || 0} {getStudentsText(group.student_count || 0)}
                       </span>
                     </div>
 

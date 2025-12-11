@@ -77,9 +77,9 @@ const GroupRatingTab = ({ groupId, onStudentClick }) => {
               <tr key={student.student_id} className="rating-row">
                 <td className="place-col">
                   <div className="place-badge">
-                    {index === 0 && '🥇'}
-                    {index === 1 && '🥈'}
-                    {index === 2 && '🥉'}
+                    {index === 0 && <span className="place-medal">1</span>}
+                    {index === 1 && <span className="place-medal">2</span>}
+                    {index === 2 && <span className="place-medal">3</span>}
                     {index > 2 && <span className="place-number">{index + 1}</span>}
                   </div>
                 </td>
@@ -88,7 +88,7 @@ const GroupRatingTab = ({ groupId, onStudentClick }) => {
                     className="student-link"
                     onClick={() => onStudentClick && onStudentClick(student.student_id, groupId)}
                   >
-                    <span className="student-avatar">👤</span>
+                    <span className="student-avatar">{(student.student_name || '?').charAt(0).toUpperCase()}</span>
                     <div className="student-info">
                       <span className="name">{student.student_name}</span>
                       <span className="email">{student.email}</span>

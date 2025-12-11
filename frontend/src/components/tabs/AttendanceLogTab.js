@@ -262,7 +262,7 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
                         className="student-summary"
                         onClick={() => onStudentClick && onStudentClick(row.student.id, groupId)}
                       >
-                        <span className="avatar-circle">{row.student.name?.[0] || '👤'}</span>
+                        <span className="avatar-circle">{row.student.name?.[0] || '?'}</span>
                         <span className="student-info">
                           <span className="student-name">{row.student.name}</span>
                           <span className="student-email">{row.student.email}</span>

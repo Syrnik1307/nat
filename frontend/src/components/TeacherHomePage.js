@@ -316,7 +316,7 @@ const TeacherHomePage = () => {
                 disabled={starting}
               >
                 <IconPlay size={18} />
-                <span>Запустить Zoom</span>
+                <span>Запустить урок</span>
               </button>
             </div>
           </div>
