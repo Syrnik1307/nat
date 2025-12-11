@@ -1,22 +1,22 @@
 /* ================================================
-   NORDIC AURORA NAVIGATION BAR
+   PREMIUM MINIMALIST NAVIGATION BAR - REDESIGNED
    ================================================ */
 
 .navbar-new {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
   position: sticky;
   top: 0;
   z-index: 1000;
-  box-shadow: 0 1px 3px rgba(108, 99, 255, 0.04);
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.04);
   transition: all 0.3s ease;
 }
 
 .navbar-new:hover {
-  box-shadow: 0 4px 20px rgba(108, 99, 255, 0.1);
-  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.08);
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .navbar-container {
@@ -39,9 +39,9 @@
 
 .navbar-logo h1 {
   font-size: clamp(1.5rem, 3vw, 1.75rem);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  font-family: 'Outfit', 'Space Grotesk', var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-family: 'Plus Jakarta Sans', var(--font-display);
   margin: 0;
   display: inline-flex;
   align-items: baseline;
@@ -49,13 +49,13 @@
 }
 
 .navbar-logo h1 .brand-primary {
-  color: #6C63FF; /* Nordic Purple */
-  font-weight: 700;
+  color: #4f46e5; /* Indigo-600 */
+  font-weight: 800;
 }
 
 .navbar-logo h1 .brand-secondary {
-  color: #8B97A8; /* Balanced Gray */
-  font-weight: 500;
+  color: #94a3b8; /* Slate-400 */
+  font-weight: 600;
 }
 
 /* Center: Navigation Links - LARGER */
@@ -83,14 +83,14 @@
 }
 
 .navbar-link:hover {
-  background: rgba(108, 99, 255, 0.06);
-  color: #6C63FF;
+  background: var(--bg-secondary);
+  color: var(--color-primary);
 }
 
-/* Active Link - Nordic Purple indicator */
+/* Active Link - Indigo with subtle indicator */
 .navbar-link.active {
-  background: rgba(108, 99, 255, 0.1);
-  color: #6C63FF;
+  background: rgba(79, 70, 229, 0.08);
+  color: var(--color-primary);
   font-weight: 600;
 }
 
