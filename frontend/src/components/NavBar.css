@@ -298,7 +298,7 @@
     display: flex !important;
     order: 2;
     position: relative;
-    z-index: 5300;
+    z-index: 100000;
     margin-left: auto !important;
     flex-shrink: 0;
     width: 36px;
@@ -348,7 +348,7 @@
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     transition: right 0.3s ease;
-    z-index: 5200;
+    z-index: 99999;
   }
 
   .navbar-menu.mobile-open {
@@ -399,7 +399,7 @@
 
   .mobile-menu-overlay {
     display: block !important;
-    z-index: 5100 !important;
+    z-index: 99998 !important;
   }
 }
 
@@ -867,7 +867,7 @@
     flex-direction: column;
     justify-content: space-between;
     flex-shrink: 0;
-    z-index: 5300;
+    z-index: 100000;
     position: relative;
     transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
   }
@@ -904,7 +904,7 @@
     padding: 80px 1.5rem 24px;
     align-items: flex-start;
     gap: 0.4rem;
-    z-index: 5200 !important;
+    z-index: 99999 !important;
   }
 
   /* Мобильный профиль */
