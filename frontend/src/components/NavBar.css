@@ -279,6 +279,9 @@
     padding: 0 1rem;
     height: 60px;
     gap: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .navbar-logo {
@@ -294,6 +297,10 @@
   .burger-button {
     display: flex !important;
     order: 4;
+    position: relative;
+    z-index: 5300;
+    margin-left: auto;
+    flex-shrink: 0;
   }
 
   .navbar-menu {
@@ -817,9 +824,9 @@
     display: none;
   }
 
-  .burger-button {
-    display: flex;
-    order: 3;
+  .navbar .burger-button {
+    display: flex !important;
+    order: 4;
     margin-left: auto;
     width: 46px;
     height: 46px;
@@ -832,6 +839,8 @@
     flex-direction: column;
     justify-content: space-between;
     flex-shrink: 0;
+    z-index: 5300;
+    position: relative;
     transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
   }
 
@@ -902,6 +911,15 @@
 /* Скрыть мобильную секцию на десктопе */
 .mobile-profile-section {
   display: none;
+}
+
+/* Специальный медиазапрос для всех мобильных устройств */
+@media screen and (max-width: 768px) {
+  .navbar .burger-button {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
 }
 
 
