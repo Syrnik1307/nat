@@ -641,14 +641,14 @@ const TeacherHomePage = () => {
 
 /* =====================================================
    GLOBAL STYLES - Enterprise Indigo Theme
-   NO EMOJIS, Professional Design
+   Aurora Background + Glass Cards
    ===================================================== */
 const globalStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
   /* === CSS VARIABLES - INDIGO THEME === */
   :root {
-    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     
     /* Indigo Color Palette */
     --indigo-50: #eef2ff;
@@ -702,12 +702,42 @@ const globalStyles = `
     --radius-xl: 18px;
   }
 
-  /* === DASHBOARD CONTAINER === */
+  /* === DASHBOARD CONTAINER - Aurora Background === */
   .dashboard-container {
     font-family: var(--font-family);
-    background: var(--color-bg);
+    background: radial-gradient(circle at 20% 20%, rgba(224, 231, 255, 0.5), transparent 40%),
+                radial-gradient(circle at 80% 10%, rgba(221, 214, 254, 0.45), transparent 40%),
+                radial-gradient(circle at 40% 80%, rgba(191, 219, 254, 0.35), transparent 45%),
+                #f8fafc;
     min-height: 100vh;
     padding: 1.5rem;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  .dashboard-container::before {
+    content: '';
+    position: fixed;
+    inset: -15%;
+    background: radial-gradient(780px at 15% 20%, rgba(224, 231, 255, 0.5), transparent 55%),
+                radial-gradient(720px at 85% 5%, rgba(221, 214, 254, 0.45), transparent 55%),
+                radial-gradient(760px at 40% 85%, rgba(191, 219, 254, 0.35), transparent 60%);
+    filter: blur(60px);
+    opacity: 0.75;
+    animation: auroraFloat 18s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @keyframes auroraFloat {
+    0% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(4%, -3%, 0) scale(1.05); }
+    100% { transform: translate3d(-3%, 4%, 0) scale(1.02); }
+  }
+
+  .dashboard-container > * {
+    position: relative;
+    z-index: 1;
   }
 
   /* === LOADING STATE === */
@@ -847,13 +877,25 @@ const globalStyles = `
     transform: none;
   }
 
-  /* === SECTION CARD === */
+  /* === SECTION CARD - Glass Morphism === */
   .section-card {
-    background: var(--color-card);
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     border-radius: var(--radius-lg);
     padding: 1.5rem;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--color-border);
+    box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
+                0 10px 25px -5px rgba(0, 0, 0, 0.06),
+                0 0 20px rgba(79, 70, 229, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .section-card:hover {
+    box-shadow: 0 30px 60px -14px rgba(79, 70, 229, 0.18),
+                0 0 25px rgba(79, 70, 229, 0.15);
+    transform: translateY(-4px) scale(1.01);
+    border-color: rgba(79, 70, 229, 0.2);
   }
 
   .section-header {
@@ -1133,13 +1175,25 @@ const globalStyles = `
     text-decoration: underline;
   }
 
-  /* === STATS CARD (Expanded) === */
+  /* === STATS CARD (Glass Morphism) === */
   .stats-card {
-    background: var(--color-card);
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     border-radius: var(--radius-lg);
     padding: 1.5rem;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--color-border);
+    box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
+                0 10px 25px -5px rgba(0, 0, 0, 0.06),
+                0 0 20px rgba(79, 70, 229, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .stats-card:hover {
+    box-shadow: 0 30px 60px -14px rgba(79, 70, 229, 0.18),
+                0 0 25px rgba(79, 70, 229, 0.15);
+    transform: translateY(-4px) scale(1.01);
+    border-color: rgba(79, 70, 229, 0.2);
   }
 
   .stats-header {
@@ -1226,14 +1280,26 @@ const globalStyles = `
     display: block;
   }
 
-  /* === QUICK ACTIONS CARD === */
+  /* === QUICK ACTIONS CARD (Glass Morphism) === */
   .quick-actions-card {
-    background: var(--color-card);
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     border-radius: var(--radius-lg);
     padding: 1.5rem;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--color-border);
+    box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
+                0 10px 25px -5px rgba(0, 0, 0, 0.06),
+                0 0 20px rgba(79, 70, 229, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.6);
     flex: 1;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .quick-actions-card:hover {
+    box-shadow: 0 30px 60px -14px rgba(79, 70, 229, 0.18),
+                0 0 25px rgba(79, 70, 229, 0.15);
+    transform: translateY(-4px) scale(1.01);
+    border-color: rgba(79, 70, 229, 0.2);
   }
 
   .quick-actions-header {
