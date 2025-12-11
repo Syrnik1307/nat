@@ -296,15 +296,43 @@
 
   .burger-button {
     display: flex !important;
-    order: 4;
+    order: 2;
     position: relative;
     z-index: 5300;
-    margin-left: auto;
+    margin-left: auto !important;
     flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: none;
+    border: none;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  .burger-button .burger-line {
+    width: 28px;
+    height: 3px;
+    background: var(--color-primary);
+    border-radius: 3px;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+
+  .burger-button.open .burger-line:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+  }
+
+  .burger-button.open .burger-line:nth-child(2) {
+    opacity: 0;
+  }
+
+  .burger-button.open .burger-line:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
   }
 
   .navbar-menu {
-    order: 3;
+    order: 4;
     position: fixed;
     top: 0;
     right: -100%;

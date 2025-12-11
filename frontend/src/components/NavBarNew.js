@@ -234,6 +234,18 @@ const NavBar = () => {
           <Logo size={40} withText={true} />
         </Link>
 
+        {/* Burger button для мобильных - ПЕРЕД меню */}
+        <button 
+          className={`burger-button ${showMobileMenu ? 'open' : ''}`}
+          onClick={() => setShowMobileMenu(!showMobileMenu)}
+          aria-label="Toggle menu"
+          style={{ display: 'none' }}
+        >
+          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
+          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
+          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
+        </button>
+
         {/* Навигационное меню */}
         <div className={`navbar-menu ${showMobileMenu ? 'mobile-open' : ''}`}>
           {/* Общие пункты */}
@@ -476,17 +488,6 @@ const NavBar = () => {
             </div>
           )}
         </div>
-
-        {/* Burger button для мобильных */}
-        <button 
-          className={`burger-button ${showMobileMenu ? 'open' : ''}`}
-          onClick={() => setShowMobileMenu(!showMobileMenu)}
-          aria-label="Toggle menu"
-        >
-          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
-          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
-          <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
-        </button>
 
         {/* Overlay для закрытия меню */}
         {showMobileMenu && (
