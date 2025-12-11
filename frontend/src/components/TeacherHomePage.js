@@ -1171,20 +1171,23 @@ const globalStyles = `
 
   .stats-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
   }
 
   .stat-tile {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.625rem;
+    justify-content: center;
+    text-align: center;
+    gap: 0.5rem;
     background: var(--slate-50);
     border-radius: var(--radius-md);
-    padding: 0.875rem;
+    padding: 1rem 0.75rem;
     border: 1px solid var(--color-border);
     transition: all 0.2s;
-    min-height: 76px;
+    min-height: 90px;
   }
 
   .stat-tile:hover {
@@ -1196,8 +1199,8 @@ const globalStyles = `
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     background: var(--indigo-100);
     border-radius: var(--radius-sm);
     color: var(--indigo-600);
@@ -1205,17 +1208,17 @@ const globalStyles = `
   }
 
   .stat-content {
-    min-width: 0;
-    flex: 1;
-    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .stat-value {
-    font-size: 1.5rem;
+    font-size: 1.375rem;
     font-weight: 700;
     color: var(--color-text-primary);
     line-height: 1;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.125rem;
   }
 
   .stat-label {
