@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../auth';
-import { getTeacherStatsSummary, getLessons, getGroups, quickStartLesson } from '../apiService';
+import { getTeacherStatsSummary, getLessons, getGroups, startQuickLesson } from '../apiService';
 import { Link } from 'react-router-dom';
 import SubscriptionBanner from './SubscriptionBanner';
 
@@ -341,7 +341,7 @@ const TeacherHomePage = () => {
     if (starting) return;
     setStarting(true);
     try {
-      const res = await quickStartLesson();
+      const res = await startQuickLesson();
       if (res.data?.zoom_start_url) {
         window.open(res.data.zoom_start_url, '_blank');
       } else if (res.data?.start_url) {
