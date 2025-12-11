@@ -293,11 +293,14 @@ const TeacherHomePage = () => {
     return <IconGraduationCap size={28} className="group-cover-icon" />;
   };
 
-  // Clean group name from emojis
+  // Clean group name from emojis and decorative symbols
   const cleanGroupName = (name) => {
-    // Remove emojis - simple and reliable method
-    // This removes all characters outside basic Latin/Cyrillic ranges
-    return name.replace(/[^\w\s\u0400-\u04FF.,!?()-]/g, '').replace(/\s+/g, ' ').trim();
+    if (!name) return '';
+    // Keep only letters, numbers, whitespace and basic punctuation (Unicode aware)
+    return name
+      .replace(/[^\p{L}\p{N}\s.,!?()-]/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   };
 
   if (loading) {
