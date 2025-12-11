@@ -437,20 +437,11 @@ const TeacherHomePage = () => {
             <div className="stats-grid">
               <div className="stat-tile">
                 <div className="stat-icon">
-                  <IconClock size={20} />
+                  <IconBook size={20} />
                 </div>
                 <div className="stat-content">
-                  <div className="stat-value">{stats?.portal_minutes || 0}</div>
-                  <div className="stat-label">Минут на платформе</div>
-                </div>
-              </div>
-              <div className="stat-tile">
-                <div className="stat-icon">
-                  <IconVideo size={20} />
-                </div>
-                <div className="stat-content">
-                  <div className="stat-value">{stats?.teaching_minutes || 0}</div>
-                  <div className="stat-label">Минут занятий</div>
+                  <div className="stat-value">{stats?.total_lessons || 0}</div>
+                  <div className="stat-label">Уроков проведено</div>
                 </div>
               </div>
               <div className="stat-tile">
@@ -469,6 +460,15 @@ const TeacherHomePage = () => {
                 <div className="stat-content">
                   <div className="stat-value">{stats?.total_groups || 0}</div>
                   <div className="stat-label">Групп</div>
+                </div>
+              </div>
+              <div className="stat-tile">
+                <div className="stat-icon">
+                  <IconCalendar size={20} />
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">{stats?.upcoming_lessons?.length || 0}</div>
+                  <div className="stat-label">Ближайшие</div>
                 </div>
               </div>
             </div>
