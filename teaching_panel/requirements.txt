@@ -14,6 +14,17 @@ django-celery-beat>=2.8.0
 django-recaptcha>=4.1.0
 yookassa>=3.0.0
 
+# Async workers for high concurrency (gevent for Gunicorn)
+gevent>=23.9.0
+greenlet>=3.0.0
+
+# Database connection pooling (production)
+dj-database-url>=2.1.0
+psycopg2-binary>=2.9.9
+
+# Error monitoring (production)
+sentry-sdk>=1.39.0
+
 # Google Drive API для хранения записей уроков
 google-auth==2.25.2
 google-auth-oauthlib==1.2.0

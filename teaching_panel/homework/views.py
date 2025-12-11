@@ -143,12 +143,18 @@ class HomeworkViewSet(viewsets.ModelViewSet):
             # Используем локальное хранение вместо Google Drive
             import os
             import time
+            import uuid
             from django.conf import settings
+            from django.utils.text import get_valid_filename
             
-            # Формируем имя файла: homework_teacher123_timestamp_filename.jpg
+            # БЕЗОПАСНАЯ санитизация имени файла (защита от Path Traversal)
             timestamp = int(time.time())
-            safe_name = uploaded_file.name.replace(' ', '_').replace('..', '')
-            file_name = f"homework_teacher{request.user.id}_{timestamp}_{safe_name}"
+            # 1. Убираем путь (../../../etc/passwd → passwd)
+            original_name = os.path.basename(uploaded_file.name)
+            # 2. Удаляем все опасные символы
+            safe_name = get_valid_filename(original_name)
+            # 3. Добавляем уникальный идентификатор для предотвращения коллизий
+            file_name = f"homework_teacher{request.user.id}_{timestamp}_{uuid.uuid4().hex[:8]}_{safe_name}"
             
             # Создаём директорию для homework файлов
             homework_media_dir = os.path.join(settings.MEDIA_ROOT, 'homework_files')

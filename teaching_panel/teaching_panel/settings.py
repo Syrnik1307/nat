@@ -43,11 +43,26 @@ if SECRET_KEY == 'django-insecure-your-secret-key-change-this-in-production':
     )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
+# Default to False for security - explicitly set DEBUG=True for development
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-# Dev/testing: allow all hosts to let ngrok validation pass
-# Force allow all hosts (ngrok webhook validation)
-ALLOWED_HOSTS = ['*']
+# ALLOWED_HOSTS - configure via environment variable in production
+# For development: ALLOWED_HOSTS='localhost,127.0.0.1'
+# For production: ALLOWED_HOSTS='yourdomain.com,api.yourdomain.com'
+_allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', '')
+if _allowed_hosts_env:
+    ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
+elif DEBUG:
+    # Only allow localhost in development mode
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]']
+else:
+    # Production with no ALLOWED_HOSTS set - fail safely
+    ALLOWED_HOSTS = []
+    import warnings
+    warnings.warn(
+        "CRITICAL: No ALLOWED_HOSTS configured for production! Set ALLOWED_HOSTS environment variable.",
+        RuntimeWarning
+    )
 
 # Отключаем проверку тестовых ключей reCAPTCHA для разработки
 SILENCED_SYSTEM_CHECKS = ['django_recaptcha.recaptcha_test_key_error']
@@ -277,10 +292,19 @@ SIMPLE_JWT = {
 }
 
 # Zoom API settings (Server-to-Server OAuth)
-ZOOM_ACCOUNT_ID = os.environ.get('ZOOM_ACCOUNT_ID', '6w5GrnCgSgaHwMFFbhmlKw')
-ZOOM_CLIENT_ID = os.environ.get('ZOOM_CLIENT_ID', 'vNl9EzZTy6h2UifsGVERg')
-ZOOM_CLIENT_SECRET = os.environ.get('ZOOM_CLIENT_SECRET', 'jqMJb4R3UgOQ1Q2FEHtkv6Tkz3CxNX87')
-ZOOM_WEBHOOK_SECRET_TOKEN = os.environ.get('ZOOM_WEBHOOK_SECRET_TOKEN', '2ocO-3htS8Sl1tVpEtZ2_A')
+# CRITICAL: Never hardcode credentials! Use environment variables.
+ZOOM_ACCOUNT_ID = os.environ.get('ZOOM_ACCOUNT_ID', '')
+ZOOM_CLIENT_ID = os.environ.get('ZOOM_CLIENT_ID', '')
+ZOOM_CLIENT_SECRET = os.environ.get('ZOOM_CLIENT_SECRET', '')
+ZOOM_WEBHOOK_SECRET_TOKEN = os.environ.get('ZOOM_WEBHOOK_SECRET_TOKEN', '')
+
+# Warn if Zoom credentials not configured
+if not ZOOM_ACCOUNT_ID or not ZOOM_CLIENT_ID or not ZOOM_CLIENT_SECRET:
+    import warnings
+    warnings.warn(
+        "WARNING: Zoom API credentials not configured! Set ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET environment variables.",
+        RuntimeWarning
+    )
 
 # Legacy JWT settings (deprecated by Zoom, but kept for backwards compatibility)
 ZOOM_API_KEY = os.environ.get('ZOOM_API_KEY', '')

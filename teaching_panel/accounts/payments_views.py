@@ -28,23 +28,29 @@ def yookassa_webhook(request):
     - refund.succeeded - возврат выполнен
     """
     try:
-        # Проверка подписи (если настроен webhook secret)
-        if hasattr(settings, 'YOOKASSA_WEBHOOK_SECRET') and settings.YOOKASSA_WEBHOOK_SECRET:
-            signature = request.headers.get('X-Yookassa-Signature', '')
-            body = request.body.decode('utf-8')
-            
-            expected_signature = hmac.new(
-                settings.YOOKASSA_WEBHOOK_SECRET.encode('utf-8'),
-                body.encode('utf-8'),
-                hashlib.sha256
-            ).hexdigest()
-            
-            if not hmac.compare_digest(signature, expected_signature):
-                logger.warning("Invalid webhook signature")
-                return JsonResponse({'error': 'Invalid signature'}, status=403)
+        # БЕЗОПАСНОСТЬ: ОБЯЗАТЕЛЬНАЯ проверка подписи webhook
+        webhook_secret = getattr(settings, 'YOOKASSA_WEBHOOK_SECRET', None)
+        
+        if not webhook_secret:
+            # В production БЕЗ секрета webhooks отключены
+            logger.error("YOOKASSA_WEBHOOK_SECRET not configured - webhooks disabled for security")
+            return JsonResponse({'error': 'Webhooks disabled - secret not configured'}, status=503)
+        
+        signature = request.headers.get('X-Yookassa-Signature', '')
+        body = request.body.decode('utf-8')
+        
+        expected_signature = hmac.new(
+            webhook_secret.encode('utf-8'),
+            body.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+        
+        if not hmac.compare_digest(signature, expected_signature):
+            logger.warning(f"Invalid webhook signature from {request.META.get('REMOTE_ADDR')}")
+            return JsonResponse({'error': 'Invalid signature'}, status=403)
         
         # Парсим данные
-        payload = json.loads(request.body.decode('utf-8'))
+        payload = json.loads(body)
         event = payload.get('event')
         
         logger.info(f"Received YooKassa webhook: {event}")

@@ -123,7 +123,8 @@ class GroupViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Фильтруем группы по преподавателю для аутентифицированных пользователей"""
-        queryset = super().get_queryset()
+        # ОПТИМИЗАЦИЯ: prefetch students и select_related teacher для избежания N+1
+        queryset = super().get_queryset().select_related('teacher').prefetch_related('students')
         user = self.request.user
         if user.is_authenticated:
             if getattr(user, 'role', None) == 'teacher':
@@ -466,13 +467,57 @@ class LessonViewSet(viewsets.ModelViewSet):
         if not title:
             return Response({'detail': 'Название обязательно для самостоятельного видео'}, status=status.HTTP_400_BAD_REQUEST)
         
+        # БЕЗОПАСНОСТЬ: Проверка MIME-типа видео
+        allowed_video_types = ['video/mp4', 'video/webm', 'video/mpeg', 'video/quicktime', 'video/x-msvideo']
+        if video_file.content_type not in allowed_video_types:
+            return Response(
+                {'detail': f'Неподдерживаемый тип файла: {video_file.content_type}. Разрешены: MP4, WebM, MPEG, MOV, AVI'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # БЕЗОПАСНОСТЬ: Проверка размера файла (макс 2 GB)
+        max_video_size = 2 * 1024 * 1024 * 1024  # 2 GB
+        if video_file.size > max_video_size:
+            return Response(
+                {'detail': 'Файл слишком большой. Максимум: 2 GB'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         privacy_type = request.data.get('privacy_type', 'all')
         allowed_groups = _parse_ids_list(request.data.get('allowed_groups'))
         allowed_students = _parse_ids_list(request.data.get('allowed_students'))
         
+        # БЕЗОПАСНОСТЬ: Валидация что группы принадлежат учителю
+        if allowed_groups:
+            valid_group_ids = set(Group.objects.filter(
+                id__in=allowed_groups, 
+                teacher=request.user
+            ).values_list('id', flat=True))
+            invalid_groups = set(allowed_groups) - valid_group_ids
+            if invalid_groups:
+                return Response(
+                    {'detail': f'Нет доступа к группам: {list(invalid_groups)}'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # БЕЗОПАСНОСТЬ: Валидация что студенты в группах учителя
+        if allowed_students:
+            from accounts.models import CustomUser
+            teacher_student_ids = set(CustomUser.objects.filter(
+                enrolled_groups__teacher=request.user,
+                id__in=allowed_students
+            ).values_list('id', flat=True))
+            invalid_students = set(allowed_students) - teacher_student_ids
+            if invalid_students:
+                return Response(
+                    {'detail': f'Нет доступа к студентам: {list(invalid_students)}'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
         from django.core.files.storage import default_storage
         from django.conf import settings
         import os
+        import uuid
         
         # Создаём папку для записей если нет
         upload_dir = 'lesson_recordings'
@@ -480,9 +525,12 @@ class LessonViewSet(viewsets.ModelViewSet):
         if not os.path.exists(os.path.join(media_root, upload_dir)):
             os.makedirs(os.path.join(media_root, upload_dir))
         
-        # Сохраняем файл
-        from django.utils.text import slugify
-        safe_filename = f'{slugify(title)}_{video_file.name}'
+        # БЕЗОПАСНОСТЬ: Безопасное имя файла (Path Traversal protection)
+        from django.utils.text import slugify, get_valid_filename
+        # Убираем путь и опасные символы
+        original_name = os.path.basename(video_file.name)
+        safe_original = get_valid_filename(original_name)
+        safe_filename = f'{slugify(title)}_{uuid.uuid4().hex[:8]}_{safe_original}'
         file_path = os.path.join(upload_dir, safe_filename)
         saved_path = default_storage.save(file_path, video_file)
         
@@ -518,7 +566,8 @@ class LessonViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Фильтрация по параметрам запроса"""
-        queryset = super().get_queryset()
+        # ОПТИМИЗАЦИЯ: select_related для избежания N+1 на group/teacher
+        queryset = super().get_queryset().select_related('group', 'teacher', 'zoom_account')
         
         # Исключаем быстрые уроки из расписания по умолчанию
         queryset = queryset.filter(is_quick_lesson=False)
@@ -764,12 +813,23 @@ class LessonViewSet(viewsets.ModelViewSet):
         lesson = self.get_object()
         attendances = request.data.get('attendances', [])
         
+        # БЕЗОПАСНОСТЬ: Получаем список валидных student_id из группы урока
+        valid_student_ids = set(lesson.group.students.values_list('id', flat=True))
+        
+        marked_count = 0
+        skipped_ids = []
+        
         for attendance_data in attendances:
             student_id = attendance_data.get('student_id')
             status_value = attendance_data.get('status', 'absent')
             notes = attendance_data.get('notes', '')
             
             if student_id:
+                # БЕЗОПАСНОСТЬ: Проверяем что студент в группе этого урока
+                if student_id not in valid_student_ids:
+                    skipped_ids.append(student_id)
+                    continue
+                    
                 Attendance.objects.update_or_create(
                     lesson=lesson,
                     student_id=student_id,
@@ -778,6 +838,10 @@ class LessonViewSet(viewsets.ModelViewSet):
                         'notes': notes
                     }
                 )
+                marked_count += 1
+        
+        if skipped_ids:
+            logger.warning(f"mark_attendance: skipped invalid student_ids {skipped_ids} for lesson {lesson.id}")
         
         serializer = LessonDetailSerializer(lesson)
         return Response(serializer.data)

@@ -34,6 +34,7 @@ class GroupSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    # ОПТИМИЗАЦИЯ: Используем аннотацию если доступна, иначе len(prefetched)
     student_count = serializers.SerializerMethodField()
     invite_code = serializers.CharField(read_only=True)
     
@@ -48,7 +49,13 @@ class GroupSerializer(serializers.ModelSerializer):
         ]
     
     def get_student_count(self, obj):
-        """Получить количество студентов в группе"""
+        """Получить количество студентов - использует prefetch если доступен"""
+        # Если есть аннотация _student_count (из ViewSet queryset)
+        if hasattr(obj, '_student_count'):
+            return obj._student_count
+        # Если students уже prefetched, используем len() вместо count() для избежания запроса
+        if hasattr(obj, '_prefetched_objects_cache') and 'students' in obj._prefetched_objects_cache:
+            return len(obj.students.all())
         return obj.students.count()
 
 
@@ -59,6 +66,8 @@ class LessonSerializer(serializers.ModelSerializer):
     duration_minutes = serializers.IntegerField(source='duration', read_only=True)
     # teacher делаем read_only – будет выставляться автоматически из request.user
     teacher = serializers.PrimaryKeyRelatedField(read_only=True)
+    # БЕЗОПАСНОСТЬ: zoom_start_url только для учителей
+    zoom_start_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Lesson
@@ -71,6 +80,22 @@ class LessonSerializer(serializers.ModelSerializer):
             'record_lesson', 'recording_available_for_days',  # Добавили поля записи
             'notes', 'created_at', 'updated_at'
         ]
+    
+    def get_zoom_start_url(self, obj):
+        """БЕЗОПАСНОСТЬ: zoom_start_url видят только учитель урока и админы"""
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+        user = request.user
+        role = getattr(user, 'role', None)
+        # Админы видят всё
+        if role == 'admin':
+            return obj.zoom_start_url
+        # Учитель видит только свои уроки
+        if role == 'teacher' and obj.teacher_id == user.id:
+            return obj.zoom_start_url
+        # Студенты и другие не видят start_url
+        return None
 
     def validate(self, attrs):
         start = attrs.get('start_time') or getattr(self.instance, 'start_time', None)
