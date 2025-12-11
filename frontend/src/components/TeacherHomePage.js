@@ -461,7 +461,7 @@ const TeacherHomePage = () => {
                 ))
               ) : (
                 <div className="empty-state">
-                  <IconCalendar size={40} className="empty-icon" />
+                  <IconCalendar size={32} className="empty-icon" />
                   <p>Нет предстоящих занятий</p>
                 </div>
               )}
@@ -754,7 +754,7 @@ const globalStyles = `
   .hero-card {
     background: var(--gradient-hero);
     border-radius: var(--radius-xl);
-    padding: 2.5rem;
+    padding: 1.75rem 2rem;
     color: #fff;
     position: relative;
     overflow: hidden;
@@ -763,18 +763,18 @@ const globalStyles = `
 
   .hero-glow {
     position: absolute;
-    top: -100px;
-    right: -100px;
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+    top: -80px;
+    right: -80px;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
     border-radius: 50%;
   }
 
   .hero-pattern {
     position: absolute;
     inset: 0;
-    opacity: 0.5;
+    opacity: 0.4;
   }
 
   .hero-content {
@@ -786,11 +786,11 @@ const globalStyles = `
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 56px;
-    height: 56px;
+    width: 44px;
+    height: 44px;
     background: rgba(255, 255, 255, 0.15);
     border-radius: var(--radius-md);
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     backdrop-filter: blur(10px);
   }
 
@@ -808,9 +808,9 @@ const globalStyles = `
   .hero-subtitle {
     font-size: 0.95rem;
     opacity: 0.85;
-    margin-bottom: 1.75rem;
-    max-width: 420px;
-    line-height: 1.6;
+    margin-bottom: 1.25rem;
+    max-width: 380px;
+    line-height: 1.5;
   }
 
   .hero-button {
@@ -820,11 +820,11 @@ const globalStyles = `
     background: #fff;
     color: var(--indigo-700);
     border: none;
-    padding: 0.875rem 1.5rem;
+    padding: 0.75rem 1.25rem;
     border-radius: var(--radius-md);
     font-family: var(--font-family);
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     transition: all 0.2s ease;
@@ -1093,7 +1093,7 @@ const globalStyles = `
   /* === EMPTY STATE === */
   .empty-state {
     text-align: center;
-    padding: 2.5rem 1rem;
+    padding: 1.5rem 1rem;
     color: var(--color-text-secondary);
   }
 
@@ -1103,7 +1103,8 @@ const globalStyles = `
 
   .empty-icon {
     color: var(--color-text-muted);
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.6;
   }
 
   .empty-state p {
@@ -1147,23 +1148,26 @@ const globalStyles = `
   .stats-header {
     display: flex;
     align-items: center;
-    gap: 0.625rem;
-    margin-bottom: 1.25rem;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
   }
 
   .stats-icon-wrapper {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
     background: var(--indigo-100);
     border-radius: var(--radius-sm);
     color: var(--indigo-600);
   }
 
   .stats-title {
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 600;
     color: var(--color-text-primary);
     margin: 0;
