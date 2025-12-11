@@ -50,9 +50,12 @@ const NavBar = () => {
     <>
       <nav className="navbar-new">
         <div className="navbar-container">
-          {/* Left: Brand Logo */}
+          {/* Left: Brand Logo - STYLED LIKE AUTH PAGE */}
           <div className="navbar-logo">
-            <h1>Lectio Space</h1>
+            <h1>
+              <span className="brand-primary">Lectio</span>
+              <span className="brand-secondary">Space</span>
+            </h1>
           </div>
 
           {/* Center: Navigation Links */}

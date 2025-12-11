@@ -12,6 +12,33 @@
   margin: 0 auto;
   padding: var(--space-xl);
   min-height: 100vh;
+  position: relative;
+}
+
+/* Aurora Background for Dashboard */
+.dashboard-container::before {
+  content: '';
+  position: fixed;
+  inset: -15%;
+  background: radial-gradient(780px at 15% 20%, rgba(224, 231, 255, 0.5), transparent 55%),
+              radial-gradient(720px at 85% 5%, rgba(221, 214, 254, 0.45), transparent 55%),
+              radial-gradient(760px at 40% 85%, rgba(191, 219, 254, 0.35), transparent 60%);
+  filter: blur(60px);
+  opacity: 0.75;
+  animation: auroraFloat 18s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes auroraFloat {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(4%, -3%, 0) scale(1.05); }
+  100% { transform: translate3d(-3%, 4%, 0) scale(1.02); }
+}
+
+.dashboard-container > * {
+  position: relative;
+  z-index: 1;
 }
 
 .dashboard-grid {
@@ -40,11 +67,16 @@
    ======================================== */
 
 .stats-card {
-  background: var(--surface-card);
-  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-2xl);
   padding: var(--space-lg);
-  box-shadow: var(--shadow-card);
-  transition: all var(--transition-base);
+  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
+              0 10px 25px -5px rgba(0, 0, 0, 0.06),
+              0 0 20px rgba(79, 70, 229, 0.08);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
 }
@@ -62,8 +94,10 @@
 }
 
 .stats-card:hover {
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-4px);
+  box-shadow: 0 30px 60px -14px rgba(79, 70, 229, 0.18),
+              0 0 25px rgba(79, 70, 229, 0.15);
+  transform: translateY(-4px) scale(1.02);
+  border-color: rgba(79, 70, 229, 0.2);
 }
 
 .stats-card:hover::before {
@@ -123,18 +157,25 @@
    ======================================== */
 
 .lesson-card {
-  background: var(--surface-card);
-  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-2xl);
   padding: var(--space-lg);
-  box-shadow: var(--shadow-card);
-  transition: all var(--transition-base);
+  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
+              0 10px 25px -5px rgba(0, 0, 0, 0.06),
+              0 0 20px rgba(79, 70, 229, 0.08);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   border-left: 4px solid transparent;
 }
 
 .lesson-card:hover {
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-2px);
+  box-shadow: 0 30px 60px -14px rgba(79, 70, 229, 0.18),
+              0 0 25px rgba(79, 70, 229, 0.15);
+  transform: translateY(-4px) scale(1.01);
   border-left-color: var(--accent-primary);
+  border-color: rgba(79, 70, 229, 0.2);
 }
 
 .lesson-card-header {
@@ -188,11 +229,16 @@
    ======================================== */
 
 .group-card {
-  background: var(--surface-card);
-  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-2xl);
   padding: var(--space-lg);
-  box-shadow: var(--shadow-card);
-  transition: all var(--transition-base);
+  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
+              0 10px 25px -5px rgba(0, 0, 0, 0.06),
+              0 0 20px rgba(79, 70, 229, 0.08);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -212,8 +258,10 @@
 }
 
 .group-card:hover {
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-2px);
+  box-shadow: 0 30px 60px -14px rgba(79, 70, 229, 0.18),
+              0 0 25px rgba(79, 70, 229, 0.15);
+  transform: translateY(-4px) scale(1.02);
+  border-color: rgba(79, 70, 229, 0.2);
 }
 
 .group-card:hover::after {

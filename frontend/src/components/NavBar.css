@@ -3,17 +3,20 @@
    ================================================ */
 
 .navbar-new {
-  background: #FFFFFF;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
   position: sticky;
   top: 0;
   z-index: 1000;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: box-shadow 0.3s ease;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.04);
+  transition: all 0.3s ease;
 }
 
 .navbar-new:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.08);
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .navbar-container {
@@ -27,7 +30,7 @@
   gap: 2rem;
 }
 
-/* Left: Brand Logo */
+/* Left: Brand Logo - STYLED LIKE AUTH PAGE */
 .navbar-logo {
   display: flex;
   align-items: center;
@@ -35,16 +38,24 @@
 }
 
 .navbar-logo h1 {
-  font-size: 1.5rem;
+  font-size: clamp(1.5rem, 3vw, 1.75rem);
   font-weight: 800;
-  font-style: italic;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   letter-spacing: -0.02em;
-  font-family: var(--font-display);
+  font-family: 'Plus Jakarta Sans', var(--font-display);
   margin: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15rem;
+}
+
+.navbar-logo h1 .brand-primary {
+  color: #4f46e5; /* Indigo-600 */
+  font-weight: 800;
+}
+
+.navbar-logo h1 .brand-secondary {
+  color: #94a3b8; /* Slate-400 */
+  font-weight: 600;
 }
 
 /* Center: Navigation Links - LARGER */

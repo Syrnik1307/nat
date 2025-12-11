@@ -263,25 +263,78 @@ html, body {
   min-height: 100vh;
 }
 
-/* Premium Minimalist Cards */
+/* ========================================
+   🌟 ГЛОБАЛЬНЫЙ ФОНОВОЙ КОНТЕЙНЕР - PREMIUM AURORA
+   Используется на всех страницах ЛК
+   ======================================== */
+
+.app-layout,
+.dashboard-layout,
+.page-layout {
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  background: radial-gradient(circle at 20% 20%, rgba(224, 231, 255, 0.5), transparent 40%),
+              radial-gradient(circle at 80% 10%, rgba(221, 214, 254, 0.45), transparent 40%),
+              radial-gradient(circle at 40% 80%, rgba(191, 219, 254, 0.35), transparent 45%),
+              #f8fafc;
+}
+
+/* Анимированный aurora mesh для страниц ЛК */
+.app-layout::before,
+.dashboard-layout::before,
+.page-layout::before {
+  content: '';
+  position: fixed;
+  inset: -15%;
+  background: radial-gradient(780px at 15% 20%, rgba(224, 231, 255, 0.5), transparent 55%),
+              radial-gradient(720px at 85% 5%, rgba(221, 214, 254, 0.45), transparent 55%),
+              radial-gradient(760px at 40% 85%, rgba(191, 219, 254, 0.35), transparent 60%);
+  filter: blur(60px);
+  opacity: 0.75;
+  animation: auroraFloat 18s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes auroraFloat {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(4%, -3%, 0) scale(1.05); }
+  100% { transform: translate3d(-3%, 4%, 0) scale(1.02); }
+}
+
+/* Контент поверх фона */
+.app-layout > *,
+.dashboard-layout > *,
+.page-layout > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Premium Minimalist Cards - Aurora Glass Style */
 .card,
 .content-card,
 .section-card,
 .light-card,
 .main-content-card {
-  background: var(--bg-paper);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-2xl);
   padding: clamp(24px, 5vw, 32px);
-  box-shadow: var(--shadow-card);
-  transition: all var(--transition-base);
+  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
+              0 10px 25px -5px rgba(0, 0, 0, 0.06),
+              0 0 20px rgba(79, 70, 229, 0.08);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .card:hover,
 .content-card:hover {
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-2px);
-  border-color: var(--border-medium);
+  box-shadow: 0 30px 60px -14px rgba(79, 70, 229, 0.18),
+              0 0 25px rgba(79, 70, 229, 0.15);
+  transform: translateY(-4px);
+  border-color: rgba(79, 70, 229, 0.2);
 }
 
 /* Заголовки - Bold, Dark, Tight Spacing */
@@ -622,8 +675,8 @@ input, textarea, select {
 .subscriptions-modal-overlay,
 .teacher-upload-modal-overlay,
 .recording-player-modal {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   background: rgba(15, 23, 42, 0.4);
 }
 
@@ -631,10 +684,14 @@ input, textarea, select {
 .subscriptions-modal,
 .teacher-upload-modal,
 .recording-player-shell {
-  background: var(--bg-paper);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: var(--radius-modal);
-  box-shadow: var(--shadow-float);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-3xl);
+  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.25), 
+              0 10px 25px -5px rgba(0, 0, 0, 0.1),
+              0 0 40px rgba(79, 70, 229, 0.15);
   padding: clamp(24px, 4vw, 40px);
 }
 

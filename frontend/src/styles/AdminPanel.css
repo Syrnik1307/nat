@@ -5,9 +5,15 @@
 
 .admin-home-page {
   min-height: 100vh;
-  background: var(--bg-app); /* Slate-50 */
+  position: relative;
+  overflow-x: hidden;
   display: flex;
   font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  /* Aurora Background */
+  background: radial-gradient(circle at 20% 20%, rgba(224, 231, 255, 0.5), transparent 40%),
+              radial-gradient(circle at 80% 10%, rgba(221, 214, 254, 0.45), transparent 40%),
+              radial-gradient(circle at 40% 80%, rgba(191, 219, 254, 0.35), transparent 45%),
+              #f8fafc;
 }
 
 /* ================================================
@@ -15,7 +21,9 @@
    ================================================ */
 .admin-sidebar {
   width: 260px;
-  background: var(--text-main); /* Slate-900 */
+  background: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   height: 100vh;
   position: fixed;
   left: 0;
@@ -35,13 +43,21 @@
   color: white;
   font-size: 1.25rem;
   font-weight: 800;
-  font-style: italic;
   letter-spacing: -0.02em;
   margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
 }
 
+.admin-sidebar-logo h2 .brand-primary,
 .admin-sidebar-logo span.brand-easy {
-  color: var(--color-primary-light); /* Indigo-400 for dark bg */
+  color: #818CF8; /* Indigo-400 for dark bg */
+}
+
+.admin-sidebar-logo h2 .brand-secondary {
+  color: #94a3b8; /* Slate-400 */
+  font-weight: 600;
 }
 
 .admin-sidebar-nav {
