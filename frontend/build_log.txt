@@ -1,0 +1,57 @@
+
+> frontend@0.1.0 build
+> react-scripts --max_old_space_size=4096 build
+
+(node:23572) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Creating an optimized production build...
+Compiled with warnings.
+
+[eslint] 
+src\components\AdminHomePage.js
+  Line 3:8:     'apiService' is defined but never used                                                                                                                                                                                                                                                                                                                                    no-unused-vars
+  Line 143:9:   'StatCard' is assigned a value but never used                                                                                                                                                                                                                                                                                                                             no-unused-vars
+  Line 159:9:   'QuickAction' is assigned a value but never used                                                                                                                                                                                                                                                                                                                          no-unused-vars
+  Line 186:11:  The href attribute is required for an anchor to be keyboard accessible. Provide a valid, navigable address as the href value. If you cannot provide an href, but still need the element to resemble a link, use a button and change it with appropriate styles. Learn more: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/HEAD/docs/rules/anchor-is-valid.md  jsx-a11y/anchor-is-valid
+  Line 190:11:  The href attribute is required for an anchor to be keyboard accessible. Provide a valid, navigable address as the href value. If you cannot provide an href, but still need the element to resemble a link, use a button and change it with appropriate styles. Learn more: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/HEAD/docs/rules/anchor-is-valid.md  jsx-a11y/anchor-is-valid
+  Line 194:11:  The href attribute is required for an anchor to be keyboard accessible. Provide a valid, navigable address as the href value. If you cannot provide an href, but still need the element to resemble a link, use a button and change it with appropriate styles. Learn more: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/HEAD/docs/rules/anchor-is-valid.md  jsx-a11y/anchor-is-valid
+  Line 198:11:  The href attribute is required for an anchor to be keyboard accessible. Provide a valid, navigable address as the href value. If you cannot provide an href, but still need the element to resemble a link, use a button and change it with appropriate styles. Learn more: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/HEAD/docs/rules/anchor-is-valid.md  jsx-a11y/anchor-is-valid
+  Line 202:11:  The href attribute is required for an anchor to be keyboard accessible. Provide a valid, navigable address as the href value. If you cannot provide an href, but still need the element to resemble a link, use a button and change it with appropriate styles. Learn more: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/HEAD/docs/rules/anchor-is-valid.md  jsx-a11y/anchor-is-valid
+  Line 206:11:  The href attribute is required for an anchor to be keyboard accessible. Provide a valid, navigable address as the href value. If you cannot provide an href, but still need the element to resemble a link, use a button and change it with appropriate styles. Learn more: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/HEAD/docs/rules/anchor-is-valid.md  jsx-a11y/anchor-is-valid
+  Line 210:11:  The href attribute is required for an anchor to be keyboard accessible. Provide a valid, navigable address as the href value. If you cannot provide an href, but still need the element to resemble a link, use a button and change it with appropriate styles. Learn more: https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/blob/HEAD/docs/rules/anchor-is-valid.md  jsx-a11y/anchor-is-valid
+
+src\components\AuthPage.js
+  Line 30:28:   'accessTokenValid' is assigned a value but never used                                                                          no-unused-vars
+  Line 30:52:   'userRole' is assigned a value but never used                                                                                  no-unused-vars
+  Line 48:6:    React Hook useEffect has missing dependencies: 'mode', 'role', and 'step'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 243:13:  'recaptchaToken' is assigned a value but never used                                                                            no-unused-vars
+
+src\components\StudentHomePage.js
+  Line 31:6:  React Hook useEffect has missing dependencies: 'location.search' and 'navigate'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 80:9:  'pendingHomework' is assigned a value but never used                                                                                 no-unused-vars
+
+src\components\TeacherHomePage.js
+  Line 14:7:   'WinterNightCard' is assigned a value but never used  no-unused-vars
+  Line 41:10:  'groups' is assigned a value but never used           no-unused-vars
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+File sizes after gzip:
+
+  292.91 kB  build\static\js\main.dbac9945.js
+  53.57 kB   build\static\css\main.836fd913.css
+
+The project was built assuming it is hosted at /.
+You can control this with the homepage field in your package.json.
+
+The build folder is ready to be deployed.
+You may serve it with a static server:
+
+  npm install -g serve
+  serve -s build
+
+Find out more about deployment here:
+
+  https://cra.link/deployment
+

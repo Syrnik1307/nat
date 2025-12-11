@@ -48,9 +48,9 @@ const AuthPage = () => {
   }, []);
   
   // === ШАГИ АУТЕНТИФИКАЦИИ ===
-  // 0 = Выбор роли
+  // 'role' = Выбор роли
   // 1 = Форма входа/регистрации
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState('role');
   const [role, setRole] = useState(null); // 'student' | 'teacher'
   const [mode, setMode] = useState('login'); // 'login' | 'register'
   
@@ -488,8 +488,12 @@ const AuthPage = () => {
     return (
       <>
         <div className="auth-container">
+          <div className="auth-pattern" aria-hidden="true" />
           <div className="auth-brand">
-            <h1>Easy Teaching</h1>
+            <h1>
+              <span className="brand-primary">Lectio</span>
+              <span className="brand-secondary"> Space</span>
+            </h1>
           </div>
           
           <div className="auth-content">
@@ -538,6 +542,7 @@ const AuthPage = () => {
   if (step === 1) {
     return (
       <div className="auth-container">
+        <div className="auth-pattern" aria-hidden="true" />
         <div className="auth-content">
           <div className="auth-header">
             <h1 className="auth-title">
@@ -554,7 +559,7 @@ const AuthPage = () => {
           <div className="auth-backlink">
             <button 
               className="back-button"
-              onClick={() => { setStep(0); setMode('login'); }}
+              onClick={() => { setStep('role'); setMode('login'); }}
               aria-label="Вернуться к выбору роли"
               type="button"
             >

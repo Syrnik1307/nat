@@ -61,18 +61,19 @@
 }
 
 .summary-stats {
-  background: white;
-  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 16px;
   padding: 1.75rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
 .summary-stats:hover {
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.08);
-  transform: translateY(-2px);
-  border-color: var(--color-primary-subtle);
+  box-shadow: 0 0 20px rgba(79, 70, 229, 0.15);
+  transform: translateY(-2px) scale(1.02);
+  border-color: rgba(255, 255, 255, 0.65);
 }
 
 .summary-title {
@@ -83,10 +84,94 @@
   letter-spacing: -0.02em;
 }
 
-.summary-grid {
+.teacher-home-page::after {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(800px at 20% 20%, rgba(224, 231, 255, 0.45), transparent 50%),
+              radial-gradient(700px at 80% 0%, rgba(221, 214, 254, 0.4), transparent 50%),
+              radial-gradient(700px at 30% 80%, rgba(191, 219, 254, 0.35), transparent 55%);
+  filter: blur(60px);
+  opacity: 0.7;
+  animation: auroraDrift 18s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.teacher-home-page::after {
+  animation-delay: 4s;
+  opacity: 0.55;
+}
+
+@keyframes auroraDrift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(3%, -2%, 0) scale(1.05); }
+  100% { transform: translate3d(-3%, 3%, 0) scale(1.02); }
+}
+
+.teacher-home-page > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* === Glass + Glow cards === */
+.glass-card,
+.schedule-section,
+.impact-dashboard {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.glass-card:hover,
+.schedule-section:hover,
+.impact-dashboard:hover,
+.summary-stats:hover {
+  box-shadow: 0 0 20px rgba(79, 70, 229, 0.15);
+  transform: translateY(-2px) scale(1.02);
+}
+
+/* Greeting widget */
+.greeting-widget {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 18px;
+  margin-bottom: 1.5rem;
+}
+
+.greeting-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.greeting-hello {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: #0f172a;
+}
+
+.greeting-sub {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-weight: 500;
+  color: #475569;
+}
+
+.greeting-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.5rem;
+  place-items: center;
+  font-size: 1.75rem;
+  background: linear-gradient(145deg, rgba(79, 70, 229, 0.18), rgba(59, 130, 246, 0.12));
+  box-shadow: 0 10px 30px rgba(79, 70, 229, 0.15);
 }
 
 /* =====================
