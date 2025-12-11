@@ -1,33 +1,20 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../auth';
-import { getTeacherStatsSummary, getTeacherStatsBreakdown, getLessons, getGroups, startQuickLesson, getIndividualStudents, apiClient } from '../apiService';
+import { getTeacherStatsSummary, getTeacherStatsBreakdown, getLessons, getIndividualStudents, startQuickLesson, apiClient } from '../apiService';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import SwipeableLesson from './SwipeableLesson';
+import EmptyState from './EmptyState';
 import SupportWidget from './SupportWidget';
 import SubscriptionBanner from './SubscriptionBanner';
 import TelegramWarningBanner from './TelegramWarningBanner';
 import GroupDetailModal from './GroupDetailModal';
 import StudentCardModal from './StudentCardModal';
-import QuickLessonButton from './WinterQuickLessonButton';
 import './TeacherHomePage.css';
 
-const WinterNightCard = () => {
-  return null;
-};
-
-/**
- * Главная страница преподавателя
- *
- * Отображает:
- * 1. Расписание на сегодня
- * 2. Прогресс преподавателя и накопленные показатели
- */
-
-// Прогресс-бар вынесен вверх чтобы использовать внутри компонента
-const ProgressBar = ({ value, variant='default' }) => {
+const ProgressBar = ({ value, variant = 'default' }) => {
   const safe = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
   return (
-    <div className={`progress-bar pb-${variant}`}> 
+    <div className={`progress-bar pb-${variant}`}>
       <div className="progress-fill" style={{ width: `${safe}%` }} />
     </div>
   );
@@ -37,67 +24,52 @@ const TeacherHomePage = () => {
   const { accessTokenValid, subscription } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
   const [loading, setLoading] = useState(true);
-  const [groups, setGroups] = useState([]);
   const [todayLessons, setTodayLessons] = useState([]);
   const [stats, setStats] = useState(null);
-  const [error, setError] = useState(null);
   const [breakdown, setBreakdown] = useState({ groups: [], students: [] });
+  const [error, setError] = useState(null);
   const [quickLessonLoading, setQuickLessonLoading] = useState(false);
   const [quickLessonError, setQuickLessonError] = useState(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  
-  // Состояние для модальных окон
   const [groupDetailModal, setGroupDetailModal] = useState({ isOpen: false, group: null });
   const [studentCardModal, setStudentCardModal] = useState({ isOpen: false, studentId: null, groupId: null, isIndividual: false });
 
-  // Проверяем успешную оплату
   useEffect(() => {
     if (searchParams.get('payment') === 'success') {
       setPaymentSuccess(true);
-      // Убираем параметр из URL
       searchParams.delete('payment');
       setSearchParams(searchParams, { replace: true });
-      
-      // Скрываем уведомление через 5 секунд
       setTimeout(() => setPaymentSuccess(false), 5000);
     }
   }, [searchParams, setSearchParams]);
 
   const loadData = useCallback(async () => {
     if (!accessTokenValid) return;
-    
     setLoading(true);
     setError(null);
-    
     try {
       const todayDate = new Date().toISOString().split('T')[0];
-      const [groupsRes, lessonsRes, statsRes, breakdownRes, individualStudentsRes] = await Promise.all([
-        getGroups(),
+      const [lessonsRes, statsRes, breakdownRes, individualStudentsRes] = await Promise.all([
         getLessons({ date: todayDate, include_recurring: true }),
         getTeacherStatsSummary(),
         getTeacherStatsBreakdown(),
         getIndividualStudents(),
       ]);
 
-      const groupsList = Array.isArray(groupsRes.data) 
-        ? groupsRes.data 
-        : groupsRes.data.results || [];
-      
       const lessonsList = Array.isArray(lessonsRes.data)
         ? lessonsRes.data
         : lessonsRes.data.results || [];
 
-      setGroups(groupsList);
       setTodayLessons(lessonsList);
       setStats(statsRes.data);
-      
-      // Получаем индивидуальных студентов и преобразуем их для отображения
+
       const individualStudents = Array.isArray(individualStudentsRes.data)
         ? individualStudentsRes.data
         : individualStudentsRes.data.results || [];
-      
-      const individualStudentsForDisplay = individualStudents.map(st => {
+
+      const individualStudentsForDisplay = individualStudents.map((st) => {
         const fullName = st.student_name || `${st.first_name || ''} ${st.last_name || ''}`.trim();
         return {
           id: st.user_id || st.student_id || st.id,
@@ -109,10 +81,10 @@ const TeacherHomePage = () => {
           homework_percent: st.homework_percent ?? 0,
         };
       });
-      
+
       setBreakdown({
         groups: breakdownRes.data?.groups || [],
-        students: individualStudentsForDisplay
+        students: individualStudentsForDisplay,
       });
     } catch (err) {
       console.error('Ошибка загрузки данных:', err);
@@ -126,17 +98,19 @@ const TeacherHomePage = () => {
     loadData();
   }, [loadData]);
 
-  const handleQuickLessonCreate = useCallback(async () => {
+  const launchZoomLesson = useCallback(async () => {
     setQuickLessonLoading(true);
     setQuickLessonError(null);
     try {
       const response = await startQuickLesson();
-      if (response?.data?.zoom_start_url) {
-        window.open(response.data.zoom_start_url, '_blank', 'noopener,noreferrer');
+      const zoomUrl = response?.data?.zoom_start_url || response?.data?.zoom_url || response?.data?.start_url;
+      if (!zoomUrl) {
+        throw new Error('Ссылка для подключения не получена');
       }
+      window.location.href = zoomUrl;
       await loadData();
     } catch (err) {
-      console.error('Не удалось создать экспресс-урок:', err);
+      console.error('Не удалось запустить быстрый урок:', err);
       const detail = err.response?.data?.detail || err.message || 'Не удалось создать урок.';
       setQuickLessonError(detail);
     } finally {
@@ -149,34 +123,22 @@ const TeacherHomePage = () => {
     return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', { 
-      day: 'numeric', 
-      month: 'long',
-      weekday: 'long' 
-    });
-  };
-
   const getLessonDuration = (lesson) => {
-    // Используем duration_minutes с бэкенда если есть
     if (lesson.duration_minutes && lesson.duration_minutes > 0) {
       return lesson.duration_minutes;
     }
-    // Fallback: расчет из времен
     if (lesson.start_time && lesson.end_time) {
       const start = new Date(lesson.start_time);
       const end = new Date(lesson.end_time);
       const durationMinutes = Math.round((end - start) / (1000 * 60));
       if (durationMinutes > 0) return durationMinutes;
     }
-    // Дефолт 60 минут
     return 60;
   };
 
   const handleDeleteLesson = async (lessonId, deleteType) => {
     try {
-      const lesson = todayLessons.find(l => l.id === lessonId);
+      const lesson = todayLessons.find((l) => l.id === lessonId);
       if (!lesson) {
         throw new Error('Урок не найден в расписании. Обновите страницу и попробуйте ещё раз.');
       }
@@ -201,14 +163,13 @@ const TeacherHomePage = () => {
       }
 
       throw new Error('Неизвестный тип удаления');
-    } catch (error) {
-      console.error('Ошибка удаления урока:', error);
-      throw error;
+    } catch (err) {
+      console.error('Ошибка удаления урока:', err);
+      throw err;
     }
   };
 
   const derivedStats = useMemo(() => {
-    // Реальные данные с бэкенда
     const totalStudents = stats?.total_students || 0;
     const totalGroups = stats?.total_groups || 0;
     const lessonsCount = stats?.total_lessons || 0;
@@ -224,331 +185,398 @@ const TeacherHomePage = () => {
     };
   }, [stats]);
 
+  const headerDate = useMemo(() => {
+    const date = new Date();
+    const formatted = date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      weekday: 'long',
+    });
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  }, []);
+
   if (loading) {
     return (
-      <div className="teacher-home-page">
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Загрузка...</p>
+      <div className="teacher-home-page min-h-screen grid place-items-center bg-[#F3F4F6]">
+        <div className="text-center space-y-3">
+          <div className="spinner" aria-hidden="true"></div>
+          <p className="text-slate-600">Загрузка...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="teacher-home-page">
+    <div
+      className="teacher-home-page min-h-screen bg-[#F3F4F6] text-slate-900"
+      style={{ fontFamily: 'Manrope, "Inter", "Segoe UI", system-ui, sans-serif' }}
+    >
       <TelegramWarningBanner />
-      
-      <SubscriptionBanner 
-        subscription={subscription} 
-        onPayClick={() => navigate('/teacher/subscription')} 
-      />
 
-      {/* Уведомление об успешной оплате */}
-      {paymentSuccess && (
-        <div style={{
-          position: 'fixed',
-          top: '80px',
-          right: '20px',
-          zIndex: 9999,
-          background: 'linear-gradient(135deg, #f59e0b 0%, #fcd34d 100%)',
-          color: '#0f172a',
-          padding: '16px 24px',
-          borderRadius: '12px',
-          boxShadow: '0 10px 40px rgba(245, 158, 11, 0.35)',
-          animation: 'slideInRight 0.5s ease',
-          maxWidth: '400px',
-          border: '2px solid rgba(15, 23, 42, 0.12)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ fontSize: '24px' }}>🎉</div>
-            <div>
-              <div style={{ fontWeight: 600, marginBottom: '4px' }}>Платёж успешен!</div>
-              <div style={{ fontSize: '14px', opacity: 0.9 }}>
-                Ваша подписка активирована
+      <header className="sticky top-0 z-30 backdrop-blur bg-white/80 border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#6B4CFF] to-[#36C3FF] text-white font-bold grid place-items-center shadow-lg">
+              LS
+            </div>
+            <div className="leading-tight">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-indigo-600 font-semibold">Lectio Space</div>
+              <div className="text-sm text-slate-500">Панель преподавателя</div>
+            </div>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-5 text-sm text-slate-600">
+            <Link to="/home-new" className="hover:text-indigo-600 transition">Главная</Link>
+            <Link to="/groups" className="hover:text-indigo-600 transition">Группы</Link>
+            <Link to="/calendar" className="hover:text-indigo-600 transition">Календарь</Link>
+            <Link to="/materials" className="hover:text-indigo-600 transition">Материалы</Link>
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={launchZoomLesson}
+              disabled={quickLessonLoading}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#6B4CFF] to-[#36C3FF] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:shadow-xl active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {quickLessonLoading ? 'Запуск...' : 'Быстрый урок'}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <SubscriptionBanner
+          subscription={subscription}
+          onPayClick={() => navigate('/teacher/subscription')}
+        />
+
+        {paymentSuccess && (
+          <div style={{
+            position: 'fixed',
+            top: '84px',
+            right: '20px',
+            zIndex: 9999,
+            background: 'linear-gradient(135deg, #f59e0b 0%, #fcd34d 100%)',
+            color: '#0f172a',
+            padding: '16px 24px',
+            borderRadius: '12px',
+            boxShadow: '0 10px 40px rgba(245, 158, 11, 0.35)',
+            animation: 'slideInRight 0.5s ease',
+            maxWidth: '400px',
+            border: '2px solid rgba(15, 23, 42, 0.12)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ fontSize: '24px' }}>🎉</div>
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: '4px' }}>Платёж успешен!</div>
+                <div style={{ fontSize: '14px', opacity: 0.9 }}>
+                  Ваша подписка активирована
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-      
-      {/* Заголовок страницы */}
-      <div className="page-header">
-        <div className="header-content">
-          <h1 className="page-title">Главная</h1>
-          <p className="page-subtitle">
-            {formatDate(new Date().toISOString())}
-          </p>
-        </div>
-        <div className="header-actions">
-          <QuickLessonButton onSuccess={loadData} />
-          <button 
-            type="button" 
-            className="header-message-button" 
-            aria-label="Записи уроков"
-            onClick={() => navigate('/teacher/recordings')}
-            style={{ marginLeft: '1rem' }}
-          >
-            <span className="header-message-icon" aria-hidden="true">
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.6" fill="none"/>
-                <polygon points="10,8 16,12 10,16" fill="currentColor"/>
-              </svg>
-            </span>
-            <span className="header-message-label">Записи</span>
-          </button>
-          <button 
-            type="button" 
-            className="header-message-button" 
-            aria-label="Сообщения"
-            onClick={() => navigate('/chat')}
-          >
-            <span className="header-message-icon" aria-hidden="true">
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M6.5 8.5H17.5"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M6.5 12H14"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M4.5 5.75C4.5 4.7835 5.2835 4 6.25 4H17.75C18.7165 4 19.5 4.7835 19.5 5.75V14.25C19.5 15.2165 18.7165 16 17.75 16H12.6C12.2279 16 11.8746 16.1397 11.6071 16.3896L8.80535 18.9993C8.28679 19.4827 7.5 19.1174 7.5 18.3975V16.75C7.5 16.0596 6.94036 15.5 6.25 15.5H6.25C5.2835 15.5 4.5 14.7165 4.5 13.75V5.75Z"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-            <span className="header-message-label">Сообщения</span>
-          </button>
-        </div>
-      </div>
+        )}
 
-      {error && (
-        <div className="error-banner">
-          <span>{error}</span>
-          <button onClick={loadData}>Повторить</button>
-        </div>
-      )}
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#6B4CFF] via-[#5B7CFF] to-[#36C3FF] text-white shadow-xl">
+          <div className="absolute inset-0 opacity-50" aria-hidden="true">
+            <div className="absolute -left-10 -top-16 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+            <div className="absolute right-0 top-10 h-44 w-44 rounded-full bg-white/15 blur-3xl" />
+          </div>
 
-      <div className="content-grid">
-        {/* Левая колонка: Расписание на сегодня */}
-        <div className="main-content">
-          <section className="schedule-section">
-            <div className="section-header">
-              <h2 className="section-title">
-                Расписание на сегодня
-              </h2>
-              <Link to="/calendar" className="link-all">
-                Весь календарь →
-              </Link>
-            </div>
+          <div className="relative flex flex-col lg:flex-row items-start gap-8 p-6 sm:p-8">
+            <div className="flex-1 space-y-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/70">Главная панель · {headerDate}</p>
+              <h1 className="text-3xl sm:text-4xl font-bold leading-tight">Запускайте уроки в Lectio Space за секунды</h1>
+              <p className="text-base text-white/80 max-w-2xl">
+                Единая точка управления расписанием, группами и материалами. Быстрый старт Zoom прямо с дашборда.
+              </p>
 
-            {todayLessons.length === 0 ? (
-              <div className="empty-state">
-                <h3>Сегодня нет занятий</h3>
-                <p>Вы можете запланировать новые уроки в календаре</p>
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  className="btn btn-secondary"
-                  onClick={handleQuickLessonCreate}
+                  onClick={launchZoomLesson}
                   disabled={quickLessonLoading}
+                  className="inline-flex items-center gap-3 rounded-xl bg-white/10 px-5 py-3 text-base font-semibold text-white shadow-lg shadow-black/20 ring-1 ring-white/30 transition hover:bg-white/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  {quickLessonLoading ? 'Создание...' : 'Создать урок'}
+                  {quickLessonLoading ? (
+                    <>
+                      <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      <span>Запускаем Zoom...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span>Быстрый урок</span>
+                    </>
+                  )}
                 </button>
-                {quickLessonError && (
-                  <div className="error-inline" role="status">
-                    {quickLessonError}
-                  </div>
-                )}
+
+                <Link
+                  to="/calendar"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white text-indigo-700 px-4 py-2 text-sm font-semibold shadow-md transition hover:shadow-lg"
+                >
+                  <span>Открыть календарь</span>
+                  <span aria-hidden="true">→</span>
+                </Link>
               </div>
-            ) : (
-              <div className="lessons-list">
-                {todayLessons.map((lesson) => (
-                  <SwipeableLesson
-                    key={lesson.id}
-                    lesson={lesson}
-                    onDelete={handleDeleteLesson}
-                    formatTime={formatTime}
-                    getLessonDuration={getLessonDuration}
+            </div>
+
+            <div className="grid w-full max-w-xl grid-cols-2 gap-3">
+              {[{
+                label: 'Проведённые уроки', value: derivedStats.lessonsCount
+              }, {
+                label: 'Ученики', value: derivedStats.totalStudents
+              }, {
+                label: 'Группы', value: derivedStats.totalGroups
+              }, {
+                label: 'Минут на платформе', value: derivedStats.portalMinutes
+              }].map((item) => (
+                <div key={item.label} className="rounded-2xl bg-white/10 p-4 backdrop-blur shadow-inner shadow-black/10">
+                  <div className="text-sm text-white/70">{item.label}</div>
+                  <div className="text-2xl font-semibold">{item.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {quickLessonError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
+            {quickLessonError}
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm flex items-center justify-between gap-3">
+            <span>{error}</span>
+            <button onClick={loadData} className="text-indigo-700 font-semibold hover:underline">Повторить</button>
+          </div>
+        )}
+
+        <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 space-y-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">Расписание на сегодня</h2>
+                  <p className="text-sm text-slate-500">{headerDate}</p>
+                </div>
+                <Link to="/calendar" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">Весь календарь</Link>
+              </div>
+
+              {todayLessons.length === 0 ? (
+                <div className="mt-6">
+                  <EmptyState
+                    icon="☀️"
+                    title="День свободен!"
+                    description="У вас сегодня нет уроков. Используйте время для подготовки материалов или отдыха."
+                    action={(
+                      <button
+                        type="button"
+                        onClick={launchZoomLesson}
+                        disabled={quickLessonLoading}
+                        className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:opacity-70 disabled:cursor-not-allowed"
+                      >
+                        {quickLessonLoading ? 'Создание...' : 'Запустить быстрый урок'}
+                      </button>
+                    )}
                   />
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* Сводная статистика */}
-          <section className="summary-stats">
-            <h2 className="summary-title">Статистика</h2>
-            <div className="group-breakdown">
-              <h3 className="gb-title">Группы</h3>
-              {(!breakdown?.groups || breakdown.groups.length === 0) && (
-                <div className="gb-empty">Нет данных по группам</div>
-              )}
-              {breakdown?.groups && breakdown.groups.map(g => (
-                <div 
-                  key={g.id} 
-                  className="group-row"
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setGroupDetailModal({ isOpen: true, group: g });
-                    }
-                  }}
-                  onClick={() => setGroupDetailModal({ isOpen: true, group: g })}
-                  style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <div className="group-meta">
-                    <div className="group-info">
-                      <div className="group-name">{g.name}</div>
-                      <div className="group-sub">Учеников: {g.students_count}</div>
-                    </div>
-                  </div>
-                  <div className="metric-block">
-                    <div className="metric-label">Посещаемость</div>
-                    <ProgressBar value={g.attendance_percent} />
-                    <div className="metric-value">{g.attendance_percent != null ? g.attendance_percent + '%' : '—'}</div>
-                  </div>
-                  <div className="metric-block">
-                    <div className="metric-label">Домашнее</div>
-                    <ProgressBar value={g.homework_percent} variant="homework" />
-                    <div className="metric-value">{g.homework_percent != null ? g.homework_percent + '%' : '—'}</div>
-                  </div>
                 </div>
-              ))}
-            </div>
-            <div className="students-breakdown">
-              <h3 className="gb-title">Индивидуальные ученики</h3>
-              {(!breakdown?.students || breakdown.students.length === 0) && (
-                <div className="gb-empty">Нет индивидуальных учеников</div>
+              ) : (
+                <div className="mt-6 space-y-3">
+                  {todayLessons.map((lesson) => (
+                    <SwipeableLesson
+                      key={lesson.id}
+                      lesson={lesson}
+                      onDelete={handleDeleteLesson}
+                      formatTime={formatTime}
+                      getLessonDuration={getLessonDuration}
+                    />
+                  ))}
+                </div>
               )}
-              {breakdown?.students && breakdown.students.map(st => (
-                <div 
-                  key={st.id} 
-                  className="student-row"
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setStudentCardModal({ 
-                        isOpen: true, 
-                        studentId: st.id, 
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-xl font-semibold text-slate-900">Группы и ученики</h2>
+                <span className="text-sm text-slate-500">Свежая статистика</span>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div className="text-sm font-semibold text-slate-700">Группы</div>
+                  {(!breakdown?.groups || breakdown.groups.length === 0) && (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">Нет данных по группам</div>
+                  )}
+                  {breakdown?.groups && breakdown.groups.slice(0, 4).map((g) => (
+                    <div
+                      key={g.id}
+                      className="rounded-xl border border-slate-100 px-4 py-3 hover:border-indigo-200 transition cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setGroupDetailModal({ isOpen: true, group: g });
+                        }
+                      }}
+                      onClick={() => setGroupDetailModal({ isOpen: true, group: g })}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-900">{g.name}</div>
+                          <div className="text-xs text-slate-500">Учеников: {g.students_count}</div>
+                        </div>
+                        <div className="text-xs text-indigo-600 font-semibold">Подробнее →</div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="text-xs text-slate-500 mb-1">Посещаемость</div>
+                          <ProgressBar value={g.attendance_percent} />
+                          <div className="text-sm font-semibold mt-1">{g.attendance_percent != null ? g.attendance_percent + '%' : '—'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-slate-500 mb-1">Домашние задания</div>
+                          <ProgressBar value={g.homework_percent} variant="homework" />
+                          <div className="text-sm font-semibold mt-1">{g.homework_percent != null ? g.homework_percent + '%' : '—'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="text-sm font-semibold text-slate-700">Индивидуальные ученики</div>
+                  {(!breakdown?.students || breakdown.students.length === 0) && (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">Нет индивидуальных учеников</div>
+                  )}
+                  {breakdown?.students && breakdown.students.slice(0, 5).map((st) => (
+                    <div
+                      key={st.id}
+                      className="rounded-xl border border-slate-100 px-4 py-3 hover:border-indigo-200 transition cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setStudentCardModal({
+                            isOpen: true,
+                            studentId: st.id,
+                            groupId: st.group_id || null,
+                            isIndividual: !st.group_id,
+                          });
+                        }
+                      }}
+                      onClick={() => setStudentCardModal({
+                        isOpen: true,
+                        studentId: st.id,
                         groupId: st.group_id || null,
-                        isIndividual: !st.group_id
-                      });
-                    }
-                  }}
-                  onClick={() => setStudentCardModal({ 
-                    isOpen: true, 
-                    studentId: st.id, 
-                    groupId: st.group_id || null,
-                    isIndividual: !st.group_id
-                  })}
-                  style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <div className="student-meta">
-                    <div className="student-info">
-                      <div className="student-name">{st.name}</div>
-                      <div className="student-sub">{st.group_name || 'Индивидуальный'}</div>
+                        isIndividual: !st.group_id,
+                      })}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-900">{st.name}</div>
+                          <div className="text-xs text-slate-500">{st.group_name || 'Индивидуальный'}</div>
+                        </div>
+                        <div className="text-xs text-indigo-600 font-semibold">Карточка →</div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="text-xs text-slate-500 mb-1">Посещаемость</div>
+                          <ProgressBar value={st.attendance_percent} />
+                          <div className="text-sm font-semibold mt-1">{st.attendance_percent != null ? st.attendance_percent + '%' : '—'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-slate-500 mb-1">Домашние задания</div>
+                          <ProgressBar value={st.homework_percent} variant="homework" />
+                          <div className="text-sm font-semibold mt-1">{st.homework_percent != null ? st.homework_percent + '%' : '—'}</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="metric-block">
-                    <div className="metric-label">Посещаемость</div>
-                    <ProgressBar value={st.attendance_percent} />
-                    <div className="metric-value">{st.attendance_percent != null ? st.attendance_percent + '%' : '—'}</div>
-                  </div>
-                  <div className="metric-block">
-                    <div className="metric-label">Домашнее</div>
-                    <ProgressBar value={st.homework_percent} variant="homework" />
-                    <div className="metric-value">{st.homework_percent != null ? st.homework_percent + '%' : '—'}</div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        {/* Правая колонка: прогресс и группы */}
-        <aside className="sidebar">
-          <section className="impact-dashboard">
-            <div className="impact-header">
-              <h2 className="section-title">
-                Прогресс преподавателя
-              </h2>
-            </div>
-
-            {/* Winter illustration removed by request */}
-
-            <div className="impact-grid">
-              <div className="impact-card">
-                <span className="impact-label">Проведено уроков</span>
-                <span className="impact-value">{derivedStats.lessonsCount}</span>
-                <span className="impact-sub">завершённых занятий</span>
-              </div>
-              <div className="impact-card">
-                <span className="impact-label">Минут на платформе</span>
-                <span className="impact-value">{derivedStats.portalMinutes}</span>
-                <span className="impact-sub">совместной работы</span>
-              </div>
-              <div className="impact-card">
-                <span className="impact-label">Количество учеников</span>
-                <span className="impact-value">{derivedStats.totalStudents}</span>
-                <span className="impact-sub">индивидуальные + из групп</span>
-              </div>
-              <div className="impact-card">
-                <span className="impact-label">Количество групп</span>
-                <span className="impact-value">{derivedStats.totalGroups}</span>
-                <span className="impact-sub">активных групп</span>
               </div>
             </div>
-          </section>
+          </div>
 
-        </aside>
-      </div>
-      
-      {/* Модальное окно с детальной информацией о группе */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-slate-900">Статистика</h2>
+                <span className="text-xs text-slate-500">Обновлено {new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-slate-100 px-4 py-3">
+                  <div className="text-xs text-slate-500">Уроки</div>
+                  <div className="text-2xl font-semibold">{derivedStats.lessonsCount}</div>
+                  <div className="text-xs text-slate-400">Завершённые</div>
+                </div>
+                <div className="rounded-xl border border-slate-100 px-4 py-3">
+                  <div className="text-xs text-slate-500">Ученики</div>
+                  <div className="text-2xl font-semibold">{derivedStats.totalStudents}</div>
+                  <div className="text-xs text-slate-400">Активные</div>
+                </div>
+                <div className="rounded-xl border border-slate-100 px-4 py-3">
+                  <div className="text-xs text-slate-500">Группы</div>
+                  <div className="text-2xl font-semibold">{derivedStats.totalGroups}</div>
+                  <div className="text-xs text-slate-400">Рабочие группы</div>
+                </div>
+                <div className="rounded-xl border border-slate-100 px-4 py-3">
+                  <div className="text-xs text-slate-500">Минуты</div>
+                  <div className="text-2xl font-semibold">{derivedStats.portalMinutes}</div>
+                  <div className="text-xs text-slate-400">На платформе</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-slate-900">Недавние материалы</h2>
+                <Link to="/materials" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">Открыть все</Link>
+              </div>
+              {todayLessons.slice(0, 3).length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">Материалы появятся после загрузки первых файлов или уроков.</div>
+              ) : (
+                <div className="space-y-3">
+                  {todayLessons.slice(0, 3).map((lesson) => (
+                    <div key={lesson.id} className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">{lesson.title || 'Урок без названия'}</div>
+                        <div className="text-xs text-slate-500">{formatTime(lesson.start_time)} · {lesson.group_name || lesson.group_title || 'Группа не указана'}</div>
+                      </div>
+                      <span className="text-xs text-slate-500">{getLessonDuration(lesson)} мин</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      </main>
+
       <GroupDetailModal
         group={groupDetailModal.group}
         isOpen={groupDetailModal.isOpen}
         onClose={() => setGroupDetailModal({ isOpen: false, group: null })}
         onStudentClick={(studentId, groupId) => {
           setGroupDetailModal({ isOpen: false, group: null });
-          setStudentCardModal({ 
-            isOpen: true, 
-            studentId, 
+          setStudentCardModal({
+            isOpen: true,
+            studentId,
             groupId,
-            isIndividual: false
+            isIndividual: false,
           });
         }}
       />
-      
-      {/* Модальное окно с карточкой ученика */}
+
       <StudentCardModal
         studentId={studentCardModal.studentId}
         groupId={studentCardModal.groupId}
@@ -556,12 +584,10 @@ const TeacherHomePage = () => {
         isOpen={studentCardModal.isOpen}
         onClose={() => setStudentCardModal({ isOpen: false, studentId: null, groupId: null, isIndividual: false })}
       />
-      
+
       <SupportWidget />
     </div>
   );
 };
-
-// ProgressBar уже объявлен выше
 
 export default TeacherHomePage;
