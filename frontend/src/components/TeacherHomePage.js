@@ -694,7 +694,7 @@ const globalStyles = `
     font-family: var(--font-family);
     background: transparent;
     min-height: 100vh;
-    padding: 6rem 1.5rem 1.5rem;
+    padding: 7.25rem 1.5rem 1.5rem;
     position: relative;
     overflow-x: hidden;
   }
@@ -1362,7 +1362,7 @@ const globalStyles = `
 
   @media (max-width: 640px) {
     .dashboard-container {
-      padding: 5rem 1rem 1.25rem;
+      padding: 6.25rem 1rem 1.25rem;
     }
 
     .hero-card {
