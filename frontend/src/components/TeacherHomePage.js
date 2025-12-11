@@ -295,8 +295,9 @@ const TeacherHomePage = () => {
 
   // Clean group name from emojis
   const cleanGroupName = (name) => {
-    // Remove all emojis and extra spaces
-    return name.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+    // Remove emojis - simple and reliable method
+    // This removes all characters outside basic Latin/Cyrillic ranges
+    return name.replace(/[^\w\s\u0400-\u04FF.,!?()-]/g, '').replace(/\s+/g, ' ').trim();
   };
 
   if (loading) {
@@ -1171,12 +1172,13 @@ const globalStyles = `
   .stat-tile {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.625rem;
     background: var(--slate-50);
     border-radius: var(--radius-md);
-    padding: 1rem;
+    padding: 0.875rem;
     border: 1px solid var(--color-border);
     transition: all 0.2s;
+    min-height: 76px;
   }
 
   .stat-tile:hover {
@@ -1188,8 +1190,8 @@ const globalStyles = `
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     background: var(--indigo-100);
     border-radius: var(--radius-sm);
     color: var(--indigo-600);
@@ -1198,13 +1200,16 @@ const globalStyles = `
 
   .stat-content {
     min-width: 0;
+    flex: 1;
+    overflow: hidden;
   }
 
   .stat-value {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--color-text-primary);
-    line-height: 1.2;
+    line-height: 1;
+    margin-bottom: 0.25rem;
   }
 
   .stat-label {
@@ -1213,6 +1218,8 @@ const globalStyles = `
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.4px;
+    line-height: 1.3;
+    display: block;
   }
 
   /* === QUICK ACTIONS CARD === */
