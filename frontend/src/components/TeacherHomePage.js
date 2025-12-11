@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getTeacherStatsSummary, getLessons, getGroups, startQuickLesson } from '../apiService';
 import { Link } from 'react-router-dom';
 import SubscriptionBanner from './SubscriptionBanner';
+import './TeacherHomePage.css';
 
 /* =====================================================
    TEACHER HOME PAGE - Enterprise Indigo Theme
