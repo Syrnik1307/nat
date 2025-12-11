@@ -99,6 +99,12 @@ const IconBook = ({ size = 24, className = '' }) => (
   </svg>
 );
 
+const IconFolder = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+  </svg>
+);
+
 const IconGraduationCap = ({ size = 24, className = '' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
@@ -116,6 +122,12 @@ const TeacherHomePage = () => {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  
+  // Modal state for lesson start
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [recordLesson, setRecordLesson] = useState(true);
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [startError, setStartError] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -143,19 +155,31 @@ const TeacherHomePage = () => {
     loadData();
   }, []);
 
+  const openStartModal = () => {
+    setStartError(null);
+    setRecordLesson(true);
+    setSelectedGroupId(groups.length > 0 ? groups[0].id : '');
+    setShowStartModal(true);
+  };
+
   const handleQuickStart = async () => {
-    // TODO: Call backend endpoint /api/start-lesson here
     if (starting) return;
     setStarting(true);
+    setStartError(null);
     try {
-      const res = await startQuickLesson();
+      const res = await startQuickLesson({
+        record_lesson: recordLesson,
+        group_id: selectedGroupId || undefined,
+      });
       if (res.data?.zoom_start_url) {
         window.open(res.data.zoom_start_url, '_blank');
+        setShowStartModal(false);
       } else if (res.data?.start_url) {
         window.open(res.data.start_url, '_blank');
+        setShowStartModal(false);
       }
     } catch (err) {
-      alert(err.response?.data?.detail || 'Ошибка запуска урока');
+      setStartError(err.response?.data?.detail || 'Ошибка запуска урока');
     } finally {
       setStarting(false);
     }
@@ -196,6 +220,73 @@ const TeacherHomePage = () => {
       {/* Subscription Banner */}
       <SubscriptionBanner />
 
+      {/* Start Lesson Modal */}
+      {showStartModal && (
+        <>
+          <div className="modal-overlay" onClick={() => setShowStartModal(false)} />
+          <div className="start-modal">
+            <h3 className="start-modal-title">
+              <IconVideo size={20} />
+              <span>Настройки урока</span>
+            </h3>
+
+            {/* Group Selection */}
+            <div className="start-modal-field">
+              <label className="start-modal-label">Группа</label>
+              <select
+                className="start-modal-select"
+                value={selectedGroupId}
+                onChange={(e) => setSelectedGroupId(e.target.value)}
+              >
+                <option value="">Без группы (индивидуальный)</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Record Option */}
+            <label className={`start-modal-checkbox ${recordLesson ? 'checked' : ''}`}>
+              <input
+                type="checkbox"
+                checked={recordLesson}
+                onChange={(e) => setRecordLesson(e.target.checked)}
+              />
+              <IconDisc size={18} />
+              <span>Записывать урок</span>
+            </label>
+
+            {recordLesson && (
+              <div className="start-modal-hint">
+                <IconDisc size={14} />
+                <span>Запись будет доступна в разделе «Записи» после окончания</span>
+              </div>
+            )}
+
+            {startError && (
+              <div className="start-modal-error">{startError}</div>
+            )}
+
+            <div className="start-modal-actions">
+              <button
+                className="start-modal-btn primary"
+                onClick={handleQuickStart}
+                disabled={starting}
+              >
+                <IconPlay size={16} />
+                <span>{starting ? 'Запуск...' : 'Начать урок'}</span>
+              </button>
+              <button
+                className="start-modal-btn secondary"
+                onClick={() => setShowStartModal(false)}
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Main Grid - No page title, starts directly with content */}
       <div className="dashboard-grid">
         {/* LEFT COLUMN */}
@@ -221,11 +312,11 @@ const TeacherHomePage = () => {
               <p className="hero-subtitle">Мгновенный запуск Zoom-конференции для вашего следующего занятия</p>
               <button
                 className="hero-button"
-                onClick={handleQuickStart}
+                onClick={openStartModal}
                 disabled={starting}
               >
                 <IconPlay size={18} />
-                <span>{starting ? 'Запуск...' : 'Запустить Zoom'}</span>
+                <span>Запустить Zoom</span>
               </button>
             </div>
           </div>
@@ -346,11 +437,20 @@ const TeacherHomePage = () => {
             <div className="stats-grid">
               <div className="stat-tile">
                 <div className="stat-icon">
-                  <IconBook size={20} />
+                  <IconClock size={20} />
                 </div>
                 <div className="stat-content">
-                  <div className="stat-value">{stats?.total_lessons || 0}</div>
-                  <div className="stat-label">Уроков</div>
+                  <div className="stat-value">{stats?.portal_minutes || 0}</div>
+                  <div className="stat-label">Минут на платформе</div>
+                </div>
+              </div>
+              <div className="stat-tile">
+                <div className="stat-icon">
+                  <IconVideo size={20} />
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">{stats?.teaching_minutes || 0}</div>
+                  <div className="stat-label">Минут занятий</div>
                 </div>
               </div>
               <div className="stat-tile">
@@ -364,20 +464,11 @@ const TeacherHomePage = () => {
               </div>
               <div className="stat-tile">
                 <div className="stat-icon">
-                  <IconDisc size={20} />
+                  <IconFolder size={20} />
                 </div>
                 <div className="stat-content">
-                  <div className="stat-value">{stats?.recorded_lessons || 0}</div>
-                  <div className="stat-label">Записей</div>
-                </div>
-              </div>
-              <div className="stat-tile">
-                <div className="stat-icon">
-                  <IconTrendingUp size={20} />
-                </div>
-                <div className="stat-content">
-                  <div className="stat-value">{stats?.recording_ratio_percent || 0}%</div>
-                  <div className="stat-label">С записью</div>
+                  <div className="stat-value">{stats?.total_groups || 0}</div>
+                  <div className="stat-label">Групп</div>
                 </div>
               </div>
             </div>
@@ -396,15 +487,15 @@ const TeacherHomePage = () => {
               <div className="progress-item">
                 <div className="progress-item-header">
                   <div className="progress-item-label">
-                    <IconBook size={16} />
-                    <span>Проведено уроков</span>
+                    <IconClock size={16} />
+                    <span>Часов на платформе</span>
                   </div>
-                  <span className="progress-item-value">{stats?.total_lessons || 0}</span>
+                  <span className="progress-item-value">{Math.round((stats?.portal_minutes || 0) / 60)}</span>
                 </div>
                 <div className="progress-bar-track">
                   <div 
                     className="progress-bar-fill"
-                    style={{ width: `${Math.min((stats?.total_lessons || 0) * 2, 100)}%` }}
+                    style={{ width: `${Math.min((stats?.portal_minutes || 0) / 60, 100)}%` }}
                   ></div>
                 </div>
               </div>
@@ -412,15 +503,31 @@ const TeacherHomePage = () => {
               <div className="progress-item">
                 <div className="progress-item-header">
                   <div className="progress-item-label">
-                    <IconDisc size={16} />
-                    <span>Записи уроков</span>
+                    <IconVideo size={16} />
+                    <span>Часов занятий</span>
                   </div>
-                  <span className="progress-item-value">{stats?.recording_ratio_percent || 0}%</span>
+                  <span className="progress-item-value">{Math.round((stats?.teaching_minutes || 0) / 60)}</span>
                 </div>
                 <div className="progress-bar-track">
                   <div 
                     className="progress-bar-fill"
-                    style={{ width: `${stats?.recording_ratio_percent || 0}%` }}
+                    style={{ width: `${Math.min((stats?.teaching_minutes || 0) / 60, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="progress-item">
+                <div className="progress-item-header">
+                  <div className="progress-item-label">
+                    <IconFolder size={16} />
+                    <span>Активные группы</span>
+                  </div>
+                  <span className="progress-item-value">{stats?.total_groups || 0}</span>
+                </div>
+                <div className="progress-bar-track">
+                  <div 
+                    className="progress-bar-fill"
+                    style={{ width: `${Math.min((stats?.total_groups || 0) * 20, 100)}%` }}
                   ></div>
                 </div>
               </div>
@@ -429,30 +536,14 @@ const TeacherHomePage = () => {
                 <div className="progress-item-header">
                   <div className="progress-item-label">
                     <IconUsers size={16} />
-                    <span>Активные группы</span>
+                    <span>Всего учеников</span>
                   </div>
-                  <span className="progress-item-value">{groups.length}</span>
+                  <span className="progress-item-value">{stats?.total_students || 0}</span>
                 </div>
                 <div className="progress-bar-track">
                   <div 
                     className="progress-bar-fill"
-                    style={{ width: `${Math.min(groups.length * 20, 100)}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="progress-item">
-                <div className="progress-item-header">
-                  <div className="progress-item-label">
-                    <IconClock size={16} />
-                    <span>Часов преподавания</span>
-                  </div>
-                  <span className="progress-item-value">{Math.round((stats?.average_duration_seconds || 0) * (stats?.total_lessons || 0) / 3600)}</span>
-                </div>
-                <div className="progress-bar-track">
-                  <div 
-                    className="progress-bar-fill"
-                    style={{ width: `${Math.min(Math.round((stats?.average_duration_seconds || 0) * (stats?.total_lessons || 0) / 3600) * 2, 100)}%` }}
+                    style={{ width: `${Math.min((stats?.total_students || 0) * 5, 100)}%` }}
                   ></div>
                 </div>
               </div>
@@ -1164,6 +1255,187 @@ const globalStyles = `
     .stats-grid {
       grid-template-columns: 1fr;
     }
+  }
+
+  /* === START LESSON MODAL === */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+  }
+
+  .start-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: var(--radius-xl);
+    padding: 1.75rem;
+    width: 400px;
+    max-width: 92vw;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+    z-index: 1001;
+  }
+
+  .start-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0 0 1.25rem 0;
+  }
+
+  .start-modal-title svg {
+    color: var(--color-primary);
+  }
+
+  .start-modal-field {
+    margin-bottom: 1rem;
+  }
+
+  .start-modal-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+  }
+
+  .start-modal-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #fff;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .start-modal-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+  }
+
+  .start-modal-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: #f9fafb;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 0.75rem;
+  }
+
+  .start-modal-checkbox.checked {
+    background: var(--indigo-50);
+    border-color: var(--indigo-200);
+  }
+
+  .start-modal-checkbox input {
+    width: 1.1rem;
+    height: 1.1rem;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+  }
+
+  .start-modal-checkbox svg {
+    color: var(--color-text-secondary);
+  }
+
+  .start-modal-checkbox.checked svg {
+    color: var(--color-primary);
+  }
+
+  .start-modal-checkbox span {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+
+  .start-modal-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--indigo-50);
+    border-radius: var(--radius-md);
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 1rem;
+  }
+
+  .start-modal-hint svg {
+    color: var(--color-primary);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .start-modal-error {
+    padding: 0.75rem 1rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-md);
+    color: #dc2626;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  .start-modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .start-modal-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+  }
+
+  .start-modal-btn.primary {
+    background: var(--gradient-primary);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  }
+
+  .start-modal-btn.primary:hover:not(:disabled) {
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .start-modal-btn.primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  .start-modal-btn.secondary {
+    background: #f3f4f6;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+  }
+
+  .start-modal-btn.secondary:hover {
+    background: #e5e7eb;
   }
 `;
 

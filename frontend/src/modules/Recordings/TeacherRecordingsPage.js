@@ -70,7 +70,8 @@ function TeacherRecordingsPage() {
   const loadStudents = async () => {
     try {
       const response = await api.get('groups', withScheduleApiBase());
-      const groupsData = response.data.results || response.data;
+      const rawData = response.data.results || response.data;
+      const groupsData = Array.isArray(rawData) ? rawData : [];
       const allStudents = [];
       groupsData.forEach(group => {
         if (group.students && Array.isArray(group.students)) {
@@ -92,7 +93,8 @@ function TeacherRecordingsPage() {
       setLoading(true);
       setError(null);
       const response = await api.get('recordings/teacher/', withScheduleApiBase());
-      const recordingsData = response.data.results || response.data;
+      const rawData = response.data.results || response.data;
+      const recordingsData = Array.isArray(rawData) ? rawData : [];
       setRecordings(recordingsData);
       
       // Подсчитываем статистику
