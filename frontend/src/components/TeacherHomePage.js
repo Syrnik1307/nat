@@ -1,592 +1,563 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../auth';
-import { getTeacherStatsSummary, getTeacherStatsBreakdown, getLessons, getIndividualStudents, startQuickLesson, apiClient } from '../apiService';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import SwipeableLesson from './SwipeableLesson';
-import EmptyState from './EmptyState';
-import SupportWidget from './SupportWidget';
+import { getTeacherStatsSummary, getLessons, getGroups, quickStartLesson } from '../apiService';
+import { Link } from 'react-router-dom';
 import SubscriptionBanner from './SubscriptionBanner';
-import TelegramWarningBanner from './TelegramWarningBanner';
-import GroupDetailModal from './GroupDetailModal';
-import StudentCardModal from './StudentCardModal';
-import './TeacherHomePage.css';
 
-const ProgressBar = ({ value, variant = 'default' }) => {
-  const safe = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
-  return (
-    <div className={`progress-bar pb-${variant}`}>
-      <div className="progress-fill" style={{ width: `${safe}%` }} />
-    </div>
-  );
+/* =====================================================
+   TEACHER HOME PAGE - Полностью переписанный компонент
+   Макет: CSS Grid, 2 колонки (70% / 30%)
+   ===================================================== */
+
+const styles = {
+  /* === MAIN WRAPPER === */
+  pageWrapper: {
+    fontFamily: "'Inter', sans-serif",
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '2rem 1.5rem',
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+  },
+
+  /* === HEADER === */
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '2rem',
+    paddingBottom: '1rem',
+    borderBottom: '1px solid #e2e8f0',
+  },
+  logo: {
+    fontSize: '1.75rem',
+    fontWeight: 800,
+    background: 'linear-gradient(135deg, #6366f1, #3b82f6)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+    letterSpacing: '-0.02em',
+  },
+  headerRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem',
+  },
+  userName: {
+    fontSize: '0.9rem',
+    color: '#64748b',
+    fontWeight: 500,
+  },
+  logoutBtn: {
+    background: '#ef4444',
+    color: '#fff',
+    border: 'none',
+    padding: '0.5rem 1rem',
+    borderRadius: '8px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontSize: '0.85rem',
+    transition: 'background 0.2s',
+  },
+
+  /* === GRID LAYOUT === */
+  gridContainer: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 340px',
+    gap: '1.5rem',
+    alignItems: 'start',
+  },
+  leftColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem',
+  },
+  rightColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem',
+  },
+
+  /* === HERO CARD (Quick Lesson) === */
+  heroCard: {
+    background: 'linear-gradient(135deg, #6366f1 0%, #3b82f6 50%, #0ea5e9 100%)',
+    borderRadius: '20px',
+    padding: '2.5rem',
+    color: '#fff',
+    boxShadow: '0 20px 40px rgba(99, 102, 241, 0.3)',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  heroPattern: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '200px',
+    height: '200px',
+    background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)',
+    borderRadius: '50%',
+    transform: 'translate(30%, -30%)',
+  },
+  heroTitle: {
+    fontSize: '1.75rem',
+    fontWeight: 800,
+    marginBottom: '0.5rem',
+    position: 'relative',
+    zIndex: 1,
+  },
+  heroSubtitle: {
+    fontSize: '1rem',
+    opacity: 0.9,
+    marginBottom: '1.5rem',
+    position: 'relative',
+    zIndex: 1,
+  },
+  heroButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    background: '#fff',
+    color: '#6366f1',
+    border: 'none',
+    padding: '1rem 2rem',
+    borderRadius: '12px',
+    fontWeight: 700,
+    fontSize: '1rem',
+    cursor: 'pointer',
+    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.15)',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    position: 'relative',
+    zIndex: 1,
+  },
+
+  /* === SECTION CARD (Schedule, Groups) === */
+  sectionCard: {
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '1.5rem',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
+    border: '1px solid #e2e8f0',
+  },
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '1rem',
+  },
+  sectionTitle: {
+    fontSize: '1.1rem',
+    fontWeight: 700,
+    color: '#1e293b',
+    margin: 0,
+  },
+  sectionLink: {
+    fontSize: '0.85rem',
+    color: '#6366f1',
+    textDecoration: 'none',
+    fontWeight: 600,
+  },
+
+  /* === SCHEDULE LIST === */
+  lessonItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem',
+    padding: '1rem',
+    borderRadius: '12px',
+    background: '#f8fafc',
+    marginBottom: '0.75rem',
+    transition: 'background 0.2s',
+  },
+  lessonTime: {
+    background: 'linear-gradient(135deg, #6366f1, #3b82f6)',
+    color: '#fff',
+    padding: '0.5rem 0.75rem',
+    borderRadius: '8px',
+    fontSize: '0.8rem',
+    fontWeight: 700,
+    minWidth: '70px',
+    textAlign: 'center',
+  },
+  lessonInfo: {
+    flex: 1,
+  },
+  lessonTitle: {
+    fontWeight: 600,
+    color: '#1e293b',
+    marginBottom: '0.25rem',
+  },
+  lessonGroup: {
+    fontSize: '0.8rem',
+    color: '#64748b',
+  },
+
+  /* === GROUPS GRID === */
+  groupsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+    gap: '0.75rem',
+  },
+  groupCard: {
+    background: '#f8fafc',
+    borderRadius: '12px',
+    padding: '1rem',
+    textAlign: 'center',
+    border: '1px solid #e2e8f0',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    cursor: 'pointer',
+  },
+  groupName: {
+    fontWeight: 600,
+    color: '#1e293b',
+    marginBottom: '0.25rem',
+  },
+  groupCount: {
+    fontSize: '0.8rem',
+    color: '#64748b',
+  },
+
+  /* === STATS SECTION (Right Column) === */
+  statsCard: {
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '1.5rem',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
+    border: '1px solid #e2e8f0',
+  },
+  statsGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '1rem',
+  },
+  statTile: {
+    background: '#f8fafc',
+    borderRadius: '12px',
+    padding: '1rem',
+    textAlign: 'center',
+    border: '1px solid #e2e8f0',
+  },
+  statValue: {
+    fontSize: '1.5rem',
+    fontWeight: 800,
+    color: '#6366f1',
+    marginBottom: '0.25rem',
+  },
+  statLabel: {
+    fontSize: '0.75rem',
+    color: '#64748b',
+    fontWeight: 500,
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+
+  /* === PROGRESS CARD === */
+  progressCard: {
+    background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+    borderRadius: '16px',
+    padding: '1.5rem',
+    border: '1px solid #bbf7d0',
+  },
+  progressTitle: {
+    fontSize: '1rem',
+    fontWeight: 700,
+    color: '#166534',
+    marginBottom: '1rem',
+  },
+  progressItem: {
+    marginBottom: '1rem',
+  },
+  progressLabel: {
+    fontSize: '0.8rem',
+    color: '#166534',
+    fontWeight: 600,
+    marginBottom: '0.5rem',
+    display: 'flex',
+    justifyContent: 'space-between',
+  },
+  progressBar: {
+    height: '8px',
+    background: '#bbf7d0',
+    borderRadius: '4px',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    background: 'linear-gradient(90deg, #22c55e, #16a34a)',
+    borderRadius: '4px',
+  },
+
+  /* === EMPTY STATE === */
+  emptyState: {
+    textAlign: 'center',
+    padding: '2rem',
+    color: '#64748b',
+  },
+
+  /* === LOADING === */
+  loading: {
+    textAlign: 'center',
+    padding: '3rem',
+    color: '#64748b',
+  },
+
+  /* === RESPONSIVE (handled inline) === */
 };
 
 const TeacherHomePage = () => {
-  const { accessTokenValid, subscription } = useAuth();
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const [loading, setLoading] = useState(true);
-  const [todayLessons, setTodayLessons] = useState([]);
+  const { user, logout } = useAuth();
   const [stats, setStats] = useState(null);
-  const [breakdown, setBreakdown] = useState({ groups: [], students: [] });
-  const [error, setError] = useState(null);
-  const [quickLessonLoading, setQuickLessonLoading] = useState(false);
-  const [quickLessonError, setQuickLessonError] = useState(null);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [groupDetailModal, setGroupDetailModal] = useState({ isOpen: false, group: null });
-  const [studentCardModal, setStudentCardModal] = useState({ isOpen: false, studentId: null, groupId: null, isIndividual: false });
+  const [lessons, setLessons] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get('payment') === 'success') {
-      setPaymentSuccess(true);
-      searchParams.delete('payment');
-      setSearchParams(searchParams, { replace: true });
-      setTimeout(() => setPaymentSuccess(false), 5000);
-    }
-  }, [searchParams, setSearchParams]);
+    const loadData = async () => {
+      try {
+        const now = new Date();
+        const in30 = new Date();
+        in30.setDate(now.getDate() + 30);
 
-  const loadData = useCallback(async () => {
-    if (!accessTokenValid) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const todayDate = new Date().toISOString().split('T')[0];
-      const [lessonsRes, statsRes, breakdownRes, individualStudentsRes] = await Promise.all([
-        getLessons({ date: todayDate, include_recurring: true }),
-        getTeacherStatsSummary(),
-        getTeacherStatsBreakdown(),
-        getIndividualStudents(),
-      ]);
+        const [statsRes, lessonsRes, groupsRes] = await Promise.all([
+          getTeacherStatsSummary(),
+          getLessons({ start: now.toISOString(), end: in30.toISOString(), include_recurring: true }),
+          getGroups(),
+        ]);
 
-      const lessonsList = Array.isArray(lessonsRes.data)
-        ? lessonsRes.data
-        : lessonsRes.data.results || [];
-
-      setTodayLessons(lessonsList);
-      setStats(statsRes.data);
-
-      const individualStudents = Array.isArray(individualStudentsRes.data)
-        ? individualStudentsRes.data
-        : individualStudentsRes.data.results || [];
-
-      const individualStudentsForDisplay = individualStudents.map((st) => {
-        const fullName = st.student_name || `${st.first_name || ''} ${st.last_name || ''}`.trim();
-        return {
-          id: st.user_id || st.student_id || st.id,
-          name: fullName || st.email,
-          email: st.email,
-          group_id: null,
-          group_name: 'Индивидуальный',
-          attendance_percent: st.attendance_percent ?? 0,
-          homework_percent: st.homework_percent ?? 0,
-        };
-      });
-
-      setBreakdown({
-        groups: breakdownRes.data?.groups || [],
-        students: individualStudentsForDisplay,
-      });
-    } catch (err) {
-      console.error('Ошибка загрузки данных:', err);
-      setError('Не удалось загрузить данные. Попробуйте обновить страницу.');
-    } finally {
-      setLoading(false);
-    }
-  }, [accessTokenValid]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const launchZoomLesson = useCallback(async () => {
-    setQuickLessonLoading(true);
-    setQuickLessonError(null);
-    try {
-      const response = await startQuickLesson();
-      const zoomUrl = response?.data?.zoom_start_url || response?.data?.zoom_url || response?.data?.start_url;
-      if (!zoomUrl) {
-        throw new Error('Ссылка для подключения не получена');
+        setStats(statsRes.data);
+        const lessonList = Array.isArray(lessonsRes.data) ? lessonsRes.data : lessonsRes.data.results || [];
+        setLessons(lessonList.slice(0, 5));
+        setGroups(Array.isArray(groupsRes.data) ? groupsRes.data : groupsRes.data.results || []);
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
+      } finally {
+        setLoading(false);
       }
-      window.location.href = zoomUrl;
-      await loadData();
-    } catch (err) {
-      console.error('Не удалось запустить быстрый урок:', err);
-      const detail = err.response?.data?.detail || err.message || 'Не удалось создать урок.';
-      setQuickLessonError(detail);
-    } finally {
-      setQuickLessonLoading(false);
-    }
-  }, [loadData]);
-
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const getLessonDuration = (lesson) => {
-    if (lesson.duration_minutes && lesson.duration_minutes > 0) {
-      return lesson.duration_minutes;
-    }
-    if (lesson.start_time && lesson.end_time) {
-      const start = new Date(lesson.start_time);
-      const end = new Date(lesson.end_time);
-      const durationMinutes = Math.round((end - start) / (1000 * 60));
-      if (durationMinutes > 0) return durationMinutes;
-    }
-    return 60;
-  };
-
-  const handleDeleteLesson = async (lessonId, deleteType) => {
-    try {
-      const lesson = todayLessons.find((l) => l.id === lessonId);
-      if (!lesson) {
-        throw new Error('Урок не найден в расписании. Обновите страницу и попробуйте ещё раз.');
-      }
-
-      if (deleteType === 'single') {
-        await apiClient.delete(`schedule/lessons/${lessonId}/`);
-        await loadData();
-        return { status: 'deleted', message: `Урок «${lesson.title}» удалён` };
-      }
-
-      if (deleteType === 'recurring') {
-        const response = await apiClient.post('schedule/lessons/delete_recurring/', {
-          title: lesson.title,
-          group_id: lesson.group || lesson.group_id,
-        });
-        await loadData();
-        return {
-          status: 'deleted',
-          count: response?.data?.count,
-          message: response?.data?.message || 'Похожие уроки удалены',
-        };
-      }
-
-      throw new Error('Неизвестный тип удаления');
-    } catch (err) {
-      console.error('Ошибка удаления урока:', err);
-      throw err;
-    }
-  };
-
-  const derivedStats = useMemo(() => {
-    const totalStudents = stats?.total_students || 0;
-    const totalGroups = stats?.total_groups || 0;
-    const lessonsCount = stats?.total_lessons || 0;
-    const teachingMinutes = stats?.teaching_minutes || 0;
-    const portalMinutes = stats?.portal_minutes || 0;
-
-    return {
-      totalStudents,
-      totalGroups,
-      lessonsCount,
-      teachingMinutes,
-      portalMinutes,
     };
-  }, [stats]);
-
-  const headerDate = useMemo(() => {
-    const date = new Date();
-    const formatted = date.toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'long',
-      weekday: 'long',
-    });
-    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    loadData();
   }, []);
+
+  const handleQuickStart = async () => {
+    if (starting) return;
+    setStarting(true);
+    try {
+      const res = await quickStartLesson();
+      if (res.data?.zoom_start_url) {
+        window.open(res.data.zoom_start_url, '_blank');
+      } else if (res.data?.start_url) {
+        window.open(res.data.start_url, '_blank');
+      }
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Ошибка запуска урока');
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const formatTime = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  };
 
   if (loading) {
     return (
-      <div className="teacher-home-page min-h-screen grid place-items-center bg-[#F3F4F6]">
-        <div className="text-center space-y-3">
-          <div className="spinner" aria-hidden="true"></div>
-          <p className="text-slate-600">Загрузка...</p>
-        </div>
+      <div style={styles.pageWrapper}>
+        <div style={styles.loading}>Загрузка...</div>
       </div>
     );
   }
 
   return (
-    <div
-      className="teacher-home-page min-h-screen bg-[#F3F4F6] text-slate-900"
-      style={{ fontFamily: 'Manrope, "Inter", "Segoe UI", system-ui, sans-serif' }}
-    >
-      <TelegramWarningBanner />
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        
+        .hero-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+        .group-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+        .lesson-item:hover {
+          background: #f1f5f9;
+        }
+        @media (max-width: 900px) {
+          .dashboard-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
 
-      <header className="sticky top-0 z-30 backdrop-blur bg-white/80 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#6B4CFF] to-[#36C3FF] text-white font-bold grid place-items-center shadow-lg">
-              LS
+      <div style={styles.pageWrapper}>
+        {/* HEADER */}
+        <header style={styles.header}>
+          <div style={styles.logo}>Lectio Space</div>
+          <div style={styles.headerRight}>
+            <span style={styles.userName}>{user?.full_name || user?.email || 'Преподаватель'}</span>
+            <button style={styles.logoutBtn} onClick={logout}>Выход</button>
+          </div>
+        </header>
+
+        {/* SUBSCRIPTION BANNER */}
+        <SubscriptionBanner />
+
+        {/* MAIN GRID */}
+        <div className="dashboard-grid" style={styles.gridContainer}>
+          {/* LEFT COLUMN (70%) */}
+          <div style={styles.leftColumn}>
+            {/* HERO: Quick Lesson */}
+            <div style={styles.heroCard}>
+              <div style={styles.heroPattern}></div>
+              <h2 style={styles.heroTitle}>🚀 Начать урок</h2>
+              <p style={styles.heroSubtitle}>Мгновенный запуск Zoom-конференции для вашего следующего занятия</p>
+              <button
+                className="hero-btn"
+                style={styles.heroButton}
+                onClick={handleQuickStart}
+                disabled={starting}
+              >
+                {starting ? '⏳ Запуск...' : '📹 Запустить Zoom'}
+              </button>
             </div>
-            <div className="leading-tight">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-indigo-600 font-semibold">Lectio Space</div>
-              <div className="text-sm text-slate-500">Панель преподавателя</div>
+
+            {/* SCHEDULE */}
+            <div style={styles.sectionCard}>
+              <div style={styles.sectionHeader}>
+                <h3 style={styles.sectionTitle}>📅 Расписание</h3>
+                <Link to="/recurring-lessons/manage" style={styles.sectionLink}>Все занятия →</Link>
+              </div>
+              {lessons.length > 0 ? (
+                lessons.map((lesson) => (
+                  <div
+                    key={lesson.id}
+                    className="lesson-item"
+                    style={styles.lessonItem}
+                  >
+                    <div style={styles.lessonTime}>
+                      {formatDate(lesson.start_time)}<br />
+                      {formatTime(lesson.start_time)}
+                    </div>
+                    <div style={styles.lessonInfo}>
+                      <div style={styles.lessonTitle}>{lesson.title || 'Без названия'}</div>
+                      <div style={styles.lessonGroup}>{lesson.group_name || `Группа #${lesson.group}`}</div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={styles.emptyState}>Нет предстоящих занятий</div>
+              )}
+            </div>
+
+            {/* GROUPS */}
+            <div style={styles.sectionCard}>
+              <div style={styles.sectionHeader}>
+                <h3 style={styles.sectionTitle}>👥 Группы</h3>
+                <Link to="/groups/manage" style={styles.sectionLink}>Управление →</Link>
+              </div>
+              {groups.length > 0 ? (
+                <div style={styles.groupsGrid}>
+                  {groups.map((group) => (
+                    <Link
+                      key={group.id}
+                      to={`/attendance/${group.id}`}
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <div className="group-card" style={styles.groupCard}>
+                        <div style={styles.groupName}>{group.name}</div>
+                        <div style={styles.groupCount}>{group.students?.length || 0} учеников</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div style={styles.emptyState}>Нет групп</div>
+              )}
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center gap-5 text-sm text-slate-600">
-            <Link to="/home-new" className="hover:text-indigo-600 transition">Главная</Link>
-            <Link to="/groups" className="hover:text-indigo-600 transition">Группы</Link>
-            <Link to="/calendar" className="hover:text-indigo-600 transition">Календарь</Link>
-            <Link to="/materials" className="hover:text-indigo-600 transition">Материалы</Link>
-          </nav>
+          {/* RIGHT COLUMN (30%) */}
+          <div style={styles.rightColumn}>
+            {/* STATISTICS */}
+            <div style={styles.statsCard}>
+              <div style={styles.sectionHeader}>
+                <h3 style={styles.sectionTitle}>📊 Статистика</h3>
+              </div>
+              <div style={styles.statsGrid}>
+                <div style={styles.statTile}>
+                  <div style={styles.statValue}>{stats?.total_lessons || 0}</div>
+                  <div style={styles.statLabel}>Уроков</div>
+                </div>
+                <div style={styles.statTile}>
+                  <div style={styles.statValue}>{stats?.total_students || 0}</div>
+                  <div style={styles.statLabel}>Учеников</div>
+                </div>
+                <div style={styles.statTile}>
+                  <div style={styles.statValue}>{stats?.recorded_lessons || 0}</div>
+                  <div style={styles.statLabel}>Записей</div>
+                </div>
+                <div style={styles.statTile}>
+                  <div style={styles.statValue}>{stats?.recording_ratio_percent || 0}%</div>
+                  <div style={styles.statLabel}>С записью</div>
+                </div>
+              </div>
+            </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={launchZoomLesson}
-              disabled={quickLessonLoading}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#6B4CFF] to-[#36C3FF] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:shadow-xl active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {quickLessonLoading ? 'Запуск...' : 'Быстрый урок'}
-            </button>
+            {/* TEACHER PROGRESS */}
+            <div style={styles.progressCard}>
+              <h3 style={styles.progressTitle}>🎯 Прогресс</h3>
+              
+              <div style={styles.progressItem}>
+                <div style={styles.progressLabel}>
+                  <span>Проведено уроков</span>
+                  <span>{stats?.total_lessons || 0}</span>
+                </div>
+                <div style={styles.progressBar}>
+                  <div style={{ ...styles.progressFill, width: `${Math.min((stats?.total_lessons || 0) * 2, 100)}%` }}></div>
+                </div>
+              </div>
+
+              <div style={styles.progressItem}>
+                <div style={styles.progressLabel}>
+                  <span>Записи уроков</span>
+                  <span>{stats?.recording_ratio_percent || 0}%</span>
+                </div>
+                <div style={styles.progressBar}>
+                  <div style={{ ...styles.progressFill, width: `${stats?.recording_ratio_percent || 0}%` }}></div>
+                </div>
+              </div>
+
+              <div style={styles.progressItem}>
+                <div style={styles.progressLabel}>
+                  <span>Активные группы</span>
+                  <span>{groups.length}</span>
+                </div>
+                <div style={styles.progressBar}>
+                  <div style={{ ...styles.progressFill, width: `${Math.min(groups.length * 20, 100)}%` }}></div>
+                </div>
+              </div>
+            </div>
+
+            {/* QUICK LINKS */}
+            <div style={styles.sectionCard}>
+              <h3 style={{ ...styles.sectionTitle, marginBottom: '1rem' }}>⚡ Быстрые ссылки</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <Link to="/homework/manage" style={{ ...styles.sectionLink, display: 'block', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px' }}>📝 Домашние задания</Link>
+                <Link to="/teacher/recordings" style={{ ...styles.sectionLink, display: 'block', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px' }}>🎥 Записи уроков</Link>
+                <Link to="/profile" style={{ ...styles.sectionLink, display: 'block', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px' }}>⚙️ Профиль</Link>
+                <Link to="/teacher/subscription" style={{ ...styles.sectionLink, display: 'block', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px' }}>💳 Подписка</Link>
+              </div>
+            </div>
           </div>
         </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        <SubscriptionBanner
-          subscription={subscription}
-          onPayClick={() => navigate('/teacher/subscription')}
-        />
-
-        {paymentSuccess && (
-          <div style={{
-            position: 'fixed',
-            top: '84px',
-            right: '20px',
-            zIndex: 9999,
-            background: 'linear-gradient(135deg, #f59e0b 0%, #fcd34d 100%)',
-            color: '#0f172a',
-            padding: '16px 24px',
-            borderRadius: '12px',
-            boxShadow: '0 10px 40px rgba(245, 158, 11, 0.35)',
-            animation: 'slideInRight 0.5s ease',
-            maxWidth: '400px',
-            border: '2px solid rgba(15, 23, 42, 0.12)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ fontSize: '24px' }}>🎉</div>
-              <div>
-                <div style={{ fontWeight: 600, marginBottom: '4px' }}>Платёж успешен!</div>
-                <div style={{ fontSize: '14px', opacity: 0.9 }}>
-                  Ваша подписка активирована
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#6B4CFF] via-[#5B7CFF] to-[#36C3FF] text-white shadow-xl">
-          <div className="absolute inset-0 opacity-50" aria-hidden="true">
-            <div className="absolute -left-10 -top-16 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute right-0 top-10 h-44 w-44 rounded-full bg-white/15 blur-3xl" />
-          </div>
-
-          <div className="relative flex flex-col lg:flex-row items-start gap-8 p-6 sm:p-8">
-            <div className="flex-1 space-y-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/70">Главная панель · {headerDate}</p>
-              <h1 className="text-3xl sm:text-4xl font-bold leading-tight">Запускайте уроки в Lectio Space за секунды</h1>
-              <p className="text-base text-white/80 max-w-2xl">
-                Единая точка управления расписанием, группами и материалами. Быстрый старт Zoom прямо с дашборда.
-              </p>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={launchZoomLesson}
-                  disabled={quickLessonLoading}
-                  className="inline-flex items-center gap-3 rounded-xl bg-white/10 px-5 py-3 text-base font-semibold text-white shadow-lg shadow-black/20 ring-1 ring-white/30 transition hover:bg-white/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {quickLessonLoading ? (
-                    <>
-                      <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      <span>Запускаем Zoom...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span>Быстрый урок</span>
-                    </>
-                  )}
-                </button>
-
-                <Link
-                  to="/calendar"
-                  className="inline-flex items-center gap-2 rounded-xl bg-white text-indigo-700 px-4 py-2 text-sm font-semibold shadow-md transition hover:shadow-lg"
-                >
-                  <span>Открыть календарь</span>
-                  <span aria-hidden="true">→</span>
-                </Link>
-              </div>
-            </div>
-
-            <div className="grid w-full max-w-xl grid-cols-2 gap-3">
-              {[{
-                label: 'Проведённые уроки', value: derivedStats.lessonsCount
-              }, {
-                label: 'Ученики', value: derivedStats.totalStudents
-              }, {
-                label: 'Группы', value: derivedStats.totalGroups
-              }, {
-                label: 'Минут на платформе', value: derivedStats.portalMinutes
-              }].map((item) => (
-                <div key={item.label} className="rounded-2xl bg-white/10 p-4 backdrop-blur shadow-inner shadow-black/10">
-                  <div className="text-sm text-white/70">{item.label}</div>
-                  <div className="text-2xl font-semibold">{item.value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {quickLessonError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
-            {quickLessonError}
-          </div>
-        )}
-
-        {error && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm flex items-center justify-between gap-3">
-            <span>{error}</span>
-            <button onClick={loadData} className="text-indigo-700 font-semibold hover:underline">Повторить</button>
-          </div>
-        )}
-
-        <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2 space-y-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-900">Расписание на сегодня</h2>
-                  <p className="text-sm text-slate-500">{headerDate}</p>
-                </div>
-                <Link to="/calendar" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">Весь календарь</Link>
-              </div>
-
-              {todayLessons.length === 0 ? (
-                <div className="mt-6">
-                  <EmptyState
-                    icon="☀️"
-                    title="День свободен!"
-                    description="У вас сегодня нет уроков. Используйте время для подготовки материалов или отдыха."
-                    action={(
-                      <button
-                        type="button"
-                        onClick={launchZoomLesson}
-                        disabled={quickLessonLoading}
-                        className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:opacity-70 disabled:cursor-not-allowed"
-                      >
-                        {quickLessonLoading ? 'Создание...' : 'Запустить быстрый урок'}
-                      </button>
-                    )}
-                  />
-                </div>
-              ) : (
-                <div className="mt-6 space-y-3">
-                  {todayLessons.map((lesson) => (
-                    <SwipeableLesson
-                      key={lesson.id}
-                      lesson={lesson}
-                      onDelete={handleDeleteLesson}
-                      formatTime={formatTime}
-                      getLessonDuration={getLessonDuration}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold text-slate-900">Группы и ученики</h2>
-                <span className="text-sm text-slate-500">Свежая статистика</span>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="text-sm font-semibold text-slate-700">Группы</div>
-                  {(!breakdown?.groups || breakdown.groups.length === 0) && (
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">Нет данных по группам</div>
-                  )}
-                  {breakdown?.groups && breakdown.groups.slice(0, 4).map((g) => (
-                    <div
-                      key={g.id}
-                      className="rounded-xl border border-slate-100 px-4 py-3 hover:border-indigo-200 transition cursor-pointer"
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          setGroupDetailModal({ isOpen: true, group: g });
-                        }
-                      }}
-                      onClick={() => setGroupDetailModal({ isOpen: true, group: g })}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900">{g.name}</div>
-                          <div className="text-xs text-slate-500">Учеников: {g.students_count}</div>
-                        </div>
-                        <div className="text-xs text-indigo-600 font-semibold">Подробнее →</div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-3">
-                        <div>
-                          <div className="text-xs text-slate-500 mb-1">Посещаемость</div>
-                          <ProgressBar value={g.attendance_percent} />
-                          <div className="text-sm font-semibold mt-1">{g.attendance_percent != null ? g.attendance_percent + '%' : '—'}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-slate-500 mb-1">Домашние задания</div>
-                          <ProgressBar value={g.homework_percent} variant="homework" />
-                          <div className="text-sm font-semibold mt-1">{g.homework_percent != null ? g.homework_percent + '%' : '—'}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="space-y-3">
-                  <div className="text-sm font-semibold text-slate-700">Индивидуальные ученики</div>
-                  {(!breakdown?.students || breakdown.students.length === 0) && (
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">Нет индивидуальных учеников</div>
-                  )}
-                  {breakdown?.students && breakdown.students.slice(0, 5).map((st) => (
-                    <div
-                      key={st.id}
-                      className="rounded-xl border border-slate-100 px-4 py-3 hover:border-indigo-200 transition cursor-pointer"
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          setStudentCardModal({
-                            isOpen: true,
-                            studentId: st.id,
-                            groupId: st.group_id || null,
-                            isIndividual: !st.group_id,
-                          });
-                        }
-                      }}
-                      onClick={() => setStudentCardModal({
-                        isOpen: true,
-                        studentId: st.id,
-                        groupId: st.group_id || null,
-                        isIndividual: !st.group_id,
-                      })}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900">{st.name}</div>
-                          <div className="text-xs text-slate-500">{st.group_name || 'Индивидуальный'}</div>
-                        </div>
-                        <div className="text-xs text-indigo-600 font-semibold">Карточка →</div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-3">
-                        <div>
-                          <div className="text-xs text-slate-500 mb-1">Посещаемость</div>
-                          <ProgressBar value={st.attendance_percent} />
-                          <div className="text-sm font-semibold mt-1">{st.attendance_percent != null ? st.attendance_percent + '%' : '—'}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-slate-500 mb-1">Домашние задания</div>
-                          <ProgressBar value={st.homework_percent} variant="homework" />
-                          <div className="text-sm font-semibold mt-1">{st.homework_percent != null ? st.homework_percent + '%' : '—'}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-slate-900">Статистика</h2>
-                <span className="text-xs text-slate-500">Обновлено {new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-slate-100 px-4 py-3">
-                  <div className="text-xs text-slate-500">Уроки</div>
-                  <div className="text-2xl font-semibold">{derivedStats.lessonsCount}</div>
-                  <div className="text-xs text-slate-400">Завершённые</div>
-                </div>
-                <div className="rounded-xl border border-slate-100 px-4 py-3">
-                  <div className="text-xs text-slate-500">Ученики</div>
-                  <div className="text-2xl font-semibold">{derivedStats.totalStudents}</div>
-                  <div className="text-xs text-slate-400">Активные</div>
-                </div>
-                <div className="rounded-xl border border-slate-100 px-4 py-3">
-                  <div className="text-xs text-slate-500">Группы</div>
-                  <div className="text-2xl font-semibold">{derivedStats.totalGroups}</div>
-                  <div className="text-xs text-slate-400">Рабочие группы</div>
-                </div>
-                <div className="rounded-xl border border-slate-100 px-4 py-3">
-                  <div className="text-xs text-slate-500">Минуты</div>
-                  <div className="text-2xl font-semibold">{derivedStats.portalMinutes}</div>
-                  <div className="text-xs text-slate-400">На платформе</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-slate-900">Недавние материалы</h2>
-                <Link to="/materials" className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">Открыть все</Link>
-              </div>
-              {todayLessons.slice(0, 3).length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">Материалы появятся после загрузки первых файлов или уроков.</div>
-              ) : (
-                <div className="space-y-3">
-                  {todayLessons.slice(0, 3).map((lesson) => (
-                    <div key={lesson.id} className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
-                      <div>
-                        <div className="text-sm font-semibold text-slate-900">{lesson.title || 'Урок без названия'}</div>
-                        <div className="text-xs text-slate-500">{formatTime(lesson.start_time)} · {lesson.group_name || lesson.group_title || 'Группа не указана'}</div>
-                      </div>
-                      <span className="text-xs text-slate-500">{getLessonDuration(lesson)} мин</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <GroupDetailModal
-        group={groupDetailModal.group}
-        isOpen={groupDetailModal.isOpen}
-        onClose={() => setGroupDetailModal({ isOpen: false, group: null })}
-        onStudentClick={(studentId, groupId) => {
-          setGroupDetailModal({ isOpen: false, group: null });
-          setStudentCardModal({
-            isOpen: true,
-            studentId,
-            groupId,
-            isIndividual: false,
-          });
-        }}
-      />
-
-      <StudentCardModal
-        studentId={studentCardModal.studentId}
-        groupId={studentCardModal.groupId}
-        isIndividual={studentCardModal.isIndividual}
-        isOpen={studentCardModal.isOpen}
-        onClose={() => setStudentCardModal({ isOpen: false, studentId: null, groupId: null, isIndividual: false })}
-      />
-
-      <SupportWidget />
-    </div>
+      </div>
+    </>
   );
 };
 
