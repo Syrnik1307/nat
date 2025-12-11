@@ -7,15 +7,17 @@ const Logo = ({ size = 40, withText = true }) => {
       {withText && (
         <span style={{
           fontSize: '22px',
-          fontWeight: '800', /* ExtraBold */
-          fontStyle: 'italic',
-          letterSpacing: '-0.02em', /* Tight, professional */
-          fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif",
-          whiteSpace: 'nowrap'
+          fontWeight: '800',
+          fontStyle: 'normal',
+          letterSpacing: '-0.02em',
+          fontFamily: "'Inter', -apple-system, sans-serif",
+          whiteSpace: 'nowrap',
+          background: 'linear-gradient(135deg, #4338ca 0%, #6366f1 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text'
         }}>
-          <span style={{ color: '#4F46E5' }}>Easy</span>
-          {' '}
-          <span style={{ color: '#1E293B' }}>Teaching</span>
+          Lectio Space
         </span>
       )}
     </div>

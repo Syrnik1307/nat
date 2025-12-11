@@ -1,16 +1,116 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../auth';
 import { getTeacherStatsSummary, getLessons, getGroups, startQuickLesson } from '../apiService';
 import { Link } from 'react-router-dom';
 import SubscriptionBanner from './SubscriptionBanner';
 
 /* =====================================================
-   TEACHER HOME PAGE - Premium Glass & Gradient Design
-   Design System: Inter font, Purple-Blue gradients
+   TEACHER HOME PAGE - Enterprise Indigo Theme
+   Design: Professional SaaS, NO EMOJIS, SVG Icons Only
    ===================================================== */
 
+// =====================================================
+// SVG ICON COMPONENTS (Lucide-style)
+// =====================================================
+
+const IconVideo = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="m22 8-6 4 6 4V8Z"/>
+    <rect width="14" height="12" x="2" y="6" rx="2" ry="2"/>
+  </svg>
+);
+
+const IconCalendar = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+    <line x1="16" x2="16" y1="2" y2="6"/>
+    <line x1="8" x2="8" y1="2" y2="6"/>
+    <line x1="3" x2="21" y1="10" y2="10"/>
+  </svg>
+);
+
+const IconUsers = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+);
+
+const IconBarChart = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="12" x2="12" y1="20" y2="10"/>
+    <line x1="18" x2="18" y1="20" y2="4"/>
+    <line x1="6" x2="6" y1="20" y2="16"/>
+  </svg>
+);
+
+const IconTarget = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10"/>
+    <circle cx="12" cy="12" r="6"/>
+    <circle cx="12" cy="12" r="2"/>
+  </svg>
+);
+
+const IconClock = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12,6 12,12 16,14"/>
+  </svg>
+);
+
+const IconUser = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+
+const IconDisc = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10"/>
+    <circle cx="12" cy="12" r="2"/>
+  </svg>
+);
+
+const IconTrendingUp = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/>
+    <polyline points="17,6 23,6 23,12"/>
+  </svg>
+);
+
+const IconChevronRight = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="m9 18 6-6-6-6"/>
+  </svg>
+);
+
+const IconPlay = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polygon points="5,3 19,12 5,21 5,3"/>
+  </svg>
+);
+
+const IconBook = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
+  </svg>
+);
+
+const IconGraduationCap = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+    <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+  </svg>
+);
+
+// =====================================================
+// MAIN COMPONENT
+// =====================================================
+
 const TeacherHomePage = () => {
-  const { user, logout } = useAuth();
   const [stats, setStats] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -44,6 +144,7 @@ const TeacherHomePage = () => {
   }, []);
 
   const handleQuickStart = async () => {
+    // TODO: Call backend endpoint /api/start-lesson here
     if (starting) return;
     setStarting(true);
     try {
@@ -70,23 +171,15 @@ const TeacherHomePage = () => {
     return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
   };
 
-  // Generate consistent color for group based on name
-  const getGroupColor = (name) => {
-    const colors = [
-      { bg: 'linear-gradient(135deg, #6366f1, #8b5cf6)', icon: '📐' },
-      { bg: 'linear-gradient(135deg, #3b82f6, #0ea5e9)', icon: '📚' },
-      { bg: 'linear-gradient(135deg, #10b981, #14b8a6)', icon: '🧪' },
-      { bg: 'linear-gradient(135deg, #f59e0b, #f97316)', icon: '🎨' },
-      { bg: 'linear-gradient(135deg, #ec4899, #f43f5e)', icon: '🎭' },
-      { bg: 'linear-gradient(135deg, #8b5cf6, #a855f7)', icon: '💻' },
-    ];
+  // Generate consistent color index for group based on name
+  const getGroupColorIndex = (name) => {
     const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
+    return hash % 6;
   };
 
   if (loading) {
     return (
-      <div className="teacher-dashboard">
+      <div className="dashboard-container">
         <style>{globalStyles}</style>
         <div className="dashboard-loading">
           <div className="loading-spinner"></div>
@@ -97,22 +190,33 @@ const TeacherHomePage = () => {
   }
 
   return (
-    <div className="teacher-dashboard">
+    <div className="dashboard-container">
       <style>{globalStyles}</style>
       
       {/* Subscription Banner */}
       <SubscriptionBanner />
 
-      {/* Main Grid */}
+      {/* Main Grid - No page title, starts directly with content */}
       <div className="dashboard-grid">
         {/* LEFT COLUMN */}
         <div className="dashboard-left">
-          {/* Hero: Quick Lesson */}
+          {/* Hero: Start Lesson */}
           <div className="hero-card">
-            <div className="hero-decoration"></div>
-            <div className="hero-decoration-2"></div>
+            <div className="hero-glow"></div>
+            <div className="hero-pattern">
+              <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <pattern id="hero-dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                    <circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.1)"/>
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#hero-dots)"/>
+              </svg>
+            </div>
             <div className="hero-content">
-              <div className="hero-icon">🚀</div>
+              <div className="hero-icon-wrapper">
+                <IconVideo size={32} className="hero-icon" />
+              </div>
               <h2 className="hero-title">Начать урок</h2>
               <p className="hero-subtitle">Мгновенный запуск Zoom-конференции для вашего следующего занятия</p>
               <button
@@ -120,28 +224,31 @@ const TeacherHomePage = () => {
                 onClick={handleQuickStart}
                 disabled={starting}
               >
-                <span className="hero-button-icon">📹</span>
-                {starting ? 'Запуск...' : 'Запустить Zoom'}
+                <IconPlay size={18} />
+                <span>{starting ? 'Запуск...' : 'Запустить Zoom'}</span>
               </button>
             </div>
           </div>
 
-          {/* Schedule */}
+          {/* Schedule Section */}
           <div className="section-card">
             <div className="section-header">
-              <h3 className="section-title">
-                <span className="section-icon">📅</span>
-                Расписание
-              </h3>
+              <div className="section-title-group">
+                <div className="section-icon-wrapper">
+                  <IconCalendar size={18} />
+                </div>
+                <h3 className="section-title">Расписание</h3>
+              </div>
               <Link to="/recurring-lessons/manage" className="section-link">
-                Все занятия <span className="arrow">→</span>
+                Все занятия
+                <IconChevronRight size={16} />
               </Link>
             </div>
             <div className="schedule-list">
               {lessons.length > 0 ? (
                 lessons.map((lesson) => (
                   <div key={lesson.id} className="schedule-item">
-                    <div className="schedule-time">
+                    <div className="schedule-time-badge">
                       <span className="schedule-date">{formatDate(lesson.start_time)}</span>
                       <span className="schedule-hour">{formatTime(lesson.start_time)}</span>
                     </div>
@@ -151,66 +258,73 @@ const TeacherHomePage = () => {
                     </div>
                     <div className="schedule-status">
                       {lesson.zoom_start_url ? (
-                        <span className="status-active">● Активен</span>
+                        <span className="status-badge status-active">Активен</span>
                       ) : (
-                        <span className="status-pending">○ Ожидает</span>
+                        <span className="status-badge status-pending">Ожидает</span>
                       )}
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="empty-state">
-                  <span className="empty-icon">📭</span>
+                  <IconCalendar size={40} className="empty-icon" />
                   <p>Нет предстоящих занятий</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Groups - Premium Cards */}
+          {/* Groups Section - Premium Cards */}
           <div className="section-card">
             <div className="section-header">
-              <h3 className="section-title">
-                <span className="section-icon">👥</span>
-                Группы
-              </h3>
+              <div className="section-title-group">
+                <div className="section-icon-wrapper">
+                  <IconUsers size={18} />
+                </div>
+                <h3 className="section-title">Группы</h3>
+              </div>
               <Link to="/groups/manage" className="section-link">
-                Управление <span className="arrow">→</span>
+                Управление
+                <IconChevronRight size={16} />
               </Link>
             </div>
             <div className="groups-grid">
               {groups.length > 0 ? (
                 groups.map((group) => {
-                  const colorInfo = getGroupColor(group.name);
+                  const colorIndex = getGroupColorIndex(group.name);
                   return (
                     <Link
                       key={group.id}
                       to={`/attendance/${group.id}`}
                       className="group-card"
                     >
-                      <div className="group-cover" style={{ background: colorInfo.bg }}>
-                        <span className="group-icon">{colorInfo.icon}</span>
+                      <div className={`group-cover group-cover-${colorIndex}`}>
+                        <IconGraduationCap size={28} className="group-cover-icon" />
+                        <svg className="group-pattern" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                          <defs>
+                            <pattern id={`pattern-${group.id}`} x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+                              <circle cx="1" cy="1" r="1" fill="rgba(255,255,255,0.15)"/>
+                            </pattern>
+                          </defs>
+                          <rect width="100%" height="100%" fill={`url(#pattern-${group.id})`}/>
+                        </svg>
                       </div>
-                      <div className="group-content">
+                      <div className="group-body">
                         <h4 className="group-name">{group.name}</h4>
                         <div className="group-meta">
-                          <span className="group-students">
-                            <span className="meta-icon">👤</span>
-                            {group.students?.length || 0} учеников
-                          </span>
+                          <IconUser size={14} />
+                          <span>{group.students?.length || 0} учеников</span>
                         </div>
                       </div>
                       <div className="group-arrow">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M9 18l6-6-6-6"/>
-                        </svg>
+                        <IconChevronRight size={18} />
                       </div>
                     </Link>
                   );
                 })
               ) : (
                 <div className="empty-state full-width">
-                  <span className="empty-icon">📁</span>
+                  <IconUsers size={40} className="empty-icon" />
                   <p>Нет групп</p>
                   <Link to="/groups/manage" className="empty-action">Создать группу</Link>
                 </div>
@@ -219,109 +333,130 @@ const TeacherHomePage = () => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN */}
+        {/* RIGHT COLUMN - Stats Only (No Quick Links) */}
         <div className="dashboard-right">
-          {/* Statistics */}
+          {/* Statistics Card - Expanded */}
           <div className="stats-card">
-            <h3 className="stats-title">
-              <span className="section-icon">📊</span>
-              Статистика
-            </h3>
+            <div className="stats-header">
+              <div className="stats-icon-wrapper">
+                <IconBarChart size={20} />
+              </div>
+              <h3 className="stats-title">Статистика</h3>
+            </div>
             <div className="stats-grid">
               <div className="stat-tile">
-                <div className="stat-value">{stats?.total_lessons || 0}</div>
-                <div className="stat-label">уроков</div>
+                <div className="stat-icon">
+                  <IconBook size={20} />
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">{stats?.total_lessons || 0}</div>
+                  <div className="stat-label">Уроков</div>
+                </div>
               </div>
               <div className="stat-tile">
-                <div className="stat-value">{stats?.total_students || 0}</div>
-                <div className="stat-label">учеников</div>
+                <div className="stat-icon">
+                  <IconUsers size={20} />
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">{stats?.total_students || 0}</div>
+                  <div className="stat-label">Учеников</div>
+                </div>
               </div>
               <div className="stat-tile">
-                <div className="stat-value">{stats?.recorded_lessons || 0}</div>
-                <div className="stat-label">записей</div>
+                <div className="stat-icon">
+                  <IconDisc size={20} />
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">{stats?.recorded_lessons || 0}</div>
+                  <div className="stat-label">Записей</div>
+                </div>
               </div>
               <div className="stat-tile">
-                <div className="stat-value">{stats?.recording_ratio_percent || 0}%</div>
-                <div className="stat-label">с записью</div>
+                <div className="stat-icon">
+                  <IconTrendingUp size={20} />
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">{stats?.recording_ratio_percent || 0}%</div>
+                  <div className="stat-label">С записью</div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Progress */}
+          {/* Progress Card - Expanded */}
           <div className="progress-card">
-            <h3 className="progress-title">
-              <span className="section-icon">🎯</span>
-              Прогресс
-            </h3>
+            <div className="progress-header">
+              <div className="progress-icon-wrapper">
+                <IconTarget size={20} />
+              </div>
+              <h3 className="progress-title">Прогресс</h3>
+            </div>
             
-            <div className="progress-item">
-              <div className="progress-header">
-                <span className="progress-label">Проведено уроков</span>
-                <span className="progress-value">{stats?.total_lessons || 0}</span>
+            <div className="progress-list">
+              <div className="progress-item">
+                <div className="progress-item-header">
+                  <div className="progress-item-label">
+                    <IconBook size={16} />
+                    <span>Проведено уроков</span>
+                  </div>
+                  <span className="progress-item-value">{stats?.total_lessons || 0}</span>
+                </div>
+                <div className="progress-bar-track">
+                  <div 
+                    className="progress-bar-fill"
+                    style={{ width: `${Math.min((stats?.total_lessons || 0) * 2, 100)}%` }}
+                  ></div>
+                </div>
               </div>
-              <div className="progress-bar">
-                <div 
-                  className="progress-fill"
-                  style={{ width: `${Math.min((stats?.total_lessons || 0) * 2, 100)}%` }}
-                ></div>
+
+              <div className="progress-item">
+                <div className="progress-item-header">
+                  <div className="progress-item-label">
+                    <IconDisc size={16} />
+                    <span>Записи уроков</span>
+                  </div>
+                  <span className="progress-item-value">{stats?.recording_ratio_percent || 0}%</span>
+                </div>
+                <div className="progress-bar-track">
+                  <div 
+                    className="progress-bar-fill"
+                    style={{ width: `${stats?.recording_ratio_percent || 0}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="progress-item">
+                <div className="progress-item-header">
+                  <div className="progress-item-label">
+                    <IconUsers size={16} />
+                    <span>Активные группы</span>
+                  </div>
+                  <span className="progress-item-value">{groups.length}</span>
+                </div>
+                <div className="progress-bar-track">
+                  <div 
+                    className="progress-bar-fill"
+                    style={{ width: `${Math.min(groups.length * 20, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="progress-item">
+                <div className="progress-item-header">
+                  <div className="progress-item-label">
+                    <IconClock size={16} />
+                    <span>Часов преподавания</span>
+                  </div>
+                  <span className="progress-item-value">{Math.round((stats?.average_duration_seconds || 0) * (stats?.total_lessons || 0) / 3600)}</span>
+                </div>
+                <div className="progress-bar-track">
+                  <div 
+                    className="progress-bar-fill"
+                    style={{ width: `${Math.min(Math.round((stats?.average_duration_seconds || 0) * (stats?.total_lessons || 0) / 3600) * 2, 100)}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
-
-            <div className="progress-item">
-              <div className="progress-header">
-                <span className="progress-label">Записи уроков</span>
-                <span className="progress-value">{stats?.recording_ratio_percent || 0}%</span>
-              </div>
-              <div className="progress-bar">
-                <div 
-                  className="progress-fill"
-                  style={{ width: `${stats?.recording_ratio_percent || 0}%` }}
-                ></div>
-              </div>
-            </div>
-
-            <div className="progress-item">
-              <div className="progress-header">
-                <span className="progress-label">Активные группы</span>
-                <span className="progress-value">{groups.length}</span>
-              </div>
-              <div className="progress-bar">
-                <div 
-                  className="progress-fill"
-                  style={{ width: `${Math.min(groups.length * 20, 100)}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Links */}
-          <div className="links-card">
-            <h3 className="links-title">
-              <span className="section-icon">⚡</span>
-              Быстрые ссылки
-            </h3>
-            <nav className="links-list">
-              <Link to="/homework/manage" className="link-item">
-                <span className="link-icon">📝</span>
-                <span className="link-text">Домашние задания</span>
-                <span className="link-arrow">→</span>
-              </Link>
-              <Link to="/teacher/recordings" className="link-item">
-                <span className="link-icon">🎥</span>
-                <span className="link-text">Записи уроков</span>
-                <span className="link-arrow">→</span>
-              </Link>
-              <Link to="/profile" className="link-item">
-                <span className="link-icon">⚙️</span>
-                <span className="link-text">Профиль</span>
-                <span className="link-arrow">→</span>
-              </Link>
-              <Link to="/teacher/subscription" className="link-item">
-                <span className="link-icon">💳</span>
-                <span className="link-text">Подписка</span>
-                <span className="link-arrow">→</span>
-              </Link>
-            </nav>
           </div>
         </div>
       </div>
@@ -330,48 +465,70 @@ const TeacherHomePage = () => {
 };
 
 /* =====================================================
-   GLOBAL STYLES - Design System
+   GLOBAL STYLES - Enterprise Indigo Theme
+   NO EMOJIS, Professional Design
    ===================================================== */
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-  /* === CSS VARIABLES (Design System) === */
+  /* === CSS VARIABLES - INDIGO THEME === */
   :root {
     --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     
-    /* Colors */
-    --color-primary: #6366f1;
-    --color-primary-dark: #4f46e5;
-    --color-secondary: #3b82f6;
-    --color-accent: #0ea5e9;
+    /* Indigo Color Palette */
+    --indigo-50: #eef2ff;
+    --indigo-100: #e0e7ff;
+    --indigo-200: #c7d2fe;
+    --indigo-300: #a5b4fc;
+    --indigo-400: #818cf8;
+    --indigo-500: #6366f1;
+    --indigo-600: #4f46e5;
+    --indigo-700: #4338ca;
+    --indigo-800: #3730a3;
+    --indigo-900: #312e81;
     
-    --gradient-primary: linear-gradient(135deg, #6366f1 0%, #3b82f6 50%, #0ea5e9 100%);
-    --gradient-hero: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
-    --gradient-success: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);
+    --color-primary: var(--indigo-600);
+    --color-primary-hover: var(--indigo-700);
+    --color-primary-light: var(--indigo-100);
     
-    --color-bg: #f8fafc;
-    --color-bg-alt: #f1f5f9;
+    --gradient-primary: linear-gradient(135deg, var(--indigo-700) 0%, var(--indigo-500) 100%);
+    --gradient-hero: linear-gradient(135deg, var(--indigo-800) 0%, var(--indigo-600) 50%, var(--indigo-500) 100%);
+    
+    /* Neutrals */
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+    
+    --color-bg: var(--slate-50);
     --color-card: #ffffff;
-    --color-border: #e2e8f0;
+    --color-border: var(--slate-200);
+    --color-text-primary: var(--slate-800);
+    --color-text-secondary: var(--slate-500);
+    --color-text-muted: var(--slate-400);
     
-    --color-text-primary: #1e293b;
-    --color-text-secondary: #64748b;
-    --color-text-muted: #94a3b8;
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    --shadow-indigo: 0 20px 40px -10px rgba(79, 70, 229, 0.35);
     
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
-    --shadow-glow: 0 20px 40px rgba(99, 102, 241, 0.25);
-    
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 20px;
+    /* Border Radius */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 18px;
   }
 
   /* === DASHBOARD CONTAINER === */
-  .teacher-dashboard {
+  .dashboard-container {
     font-family: var(--font-family);
     background: var(--color-bg);
     min-height: 100vh;
@@ -389,12 +546,12 @@ const globalStyles = `
   }
 
   .loading-spinner {
-    width: 48px;
-    height: 48px;
-    border: 4px solid var(--color-border);
+    width: 44px;
+    height: 44px;
+    border: 3px solid var(--color-border);
     border-top-color: var(--color-primary);
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    animation: spin 0.8s linear infinite;
     margin-bottom: 1rem;
   }
 
@@ -405,9 +562,9 @@ const globalStyles = `
   /* === GRID LAYOUT === */
   .dashboard-grid {
     display: grid;
-    grid-template-columns: 1fr 340px;
+    grid-template-columns: 1fr 360px;
     gap: 1.5rem;
-    max-width: 1200px;
+    max-width: 1240px;
     margin: 0 auto;
     align-items: start;
   }
@@ -434,27 +591,23 @@ const globalStyles = `
     color: #fff;
     position: relative;
     overflow: hidden;
-    box-shadow: var(--shadow-glow);
+    box-shadow: var(--shadow-indigo);
   }
 
-  .hero-decoration {
+  .hero-glow {
     position: absolute;
-    top: -50px;
-    right: -50px;
-    width: 200px;
-    height: 200px;
-    background: rgba(255, 255, 255, 0.1);
+    top: -100px;
+    right: -100px;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
     border-radius: 50%;
   }
 
-  .hero-decoration-2 {
+  .hero-pattern {
     position: absolute;
-    bottom: -80px;
-    left: -40px;
-    width: 180px;
-    height: 180px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 50%;
+    inset: 0;
+    opacity: 0.5;
   }
 
   .hero-content {
@@ -462,24 +615,35 @@ const globalStyles = `
     z-index: 1;
   }
 
+  .hero-icon-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    backdrop-filter: blur(10px);
+  }
+
   .hero-icon {
-    font-size: 2.5rem;
-    margin-bottom: 0.75rem;
+    color: #fff;
   }
 
   .hero-title {
     font-size: 1.75rem;
-    font-weight: 800;
+    font-weight: 700;
     margin: 0 0 0.5rem 0;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
   }
 
   .hero-subtitle {
-    font-size: 1rem;
-    opacity: 0.9;
-    margin-bottom: 1.5rem;
-    max-width: 400px;
-    line-height: 1.5;
+    font-size: 0.95rem;
+    opacity: 0.85;
+    margin-bottom: 1.75rem;
+    max-width: 420px;
+    line-height: 1.6;
   }
 
   .hero-button {
@@ -487,31 +651,27 @@ const globalStyles = `
     align-items: center;
     gap: 0.5rem;
     background: #fff;
-    color: var(--color-primary);
+    color: var(--indigo-700);
     border: none;
-    padding: 1rem 1.75rem;
+    padding: 0.875rem 1.5rem;
     border-radius: var(--radius-md);
     font-family: var(--font-family);
-    font-weight: 700;
-    font-size: 1rem;
+    font-weight: 600;
+    font-size: 0.95rem;
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     transition: all 0.2s ease;
   }
 
   .hero-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
   }
 
   .hero-button:disabled {
     opacity: 0.7;
     cursor: not-allowed;
     transform: none;
-  }
-
-  .hero-button-icon {
-    font-size: 1.25rem;
   }
 
   /* === SECTION CARD === */
@@ -530,68 +690,77 @@ const globalStyles = `
     margin-bottom: 1.25rem;
   }
 
-  .section-title {
+  .section-title-group {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--color-text-primary);
-    margin: 0;
+    gap: 0.625rem;
   }
 
-  .section-icon {
-    font-size: 1.25rem;
+  .section-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--indigo-100);
+    border-radius: var(--radius-sm);
+    color: var(--indigo-600);
+  }
+
+  .section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
   }
 
   .section-link {
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     color: var(--color-primary);
     text-decoration: none;
-    font-weight: 600;
-    transition: color 0.2s;
+    font-weight: 500;
+    transition: all 0.2s;
   }
 
   .section-link:hover {
-    color: var(--color-primary-dark);
+    color: var(--color-primary-hover);
   }
 
-  .section-link .arrow {
+  .section-link:hover svg {
+    transform: translateX(2px);
+  }
+
+  .section-link svg {
     transition: transform 0.2s;
-  }
-
-  .section-link:hover .arrow {
-    transform: translateX(3px);
   }
 
   /* === SCHEDULE LIST === */
   .schedule-list {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.625rem;
   }
 
   .schedule-item {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 1rem;
-    background: var(--color-bg);
+    padding: 0.875rem 1rem;
+    background: var(--slate-50);
     border-radius: var(--radius-md);
     border: 1px solid transparent;
     transition: all 0.2s ease;
   }
 
   .schedule-item:hover {
-    border-color: var(--color-primary);
-    background: #f8faff;
-    transform: translateX(4px);
+    border-color: var(--indigo-200);
+    background: var(--indigo-50);
   }
 
-  .schedule-time {
+  .schedule-time-badge {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -599,15 +768,16 @@ const globalStyles = `
     color: #fff;
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-sm);
-    min-width: 70px;
+    min-width: 68px;
     text-align: center;
   }
 
   .schedule-date {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 600;
     text-transform: uppercase;
     opacity: 0.9;
+    letter-spacing: 0.5px;
   }
 
   .schedule-hour {
@@ -621,9 +791,10 @@ const globalStyles = `
   }
 
   .schedule-title {
+    font-size: 0.9rem;
     font-weight: 600;
     color: var(--color-text-primary);
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.2rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -635,22 +806,35 @@ const globalStyles = `
   }
 
   .schedule-status {
-    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
     font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    border-radius: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
   }
 
   .status-active {
-    color: #10b981;
+    background: #dcfce7;
+    color: #166534;
   }
 
   .status-pending {
-    color: var(--color-text-muted);
+    background: var(--slate-100);
+    color: var(--slate-500);
   }
 
-  /* === GROUPS GRID (Premium Cards) === */
+  /* === GROUPS GRID === */
   .groups-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 1rem;
   }
 
@@ -667,32 +851,45 @@ const globalStyles = `
   }
 
   .group-card:hover {
-    transform: translateY(-4px);
+    transform: translateY(-3px);
     box-shadow: var(--shadow-lg);
-    border-color: var(--color-primary);
+    border-color: var(--indigo-300);
   }
 
   .group-cover {
-    height: 80px;
+    height: 72px;
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
+    overflow: hidden;
   }
 
-  .group-icon {
-    font-size: 2rem;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  .group-cover-0 { background: linear-gradient(135deg, var(--indigo-600), var(--indigo-400)); }
+  .group-cover-1 { background: linear-gradient(135deg, #0ea5e9, #38bdf8); }
+  .group-cover-2 { background: linear-gradient(135deg, #10b981, #34d399); }
+  .group-cover-3 { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+  .group-cover-4 { background: linear-gradient(135deg, #ec4899, #f472b6); }
+  .group-cover-5 { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+
+  .group-cover-icon {
+    color: rgba(255, 255, 255, 0.9);
+    z-index: 1;
   }
 
-  .group-content {
+  .group-pattern {
+    position: absolute;
+    inset: 0;
+  }
+
+  .group-body {
     padding: 1rem;
     flex: 1;
   }
 
   .group-name {
-    font-size: 0.95rem;
-    font-weight: 700;
+    font-size: 0.9rem;
+    font-weight: 600;
     color: var(--color-text-primary);
     margin: 0 0 0.5rem 0;
     white-space: nowrap;
@@ -703,19 +900,9 @@ const globalStyles = `
   .group-meta {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-  }
-
-  .group-students {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+    gap: 0.35rem;
     font-size: 0.8rem;
     color: var(--color-text-secondary);
-  }
-
-  .meta-icon {
-    font-size: 0.9rem;
   }
 
   .group-arrow {
@@ -737,7 +924,7 @@ const globalStyles = `
   /* === EMPTY STATE === */
   .empty-state {
     text-align: center;
-    padding: 2rem 1rem;
+    padding: 2.5rem 1rem;
     color: var(--color-text-secondary);
   }
 
@@ -746,20 +933,20 @@ const globalStyles = `
   }
 
   .empty-icon {
-    font-size: 2.5rem;
-    display: block;
+    color: var(--color-text-muted);
     margin-bottom: 0.75rem;
-    opacity: 0.6;
   }
 
   .empty-state p {
-    margin: 0 0 1rem 0;
+    margin: 0 0 0.75rem 0;
+    font-size: 0.9rem;
   }
 
   .empty-action {
     display: inline-block;
     color: var(--color-primary);
     font-weight: 600;
+    font-size: 0.85rem;
     text-decoration: none;
   }
 
@@ -767,7 +954,7 @@ const globalStyles = `
     text-decoration: underline;
   }
 
-  /* === STATS CARD === */
+  /* === STATS CARD (Expanded) === */
   .stats-card {
     background: var(--color-card);
     border-radius: var(--radius-lg);
@@ -776,14 +963,29 @@ const globalStyles = `
     border: 1px solid var(--color-border);
   }
 
-  .stats-title {
+  .stats-header {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.625rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .stats-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: var(--indigo-100);
+    border-radius: var(--radius-sm);
+    color: var(--indigo-600);
+  }
+
+  .stats-title {
     font-size: 1rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--color-text-primary);
-    margin: 0 0 1rem 0;
+    margin: 0;
   }
 
   .stats-grid {
@@ -793,95 +995,54 @@ const globalStyles = `
   }
 
   .stat-tile {
-    background: var(--color-bg);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--slate-50);
     border-radius: var(--radius-md);
     padding: 1rem;
-    text-align: center;
     border: 1px solid var(--color-border);
     transition: all 0.2s;
   }
 
   .stat-tile:hover {
-    border-color: var(--color-primary);
-    background: #f8faff;
+    border-color: var(--indigo-200);
+    background: var(--indigo-50);
+  }
+
+  .stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: var(--indigo-100);
+    border-radius: var(--radius-sm);
+    color: var(--indigo-600);
+    flex-shrink: 0;
+  }
+
+  .stat-content {
+    min-width: 0;
   }
 
   .stat-value {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--color-primary);
-    margin-bottom: 0.25rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    line-height: 1.2;
   }
 
   .stat-label {
     font-size: 0.7rem;
     color: var(--color-text-secondary);
-    font-weight: 600;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
   }
 
-  /* === PROGRESS CARD === */
+  /* === PROGRESS CARD (Expanded) === */
   .progress-card {
-    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    border: 1px solid #bbf7d0;
-  }
-
-  .progress-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 1rem;
-    font-weight: 700;
-    color: #166534;
-    margin: 0 0 1.25rem 0;
-  }
-
-  .progress-item {
-    margin-bottom: 1rem;
-  }
-
-  .progress-item:last-child {
-    margin-bottom: 0;
-  }
-
-  .progress-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-  }
-
-  .progress-label {
-    font-size: 0.8rem;
-    color: #166534;
-    font-weight: 600;
-  }
-
-  .progress-value {
-    font-size: 0.8rem;
-    color: #166534;
-    font-weight: 700;
-  }
-
-  .progress-bar {
-    height: 8px;
-    background: rgba(34, 197, 94, 0.2);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #22c55e, #16a34a);
-    border-radius: 4px;
-    transition: width 0.5s ease;
-  }
-
-  /* === LINKS CARD === */
-  .links-card {
     background: var(--color-card);
     border-radius: var(--radius-lg);
     padding: 1.5rem;
@@ -889,64 +1050,84 @@ const globalStyles = `
     border: 1px solid var(--color-border);
   }
 
-  .links-title {
+  .progress-header {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--color-text-primary);
-    margin: 0 0 1rem 0;
+    gap: 0.625rem;
+    margin-bottom: 1.5rem;
   }
 
-  .links-list {
+  .progress-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: var(--indigo-100);
+    border-radius: var(--radius-sm);
+    color: var(--indigo-600);
+  }
+
+  .progress-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+  }
+
+  .progress-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .progress-item {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
   }
 
-  .link-item {
+  .progress-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .progress-item-label {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.875rem 1rem;
-    background: var(--color-bg);
-    border-radius: var(--radius-md);
-    text-decoration: none;
-    border: 1px solid transparent;
-    transition: all 0.2s ease;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    font-weight: 500;
   }
 
-  .link-item:hover {
-    background: #f8faff;
-    border-color: var(--color-primary);
-    transform: translateX(4px);
+  .progress-item-label svg {
+    color: var(--indigo-400);
   }
 
-  .link-icon {
-    font-size: 1.1rem;
-  }
-
-  .link-text {
-    flex: 1;
-    font-size: 0.9rem;
-    font-weight: 600;
+  .progress-item-value {
+    font-size: 0.8rem;
     color: var(--color-text-primary);
-  }
-
-  .link-arrow {
-    color: var(--color-text-muted);
     font-weight: 600;
-    transition: all 0.2s;
   }
 
-  .link-item:hover .link-arrow {
-    color: var(--color-primary);
-    transform: translateX(3px);
+  .progress-bar-track {
+    height: 6px;
+    background: var(--slate-100);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--gradient-primary);
+    border-radius: 100px;
+    transition: width 0.5s ease;
   }
 
   /* === RESPONSIVE === */
-  @media (max-width: 968px) {
+  @media (max-width: 1024px) {
     .dashboard-grid {
       grid-template-columns: 1fr;
     }
@@ -954,18 +1135,18 @@ const globalStyles = `
     .dashboard-right {
       position: static;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(2, 1fr);
       gap: 1rem;
     }
   }
 
   @media (max-width: 640px) {
-    .teacher-dashboard {
+    .dashboard-container {
       padding: 1rem;
     }
 
     .hero-card {
-      padding: 1.5rem;
+      padding: 1.75rem;
     }
 
     .hero-title {
@@ -977,6 +1158,10 @@ const globalStyles = `
     }
 
     .dashboard-right {
+      grid-template-columns: 1fr;
+    }
+
+    .stats-grid {
       grid-template-columns: 1fr;
     }
   }
