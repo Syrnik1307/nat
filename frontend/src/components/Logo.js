@@ -1,9 +1,9 @@
 import React from 'react';
 
-// Easy Teaching logo - Premium SaaS брендинг
+// Lectio Space logo - Premium SaaS брендинг
 const Logo = ({ size = 40, withText = true }) => {
   return (
-    <div className="easy-teaching-logo" style={{ display: 'flex', alignItems: 'center', gap: '10px', height: size }} aria-label="Easy Teaching logo">
+    <div className="lectio-space-logo" style={{ display: 'flex', alignItems: 'center', gap: '10px', height: size }} aria-label="Lectio Space logo">
       {withText && (
         <span style={{
           fontSize: '22px',

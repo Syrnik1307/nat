@@ -660,7 +660,7 @@ const ProfilePage = () => {
                     <p className="telegram-status-text">
                       {telegramLinked
                         ? `Аккаунт ${telegramUsername ? '@' + telegramUsername : 'подтверждён'} уже связан.`
-                        : 'Telegram ещё не подключен. Сгенерируйте код и отправьте его боту Easy Teaching.'}
+                        : 'Telegram ещё не подключен. Сгенерируйте код и отправьте его боту Lectio Space.'}
                     </p>
                     <div className="telegram-actions-row">
                       <button

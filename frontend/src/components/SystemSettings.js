@@ -266,7 +266,7 @@ const SystemSettings = ({ onClose }) => {
                   type="text"
                   value={settings.platform_name}
                   onChange={e => handleChange('platform_name', e.target.value)}
-                  placeholder="Easy Teaching"
+                  placeholder="Lectio Space"
                 />
               </div>
 

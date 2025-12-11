@@ -49,7 +49,7 @@ const StudentNavBar = () => {
     <nav className="student-navbar">
       <div className="student-navbar-content">
         <div className="student-navbar-left">
-          <NavLink to="/student" aria-label="Easy Teaching">
+          <NavLink to="/student" aria-label="Lectio Space">
             <Logo size={34} />
           </NavLink>
         </div>

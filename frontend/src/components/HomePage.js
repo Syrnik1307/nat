@@ -64,7 +64,7 @@ const HomePage = () => {
     return (
       <div className="home-hero-wrap">
         <div className="home-hero-card">
-          <h1 className="home-hero-title">Добро пожаловать в Easy Teaching</h1>
+          <h1 className="home-hero-title">Добро пожаловать в Lectio Space</h1>
           <p className="home-hero-subtitle">Расписание, задания, аналитика и Zoom – всё в одном месте.</p>
           <div className="home-cta-buttons">
             <a href="/login" className="home-cta-primary">Войти</a>

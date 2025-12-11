@@ -52,7 +52,7 @@ const NavBar = () => {
         <div className="navbar-container">
           {/* Left: Brand Logo */}
           <div className="navbar-logo">
-            <h1>Easy Teaching</h1>
+            <h1>Lectio Space</h1>
           </div>
 
           {/* Center: Navigation Links */}

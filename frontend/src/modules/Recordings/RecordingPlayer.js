@@ -125,7 +125,7 @@ function RecordingPlayer({ recording, onClose }) {
 
   const heroSubtitle = formattedFullDate
     ? `Запись от ${formattedFullDate}`
-    : 'Плеер Easy Teaching';
+    : 'Плеер Lectio Space';
 
   const mediaStats = [
     {
@@ -257,7 +257,7 @@ function RecordingPlayer({ recording, onClose }) {
                 </button>
               </div>
               <p className="player-hint">
-                Запись хранится в защищенном облаке Easy Teaching. Делитесь ссылкой только с участниками группы.
+                Запись хранится в защищенном облаке Lectio Space. Делитесь ссылкой только с участниками группы.
               </p>
             </div>
           </aside>

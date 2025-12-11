@@ -230,7 +230,7 @@ const NavBar = () => {
       <nav className="navbar">
         <div className="navbar-container">
         {/* Логотип */}
-        <Link to={homePath} className="navbar-logo" aria-label="Easy Teaching">
+        <Link to={homePath} className="navbar-logo" aria-label="Lectio Space">
           <Logo size={40} withText={true} />
         </Link>
 
