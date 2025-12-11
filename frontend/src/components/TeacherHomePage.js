@@ -491,29 +491,16 @@ const TeacherHomePage = () => {
                     <Link
                       key={group.id}
                       to={`/attendance/${group.id}`}
-                      className="group-card"
+                      className="group-card-minimal"
                     >
-                      <div className={`group-cover group-cover-${colorIndex}`}>
+                      <div className={`group-icon-wrapper group-icon-${colorIndex}`}>
                         {getGroupIcon(group.name)}
-                        <svg className="group-pattern" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                          <defs>
-                            <pattern id={`pattern-${group.id}`} x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
-                              <circle cx="1" cy="1" r="1" fill="rgba(255,255,255,0.15)"/>
-                            </pattern>
-                          </defs>
-                          <rect width="100%" height="100%" fill={`url(#pattern-${group.id})`}/>
-                        </svg>
                       </div>
-                      <div className="group-body">
-                        <h4 className="group-name">{cleanName}</h4>
-                        <div className="group-meta">
-                          <IconUser size={14} />
-                          <span>{group.students?.length || 0} учеников</span>
-                        </div>
+                      <div className="group-info">
+                        <h4 className="group-name-minimal">{cleanName}</h4>
+                        <span className="group-count">{group.students?.length || 0} уч.</span>
                       </div>
-                      <div className="group-arrow">
-                        <IconChevronRight size={18} />
-                      </div>
+                      <IconChevronRight size={16} className="group-arrow-icon" />
                     </Link>
                   );
                 })
@@ -1023,99 +1010,83 @@ const globalStyles = `
     color: var(--slate-500);
   }
 
-  /* === GROUPS GRID === */
+  /* === GROUPS GRID - Minimal Design === */
   .groups-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 0.875rem;
-  }
-
-  .group-card {
     display: flex;
     flex-direction: column;
-    background: var(--color-card);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
+    gap: 0.5rem;
+  }
+
+  .group-card-minimal {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: var(--radius-md);
     text-decoration: none;
-    border: 1px solid var(--color-border);
-    transition: all 0.25s ease;
-    position: relative;
-    height: 100%;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    transition: all 0.2s ease;
   }
 
-  .group-card:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-lg);
-    border-color: var(--indigo-300);
+  .group-card-minimal:hover {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: var(--indigo-200);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.08);
   }
 
-  .group-cover {
-    height: 64px;
+  .group-icon-wrapper {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-    overflow: hidden;
     flex-shrink: 0;
   }
 
-  .group-cover-0 { background: linear-gradient(135deg, var(--indigo-600), var(--indigo-400)); }
-  .group-cover-1 { background: linear-gradient(135deg, #0ea5e9, #38bdf8); }
-  .group-cover-2 { background: linear-gradient(135deg, #10b981, #34d399); }
-  .group-cover-3 { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
-  .group-cover-4 { background: linear-gradient(135deg, #ec4899, #f472b6); }
-  .group-cover-5 { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+  .group-icon-0 { background: rgba(79, 70, 229, 0.1); color: var(--indigo-600); }
+  .group-icon-1 { background: rgba(14, 165, 233, 0.1); color: #0ea5e9; }
+  .group-icon-2 { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+  .group-icon-3 { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+  .group-icon-4 { background: rgba(236, 72, 153, 0.1); color: #ec4899; }
+  .group-icon-5 { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
 
   .group-cover-icon {
-    color: rgba(255, 255, 255, 0.9);
-    z-index: 1;
+    width: 18px;
+    height: 18px;
   }
 
-  .group-pattern {
-    position: absolute;
-    inset: 0;
-  }
-
-  .group-body {
-    padding: 1rem;
+  .group-info {
     flex: 1;
+    min-width: 0;
   }
 
-  .group-name {
+  .group-name-minimal {
     font-size: 0.875rem;
     font-weight: 600;
     color: var(--color-text-primary);
-    margin: 0 0 0.5rem 0;
-    line-height: 1.35;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    margin: 0;
+    line-height: 1.3;
+    white-space: nowrap;
     overflow: hidden;
-    word-break: break-word;
-    min-height: 2.4em;
+    text-overflow: ellipsis;
   }
 
-  .group-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.8rem;
+  .group-count {
+    font-size: 0.75rem;
     color: var(--color-text-secondary);
   }
 
-  .group-arrow {
-    position: absolute;
-    top: 50%;
-    right: 0.75rem;
-    transform: translateY(-50%);
+  .group-arrow-icon {
     color: var(--color-text-muted);
+    flex-shrink: 0;
     opacity: 0;
-    transition: all 0.2s;
+    transition: opacity 0.2s;
   }
 
-  .group-card:hover .group-arrow {
+  .group-card-minimal:hover .group-arrow-icon {
     opacity: 1;
-    right: 0.5rem;
     color: var(--color-primary);
   }
 
