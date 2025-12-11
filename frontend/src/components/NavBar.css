@@ -679,7 +679,7 @@
   flex-direction: column;
   gap: .3rem;
   animation: dropdownFadeIn .2s ease;
-  z-index: 6100;
+  z-index: 99999;
   overflow: hidden;
 }
 
@@ -869,6 +869,39 @@
     align-items: flex-start;
     gap: 0.4rem;
   }
+
+  /* Мобильный профиль */
+  .mobile-profile-section {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin-top: 1rem;
+  }
+
+  .mobile-profile-divider {
+    height: 1px;
+    background: var(--border-light);
+    margin: 0.75rem 0 1rem;
+  }
+
+  .mobile-logout-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: #dc2626;
+  }
+
+  .mobile-logout-btn:hover {
+    background: rgba(220, 38, 38, 0.08) !important;
+    color: #b91c1c;
+  }
+}
+
+/* Скрыть мобильную секцию на десктопе */
+.mobile-profile-section {
+  display: none;
 }
 
 

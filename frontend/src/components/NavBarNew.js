@@ -370,6 +370,31 @@ const NavBar = () => {
               <span>Админ-панель</span>
             </Link>
           )}
+
+          {/* Мобильный профиль и выход */}
+          {accessTokenValid && (
+            <div className="mobile-profile-section">
+              <div className="mobile-profile-divider"></div>
+              <Link 
+                to="/profile" 
+                className="nav-link"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                <span className="nav-icon">⚙️</span>
+                <span>Настройки профиля</span>
+              </Link>
+              <button 
+                className="nav-link mobile-logout-btn"
+                onClick={() => {
+                  setShowMobileMenu(false);
+                  handleLogout();
+                }}
+              >
+                <span className="nav-icon">🚪</span>
+                <span>Выйти</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Правая часть: кнопки входа или профиль */}
