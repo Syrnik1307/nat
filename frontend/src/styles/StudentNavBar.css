@@ -148,6 +148,18 @@
   letter-spacing: 0.5px;
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
   transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.student-avatar-image {
+  background: transparent;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+.student-avatar-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .student-profile-button:hover .student-avatar {
@@ -166,7 +178,7 @@
               0 4px 6px -2px rgba(0, 0, 0, 0.05);
   min-width: 220px;
   overflow: hidden;
-  z-index: 100003;
+  z-index: 100010;
   animation: studentDropdownSlide 0.2s ease-out;
 }
 

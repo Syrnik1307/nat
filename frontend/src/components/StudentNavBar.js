@@ -49,6 +49,8 @@ const StudentNavBar = () => {
     return 'UC';
   };
 
+  const hasAvatar = user?.avatar && user.avatar.trim() !== '';
+
   const handleLogout = () => {
     logout();
     navigate('/auth');
@@ -97,7 +99,13 @@ const StudentNavBar = () => {
               aria-haspopup="true"
               aria-expanded={showProfileMenu}
             >
-              <div className="student-avatar">{getInitials()}</div>
+              {hasAvatar ? (
+                <div className="student-avatar student-avatar-image">
+                  <img src={user.avatar} alt="Аватар" />
+                </div>
+              ) : (
+                <div className="student-avatar">{getInitials()}</div>
+              )}
             </button>
 
             {showProfileMenu && (

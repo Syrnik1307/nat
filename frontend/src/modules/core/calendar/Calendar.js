@@ -269,9 +269,6 @@ const Calendar = () => {
               </button>
             ))}
           </div>
-          <Button variant="primary" onClick={() => navigate('/recurring-lessons/manage')}>
-            + Новое занятие
-          </Button>
         </div>
       </div>
 
