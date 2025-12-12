@@ -1,9 +1,8 @@
 /* Плавающая кнопка поддержки - Floating Action Button */
 .support-fab {
   position: fixed;
-  bottom: clamp(20px, 2vw, 32px);
-  right: clamp(20px, 3vw, 32px);
-  left: auto;
+  bottom: max(24px, env(safe-area-inset-bottom, 0px) + 20px);
+  right: max(24px, env(safe-area-inset-right, 0px) + 20px);
   min-width: 62px;
   height: 62px;
   padding: 0 18px;
@@ -25,9 +24,6 @@
   gap: 8px;
   /* Ensure button is never clipped */
   overflow: visible;
-  /* Safe area for mobile devices */
-  bottom: max(24px, env(safe-area-inset-bottom, 0px) + 16px);
-  right: max(24px, env(safe-area-inset-right, 0px) + 16px);
 }
 
 .support-fab:hover {
