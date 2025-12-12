@@ -77,7 +77,12 @@ const TeachersManage = ({ onClose }) => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!response.ok) {
-        throw new Error('Не удалось загрузить список учителей');
+        const text = await response.text();
+        throw new Error(text?.slice(0, 180) || 'Не удалось загрузить список учителей');
+      }
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Сервер вернул не-JSON при загрузке учителей');
       }
       const data = await response.json();
       const list = Array.isArray(data)
@@ -108,8 +113,13 @@ const TeachersManage = ({ onClose }) => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Не удалось загрузить профиль');
+        const text = await response.text();
+        throw new Error(text?.slice(0, 180) || 'Не удалось загрузить профиль');
+      }
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(text?.slice(0, 180) || 'Ответ профиля не JSON');
       }
       const data = await response.json();
       setProfile(data);
@@ -178,9 +188,11 @@ const TeachersManage = ({ onClose }) => {
         },
         body: JSON.stringify({ action, days: 28 })
       });
-      const data = await response.json();
+      const contentType = response.headers.get('content-type');
+      const data = contentType && contentType.includes('application/json') ? await response.json() : {};
       if (!response.ok) {
-        throw new Error(data.error || 'Не удалось обновить подписку');
+        const text = !contentType || !contentType.includes('application/json') ? await response.text() : '';
+        throw new Error(data.error || text?.slice(0, 180) || 'Не удалось обновить подписку');
       }
       setProfile((prev) => prev ? { ...prev, subscription: data.subscription } : prev);
       setActionMessage(action === 'activate' ? 'Подписка активирована на 28 дней' : 'Подписка переведена в ожидание');
@@ -209,9 +221,11 @@ const TeachersManage = ({ onClose }) => {
         },
         body: JSON.stringify({ extra_gb: Number(storageInput) })
       });
-      const data = await response.json();
+      const contentType = response.headers.get('content-type');
+      const data = contentType && contentType.includes('application/json') ? await response.json() : {};
       if (!response.ok) {
-        throw new Error(data.error || 'Не удалось увеличить хранилище');
+        const text = !contentType || !contentType.includes('application/json') ? await response.text() : '';
+        throw new Error(data.error || text?.slice(0, 180) || 'Не удалось увеличить хранилище');
       }
       setProfile((prev) => prev ? { ...prev, subscription: data.subscription } : prev);
       setActionMessage(`Добавлено ${storageInput} ГБ к хранилищу`);
@@ -239,8 +253,10 @@ const TeachersManage = ({ onClose }) => {
         body: JSON.stringify(zoomForm)
       });
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Не удалось сохранить Zoom данные');
+        const contentType = response.headers.get('content-type');
+        const data = contentType && contentType.includes('application/json') ? await response.json() : {};
+        const text = !contentType || !contentType.includes('application/json') ? await response.text() : '';
+        throw new Error(data.error || text?.slice(0, 180) || 'Не удалось сохранить Zoom данные');
       }
       setActionMessage('Zoom credentials сохранены');
       loadTeachers(true);
