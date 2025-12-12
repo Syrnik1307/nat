@@ -1,12 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getStudentStatsSummary } from '../apiService';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../auth';
 import '../styles/dashboard.css';
 import '../styles/StudentStats.css';
 
 const StudentDashboard = () => {
-  const { logout } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -68,19 +65,10 @@ const StudentDashboard = () => {
   return (
     <div className="student-stats">
       <div className="dashboard-container">
-        <div className="student-stats-breadcrumbs">
-          <Link to="/student">🏠 Главная</Link>
-          {'  ›  '}
-          <span>Моя статистика</span>
-        </div>
-
         <div className="student-stats-header">
           <div>
             <h1 className="student-stats-title">Моя статистика</h1>
             <p className="student-stats-subtitle">Посещаемость, выполненное ДЗ и ошибки — по всем группам</p>
-          </div>
-          <div className="student-stats-actions">
-            <button type="button" className="student-stats-btn danger" onClick={logout}>Выход</button>
           </div>
         </div>
 
