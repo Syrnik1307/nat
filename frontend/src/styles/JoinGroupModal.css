@@ -2,18 +2,14 @@
 
 .join-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(12, 17, 29, 0.55);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   z-index: 14000;
-  padding: 1.5rem;
+  padding: clamp(1rem, 2vw, 1.75rem);
 }
 
 .join-modal-content {
@@ -30,6 +26,8 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   animation: joinModalFade 220ms ease;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .join-modal-close {

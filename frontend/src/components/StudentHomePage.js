@@ -199,7 +199,7 @@ const StudentHomePage = () => {
         />
       )}
 
-      <SupportWidget />
+      {!showJoinModal && <SupportWidget />}
     </div>
   );
 };
