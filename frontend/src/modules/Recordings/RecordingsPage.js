@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import api, { withScheduleApiBase } from '../../apiService';
+import React, { useState, useEffect, useRef } from 'react';
+import api from '../../apiService';
 import RecordingCard from './RecordingCard';
 import RecordingPlayer from './RecordingPlayer';
 import './RecordingsPage.css';
@@ -12,6 +12,8 @@ function RecordingsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
   const [groups, setGroups] = useState([]);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef(null);
 
   useEffect(() => {
     loadRecordings();
@@ -22,7 +24,8 @@ function RecordingsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get('recordings/', withScheduleApiBase());
+      // Use unified API base \/api\/ to avoid HTML responses from unknown paths
+      const response = await api.get('recordings/');
       const data = response?.data;
       const results = Array.isArray(data?.results) ? data.results : null;
       const arr = results ?? (Array.isArray(data) ? data : []);
@@ -40,7 +43,7 @@ function RecordingsPage() {
 
   const loadGroups = async () => {
     try {
-      const response = await api.get('groups/', withScheduleApiBase());
+      const response = await api.get('groups/');
       const data = response?.data;
       const results = Array.isArray(data?.results) ? data.results : null;
       const arr = results ?? (Array.isArray(data) ? data : []);
@@ -63,6 +66,17 @@ function RecordingsPage() {
   const closePlayer = () => {
     setSelectedRecording(null);
   };
+
+  // close custom dropdown when clicking outside
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (filterRef.current && !filterRef.current.contains(e.target)) {
+        setFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
 
   // Фильтрация записей
   const getAccessGroupIds = (rec) => {
@@ -125,20 +139,44 @@ function RecordingsPage() {
           />
         </div>
 
-        <div className="filter-group">
+        <div className="filter-group" ref={filterRef}>
           <label>Группа:</label>
-          <select
-            value={groupFilter}
-            onChange={(e) => setGroupFilter(e.target.value)}
+          <button
+            type="button"
             className="filter-select"
+            aria-haspopup="listbox"
+            aria-expanded={filterOpen}
+            onClick={() => setFilterOpen((v) => !v)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setFilterOpen(false); }}
           >
-            <option value="all">Все группы</option>
-            {groups.map(group => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
-          </select>
+            <span>{groupFilter === 'all' ? 'Все группы' : (groups.find(g => String(g.id) === String(groupFilter))?.name || 'Группа')}</span>
+            <span className="filter-caret" aria-hidden>{filterOpen ? '▴' : '▾'}</span>
+          </button>
+          {filterOpen && (
+            <div className="filter-menu" role="listbox" aria-label="Фильтр по группе">
+              <button
+                type="button"
+                className={`filter-option ${groupFilter === 'all' ? 'selected' : ''}`}
+                role="option"
+                aria-selected={groupFilter === 'all'}
+                onClick={() => { setGroupFilter('all'); setFilterOpen(false); }}
+              >
+                Все группы
+              </button>
+              {groups.map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  className={`filter-option ${String(groupFilter) === String(group.id) ? 'selected' : ''}`}
+                  role="option"
+                  aria-selected={String(groupFilter) === String(group.id)}
+                  onClick={() => { setGroupFilter(String(group.id)); setFilterOpen(false); }}
+                >
+                  {group.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
