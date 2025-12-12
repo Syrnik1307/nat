@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import api from '../../apiService';
+import api, { withScheduleApiBase } from '../../apiService';
 import RecordingCard from './RecordingCard';
 import RecordingPlayer from './RecordingPlayer';
 import './RecordingsPage.css';
@@ -24,14 +24,33 @@ function RecordingsPage() {
     try {
       setLoading(true);
       setError(null);
-      // Use unified API base \/api\/ to avoid HTML responses from unknown paths
-      const response = await api.get('recordings/');
-      const data = response?.data;
-      const results = Array.isArray(data?.results) ? data.results : null;
-      const arr = results ?? (Array.isArray(data) ? data : []);
-      if (!results && !Array.isArray(data)) {
-        console.warn('[RecordingsPage] Unexpected recordings response shape:', data);
+      const tryFetch = async (path) => {
+        const response = await api.get(path, withScheduleApiBase());
+        const data = response?.data;
+        const results = Array.isArray(data?.results) ? data.results : null;
+        const arr = results ?? (Array.isArray(data) ? data : []);
+        if (!results && !Array.isArray(data)) {
+          console.warn('[RecordingsPage] Unexpected recordings response shape:', data);
+        }
+        return arr;
+      };
+
+      let arr = [];
+      try {
+        arr = await tryFetch('recordings/');
+      } catch (primaryErr) {
+        // fallback to teacher endpoint if main not found
+        if (primaryErr?.response?.status === 404) {
+          try {
+            arr = await tryFetch('recordings/teacher/');
+          } catch (fallbackErr) {
+            throw fallbackErr;
+          }
+        } else {
+          throw primaryErr;
+        }
       }
+
       setRecordings(arr);
     } catch (err) {
       console.error('Failed to load recordings:', err);
@@ -59,7 +78,7 @@ function RecordingsPage() {
   const openPlayer = (recording) => {
     setSelectedRecording(recording);
     // Отслеживаем просмотр
-    api.post(`recordings/${recording.id}/view/`, {})
+    api.post(`recordings/${recording.id}/view/`, {}, withScheduleApiBase())
       .catch(err => console.error('Failed to track view:', err));
   };
 
