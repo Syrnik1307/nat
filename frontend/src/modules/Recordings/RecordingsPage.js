@@ -59,7 +59,7 @@ function RecordingsPage() {
   const openPlayer = (recording) => {
     setSelectedRecording(recording);
     // Отслеживаем просмотр
-    api.post(`recordings/${recording.id}/view/`, {}, withScheduleApiBase())
+    api.post(`recordings/${recording.id}/view/`, {})
       .catch(err => console.error('Failed to track view:', err));
   };
 
