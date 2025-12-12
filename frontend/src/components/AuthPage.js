@@ -492,8 +492,9 @@ const AuthPage = () => {
           <div className="auth-brand">
             <h1>
               <span className="brand-primary">Lectio</span>
-              <span className="brand-secondary"> Space</span>
+              <span className="brand-secondary">Space</span>
             </h1>
+            <p className="brand-tagline">Платформа онлайн-обучения</p>
           </div>
           
           <div className="auth-content">
@@ -510,7 +511,12 @@ const AuthPage = () => {
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && selectRole('student')}
               >
-                <div className="role-icon">👨‍🎓</div>
+                <div className="role-icon">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                    <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                  </svg>
+                </div>
                 <h3 className="role-title">Ученик</h3>
                 <p className="role-description">
                   Доступ к урокам и заданиям
@@ -524,7 +530,16 @@ const AuthPage = () => {
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && selectRole('teacher')}
               >
-                <div className="role-icon">👨‍🏫</div>
+                <div className="role-icon">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                    <path d="M6 8h.01M9 8h.01"></path>
+                    <path d="M13 8h5"></path>
+                    <path d="M6 12h12"></path>
+                  </svg>
+                </div>
                 <h3 className="role-title">Учитель</h3>
                 <p className="role-description">
                   Управление группами и уроками

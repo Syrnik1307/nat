@@ -80,7 +80,7 @@
   color: #111827;
   display: inline-flex;
   align-items: baseline;
-  gap: 0.25rem;
+  gap: 0.15rem;
 }
 
 .brand-primary {
@@ -91,6 +91,15 @@
 .brand-secondary {
   color: #94a3b8; /* Slate-400 */
   font-weight: 600;
+}
+
+.brand-tagline {
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  color: #64748b;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 @keyframes fadeInDown {
@@ -274,9 +283,9 @@
 }
 
 .role-icon {
-  font-size: 4rem;
-  margin-bottom: 0;
-  display: block;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 4px;
   color: var(--text-muted);
   filter: grayscale(0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -703,7 +712,8 @@
   }
   
   .role-icon {
-    font-size: 2rem;
+    width: 48px;
+    height: 48px;
   }
   
   .role-title {
