@@ -125,18 +125,13 @@ const StudentHomePage = () => {
         <div className="student-container">
           <h1 className="student-page-title">Мои курсы</h1>
 
-          {/* Today's status */}
-          <div className="student-today-status">
-            <div className="student-status-icon">CAL</div>
-            <div className="student-status-text">
-              <h3>Сегодня</h3>
-              <p className="student-status-date">{formatTodayDate()}</p>
-            </div>
-          </div>
-
-          <div className="student-lessons-today">
-            <span className="student-lessons-icon">{hasLessonsToday ? '+' : '-'}</span>
-            <p className="student-status-message">{message}</p>
+          {/* Today's status - compact */}
+          <div className="student-today-banner">
+            <span className="student-today-date">📅 {formatTodayDate()}</span>
+            <span className="student-today-separator">•</span>
+            <span className={`student-today-status-text ${hasLessonsToday ? 'has-lessons' : ''}`}>
+              {message}
+            </span>
           </div>
 
           {/* Course List */}
