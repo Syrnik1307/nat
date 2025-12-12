@@ -238,12 +238,6 @@
   color: var(--color-error, #ef4444);
 }
 
-/* Ensure dropdown items are clickable */
-.student-profile-dropdown * {
-    top: 64px;
-    right: 1rem;
-    min-width: 200px;
-    max-width: 240px;
 @media (max-width: 968px) {
   .student-navbar-center {
     gap: 0.35rem;
@@ -253,6 +247,7 @@
     top: 64px;
     right: 1rem;
     min-width: 200px;
+    max-width: 240px;
   }
 
   .student-nav-link {
