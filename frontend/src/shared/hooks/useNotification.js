@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 const useNotification = () => {
   const [notification, setNotification] = useState({
@@ -8,6 +8,7 @@ const useNotification = () => {
     message: ''
   });
 
+  const confirmResolver = useRef(null);
   const [confirm, setConfirm] = useState({
     isOpen: false,
     title: 'Подтверждение',
@@ -28,6 +29,7 @@ const useNotification = () => {
 
   const showConfirm = (options) => {
     return new Promise((resolve) => {
+      confirmResolver.current = resolve;
       setConfirm({
         isOpen: true,
         title: options.title || 'Подтверждение',
@@ -37,6 +39,7 @@ const useNotification = () => {
         cancelText: options.cancelText || 'Отмена',
         onConfirm: () => {
           resolve(true);
+          confirmResolver.current = null;
           closeConfirm();
         }
       });
@@ -44,6 +47,10 @@ const useNotification = () => {
   };
 
   const closeConfirm = () => {
+    if (confirmResolver.current) {
+      confirmResolver.current(false);
+      confirmResolver.current = null;
+    }
     setConfirm({ ...confirm, isOpen: false });
   };
 

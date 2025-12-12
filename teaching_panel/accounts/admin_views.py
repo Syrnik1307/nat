@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Count, Sum, ExpressionWrapper, F, DurationField
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.conf import settings
-from datetime import timedelta
+from datetime import timedelta, datetime
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,6 +18,22 @@ from .subscriptions_utils import get_subscription
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
+def _parse_date(value):
+    if not value:
+        return None
+    # Try ISO datetime first
+    dt = parse_datetime(value)
+    if dt:
+        return timezone.make_aware(dt) if timezone.is_naive(dt) else dt
+    # Try date-only
+    try:
+        d = datetime.fromisoformat(value)
+        dt = datetime(d.year, d.month, d.day)
+        return timezone.make_aware(dt)
+    except Exception:
+        return None
 
 
 def _serialize_subscription(sub: Subscription):
@@ -254,19 +271,28 @@ class AdminTeachersListView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Поиск и пагинация
+        # Поиск, фильтры, сортировка
         search_q = request.query_params.get('q', '').strip()
-        try:
-            limit = int(request.query_params.get('limit', 50))
-        except (TypeError, ValueError):
-            limit = 50
-        try:
-            offset = int(request.query_params.get('offset', 0))
-        except (TypeError, ValueError):
-            offset = 0
+        status_filter = request.query_params.get('status', '').strip()  # subscription status
+        zoom_filter = request.query_params.get('has_zoom', '').strip()  # true/false
+        active_filter = request.query_params.get('active_recent', '').strip()  # true => last_login < 15m
+        created_from = _parse_date(request.query_params.get('created_from'))
+        created_to = _parse_date(request.query_params.get('created_to'))
+        sort = (request.query_params.get('sort') or 'last_login').strip()
+        order = (request.query_params.get('order') or 'desc').strip()
 
-        limit = max(1, min(limit, 200))  # не больше 200 за запрос
-        offset = max(0, offset)
+        try:
+            page_size = int(request.query_params.get('page_size', 50))
+        except (TypeError, ValueError):
+            page_size = 50
+        try:
+            page = int(request.query_params.get('page', 1))
+        except (TypeError, ValueError):
+            page = 1
+
+        page_size = max(1, min(page_size, 200))
+        page = max(1, page)
+        offset = (page - 1) * page_size
 
         teachers_qs = User.objects.filter(role='teacher')
         if search_q:
@@ -277,16 +303,50 @@ class AdminTeachersListView(APIView):
                 | Q(middle_name__icontains=search_q)
             )
 
+        if status_filter:
+            teachers_qs = teachers_qs.filter(subscription__status=status_filter)
+
+        if zoom_filter in {'true', 'false'}:
+            want = zoom_filter == 'true'
+            teachers_qs = teachers_qs.filter(
+                (Q(zoom_account_id__isnull=False) & ~Q(zoom_account_id='')
+                 & Q(zoom_client_id__isnull=False) & ~Q(zoom_client_id='')
+                 & Q(zoom_client_secret__isnull=False) & ~Q(zoom_client_secret=''))
+                if want else
+                (Q(zoom_account_id__isnull=True) | Q(zoom_account_id='')
+                 | Q(zoom_client_id__isnull=True) | Q(zoom_client_id='')
+                 | Q(zoom_client_secret__isnull=True) | Q(zoom_client_secret=''))
+            )
+
+        if active_filter == 'true':
+            recent = timezone.now() - timedelta(minutes=15)
+            teachers_qs = teachers_qs.filter(last_login__gte=recent)
+
+        if created_from:
+            teachers_qs = teachers_qs.filter(created_at__gte=created_from)
+        if created_to:
+            teachers_qs = teachers_qs.filter(created_at__lte=created_to)
+
+        sort_map = {
+            'created_at': 'created_at',
+            'last_login': 'last_login',
+            'first_name': 'first_name',
+            'last_name': 'last_name',
+            'email': 'email',
+        }
+        sort_field = sort_map.get(sort, 'last_login')
+        if order == 'asc':
+            teachers_qs = teachers_qs.order_by(sort_field)
+        else:
+            teachers_qs = teachers_qs.order_by(f'-{sort_field}')
+
         total = teachers_qs.count()
-        teachers = teachers_qs.order_by('last_name', 'first_name')[offset:offset + limit]
+        teachers = teachers_qs.select_related('subscription')[offset:offset + page_size]
 
         teachers_data = []
         now = timezone.now()
         for teacher in teachers:
-            try:
-                subscription = teacher.subscription
-            except Subscription.DoesNotExist:
-                subscription = None
+            subscription = getattr(teacher, 'subscription', None)
             metrics = _get_teacher_metrics(teacher)
             days_on_platform = (now - teacher.created_at).days if teacher.created_at else 0
             teachers_data.append({
@@ -308,11 +368,14 @@ class AdminTeachersListView(APIView):
                 'days_on_platform': days_on_platform,
             })
 
+        total_pages = (total + page_size - 1) // page_size if total else 1
+
         return Response({
             'results': teachers_data,
             'total': total,
-            'limit': limit,
-            'offset': offset,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': total_pages,
         })
 
 
@@ -485,6 +548,83 @@ class AdminUpdateTeacherZoomView(APIView):
             'zoom_user_id': teacher.zoom_user_id,
             'has_zoom_config': bool(teacher.zoom_account_id and teacher.zoom_client_id and teacher.zoom_client_secret),
         })
+
+
+class AdminTeachersBulkActionView(APIView):
+    """Массовые действия над учителями"""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        ids = request.data.get('ids') or []
+        if not isinstance(ids, list) or not ids:
+            return Response({'error': 'Передайте ids: []'}, status=status.HTTP_400_BAD_REQUEST)
+
+        action = request.data.get('action')
+        if action not in {'activate_subscription', 'deactivate_subscription', 'add_storage', 'reset_password', 'delete'}:
+            return Response({'error': 'Некорректное действие'}, status=status.HTTP_400_BAD_REQUEST)
+
+        teachers = list(User.objects.filter(role='teacher', id__in=ids))
+        if not teachers:
+            return Response({'error': 'Учителя не найдены'}, status=status.HTTP_404_NOT_FOUND)
+
+        results = []
+        now = timezone.now()
+
+        for teacher in teachers:
+            if action in {'activate_subscription', 'deactivate_subscription', 'add_storage'}:
+                subscription = get_subscription(teacher)
+
+            if action == 'activate_subscription':
+                days = request.data.get('days') or 28
+                try:
+                    days = int(days)
+                except (TypeError, ValueError):
+                    days = 28
+                days = max(1, min(days, 365))
+                subscription.plan = Subscription.PLAN_MONTHLY
+                subscription.status = Subscription.STATUS_ACTIVE
+                subscription.expires_at = now + timedelta(days=days)
+                subscription.auto_renew = False
+                subscription.save(update_fields=['plan', 'status', 'expires_at', 'auto_renew', 'updated_at'])
+                results.append({'id': teacher.id, 'subscription': _serialize_subscription(subscription)})
+
+            elif action == 'deactivate_subscription':
+                subscription.status = Subscription.STATUS_PENDING
+                subscription.expires_at = now
+                subscription.auto_renew = False
+                subscription.save(update_fields=['status', 'expires_at', 'auto_renew', 'updated_at'])
+                results.append({'id': teacher.id, 'subscription': _serialize_subscription(subscription)})
+
+            elif action == 'add_storage':
+                extra_gb = request.data.get('extra_gb')
+                try:
+                    extra_gb = int(extra_gb)
+                except (TypeError, ValueError):
+                    extra_gb = 0
+                if extra_gb <= 0:
+                    return Response({'error': 'extra_gb должен быть > 0'}, status=status.HTTP_400_BAD_REQUEST)
+                subscription.extra_storage_gb += extra_gb
+                subscription.save(update_fields=['extra_storage_gb', 'updated_at'])
+                results.append({'id': teacher.id, 'subscription': _serialize_subscription(subscription)})
+
+            elif action == 'reset_password':
+                new_password = request.data.get('new_password')
+                if not new_password:
+                    new_password = User.objects.make_random_password(length=12)
+                teacher.set_password(new_password)
+                teacher.save(update_fields=['password'])
+                results.append({'id': teacher.id, 'generated_password': new_password})
+
+            elif action == 'delete':
+                teacher_id = teacher.id
+                teacher.delete()
+                results.append({'id': teacher_id, 'deleted': True})
+
+        return Response({'count': len(results), 'results': results})
 
 
 class AdminDeleteTeacherView(APIView):

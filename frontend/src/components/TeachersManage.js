@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Notification, ConfirmModal } from '../shared/components';
 import useNotification from '../shared/hooks/useNotification';
 import './TeachersManage.css';
@@ -12,51 +12,61 @@ const statusLabels = {
   none: 'Нет подписки'
 };
 
+const PAGE_SIZE_OPTIONS = [50, 100, 200];
+
 const TeachersManage = ({ onClose }) => {
-  const { notification, confirm, closeNotification, showConfirm, closeConfirm } = useNotification();
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [selectedTeacherId, setSelectedTeacherId] = useState(null);
-  const [selectedTeacher, setSelectedTeacher] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [total, setTotal] = useState(0);
+  const [sortKey, setSortKey] = useState('last_login');
+  const [sortDir, setSortDir] = useState('desc');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [zoomFilter, setZoomFilter] = useState('');
+  const [activeFilter, setActiveFilter] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [totalCount, setTotalCount] = useState(0);
-  const [offset, setOffset] = useState(0);
-  const PAGE_SIZE = 50;
-  const [storageInput, setStorageInput] = useState(5);
   const [actionMessage, setActionMessage] = useState('');
   const [actionError, setActionError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [selectedTeacherId, setSelectedTeacherId] = useState(null);
+  const [storageInput, setStorageInput] = useState(5);
   const [zoomForm, setZoomForm] = useState({
     zoom_account_id: '',
     zoom_client_id: '',
     zoom_client_secret: '',
-    zoom_user_id: ''
+    zoom_user_id: '',
   });
+  const [newPassword, setNewPassword] = useState('');
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+
+  const {
+    notification,
+    confirm,
+    showNotification,
+    closeNotification,
+    showConfirm,
+    closeConfirm
+  } = useNotification();
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   useEffect(() => {
-    loadTeachers(true);
-    const interval = setInterval(() => loadTeachers(true), 20000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Debounce поиска, чтобы не дергать бэкенд на каждый символ
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedSearch(searchTerm.trim());
-      setOffset(0);
-    }, 350);
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
     return () => clearTimeout(t);
-  }, [searchTerm]);
+  }, [search]);
 
   useEffect(() => {
-    loadTeachers(true, debouncedSearch);
-  }, [debouncedSearch]);
+    setPage(1);
+  }, [debouncedSearch, statusFilter, zoomFilter, activeFilter, pageSize, sortKey, sortDir]);
+
+  useEffect(() => {
+    loadTeachers();
+  }, [page, pageSize, debouncedSearch, statusFilter, zoomFilter, activeFilter, sortKey, sortDir]);
 
   useEffect(() => {
     if (!selectedTeacherId && teachers.length > 0) {
@@ -84,20 +94,21 @@ const TeachersManage = ({ onClose }) => {
   // Список теперь фильтруется на бэке, поэтому оставляем как есть
   const filteredTeachers = useMemo(() => teachers, [teachers]);
 
-  const loadTeachers = async (reset = false, searchValue = debouncedSearch) => {
+  const loadTeachers = useCallback(async () => {
     try {
-      if (reset) {
-        setLoading(true);
-        setOffset(0);
-      } else {
-        setLoadingMore(true);
-      }
+      setLoading(true);
       const token = localStorage.getItem('tp_access_token');
       const params = new URLSearchParams({
-        limit: PAGE_SIZE,
-        offset: reset ? 0 : offset,
+        page,
+        page_size: pageSize,
+        sort: sortKey,
+        order: sortDir,
       });
-      if (searchValue) params.append('q', searchValue);
+      if (debouncedSearch) params.append('q', debouncedSearch);
+      if (statusFilter) params.append('status', statusFilter);
+      if (zoomFilter) params.append('has_zoom', zoomFilter);
+      if (activeFilter) params.append('active_recent', 'true');
+
       const response = await fetch(`/accounts/api/admin/teachers/?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -110,29 +121,18 @@ const TeachersManage = ({ onClose }) => {
         throw new Error('Сервер вернул не-JSON при загрузке учителей');
       }
       const data = await response.json();
-      const list = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
-      const total = typeof data?.total === 'number' ? data.total : list.length;
-
-      if (reset) {
-        setTeachers(list);
-      } else {
-        setTeachers((prev) => [...prev, ...list]);
-      }
-      setTotalCount(total);
-      const newOffset = (reset ? 0 : offset) + list.length;
-      setOffset(newOffset);
-      if (selectedTeacherId && list.length > 0) {
-        const updated = [...list, ...teachers].find((item) => item.id === selectedTeacherId);
-        if (updated) setSelectedTeacher(updated);
-      }
+      const list = Array.isArray(data?.results) ? data.results : [];
+      setTeachers(list);
+      setTotal(typeof data?.total === 'number' ? data.total : list.length);
+      // reset selection on new page
+      setSelectedIds(new Set());
     } catch (error) {
       console.error('Ошибка загрузки учителей:', error);
       setActionError(error.message || 'Ошибка загрузки данных');
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
-  };
+  }, [page, pageSize, debouncedSearch, statusFilter, zoomFilter, activeFilter, sortKey, sortDir]);
 
   const loadTeacherProfile = async (teacherId) => {
     try {
@@ -160,15 +160,110 @@ const TeachersManage = ({ onClose }) => {
     }
   };
 
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedIds(new Set(filteredTeachers.map((t) => t.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleSelectOne = (teacherId, checked) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(teacherId);
+      } else {
+        next.delete(teacherId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+    setPage(1);
+  };
+
+  const handleBulk = async (action, extraPayload = {}) => {
+    if (!selectedIds.size) return;
+    if (action === 'delete') {
+      const confirmed = await showConfirm({
+        title: 'Удаление учителей',
+        message: 'Удалить выбранных учителей? Это действие необратимо.',
+        variant: 'danger',
+        confirmText: 'Удалить',
+      });
+      if (!confirmed) return;
+    }
+
+    try {
+      setActionLoading(true);
+      setActionError('');
+      const token = localStorage.getItem('tp_access_token');
+      const response = await fetch('/accounts/api/admin/teachers/bulk/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action,
+          ids: Array.from(selectedIds),
+          ...extraPayload,
+        })
+      });
+      const contentType = response.headers.get('content-type');
+      const data = contentType && contentType.includes('application/json') ? await response.json() : {};
+      if (!response.ok) {
+        const text = !contentType || !contentType.includes('application/json') ? await response.text() : '';
+        throw new Error(data.error || text?.slice(0, 180) || 'Не удалось выполнить действие');
+      }
+
+      const msg = data.message || `Готово: ${data.count || selectedIds.size} учителей`;
+      setActionMessage(msg);
+      if (action === 'reset_password' && Array.isArray(data.results) && data.results.length === 1) {
+        const generated = data.results[0].generated_password;
+        if (generated) {
+          showNotification('info', 'Новый пароль', generated);
+        }
+      }
+      if (action === 'delete' && selectedIds.has(selectedTeacherId)) {
+        setSelectedTeacherId(null);
+        setProfile(null);
+      }
+      setSelectedIds(new Set());
+      await loadTeachers();
+    } catch (error) {
+      setActionError(error.message || 'Ошибка выполнения действия');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleBulkStorage = async () => {
+    const value = window.prompt('Сколько ГБ добавить каждому?', '5');
+    if (!value) return;
+    const amount = Number(value);
+    if (Number.isNaN(amount) || amount <= 0) {
+      setActionError('Введите число больше 0');
+      return;
+    }
+    await handleBulk('add_storage', { extra_gb: amount });
+  };
+
   const handleSelectTeacher = (teacher) => {
     if (!teacher) {
       setSelectedTeacherId(null);
-      setSelectedTeacher(null);
       setProfile(null);
       return;
     }
     setSelectedTeacherId(teacher.id);
-    setSelectedTeacher(teacher);
     setActionError('');
     setActionMessage('');
   };
@@ -195,7 +290,6 @@ const TeachersManage = ({ onClose }) => {
       await loadTeachers();
       if (selectedTeacherId === teacherId) {
         setSelectedTeacherId(null);
-        setSelectedTeacher(null);
         setProfile(null);
       }
       setActionMessage('Учитель удален');
@@ -348,8 +442,6 @@ const TeachersManage = ({ onClose }) => {
     return `${hours} ч ${mins} мин`;
   };
 
-  const canLoadMore = offset < totalCount;
-
   if (loading && teachers.length === 0) {
     return (
       <div className="teachers-manage-overlay">
@@ -364,72 +456,118 @@ const TeachersManage = ({ onClose }) => {
     <div className="teachers-manage-overlay" onClick={onClose}>
       <div className="teachers-manage-modal" onClick={(e) => e.stopPropagation()}>
         <div className="tm-header">
-          <h2>👨‍🏫 Управление учителями</h2>
+          <h2>Управление учителями</h2>
           <div className="tm-header-actions">
             <button className="tm-refresh" onClick={() => loadTeachers()} title="Обновить список">
-              🔄
+              Обновить
             </button>
-            <button className="tm-close" onClick={onClose}>✕</button>
+            <button className="tm-close" onClick={onClose}>Закрыть</button>
           </div>
         </div>
         <div className="tm-body">
           <div className="tm-left-panel">
-            <div className="tm-search-box">
+            <div className="tm-controls">
               <input
                 type="text"
                 placeholder="Поиск по имени или email"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="">Статус подписки: все</option>
+                <option value="active">Активна</option>
+                <option value="pending">Ожидает оплаты</option>
+                <option value="expired">Истекла</option>
+                <option value="cancelled">Отменена</option>
+                <option value="trial">Триал</option>
+              </select>
+              <select value={zoomFilter} onChange={(e) => setZoomFilter(e.target.value)}>
+                <option value="">Zoom: все</option>
+                <option value="true">Zoom настроен</option>
+                <option value="false">Нет Zoom</option>
+              </select>
+              <label className="tm-checkbox">
+                <input type="checkbox" checked={activeFilter} onChange={(e) => setActiveFilter(e.target.checked)} /> Активные (15 мин)
+              </label>
+              <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+                {PAGE_SIZE_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s} на странице</option>
+                ))}
+              </select>
             </div>
-            <div className="tm-teacher-cards">
-              {filteredTeachers.map((teacher) => {
-                const status = teacher.subscription?.status || 'none';
-                return (
-                  <button
-                    key={teacher.id}
-                    className={`tm-teacher-card ${teacher.id === selectedTeacherId ? 'active' : ''}`}
-                    onClick={() => handleSelectTeacher(teacher)}
-                  >
-                    <div className="tm-teacher-card-name">
-                      {teacher.last_name} {teacher.first_name}
-                    </div>
-                    <div className="tm-teacher-card-email">{teacher.email}</div>
-                    <div className="tm-teacher-card-meta">
-                      <span className={`tm-status-pill mini ${status}`}>
-                        {statusLabels[status] || status}
-                      </span>
-                      <span className="tm-meta-value">
-                        {teacher.metrics?.lessons_last_30_days || 0} уроков · {teacher.metrics?.total_students || 0} учеников
-                      </span>
-                    </div>
-                    <div className="tm-card-footer">
-                      <span>{teacher.days_on_platform} дней на платформе</span>
-                      <button
-                        className="tm-delete-inline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteTeacher(teacher.id, `${teacher.first_name} ${teacher.last_name}`);
-                        }}
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </button>
-                );
-              })}
-              {canLoadMore && (
-                <button
-                  className="btn-outline tm-load-more"
-                  disabled={loadingMore}
-                  onClick={() => loadTeachers(false)}
-                >
-                  {loadingMore ? 'Загружаю...' : 'Загрузить ещё'}
-                </button>
-              )}
-              {filteredTeachers.length === 0 && (
-                <div className="tm-empty">Учителя не найдены</div>
-              )}
+
+            <div className="tm-bulk-bar">
+              <div className="tm-bulk-actions">
+                <button className="btn-outline" disabled={!selectedIds.size || actionLoading} onClick={() => handleBulk('activate_subscription')}>Активировать</button>
+                <button className="btn-outline" disabled={!selectedIds.size || actionLoading} onClick={() => handleBulk('deactivate_subscription')}>В ожидание</button>
+                <button className="btn-outline" disabled={!selectedIds.size || actionLoading} onClick={handleBulkStorage}>+ ГБ</button>
+                <button className="btn-outline" disabled={!selectedIds.size || actionLoading} onClick={() => handleBulk('reset_password')}>Сброс пароля</button>
+                <button className="btn-outline danger" disabled={!selectedIds.size || actionLoading} onClick={() => handleBulk('delete')}>Удалить</button>
+              </div>
+              <div className="tm-pagination">
+                <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹</button>
+                <span>{page} / {totalPages}</span>
+                <button disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>›</button>
+              </div>
+            </div>
+
+            <div className="tm-table-wrap">
+              <table className="tm-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <input
+                        type="checkbox"
+                        checked={filteredTeachers.length > 0 && selectedIds.size === filteredTeachers.length}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                      />
+                    </th>
+                    <th onClick={() => toggleSort('first_name')} className={sortKey === 'first_name' ? 'sorted' : ''}>Имя</th>
+                    <th onClick={() => toggleSort('email')} className={sortKey === 'email' ? 'sorted' : ''}>Email</th>
+                    <th>Подписка</th>
+                    <th>Уроки/30д</th>
+                    <th>Ученики</th>
+                    <th onClick={() => toggleSort('created_at')} className={sortKey === 'created_at' ? 'sorted' : ''}>Создан</th>
+                    <th onClick={() => toggleSort('last_login')} className={sortKey === 'last_login' ? 'sorted' : ''}>Последний вход</th>
+                    <th>Zoom</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTeachers.map((teacher) => {
+                    const status = teacher.subscription?.status || 'none';
+                    const checked = selectedIds.has(teacher.id);
+                    return (
+                      <tr key={teacher.id} className={teacher.id === profile?.teacher?.id ? 'active' : ''}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => handleSelectOne(teacher.id, e.target.checked)}
+                          />
+                        </td>
+                        <td onClick={() => handleSelectTeacher(teacher)} className="tm-click">
+                          {teacher.last_name} {teacher.first_name}
+                        </td>
+                        <td onClick={() => handleSelectTeacher(teacher)} className="tm-click">{teacher.email}</td>
+                        <td>
+                          <span className={`tm-status-pill mini ${status}`}>{statusLabels[status] || 'Нет'}</span>
+                        </td>
+                        <td>{teacher.metrics?.lessons_last_30_days ?? 0}</td>
+                        <td>{teacher.metrics?.total_students ?? 0}</td>
+                        <td>{formatDate(teacher.created_at)}</td>
+                        <td>{formatDateTime(teacher.last_login)}</td>
+                        <td>{teacher.has_zoom_config ? 'Да' : 'Нет'}</td>
+                      </tr>
+                    );
+                  })}
+                  {!filteredTeachers.length && !loading && (
+                    <tr><td colSpan="9" className="tm-empty">Учителя не найдены</td></tr>
+                  )}
+                  {loading && (
+                    <tr><td colSpan="9" className="tm-loading">Загрузка...</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
           <div className="tm-right-panel">
@@ -603,7 +741,7 @@ const TeachersManage = ({ onClose }) => {
 
                     <div className="tm-section">
                       <div className="tm-section-header">
-                        <h4>🔐 Изменение пароля</h4>
+                        <h4>Изменение пароля</h4>
                       </div>
                       {!showPasswordForm ? (
                         <button 
