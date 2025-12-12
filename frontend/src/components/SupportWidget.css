@@ -1,8 +1,9 @@
 /* Плавающая кнопка поддержки - Floating Action Button */
 .support-fab {
   position: fixed;
-  bottom: max(24px, env(safe-area-inset-bottom, 0px) + 20px);
-  right: max(24px, env(safe-area-inset-right, 0px) + 20px);
+  bottom: max(20px, env(safe-area-inset-bottom, 0px) + 16px);
+  right: max(16px, env(safe-area-inset-right, 0px) + 16px);
+  left: auto;
   min-width: 62px;
   height: 62px;
   padding: 0 18px;
@@ -24,6 +25,14 @@
   gap: 8px;
   /* Ensure button is never clipped */
   overflow: visible;
+}
+
+@media (max-width: 520px) {
+  .support-fab {
+    bottom: max(16px, env(safe-area-inset-bottom, 0px) + 12px);
+    right: max(12px, env(safe-area-inset-right, 0px) + 12px);
+    padding: 0 16px;
+  }
 }
 
 .support-fab:hover {
@@ -54,9 +63,10 @@
 .support-widget {
   position: fixed;
   bottom: 96px;
-  right: 24px;
+  right: max(16px, env(safe-area-inset-right, 0px) + 12px);
+  left: auto;
   width: 400px;
-  max-width: calc(100vw - 48px);
+  max-width: calc(100vw - 40px);
   height: 600px;
   max-height: calc(100vh - 140px);
   background: white;
@@ -66,6 +76,14 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+@media (max-width: 520px) {
+  .support-widget {
+    right: max(12px, env(safe-area-inset-right, 0px) + 10px);
+    max-width: calc(100vw - 24px);
+    bottom: 84px;
+  }
 }
 
 .support-widget-header {
