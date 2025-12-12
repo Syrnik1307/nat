@@ -6,8 +6,9 @@
   background: rgba(12, 17, 29, 0.55);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 14000;
   padding: clamp(1rem, 2vw, 1.75rem);
 }
