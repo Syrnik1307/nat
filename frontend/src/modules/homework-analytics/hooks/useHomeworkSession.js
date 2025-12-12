@@ -99,8 +99,10 @@ const useHomeworkSession = (homeworkId, injectedService) => {
       try {
         const existingSubmissions = await svc.fetchSubmissions({ homework: homeworkId });
         const submissions = existingSubmissions?.data?.results || existingSubmissions?.data || [];
-        if (submissions.length > 0) {
-          submissionData = submissions[0];
+        const hwId = Number(homeworkId);
+        const matchingSubmissions = submissions.filter((sub) => Number(sub.homework) === hwId);
+        if (matchingSubmissions.length > 0) {
+          submissionData = matchingSubmissions[0];
           // eslint-disable-next-line no-console
           console.log('[useHomeworkSession] found existing submission:', submissionData.status);
           // Если submission завершена (submitted/graded), восстановим answers из неё

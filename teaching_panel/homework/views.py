@@ -245,6 +245,13 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         status_filter = self.request.query_params.get('status')
         if status_filter:
             qs = qs.filter(status=status_filter)
+
+        homework_filter = self.request.query_params.get('homework')
+        if homework_filter:
+            try:
+                qs = qs.filter(homework_id=int(homework_filter))
+            except (TypeError, ValueError):
+                pass
         
         # Фильтрация по индивидуальным/групповым
         individual = self.request.query_params.get('individual')
