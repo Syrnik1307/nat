@@ -1,8 +1,8 @@
-/* Плавающая кнопка поддержки */
+/* Плавающая кнопка поддержки - Floating Action Button */
 .support-fab {
   position: fixed;
-  bottom: clamp(18px, 6vh, 64px);
-  right: clamp(12px, 4vw, 26px);
+  bottom: 24px;
+  right: 24px;
   min-width: 62px;
   height: 62px;
   padding: 0 18px;
@@ -14,14 +14,19 @@
   font-weight: 700;
   letter-spacing: 0.15px;
   cursor: pointer;
-  box-shadow: 0 14px 35px rgba(79, 70, 229, 0.35);
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35),
+              0 4px 12px rgba(0, 0, 0, 0.15);
   transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease;
   z-index: 100004;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  backdrop-filter: blur(6px);
+  /* Ensure button is never clipped */
+  overflow: visible;
+  /* Safe area for mobile devices */
+  bottom: max(24px, env(safe-area-inset-bottom, 0px) + 16px);
+  right: max(24px, env(safe-area-inset-right, 0px) + 16px);
 }
 
 .support-fab:hover {
@@ -450,15 +455,31 @@
   }
   
   .support-fab {
-    right: 14px;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
-    min-width: 58px;
-    height: 58px;
-    padding: 0 16px;
+    right: 16px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+    min-width: 56px;
+    height: 56px;
+    padding: 0 14px;
+    font-size: 14px;
   }
   
   .support-form-row {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Ensure FAB is always visible and not clipped */
+@media (max-height: 500px) {
+  .support-fab {
+    bottom: 12px;
+    right: 12px;
+    min-width: 48px;
+    height: 48px;
+  }
+  
+  .support-widget {
+    height: calc(100vh - 80px);
+    bottom: 70px;
   }
 }
 

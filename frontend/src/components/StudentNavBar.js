@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { TELEGRAM_RESET_DEEPLINK } from '../constants';
-import Logo from './Logo';
 import '../styles/StudentNavBar.css';
 
 const navItems = [
@@ -17,6 +16,24 @@ const StudentNavBar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    if (showProfileMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfileMenu]);
 
   const getInitials = () => {
     if (user?.first_name) {
@@ -49,8 +66,11 @@ const StudentNavBar = () => {
     <nav className="student-navbar">
       <div className="student-navbar-content">
         <div className="student-navbar-left">
-          <NavLink to="/student" aria-label="Lectio Space">
-            <Logo size={34} />
+          <NavLink to="/student" className="student-navbar-logo" aria-label="Lectio Space">
+            <h1 className="student-logo-text">
+              <span className="brand-primary">Lectio</span>
+              <span className="brand-secondary">Space</span>
+            </h1>
           </NavLink>
         </div>
 
@@ -69,7 +89,7 @@ const StudentNavBar = () => {
         </div>
 
         <div className="student-navbar-right">
-          <div className="student-profile-section">
+          <div className="student-profile-section" ref={dropdownRef}>
             <button
               type="button"
               className="student-profile-button"

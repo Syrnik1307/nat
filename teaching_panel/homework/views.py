@@ -369,8 +369,9 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
-        submission = serializer.save()
-        self._notify_teacher_submission(submission)
+        # Просто создаём submission без уведомления.
+        # Уведомление учителю отправляется только при финальном submit.
+        serializer.save()
 
     @staticmethod
     def _format_display_name(user):
