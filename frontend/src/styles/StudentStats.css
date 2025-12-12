@@ -1,0 +1,170 @@
+/* ================================================
+   STUDENT STATS - "MY STATISTICS" DASHBOARD
+   Reuses design-system + dashboard tokens
+   ================================================ */
+
+.student-stats {
+  min-height: 100vh;
+  background: transparent;
+}
+
+.student-stats .dashboard-container {
+  padding-top: var(--space-lg);
+}
+
+.student-stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.student-stats-title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.student-stats-subtitle {
+  margin: var(--space-xs) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+
+.student-stats-breadcrumbs {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
+}
+
+.student-stats-breadcrumbs a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  font-weight: var(--font-semibold);
+}
+
+.student-stats-breadcrumbs a:hover {
+  text-decoration: underline;
+}
+
+.student-stats-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.student-stats-btn {
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--text-primary);
+  border-radius: var(--radius-lg);
+  padding: 0.6rem 1rem;
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.student-stats-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.student-stats-btn.danger {
+  color: var(--color-error);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.student-stats-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.student-stats-error {
+  background: rgba(254, 226, 226, 0.6);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--color-error);
+  padding: 1rem;
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-lg);
+  font-weight: var(--font-semibold);
+}
+
+.student-stats-empty {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-2xl);
+  padding: 2.25rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.student-stats-empty-title {
+  margin: 0 0 0.5rem 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+}
+
+/* Table */
+
+.student-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.student-stats-table thead th {
+  text-align: left;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  font-weight: var(--font-bold);
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.student-stats-table tbody td {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
+}
+
+.student-stats-table tbody tr:hover {
+  background: rgba(79, 70, 229, 0.04);
+}
+
+.student-stats-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.student-stats-metric strong {
+  font-weight: var(--font-bold);
+}
+
+.student-stats-muted {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+}
+
+@media (max-width: 900px) {
+  .student-stats-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .student-stats-actions {
+    width: 100%;
+  }
+}

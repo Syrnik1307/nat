@@ -322,6 +322,9 @@ export const getGradebookForGroup = (groupId) => apiClient.get('gradebook/', { p
 export const getTeacherStatsSummary = () => apiClient.get('teacher-stats/summary/');
 export const getTeacherStatsBreakdown = () => apiClient.get('teacher-stats/breakdown/');
 
+// Student stats
+export const getStudentStatsSummary = () => apiClient.get('student-stats/summary/');
+
 // Control points
 export const getControlPoints = (params = {}) => apiClient.get('control-points/', { params });
 export const createControlPoint = (data) => apiClient.post('control-points/', data);

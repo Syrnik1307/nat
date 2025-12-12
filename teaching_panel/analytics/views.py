@@ -3,11 +3,14 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Avg, Count, Q, F, DurationField, ExpressionWrapper, Sum
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from .models import ControlPoint, ControlPointResult
 from .serializers import ControlPointSerializer, ControlPointResultSerializer
 from schedule.models import Attendance, Group
 from homework.models import StudentSubmission
+from homework.models import Homework
+from homework.models import Answer
 
 class ControlPointViewSet(viewsets.ModelViewSet):
     queryset = ControlPoint.objects.all().select_related('teacher', 'group', 'lesson')
@@ -233,3 +236,197 @@ class TeacherStatsViewSet(viewsets.ViewSet):
                 })
 
         return Response({'groups': group_data, 'students': student_rows})
+
+
+class StudentStatsViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        """Сводная статистика ученика по всем его группам.
+
+        Возвращает:
+        {
+          overall: {
+            groups_count,
+            attendance_percent,
+            attendance_present,
+            attendance_total_marked,
+            homework_percent,
+            homeworks_total,
+            homeworks_completed,
+            homework_errors,
+            homework_answers_checked
+          },
+          groups: [
+            {
+              id,
+              name,
+              teacher: { id, first_name, email },
+              students_count,
+              attendance_percent,
+              attendance_present,
+              attendance_total_marked,
+              homework_percent,
+              homeworks_total,
+              homeworks_completed,
+              homework_errors,
+              homework_answers_checked
+            }
+          ]
+        }
+        """
+
+        user = request.user
+        if getattr(user, 'role', None) != 'student':
+            return Response({'detail': 'Только для учеников'}, status=403)
+
+        groups_qs = (
+            Group.objects.filter(students=user)
+            .select_related('teacher')
+            .prefetch_related('students')
+            .order_by('name')
+        )
+        group_ids = list(groups_qs.values_list('id', flat=True))
+
+        if not group_ids:
+            return Response({
+                'overall': {
+                    'groups_count': 0,
+                    'attendance_percent': None,
+                    'attendance_present': 0,
+                    'attendance_total_marked': 0,
+                    'homework_percent': None,
+                    'homeworks_total': 0,
+                    'homeworks_completed': 0,
+                    'homework_errors': 0,
+                    'homework_answers_checked': 0,
+                },
+                'groups': []
+            })
+
+        # Attendance aggregates per group for this student
+        att_rows = (
+            Attendance.objects
+            .filter(student=user, lesson__group_id__in=group_ids)
+            .values('lesson__group')
+            .annotate(
+                present=Count('id', filter=Q(status='present')),
+                total_marked=Count('id')
+            )
+        )
+        att_map = {r['lesson__group']: r for r in att_rows}
+
+        # Homework totals per group (published only)
+        hw_total_rows = (
+            Homework.objects
+            .filter(status='published', lesson__group_id__in=group_ids)
+            .values('lesson__group')
+            .annotate(total=Count('id'))
+        )
+        hw_total_map = {r['lesson__group']: r for r in hw_total_rows}
+
+        # Homework completed per group for this student
+        hw_done_rows = (
+            StudentSubmission.objects
+            .filter(
+                student=user,
+                status__in=['submitted', 'graded'],
+                homework__status='published',
+                homework__lesson__group_id__in=group_ids,
+            )
+            .values('homework__lesson__group')
+            .annotate(done=Count('id'))
+        )
+        hw_done_map = {r['homework__lesson__group']: r for r in hw_done_rows}
+
+        # Homework errors per group for this student
+        # Error = ответ проверен (есть teacher_score или auto_score), не требует ручной проверки,
+        # и итоговый балл < max points вопроса.
+        answer_base = (
+            Answer.objects
+            .filter(
+                submission__student=user,
+                submission__homework__status='published',
+                submission__homework__lesson__group_id__in=group_ids,
+                question__points__gt=0,
+            )
+            .exclude(needs_manual_review=True, teacher_score__isnull=True)
+            .exclude(teacher_score__isnull=True, auto_score__isnull=True)
+            .annotate(resolved_score=Coalesce('teacher_score', 'auto_score'))
+        )
+        err_rows = (
+            answer_base
+            .values('submission__homework__lesson__group')
+            .annotate(
+                errors=Count('id', filter=Q(resolved_score__lt=F('question__points'))),
+                checked=Count('id')
+            )
+        )
+        err_map = {r['submission__homework__lesson__group']: r for r in err_rows}
+
+        groups_payload = []
+        overall_present = 0
+        overall_att_total = 0
+        overall_hw_total = 0
+        overall_hw_done = 0
+        overall_errors = 0
+        overall_checked = 0
+
+        for g in groups_qs:
+            att = att_map.get(g.id, {})
+            present = int(att.get('present', 0) or 0)
+            total_marked = int(att.get('total_marked', 0) or 0)
+            attendance_percent = round((present / total_marked) * 100, 2) if total_marked else None
+
+            hw_total = int((hw_total_map.get(g.id, {}) or {}).get('total', 0) or 0)
+            hw_done = int((hw_done_map.get(g.id, {}) or {}).get('done', 0) or 0)
+            homework_percent = round((hw_done / hw_total) * 100, 2) if hw_total else None
+
+            err = err_map.get(g.id, {})
+            errors = int(err.get('errors', 0) or 0)
+            checked = int(err.get('checked', 0) or 0)
+
+            groups_payload.append({
+                'id': g.id,
+                'name': g.name,
+                'teacher': {
+                    'id': g.teacher_id,
+                    'first_name': getattr(g.teacher, 'first_name', '') if g.teacher else '',
+                    'email': getattr(g.teacher, 'email', '') if g.teacher else '',
+                },
+                'students_count': g.students.count(),
+                'attendance_percent': attendance_percent,
+                'attendance_present': present,
+                'attendance_total_marked': total_marked,
+                'homework_percent': homework_percent,
+                'homeworks_total': hw_total,
+                'homeworks_completed': hw_done,
+                'homework_errors': errors,
+                'homework_answers_checked': checked,
+            })
+
+            overall_present += present
+            overall_att_total += total_marked
+            overall_hw_total += hw_total
+            overall_hw_done += hw_done
+            overall_errors += errors
+            overall_checked += checked
+
+        overall_attendance_percent = round((overall_present / overall_att_total) * 100, 2) if overall_att_total else None
+        overall_homework_percent = round((overall_hw_done / overall_hw_total) * 100, 2) if overall_hw_total else None
+
+        return Response({
+            'overall': {
+                'groups_count': len(group_ids),
+                'attendance_percent': overall_attendance_percent,
+                'attendance_present': overall_present,
+                'attendance_total_marked': overall_att_total,
+                'homework_percent': overall_homework_percent,
+                'homeworks_total': overall_hw_total,
+                'homeworks_completed': overall_hw_done,
+                'homework_errors': overall_errors,
+                'homework_answers_checked': overall_checked,
+            },
+            'groups': groups_payload,
+        })
