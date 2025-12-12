@@ -96,10 +96,7 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
   const content = (
     <div className="join-modal-layer" role="dialog" aria-modal="true" onClick={onClose}>
       <div className="join-modal-shell" onClick={(e) => e.stopPropagation()}>
-        <div className="join-modal-head">
-          <div className="join-modal-icon">☎</div>
-          <button className="join-modal-close" aria-label="Закрыть" onClick={onClose}>×</button>
-        </div>
+        <button className="join-modal-close" aria-label="Закрыть" onClick={onClose}>×</button>
 
         {!showConfirm ? (
           <>

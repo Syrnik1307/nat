@@ -32,29 +32,10 @@
   outline: 3px solid rgba(79, 70, 229, 0.3);
 }
 
-.join-modal-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.5rem;
-}
-
-.join-modal-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, var(--color-primary-subtle) 0%, #eef2ff 100%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.75rem;
-  color: var(--color-primary-dark);
-  box-shadow: 0 12px 30px rgba(79, 70, 229, 0.18);
-  flex-shrink: 0;
-}
-
 .join-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--border-light);
   border-radius: 50%;
