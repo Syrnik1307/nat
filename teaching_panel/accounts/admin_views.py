@@ -253,19 +253,42 @@ class AdminTeachersListView(APIView):
                 {'error': 'Доступ запрещен'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
-        teachers = User.objects.filter(role='teacher').order_by('last_name', 'first_name')
-        
+
+        # Поиск и пагинация
+        search_q = request.query_params.get('q', '').strip()
+        try:
+            limit = int(request.query_params.get('limit', 50))
+        except (TypeError, ValueError):
+            limit = 50
+        try:
+            offset = int(request.query_params.get('offset', 0))
+        except (TypeError, ValueError):
+            offset = 0
+
+        limit = max(1, min(limit, 200))  # не больше 200 за запрос
+        offset = max(0, offset)
+
+        teachers_qs = User.objects.filter(role='teacher')
+        if search_q:
+            teachers_qs = teachers_qs.filter(
+                Q(email__icontains=search_q)
+                | Q(first_name__icontains=search_q)
+                | Q(last_name__icontains=search_q)
+                | Q(middle_name__icontains=search_q)
+            )
+
+        total = teachers_qs.count()
+        teachers = teachers_qs.order_by('last_name', 'first_name')[offset:offset + limit]
+
         teachers_data = []
+        now = timezone.now()
         for teacher in teachers:
             try:
                 subscription = teacher.subscription
             except Subscription.DoesNotExist:
                 subscription = None
             metrics = _get_teacher_metrics(teacher)
-            days_on_platform = 0
-            if teacher.created_at:
-                days_on_platform = (timezone.now() - teacher.created_at).days
+            days_on_platform = (now - teacher.created_at).days if teacher.created_at else 0
             teachers_data.append({
                 'id': teacher.id,
                 'email': teacher.email,
@@ -284,8 +307,13 @@ class AdminTeachersListView(APIView):
                 'metrics': metrics,
                 'days_on_platform': days_on_platform,
             })
-        
-        return Response(teachers_data)
+
+        return Response({
+            'results': teachers_data,
+            'total': total,
+            'limit': limit,
+            'offset': offset,
+        })
 
 
 class AdminTeacherDetailView(APIView):

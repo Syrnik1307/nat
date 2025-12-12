@@ -12,6 +12,7 @@
 .teachers-manage-modal {
   width: 1200px;
   max-width: 100%;
+  height: 90vh;
   max-height: 92vh;
   background: #fff;
   border-radius: 18px;
@@ -77,15 +78,19 @@
   display: flex;
   flex: 1;
   min-height: 600px;
+  height: calc(92vh - 90px);
+  min-height: 0;
 }
 
 .tm-left-panel {
   width: 320px;
+  flex: 0 0 320px;
   border-right: 1px solid #edf2f7;
   background: var(--bg-app);
   display: flex;
   flex-direction: column;
   padding: 1rem;
+  min-height: 0;
 }
 
 .tm-search-box input {
@@ -103,6 +108,14 @@
   flex-direction: column;
   gap: 0.75rem;
   padding-right: 0.25rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.tm-load-more {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.5rem;
 }
 
 .tm-teacher-card {
@@ -165,6 +178,7 @@
   padding: 1.5rem 2rem;
   overflow-y: auto;
   background: #fff;
+  min-height: 0;
 }
 
 .tm-banner {

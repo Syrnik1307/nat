@@ -16,11 +16,16 @@ const TeachersManage = ({ onClose }) => {
   const { notification, confirm, closeNotification, showConfirm, closeConfirm } = useNotification();
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState(null);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [totalCount, setTotalCount] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const PAGE_SIZE = 50;
   const [storageInput, setStorageInput] = useState(5);
   const [actionMessage, setActionMessage] = useState('');
   const [actionError, setActionError] = useState('');
@@ -35,10 +40,23 @@ const TeachersManage = ({ onClose }) => {
   });
 
   useEffect(() => {
-    loadTeachers();
+    loadTeachers(true);
     const interval = setInterval(() => loadTeachers(true), 20000);
     return () => clearInterval(interval);
   }, []);
+
+  // Debounce поиска, чтобы не дергать бэкенд на каждый символ
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+      setOffset(0);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    loadTeachers(true, debouncedSearch);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     if (!selectedTeacherId && teachers.length > 0) {
@@ -63,19 +81,24 @@ const TeachersManage = ({ onClose }) => {
     }
   }, [profile]);
 
-  const filteredTeachers = useMemo(() => {
-    if (!searchTerm) return teachers;
-    return teachers.filter((teacher) => {
-      const fullName = `${teacher.last_name || ''} ${teacher.first_name || ''} ${teacher.middle_name || ''}`.toLowerCase();
-      return fullName.includes(searchTerm.toLowerCase()) || (teacher.email || '').toLowerCase().includes(searchTerm.toLowerCase());
-    });
-  }, [teachers, searchTerm]);
+  // Список теперь фильтруется на бэке, поэтому оставляем как есть
+  const filteredTeachers = useMemo(() => teachers, [teachers]);
 
-  const loadTeachers = async (silent = false) => {
+  const loadTeachers = async (reset = false, searchValue = debouncedSearch) => {
     try {
-      if (!silent) setLoading(true);
+      if (reset) {
+        setLoading(true);
+        setOffset(0);
+      } else {
+        setLoadingMore(true);
+      }
       const token = localStorage.getItem('tp_access_token');
-      const response = await fetch('/accounts/api/admin/teachers/', {
+      const params = new URLSearchParams({
+        limit: PAGE_SIZE,
+        offset: reset ? 0 : offset,
+      });
+      if (searchValue) params.append('q', searchValue);
+      const response = await fetch(`/accounts/api/admin/teachers/?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!response.ok) {
@@ -87,23 +110,27 @@ const TeachersManage = ({ onClose }) => {
         throw new Error('Сервер вернул не-JSON при загрузке учителей');
       }
       const data = await response.json();
-      const list = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.results)
-          ? data.results
-          : [];
-      setTeachers(list);
-      if (selectedTeacherId) {
-        const updated = list.find((item) => item.id === selectedTeacherId);
+      const list = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+      const total = typeof data?.total === 'number' ? data.total : list.length;
+
+      if (reset) {
+        setTeachers(list);
+      } else {
+        setTeachers((prev) => [...prev, ...list]);
+      }
+      setTotalCount(total);
+      const newOffset = (reset ? 0 : offset) + list.length;
+      setOffset(newOffset);
+      if (selectedTeacherId && list.length > 0) {
+        const updated = [...list, ...teachers].find((item) => item.id === selectedTeacherId);
         if (updated) setSelectedTeacher(updated);
       }
     } catch (error) {
       console.error('Ошибка загрузки учителей:', error);
-      if (!silent) {
-        setActionError(error.message || 'Ошибка загрузки данных');
-      }
+      setActionError(error.message || 'Ошибка загрузки данных');
     } finally {
-      if (!silent) setLoading(false);
+      setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -321,7 +348,9 @@ const TeachersManage = ({ onClose }) => {
     return `${hours} ч ${mins} мин`;
   };
 
-  if (loading) {
+  const canLoadMore = offset < totalCount;
+
+  if (loading && teachers.length === 0) {
     return (
       <div className="teachers-manage-overlay">
         <div className="teachers-manage-modal">
@@ -389,6 +418,15 @@ const TeachersManage = ({ onClose }) => {
                   </button>
                 );
               })}
+              {canLoadMore && (
+                <button
+                  className="btn-outline tm-load-more"
+                  disabled={loadingMore}
+                  onClick={() => loadTeachers(false)}
+                >
+                  {loadingMore ? 'Загружаю...' : 'Загрузить ещё'}
+                </button>
+              )}
               {filteredTeachers.length === 0 && (
                 <div className="tm-empty">Учителя не найдены</div>
               )}
