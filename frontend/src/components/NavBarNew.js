@@ -148,6 +148,170 @@ const NavBar = () => {
     navigate('/login');
   };
 
+  const menuContent = (
+    <>
+      {/* Общие пункты */}
+      <Link 
+        to={homePath} 
+        className="nav-link"
+        onClick={() => setShowMobileMenu(false)}
+      >
+        <span className="nav-icon"></span>
+        <span>Главная</span>
+      </Link>
+
+      {/* Меню для преподавателя */}
+      {accessTokenValid && role === 'teacher' && (
+        <>
+          <div 
+            className={`nav-dropdown ${showLessonsMenu ? 'open' : ''}`}
+            onMouseLeave={() => setShowLessonsMenu(false)}
+          >
+            <button
+              type="button"
+              className="nav-link nav-dropdown-trigger"
+              onClick={() => setShowLessonsMenu(prev => !prev)}
+              onMouseEnter={() => setShowLessonsMenu(true)}
+              aria-haspopup="true"
+              aria-expanded={showLessonsMenu}
+            >
+              <span className="nav-icon"></span>
+              <span>Занятия</span>
+              <span className={`caret ${showLessonsMenu ? 'open' : ''}`}>▾</span>
+            </button>
+            {showLessonsMenu && (
+              <div className="nav-dropdown-menu" role="menu">
+                <Link
+                  to="/calendar"
+                  className="nav-dropdown-item"
+                  onClick={() => { setShowLessonsMenu(false); setShowMobileMenu(false); }}
+                  role="menuitem"
+                >
+                  <span className="item-icon"></span>
+                  <span>Календарь</span>
+                </Link>
+                <Link
+                  to="/recurring-lessons/manage"
+                  className="nav-dropdown-item"
+                  onClick={() => { setShowLessonsMenu(false); setShowMobileMenu(false); }}
+                  role="menuitem"
+                >
+                  <span className="item-icon"></span>
+                  <span>Создать занятие</span>
+                </Link>
+              </div>
+            )}
+          </div>
+          
+          <Link 
+            to="/homework/constructor" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>ДЗ</span>
+          </Link>
+          
+          <Link 
+            to="/groups/manage" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>Ученики</span>
+          </Link>
+          
+          <Link 
+            to="/teacher/recordings" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>Записи</span>
+          </Link>
+          
+          <Link 
+            to="/teacher/subscription" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>Подписка</span>
+          </Link>
+        </>
+      )}
+
+      {/* Меню для ученика */}
+      {accessTokenValid && role === 'student' && (
+        <>
+          <Link 
+            to="/student" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>Мои курсы</span>
+          </Link>
+          
+          <Link 
+            to="/homework" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>Домашние задания</span>
+          </Link>
+          
+          <Link 
+            to="/calendar" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>Календарь</span>
+          </Link>
+        </>
+      )}
+
+      {/* Меню для админа */}
+      {accessTokenValid && role === 'admin' && (
+        <Link 
+          to="/admin-home" 
+          className="nav-link nav-link-highlight"
+          onClick={() => setShowMobileMenu(false)}
+        >
+          <span className="nav-icon"></span>
+          <span>Админ-панель</span>
+        </Link>
+      )}
+
+      {/* Мобильный профиль и выход */}
+      {accessTokenValid && (
+        <div className="mobile-profile-section">
+          <div className="mobile-profile-divider"></div>
+          <Link 
+            to="/profile" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon">⚙️</span>
+            <span>Настройки профиля</span>
+          </Link>
+          <button 
+            className="nav-link mobile-logout-btn"
+            onClick={() => {
+              setShowMobileMenu(false);
+              handleLogout();
+            }}
+          >
+            <span className="nav-icon">🚪</span>
+            <span>Выйти</span>
+          </button>
+        </div>
+      )}
+    </>
+  );
+
   const teacherMessages = messages.filter(m => m.target === 'teachers' || m.target === 'all');
   const studentMessages = messages.filter(m => m.target === 'students' || m.target === 'all');
   const currentMessage = messages.length > 0 ? messages[currentIndex] : null;
@@ -246,168 +410,25 @@ const NavBar = () => {
           <span className={`burger-line ${showMobileMenu ? 'open' : ''}`}></span>
         </button>
 
-        {/* Навигационное меню */}
-        <div className={`navbar-menu ${showMobileMenu ? 'mobile-open' : ''}`}>
-          {/* Общие пункты */}
-          <Link 
-            to={homePath} 
-            className="nav-link"
-            onClick={() => setShowMobileMenu(false)}
-          >
-            <span className="nav-icon"></span>
-            <span>Главная</span>
-          </Link>
-
-          {/* Меню для преподавателя */}
-          {accessTokenValid && role === 'teacher' && (
-            <>
-              <div 
-                className={`nav-dropdown ${showLessonsMenu ? 'open' : ''}`}
-                onMouseLeave={() => setShowLessonsMenu(false)}
-              >
-                <button
-                  type="button"
-                  className="nav-link nav-dropdown-trigger"
-                  onClick={() => setShowLessonsMenu(prev => !prev)}
-                  onMouseEnter={() => setShowLessonsMenu(true)}
-                  aria-haspopup="true"
-                  aria-expanded={showLessonsMenu}
-                >
-                  <span className="nav-icon"></span>
-                  <span>Занятия</span>
-                  <span className={`caret ${showLessonsMenu ? 'open' : ''}`}>▾</span>
-                </button>
-                {showLessonsMenu && (
-                  <div className="nav-dropdown-menu" role="menu">
-                    <Link
-                      to="/calendar"
-                      className="nav-dropdown-item"
-                      onClick={() => { setShowLessonsMenu(false); setShowMobileMenu(false); }}
-                      role="menuitem"
-                    >
-                      <span className="item-icon"></span>
-                      <span>Календарь</span>
-                    </Link>
-                    <Link
-                      to="/recurring-lessons/manage"
-                      className="nav-dropdown-item"
-                      onClick={() => { setShowLessonsMenu(false); setShowMobileMenu(false); }}
-                      role="menuitem"
-                    >
-                      <span className="item-icon"></span>
-                      <span>Создать занятие</span>
-                    </Link>
-                  </div>
-                )}
+        {/* Навигационное меню: на мобильном через портал поверх всех слоев */}
+        {showMobileMenu
+          ? createPortal(
+              <>
+                <div 
+                  className="mobile-menu-overlay"
+                  onClick={() => setShowMobileMenu(false)}
+                />
+                <div className={`navbar-menu navbar-menu-portal ${showMobileMenu ? 'mobile-open' : ''}`}>
+                  {menuContent}
+                </div>
+              </>,
+              document.body
+            )
+          : (
+              <div className={`navbar-menu ${showMobileMenu ? 'mobile-open' : ''}`}>
+                {menuContent}
               </div>
-              
-              <Link 
-                to="/homework/constructor" 
-                className="nav-link"
-                onClick={() => setShowMobileMenu(false)}
-              >
-                <span className="nav-icon"></span>
-                <span>ДЗ</span>
-              </Link>
-              
-              <Link 
-                to="/groups/manage" 
-                className="nav-link"
-                onClick={() => setShowMobileMenu(false)}
-              >
-                <span className="nav-icon"></span>
-                <span>Ученики</span>
-              </Link>
-              
-              <Link 
-                to="/teacher/recordings" 
-                className="nav-link"
-                onClick={() => setShowMobileMenu(false)}
-              >
-                <span className="nav-icon"></span>
-                <span>Записи</span>
-              </Link>
-              
-              <Link 
-                to="/teacher/subscription" 
-                className="nav-link"
-                onClick={() => setShowMobileMenu(false)}
-              >
-                <span className="nav-icon"></span>
-                <span>Подписка</span>
-              </Link>
-            </>
-          )}
-
-          {/* Меню для ученика */}
-          {accessTokenValid && role === 'student' && (
-            <>
-              <Link 
-                to="/student" 
-                className="nav-link"
-                onClick={() => setShowMobileMenu(false)}
-              >
-                <span className="nav-icon"></span>
-                <span>Мои курсы</span>
-              </Link>
-              
-              <Link 
-                to="/homework" 
-                className="nav-link"
-                onClick={() => setShowMobileMenu(false)}
-              >
-                <span className="nav-icon"></span>
-                <span>Домашние задания</span>
-              </Link>
-              
-              <Link 
-                to="/calendar" 
-                className="nav-link"
-                onClick={() => setShowMobileMenu(false)}
-              >
-                <span className="nav-icon"></span>
-                <span>Календарь</span>
-              </Link>
-            </>
-          )}
-
-          {/* Меню для админа */}
-          {accessTokenValid && role === 'admin' && (
-            <Link 
-              to="/admin-home" 
-              className="nav-link nav-link-highlight"
-              onClick={() => setShowMobileMenu(false)}
-            >
-              <span className="nav-icon"></span>
-              <span>Админ-панель</span>
-            </Link>
-          )}
-
-          {/* Мобильный профиль и выход */}
-          {accessTokenValid && (
-            <div className="mobile-profile-section">
-              <div className="mobile-profile-divider"></div>
-              <Link 
-                to="/profile" 
-                className="nav-link"
-                onClick={() => setShowMobileMenu(false)}
-              >
-                <span className="nav-icon">⚙️</span>
-                <span>Настройки профиля</span>
-              </Link>
-              <button 
-                className="nav-link mobile-logout-btn"
-                onClick={() => {
-                  setShowMobileMenu(false);
-                  handleLogout();
-                }}
-              >
-                <span className="nav-icon">🚪</span>
-                <span>Выйти</span>
-              </button>
-            </div>
-          )}
-        </div>
+            )}
 
         {/* Правая часть: кнопки входа или профиль */}
         <div className="navbar-actions">
