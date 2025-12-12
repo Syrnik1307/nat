@@ -34,6 +34,7 @@ const NavBar = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const profileButtonRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
+  const lessonsMenuHideTimer = useRef(null);
 
   useEffect(() => {
     if (accessTokenValid) {
@@ -51,6 +52,14 @@ const NavBar = () => {
       return () => clearInterval(interval);
     }
   }, [messages.length]);
+
+  useEffect(() => {
+    return () => {
+      if (lessonsMenuHideTimer.current) {
+        clearTimeout(lessonsMenuHideTimer.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -165,13 +174,22 @@ const NavBar = () => {
         <>
           <div 
             className={`nav-dropdown ${showLessonsMenu ? 'open' : ''}`}
-            onMouseLeave={() => setShowLessonsMenu(false)}
+            onMouseLeave={() => {
+              if (lessonsMenuHideTimer.current) clearTimeout(lessonsMenuHideTimer.current);
+              lessonsMenuHideTimer.current = setTimeout(() => setShowLessonsMenu(false), 250);
+            }}
           >
             <button
               type="button"
               className="nav-link nav-dropdown-trigger"
-              onClick={() => setShowLessonsMenu(prev => !prev)}
-              onMouseEnter={() => setShowLessonsMenu(true)}
+              onClick={() => {
+                if (lessonsMenuHideTimer.current) clearTimeout(lessonsMenuHideTimer.current);
+                setShowLessonsMenu(prev => !prev);
+              }}
+              onMouseEnter={() => {
+                if (lessonsMenuHideTimer.current) clearTimeout(lessonsMenuHideTimer.current);
+                setShowLessonsMenu(true);
+              }}
               aria-haspopup="true"
               aria-expanded={showLessonsMenu}
             >
@@ -184,7 +202,11 @@ const NavBar = () => {
                 <Link
                   to="/calendar"
                   className="nav-dropdown-item"
-                  onClick={() => { setShowLessonsMenu(false); setShowMobileMenu(false); }}
+                  onClick={() => {
+                    if (lessonsMenuHideTimer.current) clearTimeout(lessonsMenuHideTimer.current);
+                    setShowLessonsMenu(false);
+                    setShowMobileMenu(false);
+                  }}
                   role="menuitem"
                 >
                   <span className="item-icon"></span>
@@ -193,7 +215,11 @@ const NavBar = () => {
                 <Link
                   to="/recurring-lessons/manage"
                   className="nav-dropdown-item"
-                  onClick={() => { setShowLessonsMenu(false); setShowMobileMenu(false); }}
+                  onClick={() => {
+                    if (lessonsMenuHideTimer.current) clearTimeout(lessonsMenuHideTimer.current);
+                    setShowLessonsMenu(false);
+                    setShowMobileMenu(false);
+                  }}
                   role="menuitem"
                 >
                   <span className="item-icon"></span>
@@ -307,19 +333,6 @@ const NavBar = () => {
             <span>Выйти</span>
           </button>
         </div>
-      )}
-
-      {/* Быстрая кнопка выхода для учителя (мобильный вид) */}
-      {accessTokenValid && role === 'teacher' && (
-        <button 
-          className="nav-link mobile-logout-btn"
-          onClick={() => {
-            setShowMobileMenu(false);
-            handleLogout();
-          }}
-        >
-          <span>Выйти</span>
-        </button>
       )}
     </>
   );
