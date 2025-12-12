@@ -67,30 +67,7 @@
 }
 
 .support-fab-open {
-  background: linear-gradient(145deg, #dc2626 0%, #ef4444 60%, #f87171 100%) !important;
-  min-width: 52px !important;
-  padding: 0 !important;
-}
-
-.support-fab-open .support-fab-text {
-  display: none;
-}
-
-.support-fab-text {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-}
-
-@media (max-width: 480px) {
-  .support-fab-text {
-    display: none;
-  }
-}
-
-.support-fab svg {
-  flex-shrink: 0;
+  background: var(--color-error) !important;
 }
 
 .support-fab-badge {
