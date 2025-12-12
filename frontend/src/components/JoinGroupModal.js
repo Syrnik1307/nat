@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { joinGroupByCode, getGroupByInviteCode } from '../apiService';
 import '../styles/JoinGroupModal.css';
 
@@ -11,20 +12,24 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
   const [groupInfo, setGroupInfo] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  useEffect(() => {
-    // If initial code provided, load group info and show confirmation
-    if (initialCode) {
-      loadGroupInfo(initialCode);
-    }
-  }, [initialCode]);
+  const normalizedCode = (code) => code.trim().toUpperCase();
 
-  const loadGroupInfo = async (code) => {
+  const loadGroupInfo = useCallback(async (code) => {
+    const cleanedCode = normalizedCode(code);
+    if (!cleanedCode) {
+      setError('Введите код приглашения');
+      setShowConfirm(false);
+      return;
+    }
+
     setLoadingGroupInfo(true);
     setError('');
+    setSuccess('');
     try {
-      const response = await getGroupByInviteCode(code);
+      const response = await getGroupByInviteCode(cleanedCode);
       setGroupInfo(response.data);
       setShowConfirm(true);
+      setInviteCode(cleanedCode);
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Группа с таким кодом не найдена';
       setError(errorMsg);
@@ -32,39 +37,54 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
     } finally {
       setLoadingGroupInfo(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (initialCode) {
+      loadGroupInfo(initialCode.trim().toUpperCase());
+    }
+  }, [initialCode, loadGroupInfo]);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!inviteCode.trim()) {
-      setError('Введите код приглашения');
-      return;
-    }
 
-    // If not showing confirm yet, load group info first
     if (!showConfirm) {
-      await loadGroupInfo(inviteCode.trim().toUpperCase());
+      await loadGroupInfo(inviteCode);
       return;
     }
 
-    // If confirm shown, proceed with join
     await handleConfirmJoin();
   };
 
   const handleConfirmJoin = async () => {
+    const cleanedCode = normalizedCode(inviteCode);
+    if (!cleanedCode) {
+      setError('Введите код приглашения');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setSuccess('');
 
     try {
-      const response = await joinGroupByCode(inviteCode.trim().toUpperCase());
+      const response = await joinGroupByCode(cleanedCode);
       setSuccess(response.data.message || 'Вы успешно присоединились к группе!');
-      
+
       setTimeout(() => {
         if (onSuccess) onSuccess(response.data.group);
         onClose();
-      }, 1500);
+      }, 1200);
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Не удалось присоединиться к группе';
       setError(errorMsg);
@@ -73,55 +93,47 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
     }
   };
 
-  return (
-    <div className="join-modal-overlay" onClick={onClose}>
-      <div className="join-modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="join-modal-close" onClick={onClose}>×</button>
-        
+  const content = (
+    <div className="join-modal-layer" role="dialog" aria-modal="true" onClick={onClose}>
+      <div className="join-modal-shell" onClick={(e) => e.stopPropagation()}>
+        <div className="join-modal-head">
+          <div className="join-modal-icon">☎</div>
+          <button className="join-modal-close" aria-label="Закрыть" onClick={onClose}>×</button>
+        </div>
+
         {!showConfirm ? (
-          // Step 1: Enter code
           <>
-            <div className="join-modal-icon">☎</div>
-            <h2>Присоединиться к группе</h2>
-            <p className="join-modal-subtitle">Введите код приглашения от преподавателя</p>
+            <h2 className="join-modal-title">Присоединиться к группе</h2>
+            <p className="join-modal-subtitle">Введите промокод или код приглашения от преподавателя</p>
 
-            <form onSubmit={handleSubmit}>
-              <div className="join-input-group">
-                <input
-                  type="text"
-                  className="join-code-input"
-                  placeholder="Например: ABC12345"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                  maxLength={8}
-                  autoFocus
-                  disabled={loadingGroupInfo}
-                />
-              </div>
+            <form onSubmit={handleSubmit} className="join-modal-form">
+              <label className="join-field-label" htmlFor="invite-code">Код приглашения</label>
+              <input
+                id="invite-code"
+                type="text"
+                className="join-code-input"
+                placeholder="Например: ABC12345"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                maxLength={8}
+                autoFocus
+                disabled={loadingGroupInfo}
+              />
 
-              {error && (
-                <div className="join-error-message">
-                  {error}
-                </div>
-              )}
-
-              {success && (
-                <div className="join-success-message">
-                  {success}
-                </div>
-              )}
+              {error && <div className="join-error-message">{error}</div>}
+              {success && <div className="join-success-message">{success}</div>}
 
               <div className="join-actions">
-                <button 
-                  type="button" 
-                  className="join-cancel-btn" 
+                <button
+                  type="button"
+                  className="join-cancel-btn"
                   onClick={onClose}
                   disabled={loadingGroupInfo}
                 >
                   Отмена
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="join-submit-btn"
                   disabled={loadingGroupInfo || !inviteCode.trim()}
                 >
@@ -131,59 +143,44 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
             </form>
 
             <div className="join-help-text">
-              <p>Код приглашения состоит из 8 символов</p>
-              <p>Вы можете получить его от преподавателя или отсканировать QR-код</p>
+              <p>Код приглашения состоит из 8 символов.</p>
+              <p>Получите его у преподавателя или из QR-кода.</p>
             </div>
           </>
         ) : (
-          // Step 2: Confirm join
           <>
-            <div className="join-modal-icon">☎</div>
-            <h2>Присоединиться к группе?</h2>
-            
+            <h2 className="join-modal-title">Присоединиться к группе?</h2>
+
             {groupInfo && (
               <div className="join-group-preview">
                 <div className="join-group-name">{groupInfo.name}</div>
-                {groupInfo.description && (
-                  <div className="join-group-description">{groupInfo.description}</div>
-                )}
+                {groupInfo.description && <div className="join-group-description">{groupInfo.description}</div>}
                 <div className="join-group-stats">
                   <div className="join-stat">
-                    <span className="join-stat-label">Преподаватель:</span>
-                    <span className="join-stat-value">
-                      {groupInfo.teacher?.first_name || groupInfo.teacher?.email || 'Не указан'}
-                    </span>
+                    <span className="join-stat-label">Преподаватель</span>
+                    <span className="join-stat-value">{groupInfo.teacher?.first_name || groupInfo.teacher?.email || 'Не указан'}</span>
                   </div>
                   <div className="join-stat">
-                    <span className="join-stat-label">Учеников:</span>
+                    <span className="join-stat-label">Учеников</span>
                     <span className="join-stat-value">{groupInfo.student_count || 0}</span>
                   </div>
                 </div>
               </div>
             )}
 
-            {error && (
-              <div className="join-error-message">
-                {error}
-              </div>
-            )}
-
-            {success && (
-              <div className="join-success-message">
-                ✓ {success}
-              </div>
-            )}
+            {error && <div className="join-error-message">{error}</div>}
+            {success && <div className="join-success-message">✓ {success}</div>}
 
             <div className="join-actions">
-              <button 
-                type="button" 
-                className="join-cancel-btn" 
+              <button
+                type="button"
+                className="join-cancel-btn"
                 onClick={onClose}
                 disabled={loading}
               >
                 Отмена
               </button>
-              <button 
+              <button
                 type="button"
                 className="join-submit-btn"
                 onClick={handleConfirmJoin}
@@ -197,6 +194,8 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 };
 
 export default JoinGroupModal;
