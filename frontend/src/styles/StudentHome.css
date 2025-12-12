@@ -596,10 +596,12 @@
     display: none !important;
   }
   
-  /* Но оставить Support Widget */
+  /* Но оставить Support Widget - всегда справа */
   .support-fab,
   .support-widget {
     display: flex !important;
+    left: auto !important;
+    right: 16px !important;
   }
 }
 

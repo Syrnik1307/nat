@@ -716,5 +716,16 @@
   .floating-action:not(.support-fab) {
     display: none !important;
   }
+  
+  /* Гарантировать, что Support Widget всегда справа */
+  .support-fab {
+    left: auto !important;
+    right: 16px !important;
+  }
+  
+  .support-widget {
+    left: auto !important;
+    right: 16px !important;
+  }
 }
 
