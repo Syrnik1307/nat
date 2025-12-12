@@ -426,6 +426,8 @@ const Calendar = () => {
             display: flex;
             flex-direction: column;
             gap: 1.75rem;
+            position: relative;
+            z-index: 1;
           }
 
           .calendar-header {
