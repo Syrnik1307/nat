@@ -804,15 +804,29 @@ class LessonViewSet(viewsets.ModelViewSet):
         zoom_account = None
         try:
             with transaction.atomic():
+                # Сначала пробуем взять аккаунт, привязанный к этому учителю (teacher affinity)
                 zoom_account = (
                     ZoomAccount.objects.select_for_update()
                     .filter(
                         is_active=True,
-                        current_meetings__lt=F('max_concurrent_meetings')
+                        current_meetings__lt=F('max_concurrent_meetings'),
+                        preferred_teachers=user,
                     )
                     .order_by('current_meetings', 'last_used_at')
                     .first()
                 )
+
+                # Если привязанного нет — берём любой доступный
+                if not zoom_account:
+                    zoom_account = (
+                        ZoomAccount.objects.select_for_update()
+                        .filter(
+                            is_active=True,
+                            current_meetings__lt=F('max_concurrent_meetings')
+                        )
+                        .order_by('current_meetings', 'last_used_at')
+                        .first()
+                    )
 
                 if not zoom_account:
                     return None, Response(
