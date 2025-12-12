@@ -734,8 +734,73 @@ class LessonViewSet(viewsets.ModelViewSet):
         cache.set(cache_key, events, timeout=60)  # 1 минута кэширования
         return Response(events)
 
+    def _start_zoom_with_teacher_credentials(self, lesson, user, request):
+        """Создать Zoom встречу используя персональные credentials учителя."""
+        from .zoom_client import ZoomAPIClient
+        
+        try:
+            zoom_client = ZoomAPIClient(
+                account_id=user.zoom_account_id,
+                client_id=user.zoom_client_id,
+                client_secret=user.zoom_client_secret
+            )
+            
+            zoom_user_id = user.zoom_user_id or 'me'
+            meeting_data = zoom_client.create_meeting(
+                user_id=zoom_user_id,
+                topic=f"{lesson.group.name} - {lesson.title}",
+                start_time=lesson.start_time,
+                duration=lesson.duration(),
+                auto_record=lesson.record_lesson
+            )
+            
+            lesson.zoom_meeting_id = meeting_data['id']
+            lesson.zoom_join_url = meeting_data['join_url']
+            lesson.zoom_start_url = meeting_data['start_url']
+            lesson.zoom_password = meeting_data.get('password', '')
+            lesson.zoom_account = None  # Персональные credentials, не из пула
+            lesson.save()
+            
+            log_audit(
+                user=user,
+                action='lesson_start',
+                resource_type='Lesson',
+                resource_id=lesson.id,
+                request=request,
+                details={
+                    'lesson_title': lesson.title,
+                    'group_name': lesson.group.name,
+                    'zoom_meeting_id': meeting_data['id'],
+                    'start_time': lesson.start_time.isoformat(),
+                    'using_personal_credentials': True,
+                }
+            )
+            
+            payload = {
+                'zoom_join_url': lesson.zoom_join_url,
+                'zoom_start_url': lesson.zoom_start_url,
+                'zoom_meeting_id': lesson.zoom_meeting_id,
+                'zoom_password': lesson.zoom_password,
+                'account_email': user.email,
+            }
+            return payload, None
+        except Exception as e:
+            logger.exception(f"Failed to create Zoom meeting with teacher credentials for lesson {lesson.id}: {e}")
+            return None, Response(
+                {'detail': f'Ошибка при создании встречи: {e}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     def _start_zoom_via_pool(self, lesson, user, request):
-        """Создать Zoom встречу через пул аккаунтов и сохранить в урок."""
+        """Создать Zoom встречу. Сначала пробует персональные credentials учителя, затем пул."""
+        
+        # Проверяем, есть ли у учителя персональные Zoom credentials
+        if user.zoom_account_id and user.zoom_client_id and user.zoom_client_secret:
+            logger.info(f"Using personal Zoom credentials for teacher {user.email}")
+            return self._start_zoom_with_teacher_credentials(lesson, user, request)
+        
+        # Fallback на пул аккаунтов
+        logger.info(f"Using Zoom pool for teacher {user.email} (no personal credentials)")
         zoom_account = None
         try:
             with transaction.atomic():
