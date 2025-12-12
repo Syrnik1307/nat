@@ -225,6 +225,11 @@
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
+.student-card-footer .student-primary-btn {
+  width: auto;
+  min-width: 180px;
+}
+
 .student-primary-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
@@ -315,7 +320,7 @@
   background: white;
   border: 1px solid var(--border-light);
   border-radius: 20px; /* Extra rounded for friendly feel */
-  padding: 1.75rem;
+  padding: 1.5rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -356,15 +361,15 @@
 
 .student-course-icon,
 .student-course-logo {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   background: linear-gradient(135deg, var(--color-primary-subtle) 0%, #eef2ff 100%);
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-family: var(--font-display);
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -456,11 +461,7 @@
 }
 
 .student-card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 1.25rem;
+  margin-top: 1rem;
 }
 
 /* Responsive */

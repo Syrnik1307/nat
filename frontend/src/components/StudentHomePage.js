@@ -82,6 +82,11 @@ const StudentHomePage = () => {
     return 'учеников';
   };
 
+  const getCourseLabel = (name) => {
+    if (!name) return 'CS';
+    return name.trim().slice(0, 2).toUpperCase();
+  };
+
   // Calculate stats
   const submissionIndex = submissions.reduce((acc, s) => { acc[s.homework] = s; return acc; }, {});
   const decoratedHomework = homework.map(hw => {
@@ -138,7 +143,7 @@ const StudentHomePage = () => {
           <div className="student-courses-section">
             <div className="student-section-header">
               <h2>Список курсов</h2>
-              <button onClick={() => setShowJoinModal(true)} className="student-link-button">
+              <button type="button" onClick={() => setShowJoinModal(true)} className="student-link-button">
                 Есть промокод?
               </button>
             </div>
@@ -156,7 +161,7 @@ const StudentHomePage = () => {
                 {groups.map(group => (
                   <div key={group.id} className="student-course-card">
                     <div className="student-course-header">
-                      <div className="student-course-logo">COURSE</div>
+                      <div className="student-course-logo">{getCourseLabel(group.name)}</div>
                       <div className="student-course-info">
                         <h3>{group.name}</h3>
                         <p className="student-course-teacher">
@@ -171,18 +176,7 @@ const StudentHomePage = () => {
                       </span>
                     </div>
 
-                    <div className="student-course-progress-container">
-                      <div className="student-course-progress-label">
-                        <span>Прогресс</span>
-                        <span>75%</span>
-                      </div>
-                      <div className="student-course-progress-bar">
-                        <div className="student-course-progress-fill" style={{width: '75%'}} />
-                      </div>
-                    </div>
-
                     <div className="student-card-footer">
-                      <span className="student-status-badge in-progress">В процессе</span>
                       <button className="student-primary-btn">Перейти к курсу</button>
                     </div>
                   </div>
