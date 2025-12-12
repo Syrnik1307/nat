@@ -25,6 +25,8 @@ const TeachersManage = ({ onClose }) => {
   const [actionMessage, setActionMessage] = useState('');
   const [actionError, setActionError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [zoomForm, setZoomForm] = useState({
     zoom_account_id: '',
     zoom_client_id: '',
@@ -262,6 +264,39 @@ const TeachersManage = ({ onClose }) => {
       loadTeachers(true);
     } catch (error) {
       setActionError(error.message || 'Ошибка сохранения Zoom данных');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (!selectedTeacherId || !newPassword) return;
+    if (newPassword.length < 6) {
+      setActionError('Пароль должен быть минимум 6 символов');
+      return;
+    }
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem('tp_access_token');
+      const response = await fetch(`/accounts/api/admin/teachers/${selectedTeacherId}/change-password/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ new_password: newPassword })
+      });
+      const contentType = response.headers.get('content-type');
+      const data = contentType && contentType.includes('application/json') ? await response.json() : {};
+      if (!response.ok) {
+        throw new Error(data.error || 'Не удалось изменить пароль');
+      }
+      setActionMessage(data.message || 'Пароль успешно изменен');
+      setNewPassword('');
+      setShowPasswordForm(false);
+    } catch (error) {
+      setActionError(error.message || 'Ошибка изменения пароля');
     } finally {
       setActionLoading(false);
     }
@@ -526,6 +561,49 @@ const TeachersManage = ({ onClose }) => {
                           </button>
                         </div>
                       </form>
+                    </div>
+
+                    <div className="tm-section">
+                      <div className="tm-section-header">
+                        <h4>🔐 Изменение пароля</h4>
+                      </div>
+                      {!showPasswordForm ? (
+                        <button 
+                          className="btn-outline" 
+                          onClick={() => setShowPasswordForm(true)}
+                        >
+                          Сменить пароль учителю
+                        </button>
+                      ) : (
+                        <form onSubmit={handleChangePassword} className="tm-password-form">
+                          <div className="form-group">
+                            <label>Новый пароль *</label>
+                            <input
+                              type="password"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              placeholder="Минимум 6 символов"
+                              minLength={6}
+                              required
+                            />
+                          </div>
+                          <div className="tm-actions-row">
+                            <button type="submit" className="btn-submit" disabled={actionLoading}>
+                              Сохранить пароль
+                            </button>
+                            <button 
+                              type="button" 
+                              className="btn-outline" 
+                              onClick={() => {
+                                setShowPasswordForm(false);
+                                setNewPassword('');
+                              }}
+                            >
+                              Отмена
+                            </button>
+                          </div>
+                        </form>
+                      )}
                     </div>
                   </>
                 )}

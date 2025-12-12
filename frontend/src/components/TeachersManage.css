@@ -402,6 +402,25 @@
   font-size: 0.95rem;
 }
 
+.tm-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tm-password-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tm-password-form input {
+  padding: 0.65rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid #cbd5f5;
+  font-size: 0.95rem;
+}
+
 .tm-empty,
 .tm-empty-state {
   padding: 2rem;

@@ -715,3 +715,163 @@ class SystemSettingsView(APIView):
     def patch(self, request):
         """Частичное обновление настроек"""
         return self.put(request)
+
+
+class AdminCreateStudentView(APIView):
+    """Создание нового ученика администратором"""
+    
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        # Проверка прав админа
+        if request.user.role != 'admin':
+            return Response(
+                {'error': 'Доступ запрещен'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Валидация данных
+        email = request.data.get('email')
+        password = request.data.get('password')
+        first_name = request.data.get('first_name')
+        last_name = request.data.get('last_name')
+        middle_name = request.data.get('middle_name', '')
+        phone_number = request.data.get('phone_number', '')
+        
+        if not email or not password:
+            return Response(
+                {'error': 'Email и пароль обязательны'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not first_name or not last_name:
+            return Response(
+                {'error': 'Имя и фамилия обязательны'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Проверка существующего email
+        if User.objects.filter(email=email).exists():
+            return Response(
+                {'error': 'Пользователь с таким email уже существует'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Создание ученика
+        try:
+            student = User(
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                middle_name=middle_name,
+                phone_number=phone_number if phone_number else None,
+                role='student',
+                is_active=True
+            )
+            student.set_password(password)
+            student.save()
+            
+            logger.info(f"Student created successfully: {student.email} (ID: {student.id})")
+            
+            serializer = UserProfileSerializer(student)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        except Exception as e:
+            import traceback
+            error_detail = traceback.format_exc()
+            logger.error(f"Failed to create student: {error_detail}")
+            return Response(
+                {'error': str(e), 'detail': error_detail if settings.DEBUG else str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class AdminChangeTeacherPasswordView(APIView):
+    """Смена пароля учителя администратором"""
+    
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, teacher_id):
+        # Проверка прав админа
+        if request.user.role != 'admin':
+            return Response(
+                {'error': 'Доступ запрещен'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            teacher = User.objects.get(id=teacher_id, role='teacher')
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'Учитель не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        new_password = request.data.get('new_password')
+        
+        if not new_password:
+            return Response(
+                {'error': 'Новый пароль обязателен'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if len(new_password) < 6:
+            return Response(
+                {'error': 'Пароль должен быть минимум 6 символов'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        teacher.set_password(new_password)
+        teacher.save()
+        
+        logger.info(f"Password changed for teacher {teacher.email} (ID: {teacher_id}) by admin {request.user.email}")
+        
+        return Response({
+            'message': f'Пароль для {teacher.first_name} {teacher.last_name} успешно изменен'
+        }, status=status.HTTP_200_OK)
+
+
+class AdminChangeStudentPasswordView(APIView):
+    """Смена пароля ученика администратором"""
+    
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, student_id):
+        # Проверка прав админа
+        if request.user.role != 'admin':
+            return Response(
+                {'error': 'Доступ запрещен'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            student = User.objects.get(id=student_id, role='student')
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'Ученик не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        new_password = request.data.get('new_password')
+        
+        if not new_password:
+            return Response(
+                {'error': 'Новый пароль обязателен'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if len(new_password) < 6:
+            return Response(
+                {'error': 'Пароль должен быть минимум 6 символов'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        student.set_password(new_password)
+        student.save()
+        
+        logger.info(f"Password changed for student {student.email} (ID: {student_id}) by admin {request.user.email}")
+        
+        return Response({
+            'message': f'Пароль для {student.first_name} {student.last_name} успешно изменен'
+        }, status=status.HTTP_200_OK)
+
