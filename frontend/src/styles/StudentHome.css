@@ -7,7 +7,8 @@
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-family: var(--font-sans);
+  color: var(--text-main);
   /* Use global aurora from design-system.css */
   background: transparent;
 }
@@ -32,9 +33,10 @@
 /* Welcome Heading - Friendly & Encouraging */
 .student-page-title {
   font-size: clamp(1.75rem, 5vw, 2.5rem);
-  font-weight: 700;
-  color: var(--text-main); /* Dark slate for headings */
-  margin: 0 0 0.5rem 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 1.5rem 0;
   letter-spacing: -0.02em;
 }
 
@@ -71,8 +73,20 @@
 }
 
 .student-status-icon {
-  font-size: 3rem;
-  filter: drop-shadow(0 2px 4px rgba(79, 70, 229, 0.2));
+  width: 72px;
+  height: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--color-primary-subtle) 0%, #ffffff 100%);
+  color: var(--color-primary-dark);
+  border: 1px solid var(--color-primary-subtle);
+  box-shadow: 0 10px 25px rgba(79, 70, 229, 0.12);
 }
 
 .student-status-text {
@@ -81,6 +95,7 @@
 
 .student-status-text h3 {
   font-size: 1.25rem;
+  font-family: var(--font-display);
   font-weight: 700;
   color: var(--text-main);
   margin: 0 0 0.25rem 0;
@@ -96,8 +111,34 @@
   font-size: 1rem;
   color: var(--text-muted);
   margin: 0.5rem 0 2rem 0;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.6;
+}
+
+.student-lessons-today {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  padding: 0.85rem 1.25rem;
+  margin: 0 0 1.5rem 0;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+}
+
+.student-lessons-icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-dark);
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
 /* Courses Section */
@@ -129,7 +170,8 @@
 
 .student-section-header h2 {
   font-size: 1.25rem;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-weight: 700;
   color: var(--text-main);
   margin: 0;
 }
@@ -312,6 +354,24 @@
   margin-bottom: 1.25rem;
 }
 
+.student-course-icon,
+.student-course-logo {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, var(--color-primary-subtle) 0%, #eef2ff 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--color-primary-dark);
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.12);
+}
+
 .student-course-logo {
   width: 64px;
   height: 64px;
@@ -333,16 +393,25 @@
 
 .student-course-info h3 {
   font-size: 1.125rem;
+  font-family: var(--font-display);
   font-weight: 700;
   color: var(--text-main);
   margin: 0 0 0.375rem 0;
   letter-spacing: -0.01em;
 }
 
+.student-course-teacher {
+  margin: 0;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
 .student-course-meta {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  margin-bottom: 1rem;
   font-size: 0.8125rem;
   color: var(--text-muted);
 }
@@ -365,7 +434,9 @@
   margin-bottom: 0.5rem;
   font-size: 0.75rem;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .student-course-progress-bar {
@@ -382,6 +453,14 @@
   border-radius: 999px;
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 0 8px rgba(79, 70, 229, 0.3);
+}
+
+.student-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.25rem;
 }
 
 /* Responsive */

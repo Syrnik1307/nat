@@ -4,7 +4,6 @@ import { getLessons, getHomeworkList, getSubmissions, getGroups } from '../apiSe
 import JoinGroupModal from './JoinGroupModal';
 import SupportWidget from './SupportWidget';
 import '../styles/StudentHome.css';
-import '../styles/StudentTabs.css';
 
 const StudentHomePage = () => {
   const location = useLocation();
@@ -18,17 +17,32 @@ const StudentHomePage = () => {
 
   useEffect(() => {
     loadData();
-    
-    // Check for invite code in URL
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams(location.search);
     const code = params.get('code');
     if (code) {
       setInviteCodeFromUrl(code);
       setShowJoinModal(true);
-      // Clean URL without reloading
       navigate('/student', { replace: true });
     }
-  }, []);
+  }, [location.search, navigate]);
+
+  useEffect(() => {
+    if (showJoinModal) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, [showJoinModal]);
 
   const loadData = async () => {
     try {
@@ -100,39 +114,16 @@ const StudentHomePage = () => {
     return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${day} ${month}`;
   };
 
-  // Вкладки для страницы ученика
-  const [activeTab, setActiveTab] = useState('attendance');
-  const tabs = [
-    { key: 'attendance', label: 'Журнал посещений' },
-    { key: 'homework', label: 'Домашние задания' },
-    { key: 'checkpoints', label: 'Контрольные точки' },
-    { key: 'rating', label: 'Рейтинг группы' },
-    { key: 'reports', label: 'Отчеты' },
-  ];
-
   return (
     <div className="student-home">
       <main className="student-main-content">
         <div className="student-container">
           <h1 className="student-page-title">Мои курсы</h1>
 
-          {/* Горизонтальное меню вкладок */}
-          <nav className="student-tabs-nav">
-            {tabs.map(tab => (
-              <button
-                key={tab.key}
-                className={`student-tab-btn${activeTab === tab.key ? ' active' : ''}`}
-                onClick={() => setActiveTab(tab.key)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-
           {/* Today's status */}
           <div className="student-today-status">
             <div className="student-status-icon">CAL</div>
-            <div className="student-status-content">
+            <div className="student-status-text">
               <h3>Сегодня</h3>
               <p className="student-status-date">{formatTodayDate()}</p>
             </div>
@@ -165,7 +156,7 @@ const StudentHomePage = () => {
                 {groups.map(group => (
                   <div key={group.id} className="student-course-card">
                     <div className="student-course-header">
-                      <div className="student-course-icon">COURSE</div>
+                      <div className="student-course-logo">COURSE</div>
                       <div className="student-course-info">
                         <h3>{group.name}</h3>
                         <p className="student-course-teacher">
@@ -180,11 +171,14 @@ const StudentHomePage = () => {
                       </span>
                     </div>
 
-                    <div className="student-progress-container">
-                      <div className="student-progress-bar">
-                        <div className="student-progress-fill" style={{width: '75%'}} />
+                    <div className="student-course-progress-container">
+                      <div className="student-course-progress-label">
+                        <span>Прогресс</span>
+                        <span>75%</span>
                       </div>
-                      <span className="student-progress-text">75%</span>
+                      <div className="student-course-progress-bar">
+                        <div className="student-course-progress-fill" style={{width: '75%'}} />
+                      </div>
                     </div>
 
                     <div className="student-card-footer">

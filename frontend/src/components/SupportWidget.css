@@ -1,23 +1,24 @@
 /* Плавающая кнопка поддержки - Floating Action Button */
 .support-fab {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: clamp(20px, 2vw, 32px);
+  right: clamp(20px, 3vw, 32px);
+  left: auto;
   min-width: 62px;
   height: 62px;
   padding: 0 18px;
-  border-radius: 18px;
+  border-radius: 999px;
   background: linear-gradient(145deg, #4f46e5 0%, #7c3aed 60%, #a855f7 100%);
   color: #fff;
   border: none;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   letter-spacing: 0.15px;
   cursor: pointer;
   box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35),
               0 4px 12px rgba(0, 0, 0, 0.15);
   transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease;
-  z-index: 100004;
+  z-index: 12000;
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -180,11 +180,12 @@ const SupportWidget = () => {
         className={`support-fab ${isOpen ? 'support-fab-open' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         title="Поддержка"
+        aria-label={isOpen ? 'Закрыть чат поддержки' : 'Открыть чат поддержки'}
       >
         {unreadCount > 0 && (
           <span className="support-fab-badge">{unreadCount}</span>
         )}
-        {isOpen ? '×' : 'Чат'}
+        {isOpen ? '×' : '💬'}
       </button>
 
       {/* Виджет поддержки */}
