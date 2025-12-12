@@ -309,6 +309,20 @@ const NavBar = () => {
           </button>
         </div>
       )}
+
+      {/* Быстрая кнопка выхода для учителя (мобильный вид) */}
+      {accessTokenValid && role === 'teacher' && (
+        <button 
+          className="nav-link mobile-logout-btn"
+          onClick={() => {
+            setShowMobileMenu(false);
+            handleLogout();
+          }}
+        >
+          <span className="nav-icon">🚪</span>
+          <span>Выйти</span>
+        </button>
+      )}
     </>
   );
 

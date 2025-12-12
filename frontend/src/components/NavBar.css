@@ -954,6 +954,11 @@
     background: rgba(220, 38, 38, 0.08) !important;
     color: #b91c1c;
   }
+
+  .mobile-logout-btn .nav-icon {
+    display: inline-flex;
+    width: 24px;
+  }
 }
 
 /* Скрыть мобильную секцию на десктопе */
