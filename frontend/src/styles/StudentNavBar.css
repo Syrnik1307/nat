@@ -168,9 +168,9 @@
 }
 
 .student-profile-dropdown {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
+  position: fixed;
+  top: 72px;
+  right: clamp(1rem, 3vw, 2.25rem);
   background: var(--bg-paper, #fff);
   border: 1px solid var(--border-light, #e2e8f0);
   border-radius: var(--radius-card, 16px);
@@ -241,6 +241,12 @@
 @media (max-width: 968px) {
   .student-navbar-center {
     gap: 0.35rem;
+  }
+
+  .student-profile-dropdown {
+    top: 64px;
+    right: 1rem;
+    min-width: 200px;
   }
 
   .student-nav-link {
