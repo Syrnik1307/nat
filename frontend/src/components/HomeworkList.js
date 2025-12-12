@@ -46,6 +46,18 @@ const HomeworkList = () => {
   // Фильтры
   const [activeTab, setActiveTab] = useState('active'); // 'active' | 'completed'
   const [sourceFilter, setSourceFilter] = useState('all'); // 'all' | 'individual' | 'group_{id}'
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = React.useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (filterRef.current && !filterRef.current.contains(e.target)) {
+        setFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -108,6 +120,14 @@ const HomeworkList = () => {
     const groupId = parseInt(sourceFilter.replace('group_', ''), 10);
     return decoratedItems.filter(hw => hw.lesson?.group?.id === groupId || hw.group_id === groupId);
   }, [decoratedItems, sourceFilter]);
+
+  const sourceFilterLabel = (value, groupList) => {
+    if (value === 'all') return 'Все источники';
+    if (value === 'individual') return 'Индивидуальные';
+    const groupId = parseInt(value.replace('group_', ''), 10);
+    const group = groupList.find((g) => g.id === groupId);
+    return group ? `Материалы • ${group.name}` : 'Материалы группы';
+  };
 
   // Разделение по табам
   const activeHomework = useMemo(() => {
@@ -224,22 +244,68 @@ const HomeworkList = () => {
 
         {/* Filters */}
         {groups.length > 0 && (
-          <div className="hw-filters">
+          <div className="hw-filters" ref={filterRef}>
             <div className="hw-filter-group">
               <IconFilter size={18} />
-              <select
+              <button
                 className="hw-filter-select"
-                value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value)}
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={filterOpen}
+                onClick={() => setFilterOpen((v) => !v)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setFilterOpen(false);
+                }}
               >
-                <option value="all">Все источники</option>
-                <option value="individual">Индивидуальные</option>
-                {groups.map(g => (
-                  <option key={g.id} value={`group_${g.id}`}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
+                <span>{sourceFilterLabel(sourceFilter, groups)}</span>
+                <span className="hw-filter-caret" aria-hidden>{filterOpen ? '▴' : '▾'}</span>
+              </button>
+              {filterOpen && (
+                <div className="hw-filter-menu" role="listbox" aria-label="Источник задания">
+                  <button
+                    className={`hw-filter-option ${sourceFilter === 'all' ? 'selected' : ''}`}
+                    onClick={() => {
+                      setSourceFilter('all');
+                      setFilterOpen(false);
+                    }}
+                    role="option"
+                    aria-selected={sourceFilter === 'all'}
+                    type="button"
+                  >
+                    Все источники
+                  </button>
+                  <button
+                    className={`hw-filter-option ${sourceFilter === 'individual' ? 'selected' : ''}`}
+                    onClick={() => {
+                      setSourceFilter('individual');
+                      setFilterOpen(false);
+                    }}
+                    role="option"
+                    aria-selected={sourceFilter === 'individual'}
+                    type="button"
+                  >
+                    Индивидуальные
+                  </button>
+                  {groups.map((g) => {
+                    const value = `group_${g.id}`;
+                    return (
+                      <button
+                        key={g.id}
+                        className={`hw-filter-option ${sourceFilter === value ? 'selected' : ''}`}
+                        onClick={() => {
+                          setSourceFilter(value);
+                          setFilterOpen(false);
+                        }}
+                        role="option"
+                        aria-selected={sourceFilter === value}
+                        type="button"
+                      >
+                        Материалы • {g.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}

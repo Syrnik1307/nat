@@ -92,14 +92,37 @@ const useHomeworkSession = (homeworkId, injectedService) => {
           if (saved) initialAnswers = { ...initialAnswers, ...JSON.parse(saved) };
         } catch {}
       }
+      
+      setError(null);
+      // Сначала проверяем, есть ли уже submission для этого ДЗ
+      let submissionData = null;
+      try {
+        const existingSubmissions = await svc.fetchSubmissions({ homework: homeworkId });
+        const submissions = existingSubmissions?.data?.results || existingSubmissions?.data || [];
+        if (submissions.length > 0) {
+          submissionData = submissions[0];
+          // eslint-disable-next-line no-console
+          console.log('[useHomeworkSession] found existing submission:', submissionData.status);
+          // Если submission завершена (submitted/graded), восстановим answers из неё
+          if (submissionData.answers && typeof submissionData.answers === 'object') {
+            initialAnswers = { ...initialAnswers, ...submissionData.answers };
+          }
+        }
+      } catch (e) {
+        console.error('[useHomeworkSession] failed to fetch existing submissions:', e);
+      }
+
+      // Если submission нет или она in_progress, создаем/используем её
+      if (!submissionData) {
+        const rawSubmission = await svc.startSubmission(homeworkId);
+        submissionData = rawSubmission && rawSubmission.data ? rawSubmission.data : rawSubmission;
+        // eslint-disable-next-line no-console
+        console.log('[useHomeworkSession] created new submission');
+      }
+      
       setAnswers(initialAnswers);
       // eslint-disable-next-line no-console
       console.log('[useHomeworkSession] answers set');
-      setError(null);
-      const rawSubmission = await svc.startSubmission(homeworkId);
-      const submissionData = rawSubmission && rawSubmission.data ? rawSubmission.data : rawSubmission;
-      // eslint-disable-next-line no-console
-      console.log('[useHomeworkSession] submissionData', submissionData);
       setSubmission(submissionData);
     } catch (requestError) {
       console.error('[useHomeworkSession] load failed:', requestError);
