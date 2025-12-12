@@ -587,6 +587,15 @@ const Calendar = () => {
             margin-bottom: 1.5rem;
           }
 
+          /* Hide any extra toolbar chunk on the right (artifacts) */
+          .calendar-container .fc .fc-toolbar .fc-toolbar-chunk:last-child {
+            display: none !important;
+          }
+          /* Defensive: ensure only left (prev/next/today) and center (title) remain */
+          .calendar-container .fc .fc-toolbar > .fc-toolbar-chunk:nth-child(n+3) {
+            display: none !important;
+          }
+
           .fc .fc-button-primary {
             background: linear-gradient(135deg, ${PALETTE.primary}, ${PALETTE.primaryDark});
             border: none;
