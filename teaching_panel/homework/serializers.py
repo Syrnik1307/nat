@@ -167,7 +167,18 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
         fields = ['id', 'homework', 'homework_title', 'student', 'student_email', 'student_name',
               'status', 'total_score', 'max_score', 'group_id', 'group_name', 'is_individual',
               'answers', 'teacher_feedback_summary', 'created_at', 'submitted_at', 'graded_at']
-        read_only_fields = ['student', 'total_score', 'teacher_feedback_summary']
+        # Статус и даты жизненного цикла управляются сервером через отдельные endpoints
+        # (answer/saveProgress, submit, feedback) и не должны приходить от клиента.
+        read_only_fields = [
+            'id',
+            'student',
+            'status',
+            'total_score',
+            'teacher_feedback_summary',
+            'created_at',
+            'submitted_at',
+            'graded_at',
+        ]
     
     def get_student_name(self, obj):
         return f"{obj.student.first_name} {obj.student.last_name}".strip() or obj.student.email
@@ -217,11 +228,19 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         answers_data = validated_data.pop('answers', [])
         validated_data['student'] = self.context['request'].user
-        # Создаем попытку в статусе "в процессе", без автоматической сдачи
+        # Защита от ситуации, когда клиент (или баг фронта) пытается проставить
+        # статус/даты сдачи при создании попытки.
+        validated_data.pop('status', None)
+        validated_data.pop('submitted_at', None)
+        validated_data.pop('graded_at', None)
+
+        # Создаем попытку в статусе "в процессе", без автоматической сдачи.
+        # Важно: kwargs после **validated_data должны побеждать любые значения.
         submission = StudentSubmission.objects.create(
+            **validated_data,
             status='in_progress',
             submitted_at=None,
-            **validated_data,
+            graded_at=None,
         )
         if answers_data:
             for ans in answers_data:

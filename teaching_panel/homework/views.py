@@ -39,8 +39,9 @@ class HomeworkViewSet(viewsets.ModelViewSet):
         return super().get_serializer_class()
 
     def perform_create(self, serializer):
-        homework = serializer.save()
-        self._notify_students_about_new_homework(homework)
+        # При создании ДЗ оно обычно в статусе draft.
+        # Уведомления студентам должны уходить только при publish.
+        serializer.save()
 
     @action(detail=True, methods=['post'], url_path='publish')
     def publish(self, request, pk=None):

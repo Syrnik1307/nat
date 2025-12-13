@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from rest_framework.test import APIClient
 from schedule.models import Group, Lesson
 from .models import Homework, Question, Choice, StudentSubmission, Answer
 
@@ -62,3 +63,27 @@ class HomeworkAutoScoreTests(TestCase):
         ans.evaluate()
         self.assertTrue(ans.needs_manual_review)
         self.assertIsNone(ans.auto_score)
+
+
+class SubmissionApiGuardsTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.teacher = User.objects.create_user(email='t2@example.com', password='pass', role='teacher')
+        self.student = User.objects.create_user(email='s2@example.com', password='pass', role='student')
+        self.group = Group.objects.create(name='G2', teacher=self.teacher)
+        self.group.students.add(self.student)
+        start = timezone.now()
+        end = start + timezone.timedelta(hours=1)
+        self.lesson = Lesson.objects.create(title='L2', group=self.group, teacher=self.teacher, start_time=start, end_time=end)
+        self.hw = Homework.objects.create(teacher=self.teacher, lesson=self.lesson, title='HW2', status='published', published_at=timezone.now())
+
+    def test_student_cannot_create_submission_as_submitted(self):
+        self.client.force_authenticate(user=self.student)
+        resp = self.client.post('/api/submissions/', {
+            'homework': self.hw.id,
+            'status': 'submitted',
+            'submitted_at': timezone.now().isoformat(),
+        }, format='json')
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data.get('status'), 'in_progress')
+        self.assertIsNone(resp.data.get('submitted_at'))
