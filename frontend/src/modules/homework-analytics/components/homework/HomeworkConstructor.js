@@ -41,6 +41,111 @@ const QUESTION_COMPONENTS = {
   HOTSPOT: HotspotQuestion,
 };
 
+const HomeworkPreviewSection = ({ questions, previewQuestion, onChangePreviewQuestion }) => {
+  if (!questions || questions.length === 0) {
+    return <div className="hc-preview-placeholder">Добавьте вопросы для превью</div>;
+  }
+
+  const currentQuestion = questions[previewQuestion];
+  if (!currentQuestion) {
+    return <div className="hc-preview-placeholder">Выберите вопрос для превью</div>;
+  }
+
+  const renderPreviewContent = () => {
+    switch (currentQuestion.question_type) {
+      case 'TEXT':
+        return (
+          <div className="preview-question">
+            <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
+            <textarea className="form-textarea" placeholder="Ответ студента..." disabled rows={4} />
+          </div>
+        );
+
+      case 'SINGLE_CHOICE':
+        return (
+          <div className="preview-question">
+            <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
+            {(currentQuestion.config?.options || []).map((option, idx) => (
+              <div key={idx} className="preview-option">
+                <input type="radio" name="preview-radio" disabled />
+                <label>{option.text || `Вариант ${idx + 1}`}</label>
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'MULTIPLE_CHOICE':
+        return (
+          <div className="preview-question">
+            <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
+            {(currentQuestion.config?.options || []).map((option, idx) => (
+              <div key={idx} className="preview-option">
+                <input type="checkbox" disabled />
+                <label>{option.text || `Вариант ${idx + 1}`}</label>
+              </div>
+            ))}
+          </div>
+        );
+
+      default:
+        return (
+          <div className="preview-question">
+            <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
+            <p className="preview-note">Тип: {getQuestionLabel(currentQuestion.question_type)}</p>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="hc-preview-live">
+      <div className="hc-preview-nav">
+        <span>
+          Вопрос {previewQuestion + 1} из {questions.length}
+        </span>
+        <div>
+          <button
+            type="button"
+            className="gm-btn-surface"
+            onClick={() => onChangePreviewQuestion(Math.max(0, previewQuestion - 1))}
+            disabled={previewQuestion === 0}
+          >
+            ← Пред.
+          </button>
+          <button
+            type="button"
+            className="gm-btn-surface"
+            onClick={() => onChangePreviewQuestion(Math.min(questions.length - 1, previewQuestion + 1))}
+            disabled={previewQuestion === questions.length - 1}
+          >
+            След. →
+          </button>
+        </div>
+      </div>
+      {renderPreviewContent()}
+    </div>
+  );
+};
+
+const HomeworkQuestionEditor = ({ question, index, onUpdateQuestion }) => {
+  const TypeComponent = QUESTION_COMPONENTS[question.question_type];
+
+  if (!TypeComponent) {
+    return (
+      <div className="hc-preview-placeholder">
+        Тип вопроса в разработке. Он появится в следующей итерации.
+      </div>
+    );
+  }
+
+  return (
+    <TypeComponent
+      question={question}
+      onChange={(next) => onUpdateQuestion(index, next)}
+    />
+  );
+};
+
 const HomeworkConstructor = () => {
   const navigate = useNavigate();
   const {
@@ -190,101 +295,6 @@ const HomeworkConstructor = () => {
   };
 
   const questionCount = questions.length;
-
-  const PreviewSection = () => {
-    if (questions.length === 0) {
-      return <div className="hc-preview-placeholder">Добавьте вопросы для превью</div>;
-    }
-    
-    const currentQuestion = questions[previewQuestion];
-    
-    const renderPreviewContent = () => {
-      switch (currentQuestion.question_type) {
-        case 'TEXT':
-          return (
-            <div className="preview-question">
-              <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
-              <textarea className="form-textarea" placeholder="Ответ студента..." disabled rows={4} />
-            </div>
-          );
-        
-        case 'SINGLE_CHOICE':
-          return (
-            <div className="preview-question">
-              <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
-              {(currentQuestion.config?.options || []).map((option, idx) => (
-                <div key={idx} className="preview-option">
-                  <input type="radio" name="preview-radio" disabled />
-                  <label>{option.text || `Вариант ${idx + 1}`}</label>
-                </div>
-              ))}
-            </div>
-          );
-        
-        case 'MULTIPLE_CHOICE':
-          return (
-            <div className="preview-question">
-              <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
-              {(currentQuestion.config?.options || []).map((option, idx) => (
-                <div key={idx} className="preview-option">
-                  <input type="checkbox" disabled />
-                  <label>{option.text || `Вариант ${idx + 1}`}</label>
-                </div>
-              ))}
-            </div>
-          );
-        
-        default:
-          return (
-            <div className="preview-question">
-              <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
-              <p className="preview-note">Тип: {getQuestionLabel(currentQuestion.question_type)}</p>
-            </div>
-          );
-      }
-    };
-    
-    return (
-      <div className="hc-preview-live">
-        <div className="hc-preview-nav">
-          <span>Вопрос {previewQuestion + 1} из {questions.length}</span>
-          <div>
-            <button 
-              type="button"
-              className="gm-btn-surface"
-              onClick={() => setPreviewQuestion(Math.max(0, previewQuestion - 1))}
-              disabled={previewQuestion === 0}
-            >
-              ← Пред.
-            </button>
-            <button 
-              type="button"
-              className="gm-btn-surface"
-              onClick={() => setPreviewQuestion(Math.min(questions.length - 1, previewQuestion + 1))}
-              disabled={previewQuestion === questions.length - 1}
-            >
-              След. →
-            </button>
-          </div>
-        </div>
-        {renderPreviewContent()}
-      </div>
-    );
-  };
-
-  const QuestionEditor = ({ question, index }) => {
-    const TypeComponent = QUESTION_COMPONENTS[question.question_type];
-
-    if (!TypeComponent) {
-      return (
-        <div className="hc-preview-placeholder">
-          Тип вопроса в разработке. Он появится в следующей итерации.
-        </div>
-      );
-    }
-
-    return <TypeComponent question={question} onChange={(next) => handleUpdateQuestion(index, next)} />;
-  };
 
   const handleSaveDraft = async () => {
     setSaving(true);
@@ -532,7 +542,11 @@ const HomeworkConstructor = () => {
 
         <div className="hc-card hc-preview-card">
           <div className="hc-section-title">Превью для студентов</div>
-          <PreviewSection />
+          <HomeworkPreviewSection
+            questions={questions}
+            previewQuestion={previewQuestion}
+            onChangePreviewQuestion={setPreviewQuestion}
+          />
         </div>
       </div>
 
@@ -636,7 +650,11 @@ const HomeworkConstructor = () => {
                             />
                           </div>
 
-                          <QuestionEditor question={question} index={index} />
+                          <HomeworkQuestionEditor
+                            question={question}
+                            index={index}
+                            onUpdateQuestion={handleUpdateQuestion}
+                          />
                         </div>
                       )}
                     </Draggable>
