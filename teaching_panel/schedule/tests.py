@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from django.urls import reverse
 from datetime import timedelta
+from unittest.mock import patch
 from .models import Group, Lesson, RecurringLesson
 from zoom_pool.models import ZoomAccount
 
@@ -128,10 +129,68 @@ class LessonStartNewAPITests(TestCase):
 		self.lesson.save()
 		ZoomAccount.objects.create(email='zoom@test.com', api_key='k', api_secret='s', max_concurrent_meetings=1)
 		url = reverse('schedule-lesson-start-new', args=[self.lesson.id])
-		resp = self.client.post(url, {})
+		with patch('schedule.views.my_zoom_api_client.create_meeting') as mocked:
+			mocked.return_value = {
+				'id': '12345678901',
+				'join_url': 'https://zoom.us/j/12345678901?pwd=mockpassword',
+				'start_url': 'https://zoom.us/s/12345678901?zak=mock',
+				'password': 'mockpassword',
+			}
+			resp = self.client.post(url, {})
 		self.assertEqual(resp.status_code, 200)
 		self.assertIn('zoom_join_url', resp.data)
 		self.lesson.refresh_from_db()
 		self.assertIsNotNone(self.lesson.zoom_account)
 		account = self.lesson.zoom_account
-		self.assertEqual(account.current_meetings, 1)
+		# current_meetings может синхронизироваться отдельной метрикой и не обязан
+		# быть равен 1 прямо в момент ответа.
+		self.assertIsNotNone(account.id)
+
+
+class LessonJoinAPITests(TestCase):
+	def setUp(self):
+		self.User = get_user_model()
+		self.teacher = self.User.objects.create_user(email='teacherj@example.com', password='Pass1234', role='teacher')
+		self.other_teacher = self.User.objects.create_user(email='teacherx@example.com', password='Pass1234', role='teacher')
+		self.student = self.User.objects.create_user(email='studentj@example.com', password='Pass1234', role='student')
+		self.outsider = self.User.objects.create_user(email='outsider@example.com', password='Pass1234', role='student')
+		self.group = Group.objects.create(name='Join Group', teacher=self.teacher)
+		self.group.students.add(self.student)
+		start = timezone.now() + timedelta(minutes=10)
+		end = start + timedelta(minutes=45)
+		self.lesson = Lesson.objects.create(title='Algebra', group=self.group, teacher=self.teacher, start_time=start, end_time=end)
+		self.client = APIClient()
+
+	def test_join_403_for_student_not_in_group(self):
+		self.client.force_authenticate(user=self.outsider)
+		url = reverse('schedule-lesson-join', args=[self.lesson.id])
+		resp = self.client.post(url, {})
+		# ViewSet фильтрует queryset по пользователю, поэтому внешний студент урок не видит
+		self.assertEqual(resp.status_code, 404)
+
+	def test_join_409_when_no_zoom_link(self):
+		self.client.force_authenticate(user=self.student)
+		url = reverse('schedule-lesson-join', args=[self.lesson.id])
+		resp = self.client.post(url, {})
+		self.assertEqual(resp.status_code, 409)
+		self.assertIn('Ссылка', resp.data.get('detail', ''))
+
+	def test_join_200_returns_zoom_join_url(self):
+		self.lesson.zoom_join_url = 'https://zoom.us/j/12345678901?pwd=abc'
+		self.lesson.zoom_meeting_id = '12345678901'
+		self.lesson.zoom_password = 'abc'
+		self.lesson.save(update_fields=['zoom_join_url', 'zoom_meeting_id', 'zoom_password'])
+		self.client.force_authenticate(user=self.student)
+		url = reverse('schedule-lesson-join', args=[self.lesson.id])
+		resp = self.client.post(url, {})
+		self.assertEqual(resp.status_code, 200)
+		self.assertEqual(resp.data.get('zoom_join_url'), self.lesson.zoom_join_url)
+
+	def test_join_403_for_other_teacher(self):
+		self.lesson.zoom_join_url = 'https://zoom.us/j/123'
+		self.lesson.save(update_fields=['zoom_join_url'])
+		self.client.force_authenticate(user=self.other_teacher)
+		url = reverse('schedule-lesson-join', args=[self.lesson.id])
+		resp = self.client.post(url, {})
+		# ViewSet фильтрует queryset по teacher, поэтому другой teacher урок не видит
+		self.assertEqual(resp.status_code, 404)

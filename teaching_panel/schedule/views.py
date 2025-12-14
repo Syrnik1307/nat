@@ -412,6 +412,47 @@ class LessonViewSet(viewsets.ModelViewSet):
                 serializer = self.get_serializer(page, many=True)
                 return self.get_paginated_response(serializer.data)
             return Response(lessons)
+
+    @action(detail=True, methods=['post'], url_path='join', permission_classes=[IsAuthenticated])
+    def join(self, request, pk=None):
+        """Вернуть ссылку для входа в Zoom для участника урока.
+
+        POST /api/schedule/lessons/{id}/join/
+        Доступ:
+        - student: только если состоит в группе урока
+        - teacher: только если он преподаватель урока
+        - admin: всегда
+        """
+        lesson = self.get_object()
+        user = request.user
+        role = getattr(user, 'role', None)
+
+        if role == 'admin':
+            allowed = True
+        elif role == 'teacher':
+            allowed = (lesson.teacher_id == user.id)
+        elif role == 'student':
+            allowed = lesson.group.students.filter(id=user.id).exists()
+        else:
+            allowed = False
+
+        if not allowed:
+            return Response({'detail': 'Нет доступа к этому уроку'}, status=status.HTTP_403_FORBIDDEN)
+
+        if not lesson.zoom_join_url:
+            return Response(
+                {'detail': 'Ссылка появится, когда преподаватель начнёт занятие'},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        return Response(
+            {
+                'zoom_join_url': lesson.zoom_join_url,
+                'zoom_meeting_id': lesson.zoom_meeting_id,
+                'zoom_password': lesson.zoom_password,
+            },
+            status=status.HTTP_200_OK
+        )
     
     @action(detail=False, methods=['post'], url_path='delete_recurring')
     def delete_recurring(self, request):

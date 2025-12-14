@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from schedule.tests.manual_group_flow import run as run_group_flow
+from schedule.manual_tests.manual_group_flow import run as run_group_flow
 
 
 class Command(BaseCommand):

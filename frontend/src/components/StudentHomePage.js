@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getLessons, getHomeworkList, getSubmissions, getGroups } from '../apiService';
+import { getLessons, getHomeworkList, getSubmissions, getGroups, joinLesson } from '../apiService';
 import JoinGroupModal from './JoinGroupModal';
 import SupportWidget from './SupportWidget';
+import { Button } from '../shared/components';
 import '../styles/StudentHome.css';
 
 const StudentHomePage = () => {
@@ -14,6 +15,8 @@ const StudentHomePage = () => {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [groups, setGroups] = useState([]);
   const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState('');
+  const [joinLoading, setJoinLoading] = useState(false);
+  const [joinError, setJoinError] = useState('');
 
   useEffect(() => {
     loadData();
@@ -109,6 +112,62 @@ const StudentHomePage = () => {
     ? `Сегодня у вас ${todayLessons.length} ${todayLessons.length === 1 ? 'занятие' : 'занятия'}`
     : 'Сегодня либо нет занятий, либо они уже закончились';
 
+  // Выбираем ближайший урок сегодня (если несколько)
+  const nextTodayLesson = hasLessonsToday
+    ? [...todayLessons]
+        .filter(l => !!l.start_time)
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))[0]
+    : null;
+
+  const formatTimeHHMM = (dt) => {
+    if (!dt) return '';
+    const d = new Date(dt);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const nextLessonTimeText = (() => {
+    if (!nextTodayLesson?.start_time) return '';
+    const startText = formatTimeHHMM(nextTodayLesson.start_time);
+    const endText = formatTimeHHMM(nextTodayLesson.end_time);
+    if (!startText) return '';
+    return endText ? `${startText}–${endText}` : startText;
+  })();
+
+  const handleJoinLesson = async () => {
+    if (!nextTodayLesson || !nextTodayLesson.id) return;
+
+    // Виртуальные уроки из recurring (id строковый), к ним join невозможен
+    if (typeof nextTodayLesson.id !== 'number') {
+      setJoinError('Ссылка появится, когда преподаватель создаст/запустит урок.');
+      return;
+    }
+
+    setJoinError('');
+    setJoinLoading(true);
+    try {
+      const resp = await joinLesson(nextTodayLesson.id);
+      const url = resp?.data?.zoom_join_url;
+      if (!url) {
+        setJoinError('Ссылка пока недоступна. Попробуйте позже.');
+        return;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      const status = e?.response?.status;
+      const detail = e?.response?.data?.detail;
+      if (status === 409) {
+        setJoinError(detail || 'Ссылка появится, когда преподаватель начнёт занятие.');
+      } else if (status === 403) {
+        setJoinError(detail || 'Нет доступа к этому уроку.');
+      } else {
+        setJoinError(detail || e?.message || 'Не удалось получить ссылку.');
+      }
+    } finally {
+      setJoinLoading(false);
+    }
+  };
+
   // Format today's date in Russian
   const formatTodayDate = () => {
     const days = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
@@ -132,7 +191,35 @@ const StudentHomePage = () => {
             <span className={`student-today-status-text ${hasLessonsToday ? 'has-lessons' : ''}`}>
               {message}
             </span>
+
+            {hasLessonsToday && nextLessonTimeText && (
+              <>
+                <span className="student-today-separator">•</span>
+                <span className="student-today-next-time">
+                  Ближайшее: {nextLessonTimeText}
+                </span>
+              </>
+            )}
+
+            {hasLessonsToday && (
+              <div className="student-today-actions">
+                <Button
+                  variant="primary"
+                  size="small"
+                  loading={joinLoading}
+                  onClick={handleJoinLesson}
+                >
+                  Присоединиться
+                </Button>
+              </div>
+            )}
           </div>
+
+          {joinError && (
+            <div className="student-today-join-error" role="alert">
+              {joinError}
+            </div>
+          )}
 
           {/* Course List */}
           <div className="student-courses-section">
