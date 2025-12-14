@@ -257,10 +257,6 @@ const StudentHomePage = () => {
                         {group.student_count || 0} {getStudentsText(group.student_count || 0)}
                       </span>
                     </div>
-
-                    <div className="student-card-footer">
-                      <button className="student-primary-btn">Перейти к курсу</button>
-                    </div>
                   </div>
                 ))}
               </div>

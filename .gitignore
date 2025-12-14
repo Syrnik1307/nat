@@ -69,3 +69,8 @@ yarn-error.log*
 
 # React build
 frontend/build/
+
+# Local prod-smoke artifacts (generated files)
+prod_join_remote_script_preview.sh
+prod_join_temp_lesson_script_preview.sh
+prod_join_smoke_output.txt
