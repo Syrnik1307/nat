@@ -11,6 +11,7 @@ const SubscriptionPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [subData, setSubData] = useState(null);
+  const [storageStats, setStorageStats] = useState(null);
   const [storageGb, setStorageGb] = useState(10);
   const [processing, setProcessing] = useState(false);
   
@@ -20,9 +21,15 @@ const SubscriptionPage = () => {
 
   const loadSubscription = useCallback(async () => {
     try {
-      // Используем относительный путь без повторного /api/
-      const response = await apiClient.get('subscription/');
-      setSubData(response.data);
+      // Загружаем подписку и статистику хранилища параллельно
+      const [subResponse, storageResponse] = await Promise.all([
+        apiClient.get('subscription/'),
+        apiClient.get('subscription/storage/').catch(() => null)
+      ]);
+      setSubData(subResponse.data);
+      if (storageResponse?.data) {
+        setStorageStats(storageResponse.data);
+      }
     } catch (error) {
       console.error('Failed to load subscription:', error);
     } finally {
@@ -203,13 +210,46 @@ const SubscriptionPage = () => {
             <div className="detail-row">
               <span className="label">Хранилище:</span>
               <span className="value">
-                {formatGb(subData?.used_storage_gb)} / {formatGb(subData?.total_storage_gb)} GB
+                {storageStats ? formatGb(storageStats.used_gb) : formatGb(subData?.used_storage_gb)} / {storageStats?.limit_gb || subData?.total_storage_gb} GB
                 {subData?.extra_storage_gb > 0 && (
-                  <span className="storage-extra"> (+{subData.extra_storage_gb} GB)</span>
+                  <span className="storage-extra"> (+{subData.extra_storage_gb} GB доп.)</span>
                 )}
               </span>
             </div>
+            {subData?.gdrive_folder_link && (
+              <div className="detail-row">
+                <span className="label">Папка на Диске:</span>
+                <span className="value">
+                  <a href={subData.gdrive_folder_link} target="_blank" rel="noopener noreferrer" className="gdrive-link">
+                    Открыть в Google Drive ↗
+                  </a>
+                </span>
+              </div>
+            )}
           </div>
+
+          {/* Прогресс-бар использования хранилища */}
+          {(storageStats || subData) && (
+            <div className="storage-usage-bar">
+              <div className="storage-bar-container">
+                <div
+                  className={`storage-bar-fill ${getStorageClass(storageStats?.usage_percent || 0)}`}
+                  style={{ width: `${Math.min(100, storageStats?.usage_percent || 0)}%` }}
+                />
+              </div>
+              <div className="storage-bar-label">
+                {storageStats ? (
+                  <>
+                    Использовано: {formatGb(storageStats.used_gb)} из {storageStats.limit_gb} GB
+                    ({storageStats.usage_percent}%)
+                    {storageStats.file_count > 0 && ` • ${storageStats.file_count} файлов`}
+                  </>
+                ) : (
+                  `Использовано: ${formatGb(subData?.used_storage_gb)} из ${subData?.total_storage_gb} GB`
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Минималистичный прогресс-бар оставшихся дней */}
           {daysLeft != null && (
@@ -340,4 +380,10 @@ function formatGb(value) {
   const num = typeof value === 'number' ? value : parseFloat(value);
   if (Number.isNaN(num)) return '0.00';
   return num.toFixed(2);
+}
+
+function getStorageClass(percent) {
+  if (percent >= 90) return 'storage-critical';
+  if (percent >= 75) return 'storage-warning';
+  return 'storage-normal';
 }

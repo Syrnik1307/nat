@@ -253,6 +253,15 @@ class PaymentService:
                     sub.payment_method = 'yookassa'
                     sub.save()
                     
+                    # Создаём папку на Google Drive при первой оплате
+                    if not sub.gdrive_folder_id:
+                        try:
+                            from .gdrive_folder_service import create_teacher_folder_on_subscription
+                            create_teacher_folder_on_subscription(sub)
+                            logger.info(f"Created GDrive folder for subscription {sub.id}")
+                        except Exception as e:
+                            logger.error(f"Failed to create GDrive folder for subscription {sub.id}: {e}")
+                    
                     logger.info(f"Subscription {sub.id} activated with plan {plan}")
 
                     message = (

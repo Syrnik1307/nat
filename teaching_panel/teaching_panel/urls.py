@@ -41,6 +41,7 @@ from accounts.subscriptions_views import (
     SubscriptionCancelView,
     SubscriptionCreatePaymentView,
     SubscriptionAddStorageView,
+    SubscriptionStorageView,
     AdminSubscriptionsListView,
     AdminSubscriptionExtendTrialView,
     AdminSubscriptionCancelView,
@@ -149,6 +150,7 @@ urlpatterns = [
     
     # Subscription API
     path('api/subscription/', SubscriptionMeView.as_view(), name='subscription_me'),
+    path('api/subscription/storage/', SubscriptionStorageView.as_view(), name='subscription_storage'),
     path('api/subscription/cancel/', SubscriptionCancelView.as_view(), name='subscription_cancel'),
     path('api/subscription/enable-auto-renew/', SubscriptionEnableAutoRenewView.as_view(), name='subscription_enable_auto_renew'),
     path('api/subscription/payment-status/<str:payment_id>/', SubscriptionPaymentStatusView.as_view(), name='subscription_payment_status'),

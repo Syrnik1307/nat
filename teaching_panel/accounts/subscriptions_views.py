@@ -248,6 +248,46 @@ class AdminSubscriptionExtendTrialView(APIView):
         return Response(SubscriptionSerializer(sub).data)
 
 
+class SubscriptionStorageView(APIView):
+    """Получить статистику использования хранилища для текущего учителя.
+    
+    GET /api/subscription/storage/
+    
+    Ответ: {
+        'used_gb': float,
+        'limit_gb': int,
+        'available_gb': float,
+        'usage_percent': float,
+        'file_count': int,
+        'gdrive_folder_link': str or None
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'teacher':
+            return Response({'detail': 'Только для учителей'}, status=status.HTTP_403_FORBIDDEN)
+        
+        sub = get_subscription(request.user)
+        
+        try:
+            from .gdrive_folder_service import get_teacher_storage_usage, get_teacher_folder_link
+            storage_stats = get_teacher_storage_usage(sub)
+            storage_stats['gdrive_folder_link'] = get_teacher_folder_link(sub)
+        except Exception as e:
+            storage_stats = {
+                'used_gb': float(sub.used_storage_gb),
+                'limit_gb': sub.total_storage_gb,
+                'available_gb': float(sub.total_storage_gb - sub.used_storage_gb),
+                'usage_percent': float(sub.used_storage_gb / sub.total_storage_gb * 100) if sub.total_storage_gb > 0 else 0,
+                'file_count': 0,
+                'gdrive_folder_link': None,
+                'error': str(e)
+            }
+        
+        return Response(storage_stats)
+
+
 class AdminSubscriptionCancelView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 

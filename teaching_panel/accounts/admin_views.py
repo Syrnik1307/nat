@@ -479,9 +479,45 @@ class AdminTeacherSubscriptionView(APIView):
 
 
 class AdminTeacherStorageView(APIView):
-    """Добавление дополнительного хранилища преподавателю"""
+    """Просмотр и добавление хранилища преподавателю"""
 
     permission_classes = [IsAuthenticated]
+
+    def get(self, request, teacher_id):
+        """Получить реальную статистику использования хранилища с Google Drive"""
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            teacher = User.objects.get(id=teacher_id, role='teacher')
+        except User.DoesNotExist:
+            return Response({'error': 'Учитель не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        subscription = get_subscription(teacher)
+        
+        # Получаем реальную статистику с Google Drive
+        try:
+            from .gdrive_folder_service import get_teacher_storage_usage
+            storage_stats = get_teacher_storage_usage(subscription)
+        except Exception as e:
+            storage_stats = {
+                'used_gb': float(subscription.used_storage_gb),
+                'limit_gb': subscription.total_storage_gb,
+                'available_gb': float(subscription.total_storage_gb - subscription.used_storage_gb),
+                'usage_percent': float(subscription.used_storage_gb / subscription.total_storage_gb * 100) if subscription.total_storage_gb > 0 else 0,
+                'error': str(e)
+            }
+        
+        return Response({
+            'teacher_id': teacher.id,
+            'teacher_email': teacher.email,
+            'teacher_name': teacher.get_full_name(),
+            'subscription_id': subscription.id,
+            'subscription_status': subscription.status,
+            'storage': storage_stats,
+            'gdrive_folder_id': subscription.gdrive_folder_id,
+            'gdrive_folder_link': f"https://drive.google.com/drive/folders/{subscription.gdrive_folder_id}" if subscription.gdrive_folder_id else None
+        })
 
     def post(self, request, teacher_id):
         if request.user.role != 'admin':

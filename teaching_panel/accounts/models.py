@@ -630,10 +630,13 @@ class Subscription(models.Model):
     total_paid = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     last_payment_date = models.DateTimeField(null=True, blank=True)
 
-    # Хранилище (GB). Базовый объем и дополнительные покупки.
-    base_storage_gb = models.IntegerField(default=5)
+    # Хранилище (GB). Базовый объем 15 ГБ, дополнительные покупки.
+    base_storage_gb = models.IntegerField(default=15)
     extra_storage_gb = models.IntegerField(default=0)
     used_storage_gb = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    
+    # ID папки на Google Drive (создаётся при активации подписки)
+    gdrive_folder_id = models.CharField(max_length=255, blank=True, default='')
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

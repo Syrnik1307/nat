@@ -120,6 +120,7 @@ class PaymentSerializer(serializers.ModelSerializer):
 class SubscriptionSerializer(serializers.ModelSerializer):
     payments = PaymentSerializer(many=True, read_only=True)
     total_storage_gb = serializers.IntegerField(read_only=True)
+    gdrive_folder_link = serializers.SerializerMethodField()
 
     class Meta:
         model = Subscription
@@ -128,12 +129,19 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'cancelled_at', 'payment_method', 'auto_renew',
             'next_billing_date', 'total_paid', 'last_payment_date',
             'base_storage_gb', 'extra_storage_gb', 'used_storage_gb', 'total_storage_gb',
+            'gdrive_folder_id', 'gdrive_folder_link',
             'created_at', 'updated_at', 'payments'
         ]
         read_only_fields = [
             'id', 'status', 'started_at', 'cancelled_at', 'total_paid',
-            'last_payment_date', 'created_at', 'updated_at', 'total_storage_gb'
+            'last_payment_date', 'created_at', 'updated_at', 'total_storage_gb',
+            'gdrive_folder_id', 'gdrive_folder_link'
         ]
+    
+    def get_gdrive_folder_link(self, obj):
+        if obj.gdrive_folder_id:
+            return f"https://drive.google.com/drive/folders/{obj.gdrive_folder_id}"
+        return None
 
 
 class NotificationSettingsSerializer(serializers.ModelSerializer):
