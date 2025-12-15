@@ -240,25 +240,30 @@ const StudentHomePage = () => {
               </div>
             ) : (
               <div className="student-courses-grid">
-                {groups.map(group => (
-                  <div key={group.id} className="student-course-card">
-                    <div className="student-course-header">
-                      <div className="student-course-logo">{getCourseLabel(group.name)}</div>
-                      <div className="student-course-info">
-                        <h3>{group.name}</h3>
-                        <p className="student-course-teacher">
-                          {group.teacher?.first_name || group.teacher?.email || 'Не указан'}
-                        </p>
+                {groups.map(group => {
+                  const studentCount = group.student_count || 0;
+                  const teacherName = group.teacher?.first_name || group.teacher?.email || 'Не указан';
+
+                  return (
+                    <div key={group.id} className="student-course-card">
+                      <div className="student-course-top">
+                        <div className="student-course-badge">{getCourseLabel(group.name)}</div>
+                        <div className="student-course-main">
+                          <h3 className="student-course-title">{group.name}</h3>
+                          <div className="student-course-chips">
+                            <span className="student-chip">
+                              <span className="student-chip-label">Преподаватель</span>
+                              <span className="student-chip-value">{teacherName}</span>
+                            </span>
+                            <span className="student-chip student-chip-muted">
+                              {studentCount} {getStudentsText(studentCount)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="student-course-meta">
-                      <span className="student-course-students">
-                        {group.student_count || 0} {getStudentsText(group.student_count || 0)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
