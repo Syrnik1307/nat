@@ -196,14 +196,17 @@ const TeacherHomePage = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Получаем начало и конец сегодняшнего дня
+        // ВАЖНО: не используем toISOString() (UTC), иначе день может сдвигаться назад.
+        // Backend поддерживает параметр `date=YYYY-MM-DD` и сам строит диапазон в локальной TZ.
         const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        const yyyy = String(now.getFullYear());
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const today = `${yyyy}-${mm}-${dd}`;
 
         const [statsRes, lessonsRes, groupsRes] = await Promise.all([
           getTeacherStatsSummary(),
-          getLessons({ start: todayStart.toISOString(), end: todayEnd.toISOString(), include_recurring: true }),
+          getLessons({ date: today, include_recurring: true }),
           getGroups(),
         ]);
 
