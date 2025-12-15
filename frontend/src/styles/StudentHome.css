@@ -198,6 +198,11 @@
   transform: translateY(0);
 }
 
+/* Safety: скрываем старую кнопку курса, если придет из кэша/старой сборки */
+.student-course-card .student-primary-btn {
+  display: none !important;
+}
+
 .student-link-button {
   background: none;
   border: none;
@@ -278,12 +283,15 @@
   background: white;
   border: 1px solid var(--border-light);
   border-radius: 20px; /* Extra rounded for friendly feel */
-  padding: 1.25rem;
+  padding: 1rem 1.25rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
+  cursor: default;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .student-course-card::before {
