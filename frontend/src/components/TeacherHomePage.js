@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getTeacherStatsSummary, getLessons, getGroups, startQuickLesson } from '../apiService';
+import { getTeacherStatsSummary, getLessons, getGroups, startQuickLesson, startLessonNew, updateLesson } from '../apiService';
 import { Link } from 'react-router-dom';
 import SubscriptionBanner from './SubscriptionBanner';
 import './TeacherHomePage.css';
@@ -179,28 +179,38 @@ const TeacherHomePage = () => {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   
-  // Modal state for lesson start
+  // Modal state for quick lesson start
   const [showStartModal, setShowStartModal] = useState(false);
   const [recordLesson, setRecordLesson] = useState(true);
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [startError, setStartError] = useState(null);
+  
+  // Modal state for scheduled lesson start
+  const [showLessonStartModal, setShowLessonStartModal] = useState(false);
+  const [selectedLesson, setSelectedLesson] = useState(null);
+  const [lessonRecordEnabled, setLessonRecordEnabled] = useState(false);
+  const [recordingTitle, setRecordingTitle] = useState('');
+  const [lessonStartError, setLessonStartError] = useState(null);
+  const [lessonStarting, setLessonStarting] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Получаем начало и конец сегодняшнего дня
         const now = new Date();
-        const in30 = new Date();
-        in30.setDate(now.getDate() + 30);
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
         const [statsRes, lessonsRes, groupsRes] = await Promise.all([
           getTeacherStatsSummary(),
-          getLessons({ start: now.toISOString(), end: in30.toISOString(), include_recurring: true }),
+          getLessons({ start: todayStart.toISOString(), end: todayEnd.toISOString(), include_recurring: true }),
           getGroups(),
         ]);
 
         setStats(statsRes.data);
         const lessonList = Array.isArray(lessonsRes.data) ? lessonsRes.data : lessonsRes.data.results || [];
-        setLessons(lessonList.slice(0, 5));
+        // Показываем все уроки на сегодня (без ограничения)
+        setLessons(lessonList);
         setGroups(Array.isArray(groupsRes.data) ? groupsRes.data : groupsRes.data.results || []);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
@@ -238,6 +248,65 @@ const TeacherHomePage = () => {
       setStartError(err.response?.data?.detail || 'Ошибка запуска урока');
     } finally {
       setStarting(false);
+    }
+  };
+
+  // Открыть модальное окно для запуска конкретного урока
+  const openLessonStartModal = (lesson) => {
+    setSelectedLesson(lesson);
+    setLessonRecordEnabled(lesson.record_lesson || false);
+    setRecordingTitle(lesson.title || '');
+    setLessonStartError(null);
+    setShowLessonStartModal(true);
+  };
+
+  // Запустить конкретный урок
+  const handleStartScheduledLesson = async () => {
+    if (lessonStarting || !selectedLesson) return;
+    setLessonStarting(true);
+    setLessonStartError(null);
+    
+    try {
+      // Если изменилось название или флаг записи - сначала обновляем урок
+      const needsUpdate = 
+        (lessonRecordEnabled !== selectedLesson.record_lesson) ||
+        (recordingTitle && recordingTitle !== selectedLesson.title);
+      
+      if (needsUpdate) {
+        await updateLesson(selectedLesson.id, {
+          record_lesson: lessonRecordEnabled,
+          title: recordingTitle || selectedLesson.title,
+        });
+      }
+      
+      const response = await startLessonNew(selectedLesson.id, {
+        record_lesson: lessonRecordEnabled,
+        force_new_meeting: needsUpdate && lessonRecordEnabled && Boolean(selectedLesson.zoom_meeting_id),
+      });
+      
+      if (response.data?.zoom_start_url) {
+        window.open(response.data.zoom_start_url, '_blank', 'noopener,noreferrer');
+        setShowLessonStartModal(false);
+        
+        // Обновляем список уроков
+        setLessons(prev => prev.map(l => 
+          l.id === selectedLesson.id 
+            ? { ...l, zoom_start_url: response.data.zoom_start_url, zoom_join_url: response.data.zoom_join_url }
+            : l
+        ));
+      }
+    } catch (err) {
+      if (err.response?.status === 503) {
+        setLessonStartError('Все Zoom аккаунты заняты. Попробуйте позже.');
+      } else if (err.response?.status === 400 || err.response?.status === 403) {
+        setLessonStartError(err.response.data?.detail || 'Ошибка создания встречи');
+      } else if (err.response?.status === 404) {
+        setLessonStartError('Урок не найден или API endpoint недоступен');
+      } else {
+        setLessonStartError(err.response?.data?.detail || err.message || 'Не удалось начать занятие.');
+      }
+    } finally {
+      setLessonStarting(false);
     }
   };
 
@@ -390,6 +459,75 @@ const TeacherHomePage = () => {
         </>
       )}
 
+      {/* Scheduled Lesson Start Modal */}
+      {showLessonStartModal && selectedLesson && (
+        <>
+          <div className="modal-overlay" onClick={() => setShowLessonStartModal(false)} />
+          <div className="start-modal">
+            <h3 className="start-modal-title">
+              <IconVideo size={20} />
+              <span>Запуск занятия</span>
+            </h3>
+
+            <div className="start-modal-lesson-info">
+              <div className="start-modal-lesson-name">{selectedLesson.title || 'Без названия'}</div>
+              <div className="start-modal-lesson-group">{selectedLesson.group_name || `Группа #${selectedLesson.group}`}</div>
+            </div>
+
+            {/* Record Option */}
+            <label className={`start-modal-checkbox ${lessonRecordEnabled ? 'checked' : ''}`}>
+              <input
+                type="checkbox"
+                checked={lessonRecordEnabled}
+                onChange={(e) => setLessonRecordEnabled(e.target.checked)}
+              />
+              <IconDisc size={18} />
+              <span>Записывать урок</span>
+            </label>
+
+            {lessonRecordEnabled && (
+              <>
+                <div className="start-modal-field">
+                  <label className="start-modal-label">Название записи</label>
+                  <input
+                    type="text"
+                    className="start-modal-input"
+                    placeholder="Введите название для записи"
+                    value={recordingTitle}
+                    onChange={(e) => setRecordingTitle(e.target.value)}
+                  />
+                </div>
+                <div className="start-modal-hint">
+                  <IconDisc size={14} />
+                  <span>Запись сохранится с указанным названием</span>
+                </div>
+              </>
+            )}
+
+            {lessonStartError && (
+              <div className="start-modal-error">{lessonStartError}</div>
+            )}
+
+            <div className="start-modal-actions">
+              <button
+                className="start-modal-btn primary"
+                onClick={handleStartScheduledLesson}
+                disabled={lessonStarting}
+              >
+                <IconPlay size={16} />
+                <span>{lessonStarting ? 'Запуск...' : 'Начать занятие'}</span>
+              </button>
+              <button
+                className="start-modal-btn secondary"
+                onClick={() => setShowLessonStartModal(false)}
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Main Grid - No page title, starts directly with content */}
       <div className="dashboard-grid">
         {/* LEFT COLUMN */}
@@ -431,7 +569,7 @@ const TeacherHomePage = () => {
                 <div className="section-icon-wrapper">
                   <IconCalendar size={18} />
                 </div>
-                <h3 className="section-title">Расписание</h3>
+                <h3 className="section-title">Занятия на сегодня</h3>
               </div>
               <Link to="/recurring-lessons/manage" className="section-link">
                 Все занятия
@@ -450,11 +588,25 @@ const TeacherHomePage = () => {
                       <div className="schedule-title">{lesson.title || 'Без названия'}</div>
                       <div className="schedule-group">{lesson.group_name || `Группа #${lesson.group}`}</div>
                     </div>
-                    <div className="schedule-status">
+                    <div className="schedule-actions">
                       {lesson.zoom_start_url ? (
-                        <span className="status-badge status-active">Активен</span>
+                        <a 
+                          href={lesson.zoom_start_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="schedule-start-btn active"
+                        >
+                          <IconVideo size={14} />
+                          <span>Продолжить</span>
+                        </a>
                       ) : (
-                        <span className="status-badge status-pending">Ожидает</span>
+                        <button
+                          className="schedule-start-btn"
+                          onClick={() => openLessonStartModal(lesson)}
+                        >
+                          <IconPlay size={14} />
+                          <span>Начать</span>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -462,7 +614,7 @@ const TeacherHomePage = () => {
               ) : (
                 <div className="empty-state">
                   <IconCalendar size={32} className="empty-icon" />
-                  <p>Нет предстоящих занятий</p>
+                  <p>Нет занятий на сегодня</p>
                 </div>
               )}
             </div>
@@ -984,8 +1136,40 @@ const globalStyles = `
     color: var(--color-text-secondary);
   }
 
-  .schedule-status {
+  .schedule-actions {
     flex-shrink: 0;
+  }
+
+  .schedule-start-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--gradient-primary);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 0.85rem;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-family);
+    font-weight: 600;
+    font-size: 0.75rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+  }
+
+  .schedule-start-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.35);
+  }
+
+  .schedule-start-btn.active {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+  }
+
+  .schedule-start-btn.active:hover {
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
   }
 
   .status-badge {
@@ -1459,6 +1643,49 @@ const globalStyles = `
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px var(--color-primary-light);
+  }
+
+  .start-modal-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    font-family: var(--font-family);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #fff;
+    color: var(--color-text-primary);
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+  }
+
+  .start-modal-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+  }
+
+  .start-modal-input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .start-modal-lesson-info {
+    background: var(--slate-50);
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    border: 1px solid var(--color-border);
+  }
+
+  .start-modal-lesson-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: 0.25rem;
+  }
+
+  .start-modal-lesson-group {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
   }
 
   .start-modal-checkbox {
