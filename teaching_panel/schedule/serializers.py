@@ -68,6 +68,9 @@ class LessonSerializer(serializers.ModelSerializer):
     teacher = serializers.PrimaryKeyRelatedField(read_only=True)
     # БЕЗОПАСНОСТЬ: zoom_start_url только для учителей
     zoom_start_url = serializers.SerializerMethodField()
+    # Для отображения в календаре: есть ли запись и ДЗ
+    recording_id = serializers.SerializerMethodField()
+    homework_id = serializers.SerializerMethodField()
     
     class Meta:
         model = Lesson
@@ -78,8 +81,19 @@ class LessonSerializer(serializers.ModelSerializer):
             'topics', 'location',
             'zoom_meeting_id', 'zoom_start_url', 'zoom_join_url', 'zoom_password',
             'record_lesson', 'recording_available_for_days',  # Добавили поля записи
-            'notes', 'created_at', 'updated_at'
+            'notes', 'created_at', 'updated_at',
+            'recording_id', 'homework_id',  # Для календаря студента
         ]
+    
+    def get_recording_id(self, obj):
+        """ID первой доступной записи урока (или None)"""
+        rec = obj.recordings.first()
+        return rec.id if rec else None
+    
+    def get_homework_id(self, obj):
+        """ID опубликованного ДЗ урока (или None)"""
+        hw = obj.homeworks.filter(status='published').first()
+        return hw.id if hw else None
     
     def get_zoom_start_url(self, obj):
         """БЕЗОПАСНОСТЬ: zoom_start_url видят только учитель урока и админы"""

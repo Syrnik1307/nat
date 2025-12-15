@@ -6,6 +6,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import apiService from '../../../apiService';
 import { Button, Modal, Badge, ConfirmModal } from '../../../shared/components';
+import { useAuth } from '../../../auth';
 
 const PALETTE = {
   primary: '#1e3a8a', // deep blue
@@ -39,6 +40,9 @@ const formatStatus = (status) => {
  */
 const Calendar = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const userRole = user?.role || 'student';
+  const isStudent = userRole === 'student';
   const [view, setView] = useState('timeGridWeek'); // 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay'
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -103,6 +107,8 @@ const Calendar = () => {
             description: lesson.description,
             is_recurring: lesson.is_recurring || false,
             recurring_lesson_id: lesson.recurring_lesson_id || null,
+            recording_id: lesson.recording_id || null,
+            homework_id: lesson.homework_id || null,
           },
         };
       });
@@ -361,17 +367,59 @@ const Calendar = () => {
               </div>
             )}
 
-            {selectedEvent.zoom_join_url && (
-              <div className="tp-section">
-                <Button
-                  variant="primary"
-                  onClick={() => window.open(selectedEvent.zoom_join_url, '_blank')}
-                  style={{ width: '100%' }}
-                >
-                  🎥 Присоединиться к Zoom
-                </Button>
-              </div>
-            )}
+            {/* Кнопки действий для урока */}
+            {(() => {
+              const now = new Date();
+              const lessonEnd = selectedEvent.end ? new Date(selectedEvent.end) : new Date(selectedEvent.start);
+              const isPast = lessonEnd < now;
+              
+              if (isStudent && isPast) {
+                // Прошедший урок для студента: показываем запись и ДЗ (если есть)
+                const hasRecording = !!selectedEvent.recording_id;
+                const hasHomework = !!selectedEvent.homework_id;
+                
+                if (!hasRecording && !hasHomework) {
+                  return null; // Нет ни записи, ни ДЗ
+                }
+                
+                return (
+                  <div className="tp-section tp-action-buttons">
+                    {hasRecording && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => navigate(`/recordings/${selectedEvent.recording_id}`)}
+                        style={{ flex: 1 }}
+                      >
+                        📹 Запись урока
+                      </Button>
+                    )}
+                    {hasHomework && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => navigate(`/homework/${selectedEvent.homework_id}/solve`)}
+                        style={{ flex: 1 }}
+                      >
+                        📝 Домашнее задание
+                      </Button>
+                    )}
+                  </div>
+                );
+              } else if (!isPast && selectedEvent.zoom_join_url) {
+                // Предстоящий/текущий урок с Zoom ссылкой
+                return (
+                  <div className="tp-section">
+                    <Button
+                      variant="primary"
+                      onClick={() => window.open(selectedEvent.zoom_join_url, '_blank')}
+                      style={{ width: '100%' }}
+                    >
+                      🎥 Присоединиться к Zoom
+                    </Button>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             <div className="tp-modal-footer">
               <Button
@@ -381,13 +429,15 @@ const Calendar = () => {
               >
                 Закрыть
               </Button>
-              <Button
-                variant="danger"
-                onClick={() => handleDeleteLesson(selectedEvent)}
-                style={{ flex: 1 }}
-              >
-                Удалить
-              </Button>
+              {!isStudent && (
+                <Button
+                  variant="danger"
+                  onClick={() => handleDeleteLesson(selectedEvent)}
+                  style={{ flex: 1 }}
+                >
+                  Удалить
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -764,6 +814,12 @@ const Calendar = () => {
           .tp-section { display: flex; flex-direction: column; gap: 0.35rem; }
           .tp-description { margin: 0; color: ${PALETTE.muted}; line-height: 1.55; }
 
+          .tp-action-buttons {
+            display: flex;
+            flex-direction: row;
+            gap: 0.75rem;
+          }
+
           .tp-modal-footer {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -772,19 +828,27 @@ const Calendar = () => {
           }
 
           /* Локально фиксируем стили кнопок модалки, чтобы всегда были как в дизайн-системе */
-          .tp-modal-footer button {
+          .tp-modal-footer button,
+          .tp-section button,
+          .tp-action-buttons button {
             background: linear-gradient(135deg, #0b2b65 0%, #0a1f4d 100%);
             color: #ffffff;
             border: none;
             border-radius: 10px;
             padding: 0.7rem 1rem;
             font-weight: 700;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.9rem;
             box-shadow: 0 8px 20px -10px rgba(30, 58, 138, 0.45);
             cursor: pointer;
+            transition: all 0.2s ease;
           }
 
-          .tp-modal-footer button:hover {
+          .tp-modal-footer button:hover,
+          .tp-section button:hover,
+          .tp-action-buttons button:hover {
             background: linear-gradient(135deg, #103779 0%, #0c265b 100%);
+            transform: translateY(-1px);
           }
 
           /* Опасная кнопка (удалить) */
