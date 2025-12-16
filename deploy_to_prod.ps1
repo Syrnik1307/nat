@@ -56,7 +56,7 @@ $deployCommands += @(
     "sudo journalctl -u teaching_panel -n 10"
 )
 
-$script = $deployCommands -join "; "
+$script = ($deployCommands | Where-Object { $_ -and $_.Trim() -ne "" }) -join "; "
 
 Write-Host "📋 Running deployment on: $SSHAlias" -ForegroundColor Yellow
 Write-Host "🌿 Git branch: $GitBranch" -ForegroundColor Yellow
