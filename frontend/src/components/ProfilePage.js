@@ -1,6 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth';
-import { updateCurrentUser, changePassword, getSubscription, createSubscriptionPayment, cancelSubscription, getTelegramStatus, generateTelegramCode, unlinkTelegramAccount } from '../apiService';
+import {
+  updateCurrentUser,
+  changePassword,
+  getSubscription,
+  createSubscriptionPayment,
+  cancelSubscription,
+  getTelegramStatus,
+  generateTelegramCode,
+  unlinkTelegramAccount,
+  getNotificationSettings,
+  patchNotificationSettings,
+} from '../apiService';
 import './ProfilePage.css';
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
@@ -38,6 +49,13 @@ const ProfilePage = () => {
   const [codeLoading, setCodeLoading] = useState(false);
   const [codeMessage, setCodeMessage] = useState('');
   const [codeError, setCodeError] = useState('');
+
+  // Telegram notification settings state
+  const [notificationSettings, setNotificationSettings] = useState(null);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [notificationSaving, setNotificationSaving] = useState(false);
+  const [notificationError, setNotificationError] = useState('');
+  const [notificationSuccess, setNotificationSuccess] = useState('');
 
   // Состояние для подписки (только для учителей)
   const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'security' | 'subscription'
@@ -103,11 +121,63 @@ const ProfilePage = () => {
     }
   }, []);
 
+  const fetchNotificationSettings = useCallback(async () => {
+    setNotificationLoading(true);
+    setNotificationError('');
+    try {
+      const { data } = await getNotificationSettings();
+      setNotificationSettings(data);
+    } catch (err) {
+      console.error('Failed to load notification settings:', err);
+      setNotificationError('Не удалось загрузить настройки уведомлений. Попробуйте позже.');
+    } finally {
+      setNotificationLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'security') {
       fetchTelegramStatus();
+      fetchNotificationSettings();
     }
-  }, [activeTab, fetchTelegramStatus]);
+  }, [activeTab, fetchTelegramStatus, fetchNotificationSettings]);
+
+  const handleToggleNotificationSetting = (key) => {
+    setNotificationSuccess('');
+    setNotificationError('');
+    setNotificationSettings(prev => {
+      if (!prev) return prev;
+      return { ...prev, [key]: !prev[key] };
+    });
+  };
+
+  const handleSaveNotificationSettings = async () => {
+    if (!notificationSettings) return;
+
+    setNotificationSaving(true);
+    setNotificationError('');
+    setNotificationSuccess('');
+    try {
+      const payload = {
+        telegram_enabled: notificationSettings.telegram_enabled,
+        notify_homework_submitted: notificationSettings.notify_homework_submitted,
+        notify_homework_graded: notificationSettings.notify_homework_graded,
+        notify_homework_deadline: notificationSettings.notify_homework_deadline,
+        notify_lesson_reminders: notificationSettings.notify_lesson_reminders,
+        notify_new_homework: notificationSettings.notify_new_homework,
+        notify_subscription_expiring: notificationSettings.notify_subscription_expiring,
+        notify_payment_success: notificationSettings.notify_payment_success,
+      };
+      const { data } = await patchNotificationSettings(payload);
+      setNotificationSettings(data);
+      setNotificationSuccess('Настройки уведомлений сохранены.');
+    } catch (err) {
+      console.error('Failed to save notification settings:', err);
+      setNotificationError('Не удалось сохранить настройки. Попробуйте позже.');
+    } finally {
+      setNotificationSaving(false);
+    }
+  };
 
   const handleGenerateTelegramCode = async () => {
     setCodeLoading(true);
@@ -243,6 +313,9 @@ const ProfilePage = () => {
   const qrCodeUrl = deepLink
     ? `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(deepLink)}&size=200x200`
     : '';
+
+  const isTeacher = user?.role === 'teacher';
+  const isStudent = user?.role === 'student';
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
@@ -550,7 +623,7 @@ const ProfilePage = () => {
         )}
 
         {/* Security Tab */}
-        {activeTab === 'security' && user.role === 'teacher' && (
+        {activeTab === 'security' && user && (
           <div className="profile-content">
             <section className="profile-password">
               <div className="password-header">
@@ -752,6 +825,171 @@ const ProfilePage = () => {
                   {codeMessage && <p className="form-message success">{codeMessage}</p>}
                   {telegramError && <p className="form-message error">{telegramError}</p>}
                   {codeError && <p className="form-message error">{codeError}</p>}
+                </div>
+              )}
+            </section>
+
+            <section className="telegram-section notifications-section">
+              <div className="telegram-header">
+                <div>
+                  <h3>Уведомления в Telegram</h3>
+                  <p className="profile-subtitle">Выберите, какие события будут приходить в Telegram</p>
+                </div>
+                {notificationSettings && (
+                  <span
+                    className={`telegram-status-pill ${notificationSettings.telegram_enabled ? 'linked' : 'unlinked'}`}
+                  >
+                    {notificationSettings.telegram_enabled ? 'Включены' : 'Выключены'}
+                  </span>
+                )}
+              </div>
+
+              {!telegramLinked && (
+                <p className="notifications-hint">
+                  Чтобы уведомления приходили в Telegram, сначала привяжите Telegram-аккаунт выше.
+                </p>
+              )}
+
+              {notificationLoading ? (
+                <div className="telegram-loading">
+                  <div className="spinner" />
+                  <p>Загружаем настройки...</p>
+                </div>
+              ) : notificationSettings ? (
+                <div className="telegram-grid">
+                  <div className="telegram-card">
+                    <h4>Общие</h4>
+
+                    <label className="notification-item">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(notificationSettings.telegram_enabled)}
+                        onChange={() => handleToggleNotificationSetting('telegram_enabled')}
+                      />
+                      <span className="notification-text">
+                        <span className="notification-title">Включить уведомления</span>
+                        <span className="notification-desc">Главный переключатель Telegram-уведомлений</span>
+                      </span>
+                    </label>
+
+                    <label className="notification-item">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(notificationSettings.notify_lesson_reminders)}
+                        onChange={() => handleToggleNotificationSetting('notify_lesson_reminders')}
+                      />
+                      <span className="notification-text">
+                        <span className="notification-title">Напоминания о занятиях</span>
+                        <span className="notification-desc">Напоминания перед началом урока</span>
+                      </span>
+                    </label>
+                  </div>
+
+                  {isStudent && (
+                    <div className="telegram-card">
+                      <h4>Для ученика</h4>
+
+                      <label className="notification-item">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(notificationSettings.notify_new_homework)}
+                          onChange={() => handleToggleNotificationSetting('notify_new_homework')}
+                        />
+                        <span className="notification-text">
+                          <span className="notification-title">Новые домашние задания</span>
+                          <span className="notification-desc">Когда преподаватель публикует ДЗ</span>
+                        </span>
+                      </label>
+
+                      <label className="notification-item">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(notificationSettings.notify_homework_deadline)}
+                          onChange={() => handleToggleNotificationSetting('notify_homework_deadline')}
+                        />
+                        <span className="notification-text">
+                          <span className="notification-title">Дедлайны по ДЗ</span>
+                          <span className="notification-desc">Напоминания о приближении срока сдачи</span>
+                        </span>
+                      </label>
+
+                      <label className="notification-item">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(notificationSettings.notify_homework_graded)}
+                          onChange={() => handleToggleNotificationSetting('notify_homework_graded')}
+                        />
+                        <span className="notification-text">
+                          <span className="notification-title">Проверка ДЗ</span>
+                          <span className="notification-desc">Когда ДЗ проверено и выставлена оценка</span>
+                        </span>
+                      </label>
+                    </div>
+                  )}
+
+                  {isTeacher && (
+                    <div className="telegram-card">
+                      <h4>Для преподавателя</h4>
+
+                      <label className="notification-item">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(notificationSettings.notify_homework_submitted)}
+                          onChange={() => handleToggleNotificationSetting('notify_homework_submitted')}
+                        />
+                        <span className="notification-text">
+                          <span className="notification-title">Сдача ДЗ</span>
+                          <span className="notification-desc">Когда ученик отправил решение</span>
+                        </span>
+                      </label>
+
+                      <label className="notification-item">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(notificationSettings.notify_payment_success)}
+                          onChange={() => handleToggleNotificationSetting('notify_payment_success')}
+                        />
+                        <span className="notification-text">
+                          <span className="notification-title">Оплаты</span>
+                          <span className="notification-desc">Уведомления об успешной оплате</span>
+                        </span>
+                      </label>
+
+                      <label className="notification-item">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(notificationSettings.notify_subscription_expiring)}
+                          onChange={() => handleToggleNotificationSetting('notify_subscription_expiring')}
+                        />
+                        <span className="notification-text">
+                          <span className="notification-title">Подписка истекает</span>
+                          <span className="notification-desc">Предупреждения перед окончанием подписки</span>
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="code-placeholder">
+                  <p>Настройки пока недоступны. Попробуйте обновить страницу.</p>
+                </div>
+              )}
+
+              <div className="notifications-actions">
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={handleSaveNotificationSettings}
+                  disabled={notificationSaving || notificationLoading || !notificationSettings}
+                >
+                  {notificationSaving ? 'Сохранение...' : 'Сохранить настройки'}
+                </button>
+              </div>
+
+              {(notificationSuccess || notificationError) && (
+                <div className="telegram-messages">
+                  {notificationSuccess && <p className="form-message success">{notificationSuccess}</p>}
+                  {notificationError && <p className="form-message error">{notificationError}</p>}
                 </div>
               )}
             </section>

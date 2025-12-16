@@ -583,6 +583,70 @@
   gap: 6px;
 }
 
+.notifications-section {
+  margin-top: 0;
+}
+
+.notifications-hint {
+  margin: 0;
+  color: #4a5f99;
+  font-size: 14px;
+}
+
+.notification-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(25, 59, 140, 0.1);
+  cursor: pointer;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-item input {
+  margin-top: 3px;
+}
+
+.notification-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notification-title {
+  font-weight: 700;
+  color: #0d2f81;
+  font-size: 14px;
+}
+
+.notification-desc {
+  color: #6c85c5;
+  font-size: 13px;
+}
+
+.notifications-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.notifications-actions .primary {
+  border: none;
+  border-radius: 14px;
+  padding: 10px 20px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #2154bb 0%, #1c3f9d 100%);
+  color: var(--bg-paper);
+  cursor: pointer;
+}
+
+.notifications-actions .primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 @media (max-width: 900px) {
   .profile-page {
     padding: 0;

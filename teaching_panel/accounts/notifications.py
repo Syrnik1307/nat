@@ -18,6 +18,10 @@ NOTIFICATION_FIELD_MAP: Dict[str, str] = {
     'new_homework': 'notify_new_homework',
     'storage_quota_warning': 'notify_lesson_reminders',  # Используем существующее поле
     'storage_quota_exceeded': 'notify_lesson_reminders',  # Используем существующее поле
+
+    # Исторические/альтернативные имена типов (используются в некоторых задачах)
+    'storage_warning': 'notify_lesson_reminders',
+    'storage_limit_exceeded': 'notify_lesson_reminders',
 }
 
 

@@ -206,6 +206,12 @@ export const generateTelegramCode = () => apiClient.post('accounts/generate-tele
 export const unlinkTelegramAccount = () => apiClient.post('telegram/unlink/');
 
 // =====================
+// Notification settings
+// =====================
+export const getNotificationSettings = () => apiClient.get('notifications/settings/');
+export const patchNotificationSettings = (payload) => apiClient.patch('notifications/settings/', payload);
+
+// =====================
 // Helper for calendar feed
 // =====================
 export const getCalendarFeed = (params = {}) => {
