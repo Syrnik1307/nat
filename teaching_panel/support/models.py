@@ -195,6 +195,26 @@ class SupportMessage(models.Model):
         verbose_name = 'Сообщение поддержки'
         verbose_name_plural = 'Сообщения поддержки'
         ordering = ['created_at']
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+
+        if not is_new:
+            return
+
+        # Best-effort уведомления, чтобы работало и для сообщений,
+        # созданных напрямую из Telegram-бота (без вызова API endpoint).
+        try:
+            from .telegram_notifications import notify_admins_new_message, notify_user_staff_reply
+
+            if self.is_staff_reply:
+                notify_user_staff_reply(ticket=self.ticket, message=self)
+            else:
+                if not getattr(self, '_skip_notify_admins', False):
+                    notify_admins_new_message(ticket=self.ticket, message=self)
+        except Exception:
+            return
     
     def __str__(self):
         author_name = self.author.email if self.author else 'Аноним'

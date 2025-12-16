@@ -9,4 +9,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('quick-responses/', views.get_quick_responses, name='quick-responses'),
     path('unread-count/', views.get_unread_count, name='unread-count'),
+    path('telegram-link/', views.get_telegram_support_link, name='telegram-support-link'),
 ]

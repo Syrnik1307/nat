@@ -3,14 +3,17 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.utils import timezone
+from django.conf import settings
 
 from .models import SupportTicket, SupportMessage, QuickSupportResponse
+from accounts.telegram_utils import generate_link_code_for_user
 from .serializers import (
     SupportTicketSerializer,
     SupportTicketCreateSerializer,
     SupportMessageSerializer,
     QuickSupportResponseSerializer
 )
+from .telegram_notifications import notify_admins_new_message
 
 
 class SupportTicketViewSet(viewsets.ModelViewSet):
@@ -74,7 +77,7 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         
         # Если это ответ пользователя (не staff), уведомляем админов
         if not message.is_staff_reply:
-            _notify_admins_new_message(ticket, message)
+            notify_admins_new_message(ticket=ticket, message=message)
         
         serializer = SupportMessageSerializer(message)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -166,43 +169,27 @@ def get_unread_count(request):
         return Response({'unread': unread})
 
 
-def _notify_admins_new_message(ticket, message):
-    """Уведомление админов о новом сообщении от пользователя"""
-    import os
-    import requests
-    from accounts.models import CustomUser
-    
-    token = os.getenv('SUPPORT_BOT_TOKEN')
-    if not token:
-        return
-    
-    # Получаем админов с Telegram, которым назначен этот тикет (или всех, если не назначен)
-    if ticket.assigned_to and ticket.assigned_to.telegram_id:
-        admins = [ticket.assigned_to]
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_telegram_support_link(request):
+    """Вернуть deep-link на Telegram бота, который откроет поддержку.
+
+    - Если Telegram уже привязан, возвращаем start=support.
+    - Если не привязан, генерируем одноразовый TelegramLinkCode и используем start=support_<CODE>.
+    """
+    username = (getattr(settings, 'TELEGRAM_BOT_USERNAME', '') or '').lstrip('@').strip()
+    if not username:
+        return Response(
+            {'detail': 'TELEGRAM_BOT_USERNAME не настроен'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    user = request.user
+    if getattr(user, 'telegram_verified', False) and getattr(user, 'telegram_id', None):
+        start_param = 'support'
     else:
-        admins = CustomUser.objects.filter(is_staff=True, telegram_id__isnull=False)
-    
-    if not admins:
-        return
-    
-    user_info = message.ticket.user.get_full_name() if message.ticket.user else 'Пользователь'
-    
-    text = (
-        f"💬 *Новое сообщение в тикете #{ticket.id}*\n\n"
-        f"📝 *Тема:* {ticket.subject}\n"
-        f"👤 *От:* {user_info}\n"
-        f"💌 *Сообщение:*\n{message.message[:300]}{'...' if len(message.message) > 300 else ''}\n\n"
-        f"Для ответа: /view\\_{ticket.id}"
-    )
-    
-    for admin in admins:
-        try:
-            url = f"https://api.telegram.org/bot{token}/sendMessage"
-            data = {
-                'chat_id': admin.telegram_id,
-                'text': text,
-                'parse_mode': 'Markdown'
-            }
-            requests.post(url, json=data, timeout=5)
-        except Exception as e:
-            print(f"Не удалось отправить уведомление: {e}")
+        code_obj = generate_link_code_for_user(user, ttl_minutes=10)
+        start_param = f"support_{code_obj.code}"
+
+    url = f"https://t.me/{username}?start={start_param}"
+    return Response({'url': url, 'start': start_param})
