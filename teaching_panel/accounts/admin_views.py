@@ -745,11 +745,109 @@ class AdminStudentsListView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        students = User.objects.filter(role='student').order_by('last_name', 'first_name')
-        
-        students_data = []
+        from django.db.models import Q
+
+        # Query params
+        q = (request.query_params.get('q') or '').strip()
+        status_filter = (request.query_params.get('status') or 'active').strip()  # active|archived|all
+        teacher_id = request.query_params.get('teacher_id')
+        sort = (request.query_params.get('sort') or 'last_login').strip()  # last_login|created_at|name|email
+        order = (request.query_params.get('order') or 'desc').strip()  # asc|desc
+
+        def _int_or_none(value):
+            try:
+                return int(value)
+            except Exception:
+                return None
+
+        page = _int_or_none(request.query_params.get('page')) or 1
+        page_size = _int_or_none(request.query_params.get('page_size')) or 50
+        page = max(1, page)
+        page_size = min(max(10, page_size), 200)
+
+        students = User.objects.filter(role='student')
+
+        if status_filter == 'active':
+            students = students.filter(is_active=True)
+        elif status_filter == 'archived':
+            students = students.filter(is_active=False)
+
+        if q:
+            students = students.filter(
+                Q(email__icontains=q)
+                | Q(first_name__icontains=q)
+                | Q(last_name__icontains=q)
+                | Q(middle_name__icontains=q)
+            )
+
+        tid = _int_or_none(teacher_id)
+        if tid:
+            students = students.filter(
+                Q(enrolled_groups__teacher_id=tid)
+                | Q(individual_student_profile__teacher_id=tid)
+            ).distinct()
+
+        sort_map = {
+            'last_login': 'last_login',
+            'created_at': 'created_at',
+            'name': 'last_name',
+            'email': 'email',
+        }
+        sort_field = sort_map.get(sort, 'last_login')
+        prefix = '' if order == 'asc' else '-'
+        # Добавляем вторичный сорт для стабильности
+        if sort_field == 'last_login':
+            students = students.order_by(f'{prefix}{sort_field}', 'last_name', 'first_name', 'id')
+        elif sort_field == 'last_name':
+            students = students.order_by(f'{prefix}{sort_field}', 'first_name', 'id')
+        else:
+            students = students.order_by(f'{prefix}{sort_field}', 'last_name', 'first_name', 'id')
+
+        total = students.count()
+        offset = (page - 1) * page_size
+        students = (
+            students
+            .select_related('individual_student_profile__teacher')
+            .prefetch_related('enrolled_groups__teacher')
+        )[offset:offset + page_size]
+
+        results = []
         for student in students:
-            students_data.append({
+            groups = []
+            teachers_by_id = {}
+
+            for g in getattr(student, 'enrolled_groups', []).all():
+                teacher = getattr(g, 'teacher', None)
+                if teacher is not None:
+                    teachers_by_id[teacher.id] = {
+                        'id': teacher.id,
+                        'email': teacher.email,
+                        'first_name': teacher.first_name,
+                        'last_name': teacher.last_name,
+                        'middle_name': getattr(teacher, 'middle_name', '')
+                    }
+                groups.append({
+                    'id': g.id,
+                    'name': g.name,
+                    'teacher_id': teacher.id if teacher else None,
+                })
+
+            # Individual teacher (если есть)
+            ind = getattr(student, 'individual_student_profile', None)
+            if ind and ind.teacher:
+                t = ind.teacher
+                teachers_by_id[t.id] = {
+                    'id': t.id,
+                    'email': t.email,
+                    'first_name': t.first_name,
+                    'last_name': t.last_name,
+                    'middle_name': getattr(t, 'middle_name', '')
+                }
+
+            teachers = list(teachers_by_id.values())
+            teachers.sort(key=lambda x: ((x.get('last_name') or '').lower(), (x.get('first_name') or '').lower(), x.get('id') or 0))
+
+            results.append({
                 'id': student.id,
                 'email': student.email,
                 'first_name': student.first_name,
@@ -757,9 +855,13 @@ class AdminStudentsListView(APIView):
                 'middle_name': student.middle_name,
                 'created_at': student.created_at,
                 'last_login': student.last_login,
+                'is_active': student.is_active,
+                'groups': groups,
+                'teachers': teachers,
+                'is_individual': bool(ind),
             })
-        
-        return Response(students_data)
+
+        return Response({'total': total, 'results': results})
 
 
 class AdminUpdateStudentView(APIView):
@@ -784,9 +886,14 @@ class AdminUpdateStudentView(APIView):
             )
         
         # Обновление данных
-        student.first_name = request.data.get('first_name', student.first_name)
-        student.last_name = request.data.get('last_name', student.last_name)
-        student.middle_name = request.data.get('middle_name', student.middle_name)
+        if 'first_name' in request.data:
+            student.first_name = request.data.get('first_name', student.first_name)
+        if 'last_name' in request.data:
+            student.last_name = request.data.get('last_name', student.last_name)
+        if 'middle_name' in request.data:
+            student.middle_name = request.data.get('middle_name', student.middle_name)
+        if 'is_active' in request.data:
+            student.is_active = bool(request.data.get('is_active'))
         student.save()
         
         return Response({
@@ -795,6 +902,7 @@ class AdminUpdateStudentView(APIView):
             'first_name': student.first_name,
             'last_name': student.last_name,
             'middle_name': student.middle_name,
+            'is_active': student.is_active,
         })
 
 
