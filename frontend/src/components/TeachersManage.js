@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Notification, ConfirmModal } from '../shared/components';
 import useNotification from '../shared/hooks/useNotification';
+import { getAccessToken } from '../apiService';
 import './TeachersManage.css';
 
 const statusLabels = {
@@ -97,7 +98,7 @@ const TeachersManage = ({ onClose }) => {
   const loadTeachers = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const params = new URLSearchParams({
         page,
         page_size: pageSize,
@@ -137,7 +138,7 @@ const TeachersManage = ({ onClose }) => {
   const loadTeacherProfile = async (teacherId) => {
     try {
       setProfileLoading(true);
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch(`/accounts/api/admin/teachers/${teacherId}/profile/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -205,7 +206,7 @@ const TeachersManage = ({ onClose }) => {
     try {
       setActionLoading(true);
       setActionError('');
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch('/accounts/api/admin/teachers/bulk/', {
         method: 'POST',
         headers: {
@@ -278,7 +279,7 @@ const TeachersManage = ({ onClose }) => {
     });
     if (!confirmed) return;
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch(`/accounts/api/admin/teachers/${teacherId}/delete/`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -302,7 +303,7 @@ const TeachersManage = ({ onClose }) => {
     if (!selectedTeacherId) return;
     try {
       setActionLoading(true);
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch(`/accounts/api/admin/teachers/${selectedTeacherId}/subscription/`, {
         method: 'POST',
         headers: {
@@ -335,7 +336,7 @@ const TeachersManage = ({ onClose }) => {
     }
     try {
       setActionLoading(true);
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch(`/accounts/api/admin/teachers/${selectedTeacherId}/storage/`, {
         method: 'POST',
         headers: {
@@ -366,7 +367,7 @@ const TeachersManage = ({ onClose }) => {
     if (!selectedTeacherId) return;
     try {
       setActionLoading(true);
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch(`/accounts/api/admin/teachers/${selectedTeacherId}/zoom/`, {
         method: 'PATCH',
         headers: {
@@ -399,7 +400,7 @@ const TeachersManage = ({ onClose }) => {
     }
     try {
       setActionLoading(true);
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch(`/accounts/api/admin/teachers/${selectedTeacherId}/change-password/`, {
         method: 'POST',
         headers: {

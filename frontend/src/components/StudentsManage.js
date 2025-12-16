@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Notification, ConfirmModal } from '../shared/components';
 import useNotification from '../shared/hooks/useNotification';
+import { getAccessToken } from '../apiService';
 import './StudentsManage.css';
 
 const StudentsManage = ({ onClose }) => {
@@ -45,7 +46,7 @@ const StudentsManage = ({ onClose }) => {
       try {
         setTeachersLoading(true);
         setTeachersError('');
-        const token = localStorage.getItem('tp_access_token');
+        const token = getAccessToken();
 
         const params = new URLSearchParams({
           page: '1',
@@ -97,7 +98,7 @@ const StudentsManage = ({ onClose }) => {
       try {
         setLoading(true);
         setActionError('');
-        const token = localStorage.getItem('tp_access_token');
+        const token = getAccessToken();
 
         const params = new URLSearchParams({
           page,
@@ -202,7 +203,7 @@ const StudentsManage = ({ onClose }) => {
 
     try {
       setActionLoading(true);
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch(`/accounts/api/admin/students/${selectedStudent.id}/update/`, {
         method: 'PATCH',
         headers: {
@@ -246,7 +247,7 @@ const StudentsManage = ({ onClose }) => {
       setActionLoading(true);
       setActionError('');
       setActionMessage('');
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch(`/accounts/api/admin/students/${target.id}/update/`, {
         method: 'PATCH',
         headers: {
@@ -280,7 +281,7 @@ const StudentsManage = ({ onClose }) => {
 
     try {
       setActionLoading(true);
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch(`/accounts/api/admin/students/${studentId}/delete/`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }

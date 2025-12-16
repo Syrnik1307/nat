@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth';
-import apiService from '../apiService';
+import apiService, { getAccessToken } from '../apiService';
 import TeachersManage from './TeachersManage';
 import StudentsManage from './StudentsManage';
 import StatusMessages from './StatusMessages';
@@ -53,7 +53,7 @@ const AdminHomePage = () => {
 
   const loadStats = async () => {
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch('/accounts/api/admin/stats/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -85,7 +85,7 @@ const AdminHomePage = () => {
         : '/accounts/api/admin/create-student/';
       
       console.log(`Отправка данных ${userTypeLabel}:`, { ...teacherForm, password: '***' });
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {

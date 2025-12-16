@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth';
+import { getAccessToken } from '../apiService';
 import './SupportWidget.css';
 
 const SupportWidget = () => {
@@ -32,7 +33,7 @@ const SupportWidget = () => {
 
   const loadTickets = async () => {
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch('/api/support/tickets/', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -53,7 +54,7 @@ const SupportWidget = () => {
 
   const loadUnreadCount = async () => {
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch('/api/support/unread-count/', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -77,7 +78,7 @@ const SupportWidget = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch('/api/support/tickets/', {
         method: 'POST',
         headers: {
@@ -118,7 +119,7 @@ const SupportWidget = () => {
     
     // Отметить как прочитанное
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       await fetch(`/api/support/tickets/${ticket.id}/mark_read/`, {
         method: 'POST',
         headers: {
@@ -137,7 +138,7 @@ const SupportWidget = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch(`/api/support/tickets/${currentTicket.id}/add_message/`, {
         method: 'POST',
         headers: {

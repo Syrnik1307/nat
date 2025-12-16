@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { getAccessToken } from '../apiService';
 import Logo from './Logo';
 import './NavBar.css';
 
@@ -111,7 +112,7 @@ const NavBar = () => {
 
   const loadMessages = async () => {
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch('/accounts/api/status-messages/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getAccessToken } from '../apiService';
 import './StatusMessages.css';
 
 const StatusMessages = ({ onClose }) => {
@@ -15,7 +16,7 @@ const StatusMessages = ({ onClose }) => {
 
   const loadMessages = async () => {
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch('/accounts/api/admin/status-messages/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -47,7 +48,7 @@ const StatusMessages = ({ onClose }) => {
     }
 
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch('/accounts/api/admin/status-messages/', {
         method: 'POST',
         headers: {
@@ -82,7 +83,7 @@ const StatusMessages = ({ onClose }) => {
     }
 
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch(`/accounts/api/admin/status-messages/${messageId}/`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { getAccessToken } from '../apiService';
 import './NavBar.css';
 
 const NavBar = () => {
@@ -28,7 +29,7 @@ const NavBar = () => {
 
   const loadMessages = async () => {
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       console.log('Loading messages, token:', token ? 'exists' : 'missing');
       const response = await fetch('/accounts/api/status-messages/', {
         headers: { 'Authorization': `Bearer ${token}` }
