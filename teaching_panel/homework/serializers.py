@@ -89,14 +89,14 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 
 class QuestionStudentSerializer(serializers.ModelSerializer):
-    """Ученический сериализатор вопроса: без баллов и, конечно, без is_correct."""
+    """Ученический сериализатор вопроса: без is_correct (но с баллами)."""
     choices = ChoiceStudentSerializer(many=True, read_only=True)
     question_type = serializers.SerializerMethodField()
     config = serializers.SerializerMethodField()
 
     class Meta:
         model = Question
-        fields = ['id', 'prompt', 'question_type', 'order', 'choices', 'config']
+        fields = ['id', 'prompt', 'question_type', 'points', 'order', 'choices', 'config']
 
     def get_question_type(self, obj):
         # Возвращаем фронтовое именование для multi choice
