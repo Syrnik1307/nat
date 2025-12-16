@@ -1,0 +1,356 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "prod: auth+join smoke",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && python -c 'from django.contrib.auth import get_user_model; from rest_framework_simplejwt.tokens import RefreshToken; import urllib.request,urllib.parse,urllib.error,json,datetime; email=\"syrnik1307@gmail.com\"; User=get_user_model(); u=User.objects.get(email=email); tok=str(RefreshToken.for_user(u).access_token); \n\ndef call(method,url,data=None):\n  req=urllib.request.Request(url,data=data,headers={\"Authorization\":\"Bearer \"+tok},method=method);\n  try:\n    with urllib.request.urlopen(req,timeout=20) as resp:\n      return resp.status, resp.read().decode(\"utf-8\",\"ignore\")\n  except urllib.error.HTTPError as e:\n    return e.code, e.read().decode(\"utf-8\",\"ignore\")\n\ncode,body=call(\"GET\",\"https://lectio.space/api/me/\"); print(\"ME_STATUS=\",code); \ntry:\n  d=json.loads(body) if body else {};\n  print(\"ME_EMAIL=\",d.get(\"email\")); print(\"ME_ROLE=\",d.get(\"role\"));\nexcept Exception:\n  print(\"ME_BODY_PARSE_ERROR\");\n\n# lessons today\nnow=datetime.datetime.now(); day=now.strftime(\"%Y-%m-%d\"); start=day+\"T00:00:00\"; end=day+\"T23:59:59\"; qs=urllib.parse.urlencode({\"start\":start,\"end\":end,\"include_recurring\":\"true\"});\ncode,body=call(\"GET\",\"https://lectio.space/api/schedule/lessons/?\"+qs); print(\"LESSONS_STATUS=\",code);\nitems=[];\ntry:\n  data=json.loads(body) if body else {};\n  items=data.get(\"results\",data if isinstance(data,list) else []);\nexcept Exception:\n  items=[];\n\ndef parse_dt(s):\n  if not s: return None\n  try: return datetime.datetime.fromisoformat(s.replace(\"Z\",\"+00:00\"))\n  except Exception: return None\n\nreal=[];\nfor it in items:\n  lid=it.get(\"id\"); dt=parse_dt(it.get(\"start_time\"));\n  if isinstance(lid,int) and dt is not None: real.append((dt,lid));\nreal.sort(key=lambda x:x[0]);\nprint(\"REAL_NUMERIC=\",len(real));\n\n# try join\nfound=False;\nfor dt,lid in real[:8]:\n  jcode,jbody=call(\"POST\",f\"https://lectio.space/api/schedule/lessons/{lid}/join/\",data=b\"{}\");\n  msg=\"\";\n  try:\n    jd=json.loads(jbody) if jbody else {};\n    msg=jd.get(\"detail\",\"\");\n    if jcode==200: print(\"JOIN_OK lesson=\",lid,\"has_url=\",bool(jd.get(\"zoom_join_url\"))); found=True; break\n  except Exception:\n    pass\n  print(\"JOIN_TRY lesson=\",lid,\"code=\",jcode,(\"detail=\"+msg) if msg else \"\");\nif not found: print(\"JOIN_RESULT=NO_200_FOUND\");'\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: auth+join smoke v2",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"prod_join_smoke.ps1"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: ssh check",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"ssh tp 'echo SSH_OK'"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: venv python -V",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && python -V\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: run join smoke script",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"prod_join_smoke.ps1"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: run join smoke script v2",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"prod_join_smoke.ps1"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: run join smoke to file",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"del /q prod_join_smoke_output.txt 2>nul & powershell.exe -NoProfile -ExecutionPolicy Bypass -File prod_join_smoke.ps1 > prod_join_smoke_output.txt 2>&1 & exit /b 0"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: write file check",
+			"type": "shell",
+			"command": "powershell.exe",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"Write-Output hi | Out-File -FilePath prod_join_smoke_output.txt -Encoding utf8; exit 0"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "frontend: build",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"cd /d c:\\Users\\User\\Desktop\\nat\\frontend && npm run build"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "git: status",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--porcelain"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "git: status (short)",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"-sb"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "git: status (porcelain)",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--porcelain=v1",
+				"-uall"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "git: diff names",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"diff",
+				"--name-only"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "git: is .gitignore tracked",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"ls-files",
+				".gitignore"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "git: diff cached names",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"diff",
+				"--cached",
+				"--name-only"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "git: diff .gitignore",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"diff",
+				"--",
+				".gitignore"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "git: add (student card + gitignore)",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"frontend/src/components/StudentHomePage.js",
+				"frontend/src/styles/StudentHome.css",
+				".gitignore"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "git: commit",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"student: remove broken course button"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "git: push",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "deploy: prod (server build frontend)",
+			"type": "shell",
+			"command": ".\\deploy_to_prod.ps1",
+			"args": [
+				"-SSHAlias",
+				"tp",
+				"-GitBranch",
+				"main"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: check revision",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel && git rev-parse --short HEAD"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: force git pull + rev",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel && sudo -u www-data git pull origin main && git rev-parse --short HEAD"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "deploy: prod (skip migrations)",
+			"type": "shell",
+			"command": ".\\deploy_to_prod.ps1",
+			"args": [
+				"-SSHAlias",
+				"tp",
+				"-GitBranch",
+				"main",
+				"-SkipMigrations"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: check frontend build exists",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"ls -la /var/www/teaching_panel/frontend/build | head -n 20"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: services active",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"sudo systemctl is-active teaching_panel nginx"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: verify button removed in build",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"grep -R \"Перейти к курсу\" -n /var/www/teaching_panel/frontend/build || true"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: students smoke",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"prod_students_smoke.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "prod: students smoke (pwsh)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"prod_students_smoke.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "prod: students smoke (pwsh)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"prod_students_smoke.ps1"
+			],
+			"isBackground": false
+		}
+	]
+}
