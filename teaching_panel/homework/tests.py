@@ -1,7 +1,9 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
+from unittest.mock import patch
 from schedule.models import Group, Lesson
 from .models import Homework, Question, Choice, StudentSubmission, Answer
 
@@ -87,3 +89,48 @@ class SubmissionApiGuardsTests(TestCase):
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data.get('status'), 'in_progress')
         self.assertIsNone(resp.data.get('submitted_at'))
+
+
+class SubmissionNotificationsTests(TestCase):
+    @override_settings(TELEGRAM_BOT_TOKEN='test-token')
+    @patch('accounts.notifications.requests.post')
+    def test_feedback_notifies_student_only_once(self, mock_post):
+        """Повторное сохранение feedback не должно спамить 'homework_graded'."""
+        # Telegram API mock
+        mock_post.return_value.ok = True
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = 'OK'
+
+        client = APIClient()
+        teacher = User.objects.create_user(email='t3@example.com', password='pass', role='teacher')
+        student = User.objects.create_user(email='s3@example.com', password='pass', role='student')
+        student.telegram_chat_id = 123
+        student.save(update_fields=['telegram_chat_id'])
+
+        group = Group.objects.create(name='G3', teacher=teacher)
+        group.students.add(student)
+        start = timezone.now()
+        end = start + timezone.timedelta(hours=1)
+        lesson = Lesson.objects.create(title='L3', group=group, teacher=teacher, start_time=start, end_time=end)
+        hw = Homework.objects.create(teacher=teacher, lesson=lesson, title='HW3', status='published', published_at=timezone.now())
+
+        submission = StudentSubmission.objects.create(homework=hw, student=student, status='submitted', submitted_at=timezone.now())
+
+        client.force_authenticate(user=teacher)
+
+        # First feedback -> should notify
+        resp1 = client.patch(f'/api/submissions/{submission.id}/feedback/', {
+            'score': 10,
+            'comment': 'ok',
+        }, format='json')
+        self.assertEqual(resp1.status_code, 200)
+
+        # Second feedback edit (already graded) -> should NOT notify again
+        resp2 = client.patch(f'/api/submissions/{submission.id}/feedback/', {
+            'score': 10,
+            'comment': 'updated',
+        }, format='json')
+        self.assertEqual(resp2.status_code, 200)
+
+        # Only one actual Telegram send should happen
+        self.assertEqual(mock_post.call_count, 1)

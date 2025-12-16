@@ -12,7 +12,6 @@ from accounts.notifications import send_telegram_notification
 from .models import Homework, StudentSubmission, Answer
 from .serializers import HomeworkSerializer, HomeworkStudentSerializer, StudentSubmissionSerializer
 from .permissions import IsTeacherHomework, IsStudentSubmission
-from .tasks import notify_student_graded
 
 
 class HomeworkViewSet(viewsets.ModelViewSet):
@@ -416,6 +415,8 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         }
         """
         submission = self.get_object()
+
+        status_before = submission.status
         
         # Проверяем права: только учитель этого задания
         if request.user != submission.homework.teacher:
@@ -466,12 +467,9 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             request=request
         )
         
-        # Уведомляем ученика
-        try:
-            notify_student_graded.delay(submission.id)
-        except Exception:
-            pass
-        self._notify_student_graded(submission)
+        # Уведомляем ученика только при первом переводе в graded
+        if status_before == 'submitted' and submission.status == 'graded':
+            self._notify_student_graded(submission)
         
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
@@ -560,12 +558,6 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             submission.status = 'graded'
             submission.graded_at = timezone.now()
             submission.save(update_fields=['status', 'graded_at'])
-            # Уведомим ученика в фоне (Celery)
-            try:
-                notify_student_graded.delay(submission.id)
-            except Exception:
-                # В случае отсутствия брокера/воркера тихо игнорируем
-                pass
             self._notify_student_graded(submission)
         
         # Возвращаем обновленные данные
@@ -606,10 +598,6 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             submission.save(update_fields=['status', 'graded_at'])
             
             # Уведомляем ученика
-            try:
-                notify_student_graded.delay(submission.id)
-            except Exception:
-                pass
             self._notify_student_graded(submission)
         
         serializer = self.get_serializer(submission)

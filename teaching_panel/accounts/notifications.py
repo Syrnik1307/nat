@@ -1,9 +1,11 @@
 """Helper utilities for user notification delivery."""
+from datetime import timedelta
 import logging
 from typing import Dict
 
 import requests
 from django.conf import settings
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +87,27 @@ def send_telegram_notification(user, notification_type: str, message: str, *, di
             status='skipped',
             message=message,
             error_message='Missing telegram_chat_id'
+        )
+        return False
+
+    # Dedupe: avoid sending identical notifications repeatedly due to retries / double-dispatch
+    # (e.g., Celery task + synchronous fallback).
+    dedupe_window = timezone.now() - timedelta(minutes=2)
+    if NotificationLog.objects.filter(
+        user=user,
+        notification_type=notification_type,
+        channel='telegram',
+        status='sent',
+        message=message,
+        created_at__gte=dedupe_window,
+    ).exists():
+        NotificationLog.objects.create(
+            user=user,
+            notification_type=notification_type,
+            channel='telegram',
+            status='skipped',
+            message=message,
+            error_message='Deduped: identical recent notification'
         )
         return False
 
