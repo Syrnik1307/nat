@@ -13,6 +13,31 @@ import json
 
 from .models import Lesson, LessonMaterial, MaterialView
 from accounts.models import CustomUser
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+
+def _ensure_jwt_user(request):
+    """Попытаться аутентифицировать пользователя по JWT для plain Django views.
+
+    DRF authentication обычно не применяется к обычным Django views, поэтому
+    эти endpoints иначе всегда возвращают 401 при работе через SPA (Bearer token).
+    """
+    user = getattr(request, 'user', None)
+    if user and getattr(user, 'is_authenticated', False):
+        return True
+
+    try:
+        auth_result = JWTAuthentication().authenticate(request)
+    except Exception:
+        auth_result = None
+
+    if not auth_result:
+        return False
+
+    user, token = auth_result
+    request.user = user
+    request.auth = token
+    return True
 
 
 @csrf_exempt
@@ -32,7 +57,7 @@ def upload_material(request, lesson_id):
     }
     """
     # Проверка авторизации
-    if not request.user.is_authenticated:
+    if not _ensure_jwt_user(request):
         return JsonResponse({'error': 'Требуется авторизация'}, status=401)
     
     # Только преподаватель может загружать материалы
@@ -113,7 +138,7 @@ def list_materials(request, lesson_id):
         - material_type (optional): "theory" or "notes"
     """
     # Проверка авторизации
-    if not request.user.is_authenticated:
+    if not _ensure_jwt_user(request):
         return JsonResponse({'error': 'Требуется авторизация'}, status=401)
     
     try:
@@ -200,7 +225,7 @@ def get_material_detail(request, material_id):
     GET /schedule/api/materials/<material_id>/
     """
     # Проверка авторизации
-    if not request.user.is_authenticated:
+    if not _ensure_jwt_user(request):
         return JsonResponse({'error': 'Требуется авторизация'}, status=401)
     
     try:
@@ -271,7 +296,7 @@ def track_material_view(request, material_id):
     }
     """
     # Проверка авторизации
-    if not request.user.is_authenticated:
+    if not _ensure_jwt_user(request):
         return JsonResponse({'error': 'Требуется авторизация'}, status=401)
     
     # Только ученик может отмечать просмотры
@@ -336,7 +361,7 @@ def get_material_views(request, material_id):
     GET /schedule/api/materials/<material_id>/views/
     """
     # Проверка авторизации
-    if not request.user.is_authenticated:
+    if not _ensure_jwt_user(request):
         return JsonResponse({'error': 'Требуется авторизация'}, status=401)
     
     # Только преподаватель может видеть статистику
@@ -417,7 +442,7 @@ def delete_material(request, material_id):
     DELETE /schedule/api/materials/<material_id>/
     """
     # Проверка авторизации
-    if not request.user.is_authenticated:
+    if not _ensure_jwt_user(request):
         return JsonResponse({'error': 'Требуется авторизация'}, status=401)
     
     # Только преподаватель может удалять материалы
@@ -456,7 +481,7 @@ def get_lesson_materials_statistics(request, lesson_id):
     GET /schedule/api/lessons/<lesson_id>/materials/statistics/
     """
     # Проверка авторизации
-    if not request.user.is_authenticated:
+    if not _ensure_jwt_user(request):
         return JsonResponse({'error': 'Требуется авторизация'}, status=401)
     
     # Только преподаватель может видеть статистику
