@@ -549,11 +549,29 @@
 .hc-option-checkbox {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  justify-content: center;
+  gap: 0;
+  font-size: 0;
+  color: transparent;
   white-space: nowrap;
   font-weight: 400;
+  min-width: 32px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.hc-option-radio input,
+.hc-option-checkbox input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.hc-option-radio span,
+.hc-option-checkbox span {
+  display: none;
 }
 
 .gm-btn-icon {

@@ -181,11 +181,12 @@
   font-weight: 600;
 }
 
-.ht-question-type {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
-  background: rgba(148, 163, 184, 0.18);
-  padding: 0.25rem 0.5rem;
+.ht-question-points {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(37, 99, 235, 0.1);
+  padding: 0.35rem 0.75rem;
   border-radius: 8px;
 }
 
@@ -260,6 +261,42 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 220px);
   gap: 1rem;
   align-items: center;
+}
+
+/* Styled select for matching questions */
+.ht-matching-row select.form-input {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--bg-paper);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 10px;
+  padding: 0.65rem 2.5rem 0.65rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  background-size: 12px;
+}
+
+.ht-matching-row select.form-input:hover {
+  border-color: var(--color-primary);
+}
+
+.ht-matching-row select.form-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.ht-matching-row select.form-input option {
+  background: var(--bg-paper);
+  color: var(--text-main);
+  padding: 0.5rem;
 }
 
 .ht-matching-left {
