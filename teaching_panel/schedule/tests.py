@@ -194,3 +194,30 @@ class LessonJoinAPITests(TestCase):
 		resp = self.client.post(url, {})
 		# ViewSet фильтрует queryset по teacher, поэтому другой teacher урок не видит
 		self.assertEqual(resp.status_code, 404)
+
+
+class ZoomAccountsApiTests(TestCase):
+	def setUp(self):
+		self.admin = User.objects.create_user(email='admin_zoom@test.local', password='pass1234', role='admin')
+		self.teacher = User.objects.create_user(email='teacher_zoom@test.local', password='pass1234', role='teacher')
+		self.client = APIClient()
+
+	def test_zoom_accounts_admin_ok(self):
+		self.client.force_authenticate(user=self.admin)
+		resp = self.client.get('/schedule/api/zoom-accounts/?page_size=1')
+		self.assertEqual(resp.status_code, 200)
+
+		resp2 = self.client.get('/schedule/api/zoom-accounts/status_summary/')
+		self.assertEqual(resp2.status_code, 200)
+		data = resp2.json()
+		self.assertIn('total', data)
+		self.assertIn('busy', data)
+		self.assertIn('free', data)
+
+	def test_zoom_accounts_teacher_forbidden(self):
+		self.client.force_authenticate(user=self.teacher)
+		resp = self.client.get('/schedule/api/zoom-accounts/?page_size=1')
+		self.assertEqual(resp.status_code, 403)
+
+		resp2 = self.client.get('/schedule/api/zoom-accounts/status_summary/')
+		self.assertEqual(resp2.status_code, 403)

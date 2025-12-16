@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Group, Lesson, Attendance, ZoomAccount, RecurringLesson, LessonRecording, TeacherStorageQuota, IndividualInviteCode
+from .models import Group, Lesson, Attendance, RecurringLesson, LessonRecording, TeacherStorageQuota, IndividualInviteCode
+from zoom_pool.models import ZoomAccount
 from accounts.models import CustomUser
 
 
@@ -321,18 +322,30 @@ class LessonDetailSerializer(serializers.ModelSerializer):
 
 class ZoomAccountSerializer(serializers.ModelSerializer):
     """Сериализатор для Zoom аккаунтов"""
-    current_lesson_title = serializers.CharField(source='current_lesson.title', read_only=True)
-    current_lesson_id = serializers.IntegerField(source='current_lesson.id', read_only=True)
+    is_available = serializers.SerializerMethodField()
     
     class Meta:
         model = ZoomAccount
         fields = [
-            'id', 'name', 'zoom_user_id', 'is_busy',
-            'current_lesson_id', 'current_lesson_title',
-            'created_at', 'updated_at'
+            'id',
+            'email',
+            'zoom_user_id',
+            'is_active',
+            'current_meetings',
+            'max_concurrent_meetings',
+            'last_used_at',
+            'is_available',
+            'created_at',
+            'updated_at',
         ]
         # Не показываем api_key и api_secret в API
-        read_only_fields = ['is_busy', 'current_lesson_id', 'current_lesson_title']
+        read_only_fields = ['is_available']
+
+    def get_is_available(self, obj):
+        try:
+            return bool(obj.is_available())
+        except Exception:
+            return False
 
 
 class RecurringLessonSerializer(serializers.ModelSerializer):

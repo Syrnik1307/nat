@@ -2,6 +2,7 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from django.utils.dateparse import parse_datetime
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -1392,21 +1393,40 @@ class ZoomAccountViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = ZoomAccount.objects.all()
     serializer_class = ZoomAccountSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = getattr(self.request, 'user', None)
+        if not (user and user.is_authenticated and getattr(user, 'role', None) == 'admin'):
+            raise PermissionDenied('Только администратор')
+        return super().get_queryset()
     
     @action(detail=False, methods=['get'])
     def status_summary(self, request):
         """Сводка по занятости аккаунтов"""
+        user = getattr(request, 'user', None)
+        if not (user and user.is_authenticated and getattr(user, 'role', None) == 'admin'):
+            raise PermissionDenied('Только администратор')
+
         total = ZoomAccount.objects.count()
-        busy = ZoomAccount.objects.filter(is_busy=True).count()
-        free = total - busy
-        
-        busy_accounts = ZoomAccount.objects.filter(is_busy=True).select_related('current_lesson')
-        
+        active = ZoomAccount.objects.filter(is_active=True).count()
+        inactive = total - active
+
+        in_use = ZoomAccount.objects.filter(is_active=True, current_meetings__gt=0).count()
+        available = ZoomAccount.objects.filter(
+            is_active=True,
+            current_meetings__lt=F('max_concurrent_meetings'),
+        ).count()
+
+        busy_accounts = ZoomAccount.objects.filter(is_active=True, current_meetings__gt=0)
+
         return Response({
             'total': total,
-            'busy': busy,
-            'free': free,
-            'busy_accounts': ZoomAccountSerializer(busy_accounts, many=True).data
+            'active': active,
+            'inactive': inactive,
+            'busy': in_use,
+            'free': available,
+            'busy_accounts': ZoomAccountSerializer(busy_accounts, many=True, context={'request': request}).data,
         })
 
 
