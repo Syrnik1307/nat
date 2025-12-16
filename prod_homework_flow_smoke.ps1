@@ -55,7 +55,7 @@ print(str(RefreshToken.for_user(u).access_token))
 
 function HttpJson {
     param(
-        [Parameter(Mandatory=$true)][ValidateSet('GET','POST')][string]$Method,
+        [Parameter(Mandatory=$true)][ValidateSet('GET','POST','PATCH')][string]$Method,
         [Parameter(Mandatory=$true)][string]$Url,
         [Parameter(Mandatory=$true)][hashtable]$Headers,
         [string]$BodyJson = $null
@@ -63,8 +63,10 @@ function HttpJson {
     try {
         if ($Method -eq 'GET') {
             $resp = Invoke-WebRequest -Method Get -Uri $Url -Headers $Headers -TimeoutSec 25
-        } else {
+        } elseif ($Method -eq 'POST') {
             $resp = Invoke-WebRequest -Method Post -Uri $Url -Headers $Headers -ContentType 'application/json' -Body ($BodyJson ?? '{}') -TimeoutSec 25
+        } else {
+            $resp = Invoke-WebRequest -Method Patch -Uri $Url -Headers $Headers -ContentType 'application/json' -Body ($BodyJson ?? '{}') -TimeoutSec 25
         }
         $json = $null
         try { $json = $resp.Content | ConvertFrom-Json } catch { }
@@ -177,5 +179,56 @@ Write-Output ("STUDENT_QUESTION_HAS_POINTS={0}" -f $hasPoints)
 if ($hasPoints) {
     Write-Output ("STUDENT_QUESTION_POINTS={0}" -f $q0.points)
 }
+
+Write-Host "=== Create submission, answer, submit ===" -ForegroundColor Cyan
+$createSub = HttpJson -Method POST -Url "$BaseUrl/api/submissions/" -Headers $headers -BodyJson ((@{ homework = $homeworkId } | ConvertTo-Json))
+if (-not $createSub.ok) { throw "student create submission failed status=$($createSub.status) raw=$($createSub.raw)" }
+$submissionId = [int]$createSub.json.id
+if (-not $submissionId) { throw "submission id missing" }
+Write-Host "submission_id=$submissionId" -ForegroundColor DarkGray
+
+$questions = @($detail.json.questions)
+$qSingle = $questions | Where-Object { $_.question_type -eq 'SINGLE_CHOICE' } | Select-Object -First 1
+$qMatch = $questions | Where-Object { $_.question_type -eq 'MATCHING' } | Select-Object -First 1
+if (-not $qSingle) { throw "SINGLE_CHOICE question not found in student payload" }
+if (-not $qMatch) { throw "MATCHING question not found in student payload" }
+
+$choiceCorrect = @($qSingle.choices) | Where-Object { $_.text -eq '4' } | Select-Object -First 1
+if (-not $choiceCorrect) { throw "Correct choice '4' not found" }
+
+$answersObj = @{}
+$answersObj["$($qSingle.id)"] = [int]$choiceCorrect.id
+$answersObj["$($qMatch.id)"] = @{ p1 = '1'; p2 = '2' }
+
+$savePayload = @{ answers = $answersObj } | ConvertTo-Json -Depth 10
+$save = HttpJson -Method PATCH -Url "$BaseUrl/api/submissions/$submissionId/answer/" -Headers $headers -BodyJson $savePayload
+if (-not $save.ok) { throw "student save answers failed status=$($save.status) raw=$($save.raw)" }
+Write-Output ("SUBMISSION_SAVED_TOTAL_SCORE={0}" -f $save.json.total_score)
+
+$submitPayload = (@{ } | ConvertTo-Json)
+$submit = HttpJson -Method POST -Url "$BaseUrl/api/submissions/$submissionId/submit/" -Headers $headers -BodyJson $submitPayload
+if (-not $submit.ok) { throw "student submit failed status=$($submit.status) raw=$($submit.raw)" }
+Write-Output ("SUBMISSION_STATUS={0}" -f $submit.json.status)
+Write-Output ("SUBMISSION_TOTAL_SCORE={0}" -f $submit.json.total_score)
+Write-Output ("SUBMISSION_MAX_SCORE={0}" -f $submit.json.max_score)
+
+Write-Host "=== Teacher can see submission (no grading) ===" -ForegroundColor Cyan
+$teacherTok = Get-AccessTokenForEmail -Email $teacherEmail
+$teacherHeaders = @{ Authorization = "Bearer $teacherTok" }
+
+$tList = HttpJson -Method GET -Url "$BaseUrl/api/submissions/?homework=$homeworkId" -Headers $teacherHeaders
+if (-not $tList.ok) { throw "teacher submissions list failed status=$($tList.status) raw=$($tList.raw)" }
+$tItems = @()
+if ($tList.json.results) { $tItems = @($tList.json.results) } elseif ($tList.json -is [System.Collections.IEnumerable]) { $tItems = @($tList.json) }
+$tFound = $tItems | Where-Object { $_.id -eq $submissionId } | Select-Object -First 1
+if (-not $tFound) { throw "teacher does not see submission_id=$submissionId for homework=$homeworkId" }
+Write-Output "TEACHER_SUBMISSION_VISIBLE=1"
+
+$tDetail = HttpJson -Method GET -Url "$BaseUrl/api/submissions/$submissionId/" -Headers $teacherHeaders
+if (-not $tDetail.ok) { throw "teacher submission detail failed status=$($tDetail.status) raw=$($tDetail.raw)" }
+$ans0 = $tDetail.json.answers | Select-Object -First 1
+if (-not $ans0) { throw "teacher submission detail missing answers" }
+$hasQP = $ans0.PSObject.Properties.Name -contains 'question_points'
+Write-Output ("TEACHER_ANSWER_HAS_QUESTION_POINTS={0}" -f $hasQP)
 
 Write-Host "OK: homework flow smoke done" -ForegroundColor Green
