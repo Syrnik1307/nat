@@ -630,8 +630,8 @@ class Subscription(models.Model):
     total_paid = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     last_payment_date = models.DateTimeField(null=True, blank=True)
 
-    # Хранилище (GB). Базовый объем 15 ГБ, дополнительные покупки.
-    base_storage_gb = models.IntegerField(default=15)
+    # Хранилище (GB). Базовый объем 10 ГБ, дополнительные покупки.
+    base_storage_gb = models.IntegerField(default=10)
     extra_storage_gb = models.IntegerField(default=0)
     used_storage_gb = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     

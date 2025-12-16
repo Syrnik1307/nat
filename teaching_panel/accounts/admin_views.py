@@ -95,6 +95,40 @@ def _get_teacher_metrics(teacher):
     }
 
 
+# Троттлинг для пересчёта хранилища: не чаще раза в 15 минут на учителя
+STORAGE_REFRESH_COOLDOWN_MINUTES = 15
+
+
+def _refresh_storage_usage_if_needed(subscription):
+    """
+    Пересчитывает used_storage_gb с Google Drive, если прошло достаточно времени.
+    
+    Использует updated_at подписки как индикатор последнего обновления.
+    Троттлинг: не чаще раза в 15 минут.
+    """
+    if not subscription or not subscription.gdrive_folder_id:
+        return
+    
+    # Проверяем что Google Drive включен
+    if not getattr(settings, 'USE_GDRIVE_STORAGE', False):
+        return
+    
+    now = timezone.now()
+    
+    # Проверяем cooldown по updated_at (грубая эвристика)
+    # Более точный способ — добавить поле storage_synced_at, но пока используем updated_at
+    if subscription.updated_at and (now - subscription.updated_at) < timedelta(minutes=STORAGE_REFRESH_COOLDOWN_MINUTES):
+        return  # Недавно обновляли, пропускаем
+    
+    try:
+        from .gdrive_folder_service import get_teacher_storage_usage
+        storage_stats = get_teacher_storage_usage(subscription)
+        # used_storage_gb уже обновлён и сохранён внутри get_teacher_storage_usage
+        logger.debug(f"Refreshed storage usage for subscription {subscription.id}: {storage_stats.get('used_gb', 0)} GB")
+    except Exception as e:
+        logger.warning(f"Failed to refresh storage usage for subscription {subscription.id}: {e}")
+
+
 class AdminStatsView(APIView):
     """Статистика для админ панели"""
     
@@ -394,6 +428,10 @@ class AdminTeacherDetailView(APIView):
             return Response({'error': 'Учитель не найден'}, status=status.HTTP_404_NOT_FOUND)
 
         subscription = get_subscription(teacher)
+        
+        # Пересчитываем used_storage_gb с Google Drive (с троттлингом 15 мин)
+        _refresh_storage_usage_if_needed(subscription)
+        
         metrics = _get_teacher_metrics(teacher)
         days_on_platform = 0
         if teacher.created_at:

@@ -373,6 +373,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'accounts.tasks.process_expired_subscriptions',
         'schedule': 3600.0,  # ежечасно обновляем статусы
     },
+    'sync-teacher-storage-usage': {
+        'task': 'accounts.tasks.sync_teacher_storage_usage',
+        'schedule': 21600.0,  # каждые 6 часов (4 раза в день)
+    },
     'cleanup-old-recordings': {
         'task': 'schedule.tasks.cleanup_old_recordings',
         'schedule': 86400.0,  # каждые 24 часа (03:00 UTC)

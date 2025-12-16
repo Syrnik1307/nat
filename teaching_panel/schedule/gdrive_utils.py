@@ -9,6 +9,8 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from django.conf import settings
 import os
+import sys
+import uuid
 import io
 import subprocess
 import tempfile
@@ -16,6 +18,66 @@ import logging
 import json
 
 logger = logging.getLogger(__name__)
+
+
+class DummyGoogleDriveManager:
+    """Безопасный no-op менеджер для тестов/когда Google Drive выключен.
+
+    Нужен, чтобы unit-тесты не делали сетевые вызовы и не создавали реальные папки/файлы.
+    """
+
+    root_folder_id = None
+
+    def create_folder(self, folder_name, parent_folder_id=None):
+        return f"dummy_folder_{uuid.uuid4().hex}"
+
+    def get_or_create_teacher_folder(self, teacher):
+        root = f"dummy_teacher_{getattr(teacher, 'id', 'unknown')}_{uuid.uuid4().hex}"
+        return {
+            'root': root,
+            'recordings': f"{root}_recordings",
+            'homework': f"{root}_homework",
+            'materials': f"{root}_materials",
+            'students': f"{root}_students",
+        }
+
+    def upload_file(self, file_path_or_object, file_name, folder_id=None, mime_type='video/mp4', teacher=None):
+        file_id = f"dummy_file_{uuid.uuid4().hex}"
+        return {
+            'file_id': file_id,
+            'web_view_link': f"https://drive.google.com/file/d/{file_id}/view",
+            'web_content_link': '',
+        }
+
+    def delete_file(self, file_id):
+        return True
+
+    def calculate_folder_size(self, folder_id):
+        return {'total_size': 0, 'file_count': 0, 'folder_count': 0}
+
+    def get_teacher_storage_stats(self, teacher):
+        return {
+            'total_size': 0,
+            'total_files': 0,
+            'total_folders': 0,
+            'recordings': {'total_size': 0, 'file_count': 0},
+            'homework': {'total_size': 0, 'file_count': 0},
+            'materials': {'total_size': 0, 'file_count': 0},
+            'students': {'total_size': 0, 'file_count': 0},
+        }
+
+
+def _should_use_real_gdrive() -> bool:
+    if not getattr(settings, 'USE_GDRIVE_STORAGE', False):
+        return False
+    if os.environ.get('ALLOW_REAL_GDRIVE_IN_TESTS') == '1':
+        return True
+    # Защита: в автоматических unit-тестах не трогаем реальный Drive
+    if any(arg == 'test' or arg.endswith('manage.py') and 'test' in sys.argv for arg in sys.argv):
+        return False
+    if os.environ.get('PYTEST_CURRENT_TEST'):
+        return False
+    return True
 
 
 class GoogleDriveManager:
@@ -494,10 +556,13 @@ _gdrive_manager = None
 def get_gdrive_manager():
     """Получить singleton instance Google Drive Manager"""
     global _gdrive_manager
-    
+
     if _gdrive_manager is None:
-        _gdrive_manager = GoogleDriveManager()
-    
+        if _should_use_real_gdrive():
+            _gdrive_manager = GoogleDriveManager()
+        else:
+            _gdrive_manager = DummyGoogleDriveManager()
+
     return _gdrive_manager
 
 
