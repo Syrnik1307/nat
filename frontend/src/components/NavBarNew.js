@@ -175,59 +175,44 @@ const NavBar = () => {
         <>
           <div 
             className={`nav-dropdown ${showLessonsMenu ? 'open' : ''}`}
-            onMouseLeave={() => {
-              if (lessonsMenuHideTimer.current) clearTimeout(lessonsMenuHideTimer.current);
-              lessonsMenuHideTimer.current = setTimeout(() => setShowLessonsMenu(false), 400);
-            }}
+            onMouseEnter={() => setShowLessonsMenu(true)}
+            onMouseLeave={() => setShowLessonsMenu(false)}
           >
             <button
               type="button"
               className="nav-link nav-dropdown-trigger"
-              onClick={() => {
-                if (lessonsMenuHideTimer.current) clearTimeout(lessonsMenuHideTimer.current);
-                setShowLessonsMenu(prev => !prev);
-              }}
-              onMouseEnter={() => {
-                if (lessonsMenuHideTimer.current) clearTimeout(lessonsMenuHideTimer.current);
-                setShowLessonsMenu(true);
-              }}
-              aria-haspopup="true"
-              aria-expanded={showLessonsMenu}
+              onClick={() => setShowLessonsMenu(prev => !prev)}
             >
               <span className="nav-icon"></span>
               <span>Занятия</span>
               <span className={`caret ${showLessonsMenu ? 'open' : ''}`}>▾</span>
             </button>
-            {showLessonsMenu && (
-              <div className="nav-dropdown-menu" role="menu">
-                <Link
-                  to="/calendar"
-                  className="nav-dropdown-item"
-                  onClick={() => {
-                    if (lessonsMenuHideTimer.current) clearTimeout(lessonsMenuHideTimer.current);
-                    setShowLessonsMenu(false);
-                    setShowMobileMenu(false);
-                  }}
-                  role="menuitem"
-                >
-                  <span className="item-icon"></span>
-                  <span>Календарь</span>
-                </Link>
-                <Link
-                  to="/recurring-lessons/manage"
-                  className="nav-dropdown-item"
-                  onClick={() => {
-                    if (lessonsMenuHideTimer.current) clearTimeout(lessonsMenuHideTimer.current);
-                    setShowLessonsMenu(false);
-                    setShowMobileMenu(false);
-                  }}
-                  role="menuitem"
-                >
-                  <span className="item-icon"></span>
-                  <span>Создать занятие</span>
-                </Link>
-              </div>
-            )}
+            <div className="nav-dropdown-menu" role="menu">
+              <Link
+                to="/calendar"
+                className="nav-dropdown-item"
+                onClick={() => {
+                  setShowLessonsMenu(false);
+                  setShowMobileMenu(false);
+                }}
+                role="menuitem"
+              >
+                <span className="item-icon"></span>
+                <span>Календарь</span>
+              </Link>
+              <Link
+                to="/recurring-lessons/manage"
+                className="nav-dropdown-item"
+                onClick={() => {
+                  setShowLessonsMenu(false);
+                  setShowMobileMenu(false);
+                }}
+                role="menuitem"
+              >
+                <span className="item-icon"></span>
+                <span>Создать занятие</span>
+              </Link>
+            </div>
           </div>
           
           <Link 
