@@ -36,6 +36,7 @@ const NavBar = () => {
   const profileButtonRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const lessonsDropdownRef = useRef(null);
+  const lessonsMenuTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (accessTokenValid) {
@@ -113,6 +114,15 @@ const NavBar = () => {
     }
   }, [accessTokenValid, role]);
 
+  // Очистка таймаута при unmount
+  useEffect(() => {
+    return () => {
+      if (lessonsMenuTimeoutRef.current) {
+        clearTimeout(lessonsMenuTimeoutRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!showLessonsMenu) return undefined;
 
@@ -168,8 +178,18 @@ const NavBar = () => {
           <div 
             ref={lessonsDropdownRef}
             className={`nav-dropdown ${showLessonsMenu ? 'open' : ''}`}
-            onMouseEnter={() => setShowLessonsMenu(true)}
-            onMouseLeave={() => setShowLessonsMenu(false)}
+            onMouseEnter={() => {
+              if (lessonsMenuTimeoutRef.current) {
+                clearTimeout(lessonsMenuTimeoutRef.current);
+                lessonsMenuTimeoutRef.current = null;
+              }
+              setShowLessonsMenu(true);
+            }}
+            onMouseLeave={() => {
+              lessonsMenuTimeoutRef.current = setTimeout(() => {
+                setShowLessonsMenu(false);
+              }, 150);
+            }}
           >
             <button
               type="button"

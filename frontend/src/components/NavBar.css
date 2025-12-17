@@ -607,6 +607,8 @@
   border-radius: 12px;
   box-shadow: 0 10px 30px -5px rgba(0,0,0,0.2), 0 4px 6px -2px rgba(0,0,0,0.1);
   padding: .5rem;
+  padding-top: calc(.5rem + 8px); /* Добавляем отступ для "моста" */
+  margin-top: -8px; /* Поднимаем меню чтобы перекрыть зазор */
   display: flex;
   flex-direction: column;
   z-index: 9999;
@@ -616,6 +618,17 @@
   pointer-events: none;
   transform: translateY(-8px);
   transition: opacity .15s ease, transform .15s ease, visibility .15s;
+}
+
+/* Невидимый мост между триггером и меню для сохранения hover */
+.nav-dropdown-menu::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: transparent;
 }
 
 /* Показываем меню когда dropdown открыт */
