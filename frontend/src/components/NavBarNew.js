@@ -35,7 +35,7 @@ const NavBar = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const profileButtonRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
-  const lessonsMenuHideTimer = useRef(null);
+  const lessonsDropdownRef = useRef(null);
 
   useEffect(() => {
     if (accessTokenValid) {
@@ -53,38 +53,6 @@ const NavBar = () => {
       return () => clearInterval(interval);
     }
   }, [messages.length]);
-
-  useEffect(() => {
-    return () => {
-      if (lessonsMenuHideTimer.current) {
-        clearTimeout(lessonsMenuHideTimer.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 768 && showMobileMenu) {
-        setShowMobileMenu(false);
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [showMobileMenu]);
-
-  useEffect(() => {
-    if (showMobileMenu) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-      setShowLessonsMenu(false);
-    }
-
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [showMobileMenu]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -145,6 +113,30 @@ const NavBar = () => {
     }
   }, [accessTokenValid, role]);
 
+  useEffect(() => {
+    if (!showLessonsMenu) return undefined;
+
+    const handleClickOutside = (event) => {
+      if (lessonsDropdownRef.current && !lessonsDropdownRef.current.contains(event.target)) {
+        setShowLessonsMenu(false);
+      }
+    };
+
+    const handleEsc = (event) => {
+      if (event.key === 'Escape') {
+        setShowLessonsMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEsc);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [showLessonsMenu]);
+
   const homePath = (() => {
     if (!accessTokenValid) return '/auth-new';
     if (role === 'teacher') return '/home-new';
@@ -174,6 +166,7 @@ const NavBar = () => {
       {accessTokenValid && role === 'teacher' && (
         <>
           <div 
+            ref={lessonsDropdownRef}
             className={`nav-dropdown ${showLessonsMenu ? 'open' : ''}`}
             onMouseEnter={() => setShowLessonsMenu(true)}
             onMouseLeave={() => setShowLessonsMenu(false)}
@@ -182,6 +175,7 @@ const NavBar = () => {
               type="button"
               className="nav-link nav-dropdown-trigger"
               onClick={() => setShowLessonsMenu(prev => !prev)}
+              onFocus={() => setShowLessonsMenu(true)}
             >
               <span className="nav-icon"></span>
               <span>Занятия</span>
