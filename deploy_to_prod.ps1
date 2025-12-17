@@ -39,7 +39,7 @@ $deployCommands += @(
 if (-not $SkipFrontend) {
     $deployCommands += @(
         "echo '🎨 Building frontend...'",
-        "cd ../frontend && npm install --quiet && npm run build && cd ../teaching_panel",
+        "cd ../frontend && sudo chown -R www-data:www-data . && sudo -u www-data npm install --quiet && sudo -u www-data npm run build && cd ../teaching_panel",
         ""
     )
 }

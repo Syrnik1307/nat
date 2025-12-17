@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import StartLessonButton from '../modules/core/zoom/StartLessonButton';
 import { ConfirmModal } from '../shared/components';
 import './SwipeableLesson.css';
@@ -11,6 +11,31 @@ const SwipeableLesson = ({ lesson, onDelete, formatTime, getLessonDuration }) =>
   const [confirmState, setConfirmState] = useState({ open: false, type: null });
 
   const pendingDeleteType = useRef(null);
+  const deleteMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!showDeleteMenu) return undefined;
+
+    const handleClickOutside = (event) => {
+      if (deleteMenuRef.current && !deleteMenuRef.current.contains(event.target)) {
+        setShowDeleteMenu(false);
+      }
+    };
+
+    const handleEsc = (event) => {
+      if (event.key === 'Escape') {
+        setShowDeleteMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEsc);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [showDeleteMenu]);
 
   const openConfirm = (type) => {
     pendingDeleteType.current = type;
@@ -90,7 +115,7 @@ const SwipeableLesson = ({ lesson, onDelete, formatTime, getLessonDuration }) =>
             onSuccess={() => setErrorMessage('')}
           />
           
-          <div className="delete-menu-container">
+          <div className="delete-menu-container" ref={deleteMenuRef}>
             <button
               type="button"
               className="delete-btn"
@@ -102,10 +127,6 @@ const SwipeableLesson = ({ lesson, onDelete, formatTime, getLessonDuration }) =>
             
             {showDeleteMenu && (
               <>
-                <div
-                  className="delete-menu-overlay"
-                  onClick={() => setShowDeleteMenu(false)}
-                />
                 <div className="delete-menu">
                   <button
                     type="button"
