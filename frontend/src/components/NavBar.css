@@ -606,6 +606,19 @@
   z-index: 905;
 }
 
+/*
+ * Hover-bridge: убирает «мертвую зону» между триггером и меню.
+ * Иначе onMouseLeave успевает закрыть меню, пока курсор летит через gap.
+ */
+.nav-dropdown-menu::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -0.5rem;
+  height: 0.5rem;
+}
+
 @keyframes dropdownFadeIn {
   from {
     opacity: 0; 
