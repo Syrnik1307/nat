@@ -177,7 +177,7 @@ const NavBar = () => {
             className={`nav-dropdown ${showLessonsMenu ? 'open' : ''}`}
             onMouseLeave={() => {
               if (lessonsMenuHideTimer.current) clearTimeout(lessonsMenuHideTimer.current);
-              lessonsMenuHideTimer.current = setTimeout(() => setShowLessonsMenu(false), 250);
+              lessonsMenuHideTimer.current = setTimeout(() => setShowLessonsMenu(false), 400);
             }}
           >
             <button

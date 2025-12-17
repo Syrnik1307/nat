@@ -592,7 +592,7 @@
 
 .nav-dropdown-menu {
   position: absolute;
-  top: calc(100% + .5rem);
+  top: 100%;
   left: 0;
   min-width: 190px;
   background: var(--bg-paper);
@@ -606,18 +606,7 @@
   z-index: 905;
 }
 
-/*
- * Hover-bridge: убирает «мертвую зону» между триггером и меню.
- * Иначе onMouseLeave успевает закрыть меню, пока курсор летит через gap.
- */
-.nav-dropdown-menu::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: -0.5rem;
-  height: 0.5rem;
-}
+/* Меню теперь вплотную к кнопке (top: 100%), hover-bridge не нужен */
 
 @keyframes dropdownFadeIn {
   from {
