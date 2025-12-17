@@ -24,14 +24,16 @@ const AttendanceStatusPicker = ({ currentStatus, onStatusSelect, onClose, isLoad
     }
 
     // Закрыть при клике вне
-    const handleClickOutside = (e) => {
+    // Используем mousedown, чтобы корректно работать вместе с другими "click outside" обработчиками
+    // и не терять клики по кнопкам внутри поп-апа.
+    const handlePointerDownOutside = (e) => {
       if (pickerRef.current && !pickerRef.current.contains(e.target)) {
         onClose();
       }
     };
 
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    document.addEventListener('mousedown', handlePointerDownOutside);
+    return () => document.removeEventListener('mousedown', handlePointerDownOutside);
   }, [onClose]);
 
   const statusOptions = [
@@ -51,6 +53,7 @@ const AttendanceStatusPicker = ({ currentStatus, onStatusSelect, onClose, isLoad
         left: `${position.left}px`,
         zIndex: 1001,
       }}
+      onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="picker-content">
