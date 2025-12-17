@@ -20,7 +20,7 @@ django.setup()
 
 from django.contrib.auth import get_user_model
 from accounts.models import PasswordResetToken, NotificationSettings
-from schedule.models import Lesson
+from schedule.models import Lesson, RecurringLessonTelegramBindCode
 from homework.models import Homework, StudentSubmission
 from accounts.telegram_utils import (
     link_account_with_code,
@@ -736,6 +736,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/reset — Сбросить пароль\n"
         "/support — Поддержка (создать/продолжить обращение)\n"
         "/close — Закрыть текущее обращение\n"
+        "/chatid — Показать Chat ID (для групп)\n"
+        "/bindgroup <код> — Привязать текущую группу к уроку\n"
         "/unlink — Отвязать Telegram\n"
         "/help — Эта справка\n\n"
         "❓ *Как начать:*\n"
@@ -744,6 +746,100 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "3. Используйте меню или команды выше для быстрого доступа."
     )
     await _send_response(update, context, text, reply_markup=_build_section_keyboard('help', include_refresh=False))
+
+
+async def chatid_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /chatid — показать Chat ID текущего чата (для настройки уведомлений в группах)"""
+    chat = update.effective_chat
+    chat_id = chat.id
+    chat_type = chat.type
+    chat_title = chat.title or 'Личный чат'
+    
+    if chat_type in ('group', 'supergroup'):
+        text = (
+            f"📋 *Chat ID этой группы:*\n"
+            f"`{chat_id}`\n\n"
+            f"👥 Группа: {chat_title}\n\n"
+            "Скопируйте ID и вставьте в настройки регулярного урока "
+            "в поле «Chat ID Telegram-группы»."
+        )
+    elif chat_type == 'channel':
+        text = (
+            f"📢 *Chat ID канала:*\n"
+            f"`{chat_id}`\n\n"
+            f"Канал: {chat_title}"
+        )
+    else:
+        text = (
+            f"💬 *Это личный чат*\n"
+            f"Chat ID: `{chat_id}`\n\n"
+            "Для уведомлений в группу — добавьте бота в группу "
+            "и отправьте там /chatid"
+        )
+    
+    await update.message.reply_text(text, parse_mode='Markdown')
+
+
+async def bindgroup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /bindgroup <CODE> — привязать текущую группу к регулярному уроку."""
+    if not update.message:
+        return
+    chat = update.effective_chat
+    if not chat or chat.type not in ('group', 'supergroup'):
+        await update.message.reply_text('ℹ️ Используйте /bindgroup в Telegram-группе.')
+        return
+
+    args = context.args if context.args else []
+    if not args:
+        await update.message.reply_text('❌ Неверный формат. Используйте: /bindgroup <КОД>')
+        return
+
+    code = args[0].strip().upper()
+    if not code or len(code) < 6:
+        await update.message.reply_text('❌ Некорректный код привязки')
+        return
+
+    now = timezone.now()
+
+    def bind_in_db():
+        try:
+            bind = RecurringLessonTelegramBindCode.objects.select_related('recurring_lesson', 'recurring_lesson__teacher').get(code=code)
+        except RecurringLessonTelegramBindCode.DoesNotExist:
+            return False, 'Код не найден'
+
+        if bind.used_at is not None:
+            return False, 'Код уже использован'
+
+        if bind.expires_at and bind.expires_at < now:
+            return False, 'Код истёк'
+
+        rl = bind.recurring_lesson
+        # Привязываем chat_id к уроку
+        rl.telegram_group_chat_id = str(chat.id)
+        rl.telegram_notify_to_group = True
+        rl.telegram_notify_enabled = True
+        rl.save(update_fields=['telegram_group_chat_id', 'telegram_notify_to_group', 'telegram_notify_enabled', 'updated_at'])
+
+        bind.used_at = now
+        bind.used_chat_id = str(chat.id)
+        bind.save(update_fields=['used_at', 'used_chat_id'])
+
+        return True, rl
+
+    ok, result = await sync_to_async(bind_in_db)()
+    if not ok:
+        await update.message.reply_text(f'❌ Не удалось привязать группу: {result}')
+        return
+
+    rl = result
+    teacher_name = rl.teacher.get_full_name() if rl.teacher else ''
+    await update.message.reply_text(
+        f"✅ Группа привязана к регулярному уроку!\n\n"
+        f"📚 {rl.title} — {rl.group.name}\n"
+        f"👨‍🏫 {teacher_name}\n"
+        f"🆔 Chat ID: {chat.id}\n\n"
+        f"Теперь напоминания будут приходить сюда (если включены)."
+    )
 
 
 async def support_start(update: Update, context: ContextTypes.DEFAULT_TYPE, user: Optional[User] = None):
@@ -908,6 +1004,8 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("support", support_start))
     application.add_handler(CommandHandler("close", close_support))
+    application.add_handler(CommandHandler("chatid", chatid_command))
+    application.add_handler(CommandHandler("bindgroup", bindgroup_command))
     
     # Регистрируем обработчики кнопок
     application.add_handler(CallbackQueryHandler(link_account_callback, pattern='^link_account$'))

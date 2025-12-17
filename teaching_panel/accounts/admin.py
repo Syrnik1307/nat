@@ -28,7 +28,7 @@ class CustomUserAdmin(UserAdmin):
         (None, {'fields': ('email', 'password')}),
         ('Личная информация', {'fields': ('first_name', 'last_name', 'middle_name', 'username_handle', 'phone_number', 'date_of_birth', 'avatar')}),
         ('Роль и права', {'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-        ('Zoom', {'fields': ('zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_user_id')}),
+        ('Zoom', {'fields': ('zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_user_id', 'zoom_pmi_link')}),
         ('Telegram', {'fields': ('telegram_id', 'telegram_username', 'telegram_chat_id', 'telegram_verified')}),
         ('Маркетинг', {'fields': ('agreed_to_marketing',)}),
         ('Важные даты', {'fields': ('last_login', 'date_joined')}),

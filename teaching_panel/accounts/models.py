@@ -162,6 +162,14 @@ class CustomUser(AbstractUser):
         help_text=_('User ID в Zoom (обычно email или ID пользователя)')
     )
     
+    zoom_pmi_link = models.URLField(
+        _('Zoom PMI ссылка'),
+        max_length=500,
+        blank=True,
+        default='',
+        help_text=_('Постоянная ссылка Zoom (Personal Meeting ID) для регулярных уроков')
+    )
+    
     # Google Drive для хранения файлов
     gdrive_folder_id = models.CharField(
         _('Google Drive Folder ID'),

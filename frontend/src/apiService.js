@@ -298,6 +298,7 @@ export const getRecurringLessons = (params = {}) => apiClient.get('recurring-les
 export const createRecurringLesson = (data) => apiClient.post('recurring-lessons/', data);
 export const updateRecurringLesson = (id, data) => apiClient.put(`recurring-lessons/${id}/`, data);
 export const deleteRecurringLesson = (id) => apiClient.delete(`recurring-lessons/${id}/`);
+export const createRecurringLessonTelegramBindCode = (id) => apiClient.post(`recurring-lessons/${id}/telegram_bind_code/`, {});
 export const generateLessonsFromRecurring = (id, payload) => apiClient.post(`recurring-lessons/${id}/generate_lessons/`, payload);
 
 // =============== ASSIGNMENTS ===============

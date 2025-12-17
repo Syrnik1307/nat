@@ -1551,6 +1551,50 @@ class RecurringLessonViewSet(viewsets.ModelViewSet):
             'skipped_outside_pattern': skipped_outside
         })
 
+    @action(detail=True, methods=['post'], url_path='telegram_bind_code')
+    def telegram_bind_code(self, request, pk=None):
+        """Сгенерировать одноразовый код для привязки Telegram-группы к этому регулярному уроку.
+
+        Использование:
+          1) Добавьте бота в Telegram-группу.
+          2) В группе отправьте: /bindgroup <CODE>
+        """
+        rl = self.get_object()
+        user = request.user
+        if not user.is_authenticated or getattr(user, 'role', None) != 'teacher' or rl.teacher_id != user.id:
+            return Response({'detail': 'Недостаточно прав'}, status=403)
+
+        from django.utils.crypto import get_random_string
+        from django.utils import timezone
+        from datetime import timedelta
+        from .models import RecurringLessonTelegramBindCode
+
+        ttl_minutes = 30
+        expires_at = timezone.now() + timedelta(minutes=ttl_minutes)
+
+        # Генерируем уникальный код
+        code = None
+        for _ in range(10):
+            candidate = get_random_string(8).upper()
+            if not RecurringLessonTelegramBindCode.objects.filter(code=candidate).exists():
+                code = candidate
+                break
+        if not code:
+            return Response({'detail': 'Не удалось сгенерировать код, попробуйте позже'}, status=500)
+
+        RecurringLessonTelegramBindCode.objects.create(
+            recurring_lesson=rl,
+            code=code,
+            expires_at=expires_at,
+        )
+
+        return Response({
+            'code': code,
+            'expires_at': expires_at,
+            'ttl_minutes': ttl_minutes,
+            'instructions': f"Добавьте бота в группу и отправьте в группе: /bindgroup {code}",
+        })
+
 
 # Web UI Views
 

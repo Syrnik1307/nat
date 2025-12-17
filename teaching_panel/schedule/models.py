@@ -553,6 +553,54 @@ class RecurringLesson(models.Model):
         help_text=_('Адрес или название аудитории')
     )
     
+    # ===== Telegram-уведомления =====
+    telegram_notify_enabled = models.BooleanField(
+        _('Telegram-уведомления'),
+        default=False,
+        help_text=_('Отправлять уведомления о начале урока')
+    )
+    
+    telegram_notify_minutes = models.PositiveIntegerField(
+        _('За сколько минут'),
+        default=10,
+        help_text=_('За сколько минут до начала отправлять уведомление (5, 10, 15, 30)')
+    )
+    
+    telegram_notify_to_group = models.BooleanField(
+        _('В группу'),
+        default=True,
+        help_text=_('Отправлять уведомление в Telegram-группу')
+    )
+    
+    telegram_notify_to_students = models.BooleanField(
+        _('В личку'),
+        default=False,
+        help_text=_('Отправлять личные сообщения ученикам')
+    )
+    
+    telegram_group_chat_id = models.CharField(
+        _('Chat ID Telegram-группы'),
+        max_length=50,
+        blank=True,
+        default='',
+        help_text=_('ID группы в Telegram (бот должен быть добавлен в группу)')
+    )
+    
+    # Анонс урока (опционально)
+    telegram_announce_enabled = models.BooleanField(
+        _('Анонс урока'),
+        default=False,
+        help_text=_('Отправлять анонс заранее (утром в день урока)')
+    )
+    
+    telegram_announce_time = models.TimeField(
+        _('Время анонса'),
+        null=True,
+        blank=True,
+        default=None,
+        help_text=_('Во сколько отправить анонс в день урока')
+    )
+    
     created_at = models.DateTimeField(_('дата создания'), auto_now_add=True)
     updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
     
@@ -982,4 +1030,88 @@ class IndividualInviteCode(models.Model):
                     self.invite_code = code
                     break
         super().save(*args, **kwargs)
+
+
+class LessonNotificationLog(models.Model):
+    """Лог отправленных Telegram-уведомлений (для избежания дублей)"""
+    
+    NOTIFICATION_TYPE_CHOICES = (
+        ('reminder', 'Напоминание'),
+        ('announce', 'Анонс'),
+    )
+    
+    recurring_lesson = models.ForeignKey(
+        RecurringLesson,
+        on_delete=models.CASCADE,
+        related_name='notification_logs',
+        verbose_name=_('регулярный урок')
+    )
+    notification_type = models.CharField(
+        _('тип уведомления'),
+        max_length=20,
+        choices=NOTIFICATION_TYPE_CHOICES
+    )
+    lesson_date = models.DateField(_('дата урока'))
+    sent_at = models.DateTimeField(_('отправлено'), auto_now_add=True)
+    recipients_count = models.PositiveIntegerField(
+        _('количество получателей'),
+        default=0
+    )
+    error_message = models.TextField(
+        _('ошибка'),
+        blank=True,
+        default='',
+        help_text=_('Сообщение об ошибке, если уведомление не удалось отправить')
+    )
+    
+    class Meta:
+        verbose_name = _('лог уведомления')
+        verbose_name_plural = _('логи уведомлений')
+        unique_together = ['recurring_lesson', 'notification_type', 'lesson_date']
+        indexes = [
+            models.Index(fields=['lesson_date', 'notification_type']),
+        ]
+    
+    def __str__(self):
+        return f"{self.recurring_lesson.title} - {self.lesson_date} ({self.notification_type})"
+
+
+class RecurringLessonTelegramBindCode(models.Model):
+    """Одноразовый код для привязки Telegram-группы к регулярному уроку.
+
+    Используется ботом в группе: /bindgroup <CODE>
+    """
+
+    recurring_lesson = models.ForeignKey(
+        RecurringLesson,
+        on_delete=models.CASCADE,
+        related_name='telegram_bind_codes',
+        verbose_name=_('регулярный урок')
+    )
+    code = models.CharField(
+        _('код'),
+        max_length=12,
+        unique=True,
+        db_index=True
+    )
+    expires_at = models.DateTimeField(_('истекает'))
+    used_at = models.DateTimeField(_('использован'), null=True, blank=True)
+    used_chat_id = models.CharField(
+        _('chat_id'),
+        max_length=50,
+        blank=True,
+        default=''
+    )
+    created_at = models.DateTimeField(_('создан'), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('код привязки Telegram')
+        verbose_name_plural = _('коды привязки Telegram')
+        indexes = [
+            models.Index(fields=['expires_at']),
+            models.Index(fields=['used_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.code} → {self.recurring_lesson_id}"
 

@@ -358,10 +358,18 @@ class RecurringLessonSerializer(serializers.ModelSerializer):
     )
     day_of_week_display = serializers.SerializerMethodField()
     week_type_display = serializers.CharField(source='get_week_type_display', read_only=True)
+    # PMI ссылка препода (read-only, берём из teacher)
+    zoom_pmi_link = serializers.SerializerMethodField()
     
     def get_day_of_week_display(self, obj):
         days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
         return days[obj.day_of_week] if 0 <= obj.day_of_week < 7 else 'Unknown'
+    
+    def get_zoom_pmi_link(self, obj):
+        """Получить постоянную Zoom-ссылку преподавателя"""
+        if obj.teacher and hasattr(obj.teacher, 'zoom_pmi_link'):
+            return obj.teacher.zoom_pmi_link or ''
+        return ''
     
     class Meta:
         model = RecurringLesson
@@ -371,7 +379,17 @@ class RecurringLessonSerializer(serializers.ModelSerializer):
             'week_type', 'week_type_display',
             'start_time', 'end_time',
             'start_date', 'end_date',
-            'topics', 'location'
+            'topics', 'location',
+            # Telegram-уведомления
+            'telegram_notify_enabled',
+            'telegram_notify_minutes',
+            'telegram_notify_to_group',
+            'telegram_notify_to_students',
+            'telegram_group_chat_id',
+            'telegram_announce_enabled',
+            'telegram_announce_time',
+            # PMI
+            'zoom_pmi_link',
         ]
 
     def validate(self, attrs):
@@ -383,6 +401,67 @@ class RecurringLessonSerializer(serializers.ModelSerializer):
         end_date = attrs.get('end_date') or getattr(self.instance, 'end_date', None)
         if start_date and end_date and end_date < start_date:
             raise serializers.ValidationError({'end_date': 'end_date не может быть раньше start_date'})
+
+        telegram_notify_enabled = attrs.get('telegram_notify_enabled')
+        if telegram_notify_enabled is None and self.instance is not None:
+            telegram_notify_enabled = getattr(self.instance, 'telegram_notify_enabled', False)
+        telegram_notify_enabled = bool(telegram_notify_enabled)
+
+        telegram_notify_minutes = attrs.get('telegram_notify_minutes')
+        if telegram_notify_minutes is None and self.instance is not None:
+            telegram_notify_minutes = getattr(self.instance, 'telegram_notify_minutes', 10)
+
+        telegram_notify_to_group = attrs.get('telegram_notify_to_group')
+        if telegram_notify_to_group is None and self.instance is not None:
+            telegram_notify_to_group = getattr(self.instance, 'telegram_notify_to_group', True)
+        telegram_notify_to_group = bool(telegram_notify_to_group)
+
+        telegram_notify_to_students = attrs.get('telegram_notify_to_students')
+        if telegram_notify_to_students is None and self.instance is not None:
+            telegram_notify_to_students = getattr(self.instance, 'telegram_notify_to_students', False)
+        telegram_notify_to_students = bool(telegram_notify_to_students)
+
+        telegram_group_chat_id = attrs.get('telegram_group_chat_id')
+        if telegram_group_chat_id is None and self.instance is not None:
+            telegram_group_chat_id = getattr(self.instance, 'telegram_group_chat_id', '')
+        telegram_group_chat_id = (telegram_group_chat_id or '').strip()
+
+        telegram_announce_enabled = attrs.get('telegram_announce_enabled')
+        if telegram_announce_enabled is None and self.instance is not None:
+            telegram_announce_enabled = getattr(self.instance, 'telegram_announce_enabled', False)
+        telegram_announce_enabled = bool(telegram_announce_enabled)
+
+        telegram_announce_time = attrs.get('telegram_announce_time')
+        if telegram_announce_time is None and self.instance is not None:
+            telegram_announce_time = getattr(self.instance, 'telegram_announce_time', None)
+
+        if telegram_notify_enabled:
+            allowed_minutes = {5, 10, 15, 30}
+            try:
+                minutes_int = int(telegram_notify_minutes)
+            except Exception:
+                minutes_int = None
+            if minutes_int not in allowed_minutes:
+                raise serializers.ValidationError({'telegram_notify_minutes': 'Допустимые значения: 5, 10, 15, 30'})
+
+            if not telegram_notify_to_group and not telegram_notify_to_students:
+                raise serializers.ValidationError({'telegram_notify_enabled': 'Выберите получателей: в группу и/или в личку'})
+
+            if telegram_notify_to_group and not telegram_group_chat_id:
+                raise serializers.ValidationError({'telegram_group_chat_id': 'Укажите Chat ID группы или привяжите через /bindgroup'})
+
+            request = self.context.get('request')
+            teacher = getattr(self.instance, 'teacher', None)
+            if request and getattr(request, 'user', None) and getattr(request.user, 'role', None) == 'teacher':
+                teacher = request.user
+            if teacher and not getattr(teacher, 'zoom_pmi_link', '').strip():
+                raise serializers.ValidationError({'telegram_notify_enabled': 'Сначала добавьте постоянную Zoom-ссылку (PMI) в профиле'})
+
+        if telegram_announce_enabled:
+            if not telegram_notify_enabled:
+                raise serializers.ValidationError({'telegram_announce_enabled': 'Анонс включается вместе с уведомлениями'})
+            if not telegram_announce_time:
+                raise serializers.ValidationError({'telegram_announce_time': 'Укажите время анонса'})
         return attrs
 
     def create(self, validated_data):

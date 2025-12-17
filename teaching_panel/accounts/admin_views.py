@@ -442,6 +442,7 @@ class AdminTeacherDetailView(APIView):
             'zoom_client_id': teacher.zoom_client_id,
             'zoom_client_secret': teacher.zoom_client_secret,
             'zoom_user_id': teacher.zoom_user_id,
+            'zoom_pmi_link': teacher.zoom_pmi_link,
             'has_zoom_config': bool(teacher.zoom_account_id and teacher.zoom_client_id and teacher.zoom_client_secret),
         }
 
@@ -609,6 +610,7 @@ class AdminUpdateTeacherZoomView(APIView):
         teacher.zoom_client_id = request.data.get('zoom_client_id', teacher.zoom_client_id)
         teacher.zoom_client_secret = request.data.get('zoom_client_secret', teacher.zoom_client_secret)
         teacher.zoom_user_id = request.data.get('zoom_user_id', teacher.zoom_user_id)
+        teacher.zoom_pmi_link = request.data.get('zoom_pmi_link', teacher.zoom_pmi_link)
         teacher.save()
         
         return Response({
@@ -620,6 +622,7 @@ class AdminUpdateTeacherZoomView(APIView):
             'zoom_client_id': teacher.zoom_client_id,
             'zoom_client_secret': teacher.zoom_client_secret,
             'zoom_user_id': teacher.zoom_user_id,
+            'zoom_pmi_link': teacher.zoom_pmi_link,
             'has_zoom_config': bool(teacher.zoom_account_id and teacher.zoom_client_id and teacher.zoom_client_secret),
         })
 
