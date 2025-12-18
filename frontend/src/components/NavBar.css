@@ -606,7 +606,7 @@
 /* Dropdown меню - полностью переписано для надёжной работы */
 .nav-dropdown-menu {
   position: absolute;
-  top: calc(100% + 4px);
+  top: 100%;
   left: 0;
   min-width: 200px;
   background: #ffffff;
@@ -614,7 +614,6 @@
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.08);
   padding: 8px;
-  display: flex;
   flex-direction: column;
   gap: 2px;
   z-index: 99999;
@@ -627,8 +626,8 @@
   display: flex;
 }
 
-/* Также показываем при hover на весь контейнер dropdown */
-.nav-dropdown:hover .nav-dropdown-menu {
+/* Для клавиатуры: если фокус внутри dropdown — меню видно */
+.nav-dropdown:focus-within .nav-dropdown-menu {
   display: flex;
 }
 
