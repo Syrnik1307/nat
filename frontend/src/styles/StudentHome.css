@@ -563,20 +563,5 @@
   }
 }
 
-/* Скрыть все fixed элементы кроме Support Widget на мобильных */
-@media (max-width: 768px) {
-  /* Скрыть все fixed элементы */
-  *[style*="position: fixed"],
-  *[style*="position:fixed"] {
-    display: none !important;
-  }
-  
-  /* Но оставить Support Widget - всегда справа */
-  .support-fab,
-  .support-widget {
-    display: flex !important;
-    left: auto !important;
-    right: 16px !important;
-  }
-}
+
 

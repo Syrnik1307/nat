@@ -705,9 +705,12 @@
     grid-template-columns: repeat(4, 1fr);
   }
   
-  /* Скрыть все плавающие кнопки кроме Support Widget на мобильных */
-  button[style*="position: fixed"]:not(.support-fab),
-  div[style*="position: fixed"]:not(.support-widget):not(.support-fab) {
+  /* Скрыть все плавающие кнопки кроме Support Widget на мобильных
+     ВАЖНО: не трогаем системные портальные меню (navbar dropdown/profile),
+     иначе пункты меню становятся "некликабельными"/исчезают.
+  */
+  button[style*="position: fixed"]:not(.support-fab):not(.tp-allow-fixed),
+  div[style*="position: fixed"]:not(.support-widget):not(.support-fab):not(.tp-allow-fixed):not(.profile-dropdown):not(.nav-dropdown-menu) {
     display: none !important;
   }
   

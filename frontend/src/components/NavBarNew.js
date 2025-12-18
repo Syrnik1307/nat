@@ -149,11 +149,23 @@ const NavBar = () => {
   useEffect(() => {
     if (!showLessonsMenu) return undefined;
 
-    const handleClickOutside = (event) => {
+    const handleDocumentClick = (event) => {
       const target = event.target;
+
       const clickInsideTrigger = lessonsDropdownRef.current && lessonsDropdownRef.current.contains(target);
       const clickInsideMenu = lessonsMenuRef.current && lessonsMenuRef.current.contains(target);
-      if (!clickInsideTrigger && !clickInsideMenu) {
+
+      // More robust for portals / SVG / nested targets
+      const path = typeof event.composedPath === 'function' ? event.composedPath() : null;
+      const clickInPath = (node) => (node && Array.isArray(path) ? path.includes(node) : false);
+
+      const inside =
+        clickInsideTrigger ||
+        clickInsideMenu ||
+        clickInPath(lessonsDropdownRef.current) ||
+        clickInPath(lessonsMenuRef.current);
+
+      if (!inside) {
         setShowLessonsMenu(false);
       }
     };
@@ -164,11 +176,12 @@ const NavBar = () => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    // Use click (not mousedown) so Link navigation isn't canceled by unmounting
+    document.addEventListener('click', handleDocumentClick);
     document.addEventListener('keydown', handleEsc);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleDocumentClick);
       document.removeEventListener('keydown', handleEsc);
     };
   }, [showLessonsMenu]);
@@ -258,7 +271,7 @@ const NavBar = () => {
           {!showMobileMenu && showLessonsMenu && createPortal(
             <div
               ref={lessonsMenuRef}
-              className="nav-dropdown-menu"
+              className="nav-dropdown-menu tp-allow-fixed"
               role="menu"
               style={{
                 position: 'fixed',
@@ -268,6 +281,8 @@ const NavBar = () => {
                 display: 'flex',
                 zIndex: 2147483000,
               }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
             >
               <Link
                 to="/calendar"
@@ -563,8 +578,10 @@ const NavBar = () => {
 
               {showProfileMenu && createPortal(
                 <div
-                  className="profile-dropdown"
+                  className="profile-dropdown tp-allow-fixed"
                   style={{ position: 'fixed', top: menuPosition.top, right: menuPosition.right, zIndex: 99999, backgroundColor: '#fff' }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <div className="dropdown-header">
                     <div className="user-info">
