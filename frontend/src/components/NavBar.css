@@ -390,6 +390,12 @@
     padding: 0;
     animation: none;
     background: var(--bg-app);
+    /* На мобильных показываем меню когда open */
+    display: none;
+  }
+  
+  .nav-dropdown.open .nav-dropdown-menu {
+    display: flex;
   }
 
   .nav-dropdown-item {
@@ -597,46 +603,33 @@
 }
 .caret.open { transform: rotate(180deg); }
 
+/* Dropdown меню - полностью переписано для надёжной работы */
 .nav-dropdown-menu {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
-  min-width: 190px;
-  background: var(--bg-paper);
-  border: 1px solid var(--border-light);
+  min-width: 200px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
-  box-shadow: 0 10px 30px -5px rgba(0,0,0,0.2), 0 4px 6px -2px rgba(0,0,0,0.1);
-  padding: .5rem;
-  padding-top: calc(.5rem + 8px); /* Добавляем отступ для "моста" */
-  margin-top: -8px; /* Поднимаем меню чтобы перекрыть зазор */
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.08);
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  z-index: 9999;
-  /* Скрыто по умолчанию */
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateY(-8px);
-  transition: opacity .15s ease, transform .15s ease, visibility .15s;
-}
-
-/* Невидимый мост между триггером и меню для сохранения hover */
-.nav-dropdown-menu::before {
-  content: '';
-  position: absolute;
-  top: -8px;
-  left: 0;
-  right: 0;
-  height: 12px;
-  background: transparent;
+  gap: 2px;
+  z-index: 99999;
+  /* Скрыто по умолчанию - используем display вместо visibility/opacity */
+  display: none;
 }
 
 /* Показываем меню когда dropdown открыт */
 .nav-dropdown.open .nav-dropdown-menu {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translateY(0);
+  display: flex;
+}
+
+/* Также показываем при hover на весь контейнер dropdown */
+.nav-dropdown:hover .nav-dropdown-menu {
+  display: flex;
 }
 
 @keyframes dropdownFadeIn {
@@ -650,21 +643,34 @@
   }
 }
 
+/* Элементы выпадающего меню - КЛИКАБЕЛЬНЫЕ */
 .nav-dropdown-item {
   text-decoration: none;
-  color: var(--text-main);
-  padding: .7rem .75rem;
-  border-radius: 10px;
-  font-size: .9rem;
+  color: #1e293b;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
   font-weight: 500;
   display: flex;
   align-items: center;
-  gap: .6rem;
-  transition: all 0.18s ease;
+  gap: 10px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
 }
+
 .nav-dropdown-item:hover {
-  background: var(--bg-surface);
+  background: rgba(59, 130, 246, 0.08);
+  color: #3b82f6;
   transform: translateX(2px);
+}
+
+.nav-dropdown-item:active {
+  background: rgba(59, 130, 246, 0.15);
+  transform: translateX(3px);
 }
 
 .item-icon {font-size: 1rem;}

@@ -36,7 +36,6 @@ const NavBar = () => {
   const profileButtonRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const lessonsDropdownRef = useRef(null);
-  const lessonsMenuTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (accessTokenValid) {
@@ -114,15 +113,6 @@ const NavBar = () => {
     }
   }, [accessTokenValid, role]);
 
-  // Очистка таймаута при unmount
-  useEffect(() => {
-    return () => {
-      if (lessonsMenuTimeoutRef.current) {
-        clearTimeout(lessonsMenuTimeoutRef.current);
-      }
-    };
-  }, []);
-
   useEffect(() => {
     if (!showLessonsMenu) return undefined;
 
@@ -178,24 +168,17 @@ const NavBar = () => {
           <div 
             ref={lessonsDropdownRef}
             className={`nav-dropdown ${showLessonsMenu ? 'open' : ''}`}
-            onMouseEnter={() => {
-              if (lessonsMenuTimeoutRef.current) {
-                clearTimeout(lessonsMenuTimeoutRef.current);
-                lessonsMenuTimeoutRef.current = null;
-              }
-              setShowLessonsMenu(true);
-            }}
-            onMouseLeave={() => {
-              lessonsMenuTimeoutRef.current = setTimeout(() => {
-                setShowLessonsMenu(false);
-              }, 150);
-            }}
           >
             <button
               type="button"
               className="nav-link nav-dropdown-trigger"
-              onClick={() => setShowLessonsMenu(prev => !prev)}
-              onFocus={() => setShowLessonsMenu(true)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowLessonsMenu(prev => !prev);
+              }}
+              aria-expanded={showLessonsMenu}
+              aria-haspopup="true"
             >
               <span className="nav-icon"></span>
               <span>Занятия</span>
