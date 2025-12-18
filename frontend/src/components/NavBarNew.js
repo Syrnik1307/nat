@@ -36,6 +36,9 @@ const NavBar = () => {
   const profileButtonRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const lessonsDropdownRef = useRef(null);
+  const lessonsButtonRef = useRef(null);
+  const lessonsMenuRef = useRef(null);
+  const [lessonsMenuPosition, setLessonsMenuPosition] = useState({ top: 0, left: 0, minWidth: 200 });
 
   useEffect(() => {
     if (accessTokenValid) {
@@ -113,11 +116,44 @@ const NavBar = () => {
     }
   }, [accessTokenValid, role]);
 
+  const updateLessonsMenuPosition = () => {
+    if (!lessonsButtonRef.current) return;
+    const rect = lessonsButtonRef.current.getBoundingClientRect();
+
+    const desiredMinWidth = Math.max(200, Math.round(rect.width));
+    const maxLeft = Math.max(8, window.innerWidth - desiredMinWidth - 8);
+    const left = Math.min(Math.max(8, rect.left), maxLeft);
+
+    setLessonsMenuPosition({
+      top: Math.round(rect.bottom),
+      left: Math.round(left),
+      minWidth: desiredMinWidth,
+    });
+  };
+
+  useEffect(() => {
+    if (!showLessonsMenu || showMobileMenu) return undefined;
+
+    updateLessonsMenuPosition();
+
+    const handle = () => updateLessonsMenuPosition();
+    window.addEventListener('scroll', handle, true);
+    window.addEventListener('resize', handle);
+
+    return () => {
+      window.removeEventListener('scroll', handle, true);
+      window.removeEventListener('resize', handle);
+    };
+  }, [showLessonsMenu, showMobileMenu]);
+
   useEffect(() => {
     if (!showLessonsMenu) return undefined;
 
     const handleClickOutside = (event) => {
-      if (lessonsDropdownRef.current && !lessonsDropdownRef.current.contains(event.target)) {
+      const target = event.target;
+      const clickInsideTrigger = lessonsDropdownRef.current && lessonsDropdownRef.current.contains(target);
+      const clickInsideMenu = lessonsMenuRef.current && lessonsMenuRef.current.contains(target);
+      if (!clickInsideTrigger && !clickInsideMenu) {
         setShowLessonsMenu(false);
       }
     };
@@ -172,9 +208,13 @@ const NavBar = () => {
             <button
               type="button"
               className="nav-link nav-dropdown-trigger"
+              ref={lessonsButtonRef}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                if (!showMobileMenu) {
+                  updateLessonsMenuPosition();
+                }
                 setShowLessonsMenu(prev => !prev);
               }}
               aria-expanded={showLessonsMenu}
@@ -184,7 +224,51 @@ const NavBar = () => {
               <span>Занятия</span>
               <span className={`caret ${showLessonsMenu ? 'open' : ''}`}>▾</span>
             </button>
-            <div className="nav-dropdown-menu" role="menu">
+            {/* В мобильном боковом меню рендерим inline, на десктопе — через портал (чтобы не перекрывалось слоями) */}
+            {showMobileMenu && (
+              <div className="nav-dropdown-menu" role="menu">
+                <Link
+                  to="/calendar"
+                  className="nav-dropdown-item"
+                  onClick={() => {
+                    setShowLessonsMenu(false);
+                    setShowMobileMenu(false);
+                  }}
+                  role="menuitem"
+                >
+                  <span className="item-icon"></span>
+                  <span>Календарь</span>
+                </Link>
+                <Link
+                  to="/recurring-lessons/manage"
+                  className="nav-dropdown-item"
+                  onClick={() => {
+                    setShowLessonsMenu(false);
+                    setShowMobileMenu(false);
+                  }}
+                  role="menuitem"
+                >
+                  <span className="item-icon"></span>
+                  <span>Создать занятие</span>
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {!showMobileMenu && showLessonsMenu && createPortal(
+            <div
+              ref={lessonsMenuRef}
+              className="nav-dropdown-menu"
+              role="menu"
+              style={{
+                position: 'fixed',
+                top: lessonsMenuPosition.top,
+                left: lessonsMenuPosition.left,
+                minWidth: lessonsMenuPosition.minWidth,
+                display: 'flex',
+                zIndex: 2147483000,
+              }}
+            >
               <Link
                 to="/calendar"
                 className="nav-dropdown-item"
@@ -209,8 +293,9 @@ const NavBar = () => {
                 <span className="item-icon"></span>
                 <span>Создать занятие</span>
               </Link>
-            </div>
-          </div>
+            </div>,
+            document.body
+          )}
           
           <Link 
             to="/homework/constructor" 
