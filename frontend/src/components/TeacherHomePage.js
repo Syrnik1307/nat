@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getTeacherStatsSummary, getLessons, getGroups, startQuickLesson, startLessonNew, updateLesson } from '../apiService';
 import { Link } from 'react-router-dom';
 import SubscriptionBanner from './SubscriptionBanner';
+import { Select } from '../shared/components';
 import './TeacherHomePage.css';
 
 /* =====================================================
@@ -466,16 +467,15 @@ const TeacherHomePage = () => {
             {/* Group Selection */}
             <div className="start-modal-field">
               <label className="start-modal-label">Группа</label>
-              <select
-                className="start-modal-select"
+              <Select
                 value={selectedGroupId}
                 onChange={(e) => setSelectedGroupId(e.target.value)}
-              >
-                <option value="">Без группы (индивидуальный)</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: 'Без группы (индивидуальный)' },
+                  ...groups.map((g) => ({ value: String(g.id), label: g.name }))
+                ]}
+                placeholder="Без группы (индивидуальный)"
+              />
             </div>
 
             {/* Record Option */}

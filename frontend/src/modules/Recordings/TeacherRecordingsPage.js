@@ -3,7 +3,7 @@ import './TeacherRecordingsPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
 import RecordingCard from './RecordingCard';
 import RecordingPlayer from './RecordingPlayer';
-import { ConfirmModal, ToastContainer } from '../../shared/components';
+import { ConfirmModal, Select, ToastContainer } from '../../shared/components';
 
 function TeacherRecordingsPage() {
   const [recordings, setRecordings] = useState([]);
@@ -427,6 +427,59 @@ function TeacherRecordingsPage() {
     return matchesSearch && matchesGroup && matchesStatus;
   });
 
+  const groupFilterOptions = [
+    { value: 'all', label: 'Все группы' },
+    ...groups.map(group => ({ value: String(group.id), label: group.name }))
+  ];
+
+  const statusFilterOptions = [
+    { value: 'all', label: 'Все статусы' },
+    { value: 'ready', label: 'Готово' },
+    { value: 'processing', label: 'Обрабатывается' },
+    { value: 'failed', label: 'Ошибка' },
+    { value: 'archived', label: 'Архивировано' }
+  ];
+
+  const lessonSelectOptions = (() => {
+    const now = new Date();
+    const pastLessons = lessons.filter(l => new Date(l.start_time) < now);
+    const futureLessons = lessons.filter(l => new Date(l.start_time) >= now);
+    const formatDate = (dateStr) => {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    const result = [{ value: '', label: '📹 Самостоятельное видео' }];
+
+    if (pastLessons.length > 0) {
+      result.push({ type: 'group', label: '📚 Прошедшие уроки' });
+      pastLessons
+        .slice()
+        .sort((a, b) => new Date(b.start_time) - new Date(a.start_time))
+        .forEach((lesson) => {
+          result.push({
+            value: String(lesson.id),
+            label: `${lesson.title || lesson.subject} • ${lesson.group_name} (${formatDate(lesson.start_time)})`
+          });
+        });
+    }
+
+    if (futureLessons.length > 0) {
+      result.push({ type: 'group', label: '📅 Предстоящие уроки' });
+      futureLessons
+        .slice()
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+        .forEach((lesson) => {
+          result.push({
+            value: String(lesson.id),
+            label: `${lesson.title || lesson.subject} • ${lesson.group_name} (${formatDate(lesson.start_time)})`
+          });
+        });
+    }
+
+    return result;
+  })();
+
   return (
     <div className="teacher-recordings-page">
       <div className="teacher-recordings-header">
@@ -488,31 +541,22 @@ function TeacherRecordingsPage() {
 
         <div className="teacher-filter-group">
           <label>Группа:</label>
-          <select
+          <Select
             value={groupFilter}
             onChange={(e) => setGroupFilter(e.target.value)}
-            className="teacher-filter-select"
-          >
-            <option value="all">Все группы</option>
-            {groups.map(group => (
-              <option key={group.id} value={group.id}>{group.name}</option>
-            ))}
-          </select>
+            options={groupFilterOptions}
+            placeholder="Все группы"
+          />
         </div>
 
         <div className="teacher-filter-group">
           <label>Статус:</label>
-          <select
+          <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="teacher-filter-select"
-          >
-            <option value="all">Все статусы</option>
-            <option value="ready">Готово</option>
-            <option value="processing">Обрабатывается</option>
-            <option value="failed">Ошибка</option>
-            <option value="archived">Архивировано</option>
-          </select>
+            options={statusFilterOptions}
+            placeholder="Все статусы"
+          />
         </div>
 
         <button onClick={loadRecordings} className="teacher-refresh-btn">
@@ -595,44 +639,12 @@ function TeacherRecordingsPage() {
             <form onSubmit={handleUploadSubmit} className="teacher-upload-form" noValidate>
               <div className="teacher-upload-field">
                 <label>Привязать к уроку (необязательно)</label>
-                <select
+                <Select
                   value={uploadForm.lessonId}
-                  onChange={(e) => setUploadForm({...uploadForm, lessonId: e.target.value})}
-                  className="teacher-upload-select"
-                >
-                  <option value="">📹 Самостоятельное видео</option>
-                  {(() => {
-                    const now = new Date();
-                    const pastLessons = lessons.filter(l => new Date(l.start_time) < now);
-                    const futureLessons = lessons.filter(l => new Date(l.start_time) >= now);
-                    const formatDate = (dateStr) => {
-                      const d = new Date(dateStr);
-                      return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                    };
-                    return (
-                      <>
-                        {pastLessons.length > 0 && (
-                          <optgroup label="📚 Прошедшие уроки">
-                            {pastLessons.sort((a, b) => new Date(b.start_time) - new Date(a.start_time)).map(lesson => (
-                              <option key={lesson.id} value={lesson.id}>
-                                {lesson.title || lesson.subject} • {lesson.group_name} ({formatDate(lesson.start_time)})
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                        {futureLessons.length > 0 && (
-                          <optgroup label="📅 Предстоящие уроки">
-                            {futureLessons.sort((a, b) => new Date(a.start_time) - new Date(b.start_time)).map(lesson => (
-                              <option key={lesson.id} value={lesson.id}>
-                                {lesson.title || lesson.subject} • {lesson.group_name} ({formatDate(lesson.start_time)})
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                      </>
-                    );
-                  })()}
-                </select>
+                  onChange={(e) => setUploadForm({ ...uploadForm, lessonId: e.target.value })}
+                  options={lessonSelectOptions}
+                  placeholder="📹 Самостоятельное видео"
+                />
                 <small className="teacher-upload-hint">
                   Выберите урок для привязки или оставьте "Самостоятельное видео" для дополнительных материалов
                 </small>
