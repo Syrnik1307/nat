@@ -671,7 +671,7 @@
   transition: all 0.2s;
   font-family: inherit;
   color: #334155;
-  background: white;
+  background-color: white;
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
@@ -680,6 +680,7 @@
   background-position: right 0.75rem center;
   background-size: 12px;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .teacher-upload-select:hover {
@@ -688,13 +689,25 @@
 
 .teacher-upload-select optgroup {
   font-weight: 700;
-  color: #334155;
-  padding: 0.35rem 0;
+  color: #1e293b;
+  background: #f8fafc;
+  padding: 8px 12px;
+  font-size: 0.9rem;
 }
 
 .teacher-upload-select option {
-  padding: 0.35rem 0.5rem;
+  padding: 10px 12px;
   color: #334155;
+  background: white;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.teacher-upload-select option:hover,
+.teacher-upload-select option:focus,
+.teacher-upload-select option:checked {
+  background: #e0e7ff;
+  color: #1e3a8a;
 }
 
 .teacher-upload-input:focus,
