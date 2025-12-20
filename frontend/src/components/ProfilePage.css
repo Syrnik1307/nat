@@ -350,6 +350,13 @@
   border-color: #2154bb;
 }
 
+/* Telegram Tab */
+.telegram-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 .telegram-section {
   grid-column: span 2;
   display: flex;

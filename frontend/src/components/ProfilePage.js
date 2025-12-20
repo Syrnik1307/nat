@@ -69,6 +69,7 @@ const ProfilePage = () => {
     }
     const items = [
       { key: 'profile', label: 'Профиль' },
+      { key: 'telegram', label: '📱 Telegram' },
       { key: 'security', label: '🔒 Безопасность' },
     ];
     if (user.role === 'teacher') {
@@ -136,7 +137,7 @@ const ProfilePage = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'security') {
+    if (activeTab === 'telegram') {
       fetchTelegramStatus();
       fetchNotificationSettings();
     }
@@ -707,7 +708,12 @@ const ProfilePage = () => {
                 </div>
               )}
             </section>
+          </div>
+        )}
 
+        {/* Telegram Tab */}
+        {activeTab === 'telegram' && user && (
+          <div className="profile-content telegram-tab">
             <section className="telegram-section">
               <div className="telegram-header">
                 <div>
@@ -832,7 +838,7 @@ const ProfilePage = () => {
             <section className="telegram-section notifications-section">
               <div className="telegram-header">
                 <div>
-                  <h3>Уведомления в Telegram</h3>
+                  <h3>Настройки уведомлений</h3>
                   <p className="profile-subtitle">Выберите, какие события будут приходить в Telegram</p>
                 </div>
                 {notificationSettings && (
