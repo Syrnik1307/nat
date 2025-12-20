@@ -799,9 +799,51 @@ const TeacherHomePage = () => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN - Stats Only (No Quick Links) */}
+        {/* RIGHT COLUMN - New Year Animation + Stats */}
         <div className="dashboard-right">
-          {/* Statistics Card - Expanded */}
+          {/* New Year Animation Card */}
+          <div className="newyear-card">
+            <div className="newyear-scene">
+              {/* Снежинки */}
+              <div className="snowflakes">
+                {[...Array(20)].map((_, i) => (
+                  <div key={i} className="snowflake" style={{
+                    left: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 5}s`,
+                    animationDuration: `${3 + Math.random() * 4}s`,
+                    opacity: 0.4 + Math.random() * 0.6,
+                    fontSize: `${8 + Math.random() * 12}px`
+                  }}>❄</div>
+                ))}
+              </div>
+              {/* Ёлка */}
+              <div className="newyear-tree">
+                <div className="tree-star">⭐</div>
+                <div className="tree-layer tree-top"></div>
+                <div className="tree-layer tree-mid"></div>
+                <div className="tree-layer tree-bottom"></div>
+                <div className="tree-trunk"></div>
+                {/* Гирлянда */}
+                <div className="tree-lights">
+                  <span className="light red"></span>
+                  <span className="light yellow"></span>
+                  <span className="light blue"></span>
+                  <span className="light green"></span>
+                </div>
+              </div>
+              {/* Подарки */}
+              <div className="newyear-gifts">
+                <div className="gift gift-1">🎁</div>
+                <div className="gift gift-2">🎁</div>
+              </div>
+            </div>
+            <div className="newyear-text">
+              <span className="newyear-greeting">С Новым Годом!</span>
+              <span className="newyear-year">2025</span>
+            </div>
+          </div>
+
+          {/* Statistics Card - Below Animation */}
           <div className="stats-card">
             <div className="stats-header">
               <div className="stats-icon-wrapper">
@@ -846,62 +888,6 @@ const TeacherHomePage = () => {
                   <div className="stat-label">Ближайшие</div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Quick Actions Card */}
-          <div className="quick-actions-card">
-            <div className="quick-actions-header">
-              <div className="quick-actions-icon-wrapper">
-                <IconTrendingUp size={20} />
-              </div>
-              <h3 className="quick-actions-title">Быстрые действия</h3>
-            </div>
-            
-            <div className="quick-actions-list">
-              <Link to="/groups/manage" className="quick-action-item">
-                <div className="quick-action-icon">
-                  <IconUsers size={18} />
-                </div>
-                <div className="quick-action-content">
-                  <span className="quick-action-label">Добавить ученика</span>
-                  <span className="quick-action-hint">Создать группу или индивидуального</span>
-                </div>
-                <IconChevronRight size={18} className="quick-action-arrow" />
-              </Link>
-
-              <Link to="/recurring-lessons/manage" className="quick-action-item">
-                <div className="quick-action-icon">
-                  <IconCalendar size={18} />
-                </div>
-                <div className="quick-action-content">
-                  <span className="quick-action-label">Расписание</span>
-                  <span className="quick-action-hint">Настроить регулярные занятия</span>
-                </div>
-                <IconChevronRight size={18} className="quick-action-arrow" />
-              </Link>
-
-              <Link to="/recordings" className="quick-action-item">
-                <div className="quick-action-icon">
-                  <IconDisc size={18} />
-                </div>
-                <div className="quick-action-content">
-                  <span className="quick-action-label">Записи уроков</span>
-                  <span className="quick-action-hint">Просмотреть и поделиться</span>
-                </div>
-                <IconChevronRight size={18} className="quick-action-arrow" />
-              </Link>
-
-              <Link to="/homework" className="quick-action-item">
-                <div className="quick-action-icon">
-                  <IconBook size={18} />
-                </div>
-                <div className="quick-action-content">
-                  <span className="quick-action-label">Домашние задания</span>
-                  <span className="quick-action-hint">Создать и проверить ДЗ</span>
-                </div>
-                <IconChevronRight size={18} className="quick-action-arrow" />
-              </Link>
             </div>
           </div>
         </div>
@@ -1084,9 +1070,10 @@ const globalStyles = `
 
   .hero-title {
     font-size: 1.75rem;
-    font-weight: 700;
+    font-weight: 800;
     margin: 0 0 0.5rem 0;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.03em;
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
 
   .hero-subtitle {
@@ -1171,10 +1158,12 @@ const globalStyles = `
   }
 
   .section-title {
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 1.1rem;
+    font-weight: 700;
     color: var(--color-text-primary);
     margin: 0;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.02em;
   }
 
   .section-link {
@@ -1254,13 +1243,14 @@ const globalStyles = `
   }
 
   .schedule-group-name {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.95rem;
+    font-weight: 700;
     color: var(--color-text-primary);
     margin-bottom: 0.3rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
 
   .schedule-topic-row {
@@ -1485,19 +1475,21 @@ const globalStyles = `
   }
 
   .group-name-minimal {
-    font-size: 0.875rem;
-    font-weight: 600;
+    font-size: 0.9rem;
+    font-weight: 700;
     color: var(--color-text-primary);
     margin: 0;
     line-height: 1.3;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
 
   .group-count {
     font-size: 0.75rem;
     color: var(--color-text-secondary);
+    font-weight: 500;
   }
 
   .group-arrow-icon {
@@ -1589,10 +1581,12 @@ const globalStyles = `
   }
 
   .stats-title {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 1rem;
+    font-weight: 700;
     color: var(--color-text-primary);
     margin: 0;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.02em;
   }
 
   .stats-grid {
@@ -1640,19 +1634,20 @@ const globalStyles = `
   }
 
   .stat-value {
-    font-size: 1.375rem;
-    font-weight: 700;
+    font-size: 1.5rem;
+    font-weight: 800;
     color: var(--color-text-primary);
     line-height: 1;
     margin-bottom: 0.125rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
 
   .stat-label {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: var(--color-text-secondary);
-    font-weight: 500;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.3px;
     line-height: 1.3;
     display: block;
   }
@@ -2062,6 +2057,205 @@ const globalStyles = `
 
   .start-modal-btn.secondary:hover {
     background: #e5e7eb;
+  }
+
+  /* =====================================================
+     NEW YEAR ANIMATION CARD
+     ===================================================== */
+  .newyear-card {
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 50%, #1e1b4b 100%);
+    border-radius: var(--radius-xl);
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .newyear-scene {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  /* Snowflakes */
+  .snowflakes {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .snowflake {
+    position: absolute;
+    top: -20px;
+    color: #fff;
+    animation: snowfallAnimation linear infinite;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+  }
+
+  @keyframes snowfallAnimation {
+    0% {
+      transform: translateY(-10px) rotate(0deg);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(220px) rotate(360deg);
+      opacity: 0.3;
+    }
+  }
+
+  /* Tree */
+  .newyear-tree {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 120px;
+  }
+
+  .tree-star {
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 20px;
+    animation: starGlow 1.5s ease-in-out infinite alternate;
+    filter: drop-shadow(0 0 8px #fbbf24);
+  }
+
+  @keyframes starGlow {
+    0% { transform: translateX(-50%) scale(1); filter: drop-shadow(0 0 8px #fbbf24); }
+    100% { transform: translateX(-50%) scale(1.2); filter: drop-shadow(0 0 15px #fbbf24); }
+  }
+
+  .tree-layer {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-style: solid;
+  }
+
+  .tree-top {
+    top: 15px;
+    border-width: 0 25px 35px 25px;
+    border-color: transparent transparent #166534 transparent;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+
+  .tree-mid {
+    top: 40px;
+    border-width: 0 32px 40px 32px;
+    border-color: transparent transparent #15803d transparent;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+
+  .tree-bottom {
+    top: 65px;
+    border-width: 0 40px 45px 40px;
+    border-color: transparent transparent #14532d transparent;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+
+  .tree-trunk {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 18px;
+    background: linear-gradient(90deg, #78350f, #92400e, #78350f);
+    border-radius: 2px;
+  }
+
+  .tree-lights {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+  }
+
+  .tree-lights .light {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: lightBlink 1s ease-in-out infinite;
+  }
+
+  .tree-lights .light.red { background: #ef4444; box-shadow: 0 0 10px #ef4444; animation-delay: 0s; }
+  .tree-lights .light.yellow { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; animation-delay: 0.25s; }
+  .tree-lights .light.blue { background: #3b82f6; box-shadow: 0 0 10px #3b82f6; animation-delay: 0.5s; }
+  .tree-lights .light.green { background: #22c55e; box-shadow: 0 0 10px #22c55e; animation-delay: 0.75s; }
+
+  @keyframes lightBlink {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* Gifts */
+  .newyear-gifts {
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 50px;
+  }
+
+  .gift {
+    font-size: 24px;
+    animation: giftBounce 2s ease-in-out infinite;
+  }
+
+  .gift-1 { animation-delay: 0s; }
+  .gift-2 { animation-delay: 0.5s; }
+
+  @keyframes giftBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+
+  /* Text overlay */
+  .newyear-text {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding-top: 1rem;
+  }
+
+  .newyear-greeting {
+    display: block;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    margin-bottom: 0.25rem;
+  }
+
+  .newyear-year {
+    display: block;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b, #fbbf24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   }
 `;
 
