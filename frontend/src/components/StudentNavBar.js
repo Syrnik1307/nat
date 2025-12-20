@@ -17,11 +17,14 @@ const StudentNavBar = () => {
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const dropdownRef = useRef(null);
+  const menuRef = useRef(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      const clickedInsideButton = dropdownRef.current && dropdownRef.current.contains(event.target);
+      const clickedInsideMenu = menuRef.current && menuRef.current.contains(event.target);
+      if (!clickedInsideButton && !clickedInsideMenu) {
         setShowProfileMenu(false);
       }
     };
@@ -109,7 +112,12 @@ const StudentNavBar = () => {
             </button>
 
             {showProfileMenu && (
-              <div className="student-profile-dropdown">
+              <div
+                className="student-profile-dropdown tp-allow-fixed"
+                ref={menuRef}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="student-profile-header">
                   Вы: {user?.first_name || user?.email || 'Ученик'}
                 </div>

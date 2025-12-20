@@ -172,9 +172,9 @@
 }
 
 .student-profile-dropdown {
-  position: fixed;
-  top: calc(70px + 8px);
-  right: clamp(12px, 3vw, 40px);
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
   background: var(--bg-paper, #fff);
   border: 1px solid var(--border-light, #e2e8f0);
   border-radius: var(--radius-card, 16px);
@@ -185,6 +185,7 @@
   overflow: hidden;
   z-index: 2147483000; /* sit above any app content */
   animation: studentDropdownSlide 0.2s ease-out;
+  pointer-events: auto;
 }
 
 @keyframes studentDropdownSlide {
@@ -244,8 +245,7 @@
   }
 
   .student-profile-dropdown {
-    top: 64px;
-    right: 1rem;
+    right: 0;
     min-width: 200px;
     max-width: 240px;
   }
@@ -304,7 +304,7 @@
 
   .student-profile-dropdown {
     min-width: 220px;
-    right: -10px;
+    right: 0;
   }
 }
 
