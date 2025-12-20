@@ -490,7 +490,7 @@ class LessonViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['post'], url_path='upload_standalone_recording')
     def upload_standalone_recording(self, request):
-        """Загрузить самостоятельное видео без привязки к уроку"""
+        """Загрузить самостоятельное видео без привязки к уроку — напрямую в Google Drive"""
         # Требуем активную подписку
         try:
             require_active_subscription(request.user)
@@ -510,20 +510,25 @@ class LessonViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Название обязательно для самостоятельного видео'}, status=status.HTTP_400_BAD_REQUEST)
         
         # БЕЗОПАСНОСТЬ: Проверка MIME-типа видео
-        allowed_video_types = ['video/mp4', 'video/webm', 'video/mpeg', 'video/quicktime', 'video/x-msvideo']
+        allowed_video_types = ['video/mp4', 'video/webm', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska']
         if video_file.content_type not in allowed_video_types:
             return Response(
-                {'detail': f'Неподдерживаемый тип файла: {video_file.content_type}. Разрешены: MP4, WebM, MPEG, MOV, AVI'},
+                {'detail': f'Неподдерживаемый тип файла: {video_file.content_type}. Разрешены: MP4, WebM, MPEG, MOV, AVI, MKV'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # БЕЗОПАСНОСТЬ: Проверка размера файла (макс 2 GB)
-        max_video_size = 2 * 1024 * 1024 * 1024  # 2 GB
-        if video_file.size > max_video_size:
-            return Response(
-                {'detail': 'Файл слишком большой. Максимум: 2 GB'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Проверка лимита хранилища учителя
+        from accounts.models import Subscription
+        from accounts.gdrive_folder_service import check_storage_limit
+        
+        try:
+            subscription = Subscription.objects.get(user=request.user)
+        except Subscription.DoesNotExist:
+            return Response({'detail': 'Подписка не найдена'}, status=status.HTTP_403_FORBIDDEN)
+        
+        allowed, message = check_storage_limit(subscription, video_file.size)
+        if not allowed:
+            return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
         
         privacy_type = request.data.get('privacy_type', 'all')
         allowed_groups = _parse_ids_list(request.data.get('allowed_groups'))
@@ -556,35 +561,78 @@ class LessonViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_403_FORBIDDEN
                 )
         
-        from django.core.files.storage import default_storage
         from django.conf import settings
+        from django.utils.text import slugify, get_valid_filename
         import os
         import uuid
+        from datetime import datetime
         
-        # Создаём папку для записей если нет
-        upload_dir = 'lesson_recordings'
-        media_root = getattr(settings, 'MEDIA_ROOT', '/tmp')
-        if not os.path.exists(os.path.join(media_root, upload_dir)):
-            os.makedirs(os.path.join(media_root, upload_dir))
-        
-        # БЕЗОПАСНОСТЬ: Безопасное имя файла (Path Traversal protection)
-        from django.utils.text import slugify, get_valid_filename
-        # Убираем путь и опасные символы
+        # БЕЗОПАСНОСТЬ: Безопасное имя файла
         original_name = os.path.basename(video_file.name)
         safe_original = get_valid_filename(original_name)
-        safe_filename = f'{slugify(title)}_{uuid.uuid4().hex[:8]}_{safe_original}'
-        file_path = os.path.join(upload_dir, safe_filename)
-        saved_path = default_storage.save(file_path, video_file)
+        date_prefix = datetime.now().strftime('%Y%m%d_%H%M%S')
+        safe_filename = f'{date_prefix}_{slugify(title)}_{uuid.uuid4().hex[:6]}_{safe_original}'
+        
+        # Загрузка в Google Drive
+        gdrive_file_id = None
+        play_url = None
+        download_url = None
+        storage_provider = 'local'
+        
+        if settings.USE_GDRIVE_STORAGE:
+            try:
+                from .gdrive_utils import get_gdrive_manager
+                gdrive = get_gdrive_manager()
+                
+                # Получаем папку Recordings учителя
+                teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
+                recordings_folder_id = teacher_folders.get('recordings', teacher_folders.get('root'))
+                
+                # Загружаем файл в Google Drive
+                result = gdrive.upload_file(
+                    file_path_or_object=video_file,
+                    file_name=safe_filename,
+                    folder_id=recordings_folder_id,
+                    mime_type=video_file.content_type,
+                    teacher=request.user
+                )
+                
+                gdrive_file_id = result['file_id']
+                play_url = gdrive.get_embed_link(gdrive_file_id)
+                download_url = gdrive.get_direct_download_link(gdrive_file_id)
+                storage_provider = 'gdrive'
+                
+                logger.info(f"Uploaded standalone video to GDrive: {safe_filename} -> {gdrive_file_id}")
+                
+            except Exception as e:
+                logger.exception(f"Failed to upload to GDrive, falling back to local: {e}")
+                # Fallback на локальное хранение при ошибке GDrive
+                storage_provider = 'local'
+        
+        # Fallback: локальное хранение если GDrive выключен или ошибка
+        if storage_provider == 'local':
+            from django.core.files.storage import default_storage
+            
+            upload_dir = 'lesson_recordings'
+            media_root = getattr(settings, 'MEDIA_ROOT', '/tmp')
+            if not os.path.exists(os.path.join(media_root, upload_dir)):
+                os.makedirs(os.path.join(media_root, upload_dir))
+            
+            file_path = os.path.join(upload_dir, safe_filename)
+            saved_path = default_storage.save(file_path, video_file)
+            play_url = f'/media/{saved_path}'
+            download_url = f'/media/{saved_path}'
         
         # Создаём запись БЕЗ урока (standalone recording)
-        # lesson уже nullable в модели LessonRecording
         recording = LessonRecording.objects.create(
             lesson=None,
-            play_url=f'/media/{saved_path}',
-            download_url=f'/media/{saved_path}',
+            title=title,
+            play_url=play_url,
+            download_url=download_url,
+            gdrive_file_id=gdrive_file_id,
             status='ready',
             file_size=video_file.size,
-            storage_provider='local'
+            storage_provider=storage_provider
         )
         
         recording.apply_privacy(
@@ -594,7 +642,7 @@ class LessonViewSet(viewsets.ModelViewSet):
             teacher=request.user
         )
 
-        logger.info(f"Standalone video uploaded by {request.user.email}: {saved_path}, privacy: {privacy_type}")
+        logger.info(f"Standalone video uploaded by {request.user.email}: {safe_filename}, storage: {storage_provider}, privacy: {privacy_type}")
         
         return Response({
             'status': 'success',
@@ -602,6 +650,7 @@ class LessonViewSet(viewsets.ModelViewSet):
                 'id': recording.id,
                 'play_url': recording.play_url,
                 'file_size': recording.file_size,
+                'storage_provider': storage_provider,
                 'created_at': recording.created_at
             }
         }, status=status.HTTP_201_CREATED)
@@ -1016,7 +1065,7 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='upload_recording')
     def upload_recording(self, request, pk=None):
-        """Загрузить видео файл урока с настройками приватности"""
+        """Загрузить видео файл урока с настройками приватности — напрямую в Google Drive"""
         lesson = self.get_object()
         
         # Требуем активную подписку
@@ -1033,34 +1082,103 @@ class LessonViewSet(viewsets.ModelViewSet):
         if not video_file:
             return Response({'detail': 'Видео файл обязателен'}, status=status.HTTP_400_BAD_REQUEST)
         
+        # БЕЗОПАСНОСТЬ: Проверка MIME-типа видео
+        allowed_video_types = ['video/mp4', 'video/webm', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska']
+        if video_file.content_type not in allowed_video_types:
+            return Response(
+                {'detail': f'Неподдерживаемый тип файла: {video_file.content_type}. Разрешены: MP4, WebM, MPEG, MOV, AVI, MKV'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Проверка лимита хранилища учителя
+        from accounts.models import Subscription
+        from accounts.gdrive_folder_service import check_storage_limit
+        
+        try:
+            subscription = Subscription.objects.get(user=request.user)
+        except Subscription.DoesNotExist:
+            return Response({'detail': 'Подписка не найдена'}, status=status.HTTP_403_FORBIDDEN)
+        
+        allowed, message = check_storage_limit(subscription, video_file.size)
+        if not allowed:
+            return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
+        
         privacy_type = request.data.get('privacy_type', 'all')
         allowed_groups = _parse_ids_list(request.data.get('allowed_groups'))
         allowed_students = _parse_ids_list(request.data.get('allowed_students'))
         
-        # TODO: Здесь должна быть загрузка файла в Google Drive или другое хранилище
-        # Пока сохраняем как временную запись с локальным путем
-        from django.core.files.storage import default_storage
         from django.conf import settings
+        from django.utils.text import slugify, get_valid_filename
         import os
+        import uuid
+        from datetime import datetime
         
-        # Создаём папку для записей если нет
-        upload_dir = 'lesson_recordings'
-        media_root = getattr(settings, 'MEDIA_ROOT', '/tmp')
-        if not os.path.exists(os.path.join(media_root, upload_dir)):
-            os.makedirs(os.path.join(media_root, upload_dir))
+        # БЕЗОПАСНОСТЬ: Безопасное имя файла
+        original_name = os.path.basename(video_file.name)
+        safe_original = get_valid_filename(original_name)
+        lesson_title = slugify(lesson.title or lesson.subject or 'lesson')
+        group_name = slugify(lesson.group.name if lesson.group else 'nogroup')
+        date_str = lesson.start_time.strftime('%Y%m%d') if lesson.start_time else datetime.now().strftime('%Y%m%d')
+        safe_filename = f'{date_str}_{lesson_title}_{group_name}_{uuid.uuid4().hex[:6]}_{safe_original}'
         
-        # Сохраняем файл
-        file_path = os.path.join(upload_dir, f'lesson_{lesson.id}_{video_file.name}')
-        saved_path = default_storage.save(file_path, video_file)
+        # Загрузка в Google Drive
+        gdrive_file_id = None
+        play_url = None
+        download_url = None
+        storage_provider = 'local'
         
-        # Создаём запись
+        if settings.USE_GDRIVE_STORAGE:
+            try:
+                from .gdrive_utils import get_gdrive_manager
+                gdrive = get_gdrive_manager()
+                
+                # Получаем папку Recordings учителя
+                teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
+                recordings_folder_id = teacher_folders.get('recordings', teacher_folders.get('root'))
+                
+                # Загружаем файл в Google Drive
+                result = gdrive.upload_file(
+                    file_path_or_object=video_file,
+                    file_name=safe_filename,
+                    folder_id=recordings_folder_id,
+                    mime_type=video_file.content_type,
+                    teacher=request.user
+                )
+                
+                gdrive_file_id = result['file_id']
+                play_url = gdrive.get_embed_link(gdrive_file_id)
+                download_url = gdrive.get_direct_download_link(gdrive_file_id)
+                storage_provider = 'gdrive'
+                
+                logger.info(f"Uploaded lesson {lesson.id} video to GDrive: {safe_filename} -> {gdrive_file_id}")
+                
+            except Exception as e:
+                logger.exception(f"Failed to upload to GDrive, falling back to local: {e}")
+                storage_provider = 'local'
+        
+        # Fallback: локальное хранение если GDrive выключен или ошибка
+        if storage_provider == 'local':
+            from django.core.files.storage import default_storage
+            
+            upload_dir = 'lesson_recordings'
+            media_root = getattr(settings, 'MEDIA_ROOT', '/tmp')
+            if not os.path.exists(os.path.join(media_root, upload_dir)):
+                os.makedirs(os.path.join(media_root, upload_dir))
+            
+            file_path = os.path.join(upload_dir, safe_filename)
+            saved_path = default_storage.save(file_path, video_file)
+            play_url = f'/media/{saved_path}'
+            download_url = f'/media/{saved_path}'
+        
+        # Создаём запись привязанную к уроку
         recording = LessonRecording.objects.create(
             lesson=lesson,
-            play_url=f'/media/{saved_path}',
-            download_url=f'/media/{saved_path}',
+            play_url=play_url,
+            download_url=download_url,
+            gdrive_file_id=gdrive_file_id,
             status='ready',
             file_size=video_file.size,
-            storage_provider='local'
+            storage_provider=storage_provider
         )
         recording.apply_privacy(
             privacy_type=privacy_type,
@@ -1069,10 +1187,7 @@ class LessonViewSet(viewsets.ModelViewSet):
             teacher=request.user
         )
         
-        # Сохраняем настройки приватности в JSON поле details (если есть)
-        # Или можно создать отдельную модель для связи recording-groups/students
-        
-        logger.info(f"Video uploaded for lesson {lesson.id}: {saved_path}, privacy: {privacy_type}")
+        logger.info(f"Video uploaded for lesson {lesson.id}: {safe_filename}, storage: {storage_provider}, privacy: {privacy_type}")
         
         return Response({
             'status': 'success',
@@ -1080,6 +1195,7 @@ class LessonViewSet(viewsets.ModelViewSet):
                 'id': recording.id,
                 'play_url': recording.play_url,
                 'file_size': recording.file_size,
+                'storage_provider': storage_provider,
                 'created_at': recording.created_at
             }
         }, status=status.HTTP_201_CREATED)
