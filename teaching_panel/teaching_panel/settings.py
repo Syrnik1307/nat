@@ -99,6 +99,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.RequestMetricsMiddleware',  # Метрики запросов
+    'accounts.bot_protection.BotProtectionMiddleware',  # Защита от ботов по fingerprint
 ]
 
 ROOT_URLCONF = 'teaching_panel.urls'

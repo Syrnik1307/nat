@@ -9,8 +9,23 @@ from django.contrib.auth import authenticate
 from rest_framework.throttling import ScopedRateThrottle
 from .serializers import CustomTokenObtainPairSerializer
 from .security import register_failure, reset_failures, is_locked, lockout_remaining_seconds
+from .bot_protection import (
+    get_client_fingerprint, 
+    get_client_ip,
+    calculate_bot_score,
+    is_fingerprint_banned,
+    ban_fingerprint,
+    check_registration_limit,
+    record_registration,
+    check_failed_login_limit,
+    record_failed_login,
+    reset_failed_logins,
+    BOT_DETECTION_CONFIG,
+)
 import logging
+import json
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
@@ -88,20 +103,55 @@ class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
 
 
 class CaseInsensitiveTokenObtainPairView(TokenObtainPairView):
-    """View that uses the case-insensitive serializer with login-specific throttling."""
+    """View that uses the case-insensitive serializer with login-specific throttling.
+    
+    Защита от ботов:
+    - Device Fingerprinting для бана по железу
+    - Rate Limiting по fingerprint для неудачных попыток
+    - Сброс счётчика при успешном входе
+    """
     serializer_class = CaseInsensitiveTokenObtainPairSerializer
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'login'
 
     def post(self, request, *args, **kwargs):
-        try:
-            email = (request.data.get('email') or request.data.get('username') or '').strip()
-            pwd = request.data.get('password')
-            pwd_len = len(pwd) if isinstance(pwd, str) else 'N/A'
-            print(f"[AuthDebug] /api/jwt/token payload: email={email}, password_len={pwd_len}, content_type={request.content_type}")
-        except Exception as e:
-            print(f"[AuthDebug] failed to log payload: {e}")
-        return super().post(request, *args, **kwargs)
+        client_ip = get_client_ip(request)
+        fingerprint, fp_data = get_client_fingerprint(request)
+        
+        # Проверяем бан устройства
+        is_banned, ban_reason = is_fingerprint_banned(fingerprint)
+        if is_banned:
+            logger.warning(f"[Login] Banned device: {fingerprint[:8]}..., ip={client_ip}")
+            return Response(
+                {'detail': 'Доступ с этого устройства заблокирован', 'error': 'device_banned'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Проверяем лимит неудачных попыток
+        if not check_failed_login_limit(fingerprint):
+            logger.warning(f"[Login] Too many failed attempts: {fingerprint[:8]}...")
+            ban_fingerprint(fingerprint, 'too_many_failed_logins', duration_hours=1)
+            return Response(
+                {'detail': 'Слишком много неудачных попыток. Устройство временно заблокировано.', 'error': 'rate_limit'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        
+        email = (request.data.get('email') or request.data.get('username') or '').strip()
+        logger.info(f"[Login] Attempt: email={email}, ip={client_ip}")
+        
+        # Вызываем оригинальный метод
+        response = super().post(request, *args, **kwargs)
+        
+        # Если успешный вход - сбрасываем счётчик неудачных попыток
+        if response.status_code == 200:
+            reset_failed_logins(fingerprint)
+            logger.info(f"[Login] Success: email={email}")
+        else:
+            # Неудачный вход - записываем
+            record_failed_login(fingerprint)
+            logger.warning(f"[Login] Failed: email={email}, status={response.status_code}")
+        
+        return response
 
 
 class DirectTokenView(APIView):
@@ -146,13 +196,67 @@ User = get_user_model()
 
 
 class RegisterView(APIView):
-    """API endpoint для регистрации новых пользователей"""
+    """API endpoint для регистрации новых пользователей
+    
+    Защита от ботов:
+    - Device Fingerprinting для бана по железу
+    - Behavioral Analysis для определения ботов
+    - Rate Limiting по fingerprint
+    - Honeypot detection
+    """
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'  # Используем login rate для регистрации тоже
 
     def post(self, request):
-        print(f"[RegisterView] Получен запрос: {request.data}")
-        print(f"[RegisterView] Headers: {request.headers}")
-        print(f"[RegisterView] User-Agent: {request.headers.get('User-Agent', 'N/A')}")
+        client_ip = get_client_ip(request)
+        
+        # === BOT PROTECTION ===
+        fingerprint, fp_data = get_client_fingerprint(request)
+        
+        # Проверяем бан устройства
+        is_banned, ban_reason = is_fingerprint_banned(fingerprint)
+        if is_banned:
+            logger.warning(f"[RegisterView] Banned device: {fingerprint[:8]}..., ip={client_ip}")
+            return Response(
+                {'detail': 'Доступ с этого устройства заблокирован', 'error': 'device_banned'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Извлекаем поведенческие данные
+        behavioral_data = request.data.get('behavioralData', {})
+        
+        # Проверяем honeypot
+        honeypot_value = request.data.get('website', '') or request.data.get('honeypot', '')
+        if honeypot_value:
+            logger.warning(f"[RegisterView] Honeypot triggered: ip={client_ip}")
+            ban_fingerprint(fingerprint, 'honeypot_triggered')
+            return Response(
+                {'detail': 'Подозрительная активность обнаружена'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Вычисляем bot score
+        bot_score = calculate_bot_score(request, fp_data, behavioral_data)
+        
+        if bot_score >= BOT_DETECTION_CONFIG['bot_score_threshold']:
+            logger.warning(f"[RegisterView] Bot detected: score={bot_score}, ip={client_ip}")
+            ban_fingerprint(fingerprint, f'bot_score_{bot_score}')
+            return Response(
+                {'detail': 'Подозрительная активность обнаружена', 'error': 'bot_detected'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Проверяем лимит регистраций с этого устройства
+        if not check_registration_limit(fingerprint):
+            logger.warning(f"[RegisterView] Registration limit exceeded: {fingerprint[:8]}...")
+            return Response(
+                {'detail': 'Превышен лимит регистраций с этого устройства. Попробуйте позже.', 'error': 'rate_limit'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        
+        # === ORIGINAL REGISTRATION LOGIC ===
+        logger.info(f"[RegisterView] Request from ip={client_ip}, bot_score={bot_score}")
         
         email = request.data.get('email')
         password = request.data.get('password')
@@ -217,16 +321,21 @@ class RegisterView(APIView):
                 user.birth_date = birth_date
                 user.save()
             
+            # Записываем успешную регистрацию для rate limiting
+            record_registration(fingerprint)
+            
             # Генерация JWT токенов сразу после регистрации (соответствие фронтенду)
             try:
                 refresh = RefreshToken.for_user(user)
                 access_token = str(refresh.access_token)
                 refresh_token = str(refresh)
             except Exception as token_err:
-                print(f"[RegisterView] Ошибка генерации токенов: {token_err}")
+                logger.error(f"[RegisterView] Token generation error: {token_err}")
                 access_token = None
                 refresh_token = None
 
+            logger.info(f"[RegisterView] User created: {email}, role={role}")
+            
             return Response({
                 'detail': 'Пользователь успешно создан',
                 'user_id': user.id,
@@ -236,6 +345,7 @@ class RegisterView(APIView):
                 'refresh': refresh_token,
             }, status=status.HTTP_201_CREATED)
         except Exception as e:
+            logger.error(f"[RegisterView] Error creating user: {e}")
             return Response(
                 {'detail': f'Ошибка создания пользователя: {str(e)}'}, 
                 status=status.HTTP_400_BAD_REQUEST
