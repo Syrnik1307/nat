@@ -425,29 +425,18 @@ const ProfilePage = () => {
           </div>
         </header>
 
-        {/* Tabs - только для учителей показываем вкладку подписки */}
-        {user.role === 'teacher' && (
-          <div className="profile-tabs">
+        {/* Tabs - для всех пользователей */}
+        <div className="profile-tabs">
+          {tabConfig.map((tab) => (
             <button
-              className={`profile-tab ${activeTab === 'profile' ? 'active' : ''}`}
-              onClick={() => setActiveTab('profile')}
+              key={tab.key}
+              className={`profile-tab ${activeTab === tab.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.key)}
             >
-              Профиль
+              {tab.label}
             </button>
-            <button
-              className={`profile-tab ${activeTab === 'security' ? 'active' : ''}`}
-              onClick={() => setActiveTab('security')}
-            >
-              🔒 Безопасность
-            </button>
-            <button
-              className={`profile-tab ${activeTab === 'subscription' ? 'active' : ''}`}
-              onClick={() => setActiveTab('subscription')}
-            >
-              Моя подписка
-            </button>
-          </div>
-        )}
+          ))}
+        </div>
 
         {/* Profile Tab */}
         {activeTab === 'profile' && (
@@ -533,92 +522,6 @@ const ProfilePage = () => {
 
             {successMessage && <p className="form-message success">{successMessage}</p>}
             {errorMessage && <p className="form-message error">{errorMessage}</p>}
-          </section>
-          
-          {/* Секция смены пароля */}
-          <section className="profile-password">
-            <div className="profile-divider"></div>
-            
-            <div className="password-header">
-              <div>
-                <h3>Безопасность</h3>
-                <p className="profile-subtitle">Управление паролем и настройками безопасности</p>
-              </div>
-              {!showPasswordForm && (
-                <button 
-                  type="button" 
-                  className="secondary"
-                  onClick={() => setShowPasswordForm(true)}
-                >
-                  Изменить пароль
-                </button>
-              )}
-            </div>
-
-            {showPasswordForm && (
-              <div className="password-form">
-                <div className="field-group">
-                  <label htmlFor="oldPassword">Текущий пароль</label>
-                  <input
-                    id="oldPassword"
-                    type="password"
-                    value={passwordForm.oldPassword}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, oldPassword: e.target.value }))}
-                    placeholder="Введите текущий пароль"
-                  />
-                </div>
-
-                <div className="field-group">
-                  <label htmlFor="newPassword">Новый пароль</label>
-                  <input
-                    id="newPassword"
-                    type="password"
-                    value={passwordForm.newPassword}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                    placeholder="Минимум 8 символов"
-                  />
-                  <span className="field-hint">Используйте заглавные и строчные буквы, цифры</span>
-                </div>
-
-                <div className="field-group">
-                  <label htmlFor="confirmPassword">Подтвердите новый пароль</label>
-                  <input
-                    id="confirmPassword"
-                    type="password"
-                    value={passwordForm.confirmPassword}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    placeholder="Повторите новый пароль"
-                  />
-                </div>
-
-                <div className="form-actions">
-                  <button 
-                    type="button" 
-                    className="primary" 
-                    onClick={handlePasswordSubmit}
-                    disabled={passwordSaving}
-                  >
-                    {passwordSaving ? 'Сохранение...' : 'Сохранить пароль'}
-                  </button>
-                  <button 
-                    type="button" 
-                    className="secondary"
-                    onClick={() => {
-                      setShowPasswordForm(false);
-                      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
-                      setPasswordError('');
-                      setPasswordSuccess('');
-                    }}
-                    disabled={passwordSaving}
-                  >
-                    Отмена
-                  </button>
-                </div>
-
-                {passwordSuccess && <p className="form-message success">{passwordSuccess}</p>}
-                {passwordError && <p className="form-message error">{passwordError}</p>}
-              </div>
-            )}
           </section>
         </form>
         )}
