@@ -7,9 +7,7 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.6);
   position: sticky;
   top: 0;
-  z-index: 1000000; /* ensure navbar stays above calendar layers */
-  isolation: isolate; /* keep dropdown stacking above page overlays */
-  overflow: visible;
+  z-index: 1000;
   box-shadow: 0 1px 3px rgba(79, 70, 229, 0.04);
   transition: all 0.3s ease;
 }
@@ -28,7 +26,6 @@
   padding: 0 clamp(1rem, 3vw, 2rem);
   height: 70px;
   gap: 2rem;
-  overflow: visible;
 }
 
 .student-navbar-left {
@@ -115,13 +112,6 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  overflow: visible;
-}
-
-.student-profile-section {
-  position: relative;
-  z-index: 2147483600; /* force above calendar/overlays for clicks */
-  overflow: visible;
 }
 
 .student-profile-button {
@@ -174,9 +164,6 @@
 }
 
 .student-profile-dropdown {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
   background: var(--bg-paper, #fff);
   border: 1px solid var(--border-light, #e2e8f0);
   border-radius: var(--radius-card, 16px);
@@ -185,7 +172,6 @@
   min-width: 220px;
   max-width: 280px;
   overflow: hidden;
-  z-index: 2147483601; /* sit above any app content */
   animation: studentDropdownSlide 0.2s ease-out;
   pointer-events: auto;
 }

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { TELEGRAM_RESET_DEEPLINK } from '../constants';
 import '../styles/StudentNavBar.css';
 
 const navItems = [
@@ -16,27 +16,43 @@ const StudentNavBar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const dropdownRef = useRef(null);
-  const menuRef = useRef(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
+  const profileButtonRef = useRef(null);
+
+  // Calculate dropdown position based on button
+  const updateMenuPosition = useCallback(() => {
+    if (profileButtonRef.current) {
+      const rect = profileButtonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      const clickedInsideButton = dropdownRef.current && dropdownRef.current.contains(event.target);
-      const clickedInsideMenu = menuRef.current && menuRef.current.contains(event.target);
-      if (!clickedInsideButton && !clickedInsideMenu) {
-        setShowProfileMenu(false);
+      // Ignore clicks on the profile button (handled by onClick)
+      if (profileButtonRef.current && profileButtonRef.current.contains(event.target)) {
+        return;
       }
+      // Close if clicking outside
+      setShowProfileMenu(false);
     };
 
     if (showProfileMenu) {
       document.addEventListener('mousedown', handleClickOutside);
+      window.addEventListener('resize', updateMenuPosition);
+      window.addEventListener('scroll', updateMenuPosition, true);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
     };
-  }, [showProfileMenu]);
+  }, [showProfileMenu, updateMenuPosition]);
 
   const getInitials = () => {
     if (user?.first_name) {
@@ -55,16 +71,16 @@ const StudentNavBar = () => {
   const hasAvatar = user?.avatar && user.avatar.trim() !== '';
 
   const handleLogout = () => {
+    setShowProfileMenu(false);
     logout();
     navigate('/auth');
   };
 
-  const openTelegramResetFlow = () => {
-    const newTab = window.open(TELEGRAM_RESET_DEEPLINK, '_blank');
-    if (!newTab) {
-      window.location.href = TELEGRAM_RESET_DEEPLINK;
+  const handleToggleMenu = () => {
+    if (!showProfileMenu) {
+      updateMenuPosition();
     }
-    setShowProfileMenu(false);
+    setShowProfileMenu((prev) => !prev);
   };
 
   return (
@@ -94,50 +110,55 @@ const StudentNavBar = () => {
         </div>
 
         <div className="student-navbar-right">
-          <div className="student-profile-section" ref={dropdownRef}>
-            <button
-              type="button"
-              className="student-profile-button"
-              onClick={() => setShowProfileMenu((prev) => !prev)}
-              aria-haspopup="true"
-              aria-expanded={showProfileMenu}
-            >
-              {hasAvatar ? (
-                <div className="student-avatar student-avatar-image">
-                  <img src={user.avatar} alt="Аватар" />
-                </div>
-              ) : (
-                <div className="student-avatar">{getInitials()}</div>
-              )}
-            </button>
-
-            {showProfileMenu && (
-              <div
-                className="student-profile-dropdown tp-allow-fixed"
-                ref={menuRef}
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="student-profile-header">
-                  Вы: {user?.first_name || user?.email || 'Ученик'}
-                </div>
-                <NavLink
-                  to="/profile"
-                  className="student-dropdown-item"
-                  onClick={() => setShowProfileMenu(false)}
-                >
-                  Профиль
-                </NavLink>
-                <button
-                  type="button"
-                  className="student-dropdown-item student-logout"
-                  onClick={handleLogout}
-                >
-                  Выйти
-                </button>
+          <button
+            type="button"
+            className="student-profile-button"
+            ref={profileButtonRef}
+            onClick={handleToggleMenu}
+            aria-haspopup="true"
+            aria-expanded={showProfileMenu}
+          >
+            {hasAvatar ? (
+              <div className="student-avatar student-avatar-image">
+                <img src={user.avatar} alt="Аватар" />
               </div>
+            ) : (
+              <div className="student-avatar">{getInitials()}</div>
             )}
-          </div>
+          </button>
+
+          {showProfileMenu && createPortal(
+            <div
+              className="student-profile-dropdown"
+              style={{
+                position: 'fixed',
+                top: menuPosition.top,
+                right: menuPosition.right,
+                zIndex: 2147483647,
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="student-profile-header">
+                Вы: {user?.first_name || user?.email || 'Ученик'}
+              </div>
+              <NavLink
+                to="/profile"
+                className="student-dropdown-item"
+                onClick={() => setShowProfileMenu(false)}
+              >
+                Профиль
+              </NavLink>
+              <button
+                type="button"
+                className="student-dropdown-item student-logout"
+                onClick={handleLogout}
+              >
+                Выйти
+              </button>
+            </div>,
+            document.body
+          )}
         </div>
       </div>
     </nav>
