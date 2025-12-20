@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './TeacherRecordingsPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
 import RecordingCard from './RecordingCard';
 import RecordingPlayer from './RecordingPlayer';
-import { ConfirmModal } from '../../shared/components';
+import { ConfirmModal, ToastContainer } from '../../shared/components';
 
 function TeacherRecordingsPage() {
   const [recordings, setRecordings] = useState([]);
@@ -31,8 +31,6 @@ function TeacherRecordingsPage() {
   });
   const [lessons, setLessons] = useState([]);
   const [students, setStudents] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -43,12 +41,24 @@ function TeacherRecordingsPage() {
     confirmText: 'Да',
     cancelText: 'Отмена'
   });
-  const [alertModal, setAlertModal] = useState({
-    isOpen: false,
-    title: '',
-    message: '',
-    variant: 'info'
-  });
+
+  // Toast уведомления для фоновой загрузки
+  const [toasts, setToasts] = useState([]);
+
+  // Функции для toast
+  const addToast = useCallback((toast) => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, ...toast }]);
+    return id;
+  }, []);
+
+  const removeToast = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const updateToast = useCallback((id, updates) => {
+    setToasts(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  }, []);
 
   useEffect(() => {
     loadRecordings();
@@ -159,19 +169,17 @@ function TeacherRecordingsPage() {
         try {
           await api.delete(`recordings/${recordingId}/`, withScheduleApiBase());
           setRecordings(recordings.filter(r => r.id !== recordingId));
-          setAlertModal({
-            isOpen: true,
-            title: 'Успех',
-            message: 'Запись успешно удалена',
-            variant: 'info'
+          addToast({
+            type: 'success',
+            title: 'Запись удалена',
+            message: 'Запись успешно удалена'
           });
         } catch (err) {
           console.error('Error deleting recording:', err);
-          setAlertModal({
-            isOpen: true,
-            title: 'Ошибка',
-            message: 'Не удалось удалить запись. Попробуйте позже.',
-            variant: 'danger'
+          addToast({
+            type: 'error',
+            title: 'Ошибка удаления',
+            message: 'Не удалось удалить запись. Попробуйте позже.'
           });
         }
         setConfirmModal({ ...confirmModal, isOpen: false });
@@ -183,69 +191,85 @@ function TeacherRecordingsPage() {
     e.preventDefault();
     
     if (!uploadForm.file) {
-      setAlertModal({
-        isOpen: true,
+      addToast({
+        type: 'warning',
         title: 'Внимание',
-        message: 'Пожалуйста, выберите видео файл',
-        variant: 'warning'
+        message: 'Пожалуйста, выберите видео файл'
       });
       return;
     }
 
     if (!uploadForm.lessonId && !uploadForm.title.trim()) {
-      setAlertModal({
-        isOpen: true,
+      addToast({
+        type: 'warning',
         title: 'Внимание',
-        message: 'Укажите название видео или выберите урок',
-        variant: 'warning'
+        message: 'Укажите название видео или выберите урок'
       });
       return;
     }
 
     if (uploadForm.privacyType === 'groups' && uploadForm.selectedGroups.length === 0) {
-      setAlertModal({
-        isOpen: true,
+      addToast({
+        type: 'warning',
         title: 'Внимание',
-        message: 'Выберите хотя бы одну группу',
-        variant: 'warning'
+        message: 'Выберите хотя бы одну группу'
       });
       return;
     }
 
     if (uploadForm.privacyType === 'students' && uploadForm.selectedStudents.length === 0) {
-      setAlertModal({
-        isOpen: true,
+      addToast({
+        type: 'warning',
         title: 'Внимание',
-        message: 'Выберите хотя бы одного ученика',
-        variant: 'warning'
+        message: 'Выберите хотя бы одного ученика'
       });
       return;
     }
 
+    // Закрываем модальное окно сразу - загрузка будет в фоне
+    const fileName = uploadForm.file.name;
+    const fileToUpload = uploadForm.file;
+    const formDataToSend = { ...uploadForm };
+    
+    setShowUploadModal(false);
+    setUploadForm({
+      lessonId: '',
+      title: '',
+      file: null,
+      privacyType: 'all',
+      selectedGroups: [],
+      selectedStudents: []
+    });
+
+    // Добавляем toast с прогрессом
+    const toastId = addToast({
+      type: 'progress',
+      title: 'Загрузка видео',
+      message: fileName,
+      progress: 0
+    });
+
     try {
-      setUploading(true);
-      setUploadProgress(0);
-      
       const formData = new FormData();
-      formData.append('video', uploadForm.file);
-      formData.append('privacy_type', uploadForm.privacyType);
+      formData.append('video', fileToUpload);
+      formData.append('privacy_type', formDataToSend.privacyType);
       
-      if (uploadForm.lessonId) {
-        formData.append('lesson_id', uploadForm.lessonId);
+      if (formDataToSend.lessonId) {
+        formData.append('lesson_id', formDataToSend.lessonId);
       }
       
-      if (uploadForm.title.trim()) {
-        formData.append('title', uploadForm.title.trim());
+      if (formDataToSend.title.trim()) {
+        formData.append('title', formDataToSend.title.trim());
       }
       
-      if (uploadForm.privacyType === 'groups') {
-        formData.append('allowed_groups', JSON.stringify(uploadForm.selectedGroups));
-      } else if (uploadForm.privacyType === 'students') {
-        formData.append('allowed_students', JSON.stringify(uploadForm.selectedStudents));
+      if (formDataToSend.privacyType === 'groups') {
+        formData.append('allowed_groups', JSON.stringify(formDataToSend.selectedGroups));
+      } else if (formDataToSend.privacyType === 'students') {
+        formData.append('allowed_students', JSON.stringify(formDataToSend.selectedStudents));
       }
       
-      const endpoint = uploadForm.lessonId 
-        ? `lessons/${uploadForm.lessonId}/upload_recording/`
+      const endpoint = formDataToSend.lessonId 
+        ? `lessons/${formDataToSend.lessonId}/upload_recording/`
         : 'lessons/upload_standalone_recording/';
       
       await api.post(
@@ -256,40 +280,42 @@ function TeacherRecordingsPage() {
           headers: {
             'Content-Type': 'multipart/form-data'
           },
+          timeout: 600000, // 10 минут для больших файлов
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setUploadProgress(percentCompleted);
+            updateToast(toastId, { progress: percentCompleted });
           }
         }
       );
       
-      setAlertModal({
-        isOpen: true,
-        title: 'Успех',
-        message: 'Видео успешно загружено!',
-        variant: 'info'
+      // Успех - заменяем toast
+      removeToast(toastId);
+      addToast({
+        type: 'success',
+        title: 'Видео загружено',
+        message: fileName
       });
-      setShowUploadModal(false);
-      setUploadForm({
-        lessonId: '',
-        title: '',
-        file: null,
-        privacyType: 'all',
-        selectedGroups: [],
-        selectedStudents: []
-      });
-      setUploadProgress(0);
+      
       loadRecordings();
     } catch (err) {
       console.error('Error uploading video:', err);
-      setAlertModal({
-        isOpen: true,
-        title: 'Ошибка',
-        message: err.response?.data?.detail || 'Не удалось загрузить видео. Попробуйте позже.',
-        variant: 'danger'
+      
+      // Ошибка - заменяем toast
+      removeToast(toastId);
+      
+      let errorMessage = 'Не удалось загрузить видео';
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        errorMessage = 'Превышено время ожидания. Попробуйте загрузить файл меньшего размера или проверьте интернет-соединение.';
+      } else if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      }
+      
+      addToast({
+        type: 'error',
+        title: 'Ошибка загрузки',
+        message: errorMessage,
+        duration: 10000 // 10 секунд для ошибок
       });
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -313,11 +339,10 @@ function TeacherRecordingsPage() {
       if (file.type.startsWith('video/')) {
         setUploadForm({...uploadForm, file});
       } else {
-        setAlertModal({
-          isOpen: true,
-          title: 'Внимание',
-          message: 'Пожалуйста, выберите видео файл',
-          variant: 'warning'
+        addToast({
+          type: 'warning',
+          title: 'Неверный формат',
+          message: 'Пожалуйста, выберите видео файл'
         });
       }
     }
@@ -329,11 +354,10 @@ function TeacherRecordingsPage() {
       if (file.type.startsWith('video/')) {
         setUploadForm({...uploadForm, file});
       } else {
-        setAlertModal({
-          isOpen: true,
-          title: 'Внимание',
-          message: 'Пожалуйста, выберите видео файл',
-          variant: 'warning'
+        addToast({
+          type: 'warning',
+          title: 'Неверный формат',
+          message: 'Пожалуйста, выберите видео файл'
         });
       }
     }
@@ -516,16 +540,8 @@ function TeacherRecordingsPage() {
         cancelText={confirmModal.cancelText}
       />
 
-      <ConfirmModal
-        isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
-        onConfirm={() => setAlertModal({ ...alertModal, isOpen: false })}
-        title={alertModal.title}
-        message={alertModal.message}
-        variant={alertModal.variant}
-        confirmText="OK"
-        cancelText=""
-      />
+      {/* Toast уведомления */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Плеер */}
       {selectedRecording && (
@@ -741,33 +757,19 @@ function TeacherRecordingsPage() {
                 )}
               </div>
 
-              {uploading && (
-                <div className="teacher-upload-progress">
-                  <div className="teacher-progress-bar">
-                    <div 
-                      className="teacher-progress-fill"
-                      style={{width: `${uploadProgress}%`}}
-                    />
-                  </div>
-                  <p className="teacher-progress-text">{uploadProgress}%</p>
-                </div>
-              )}
-
               <div className="teacher-upload-actions">
                 <button 
                   type="button" 
                   onClick={() => setShowUploadModal(false)}
                   className="teacher-cancel-btn"
-                  disabled={uploading}
                 >
                   Отмена
                 </button>
                 <button 
                   type="submit" 
                   className="teacher-submit-btn"
-                  disabled={uploading}
                 >
-                  {uploading ? `Загрузка... ${uploadProgress}%` : 'Загрузить'}
+                  Загрузить
                 </button>
               </div>
             </form>
