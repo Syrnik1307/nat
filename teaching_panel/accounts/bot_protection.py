@@ -41,8 +41,8 @@ BOT_DETECTION_CONFIG = {
     'max_registrations_per_fingerprint': 3,
     'registration_window_hours': 24,
     
-    # Максимальное количество неудачных логинов
-    'max_failed_logins_per_fingerprint': 10,
+    # Максимальное количество неудачных логинов (5 попыток за час = бан на 1ч)
+    'max_failed_logins_per_fingerprint': 5,
     'failed_login_window_hours': 1,
     
     # Бан после подозрительной активности
