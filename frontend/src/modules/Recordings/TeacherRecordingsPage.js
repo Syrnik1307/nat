@@ -61,7 +61,15 @@ function TeacherRecordingsPage() {
     try {
       const response = await api.get('lessons', withScheduleApiBase());
       const lessonsData = response.data.results || response.data;
-      setLessons(Array.isArray(lessonsData) ? lessonsData : []);
+      const now = new Date();
+      const pastWindow = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 дней назад
+      const filteredLessons = (Array.isArray(lessonsData) ? lessonsData : []).filter((l) => {
+        const dt = l.start_time ? new Date(l.start_time) : null;
+        if (!dt || dt < pastWindow) return false;
+        const title = (l.title || '').toLowerCase();
+        return !title.includes('smoke');
+      });
+      setLessons(filteredLessons);
     } catch (err) {
       console.error('Error loading lessons:', err);
     }
