@@ -447,10 +447,11 @@
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 1000;
-  padding: 1rem;
+  padding: 2rem 1rem;
+  overflow-y: auto;
 }
 
 .teacher-upload-modal {
@@ -460,6 +461,8 @@
   width: 100%;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: teacher-modal-slide-in 0.3s ease-out;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
 }
 
 @keyframes teacher-modal-slide-in {
