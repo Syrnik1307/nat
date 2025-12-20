@@ -839,7 +839,7 @@ const TeacherHomePage = () => {
             </div>
             <div className="newyear-text">
               <span className="newyear-greeting">С Новым Годом!</span>
-              <span className="newyear-year">2025</span>
+              <span className="newyear-year">2026</span>
             </div>
           </div>
 
@@ -1078,7 +1078,8 @@ const globalStyles = `
 
   .hero-subtitle {
     font-size: 0.95rem;
-    opacity: 0.85;
+    font-weight: 500;
+    opacity: 0.9;
     margin-bottom: 1.25rem;
     max-width: 380px;
     line-height: 1.5;
@@ -1093,9 +1094,9 @@ const globalStyles = `
     border: none;
     padding: 0.75rem 1.25rem;
     border-radius: var(--radius-md);
-    font-family: var(--font-family);
-    font-weight: 600;
-    font-size: 0.9rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     transition: all 0.2s ease;
@@ -1170,10 +1171,10 @@ const globalStyles = `
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: var(--color-primary);
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
     transition: all 0.2s;
   }
 
@@ -1225,16 +1226,17 @@ const globalStyles = `
   }
 
   .schedule-date {
-    font-size: 0.65rem;
-    font-weight: 600;
+    font-size: 0.7rem;
+    font-weight: 700;
     text-transform: uppercase;
-    opacity: 0.9;
+    opacity: 0.95;
     letter-spacing: 0.5px;
   }
 
   .schedule-hour {
-    font-size: 0.9rem;
-    font-weight: 700;
+    font-size: 0.95rem;
+    font-weight: 800;
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
 
   .schedule-info {
@@ -1261,8 +1263,9 @@ const globalStyles = `
   }
 
   .schedule-topic {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: var(--color-text-secondary);
+    font-weight: 500;
   }
 
   .schedule-topic-empty {
@@ -1375,11 +1378,11 @@ const globalStyles = `
     background: var(--gradient-primary);
     color: #fff;
     border: none;
-    padding: 0.5rem 0.85rem;
+    padding: 0.5rem 0.9rem;
     border-radius: var(--radius-sm);
-    font-family: var(--font-family);
-    font-weight: 600;
-    font-size: 0.75rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
     cursor: pointer;
     text-decoration: none;
     transition: all 0.2s ease;
@@ -1487,9 +1490,9 @@ const globalStyles = `
   }
 
   .group-count {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--color-text-secondary);
-    font-weight: 500;
+    font-weight: 600;
   }
 
   .group-arrow-icon {
@@ -1523,14 +1526,16 @@ const globalStyles = `
 
   .empty-state p {
     margin: 0 0 0.75rem 0;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
   }
 
   .empty-action {
     display: inline-block;
     color: var(--color-primary);
-    font-weight: 600;
-    font-size: 0.85rem;
+    font-weight: 700;
+    font-size: 0.9rem;
     text-decoration: none;
   }
 
