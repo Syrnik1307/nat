@@ -8,6 +8,7 @@
   position: sticky;
   top: 0;
   z-index: 1000000; /* ensure navbar stays above calendar layers */
+  isolation: isolate; /* keep dropdown stacking above page overlays */
   overflow: visible;
   box-shadow: 0 1px 3px rgba(79, 70, 229, 0.04);
   transition: all 0.3s ease;
@@ -119,6 +120,7 @@
 
 .student-profile-section {
   position: relative;
+  z-index: 2147483600; /* force above calendar/overlays for clicks */
   overflow: visible;
 }
 
@@ -183,7 +185,7 @@
   min-width: 220px;
   max-width: 280px;
   overflow: hidden;
-  z-index: 2147483000; /* sit above any app content */
+  z-index: 2147483601; /* sit above any app content */
   animation: studentDropdownSlide 0.2s ease-out;
   pointer-events: auto;
 }
