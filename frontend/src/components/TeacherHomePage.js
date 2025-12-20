@@ -1867,14 +1867,26 @@ const globalStyles = `
 
   .start-modal-select {
     width: 100%;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
     font-size: 0.9rem;
-    border: 1px solid var(--color-border);
+    font-family: var(--font-family);
+    border: 2px solid var(--slate-200);
     border-radius: var(--radius-md);
     background: #fff;
     color: var(--color-text-primary);
     cursor: pointer;
-    transition: border-color 0.15s;
+    transition: all 0.15s;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23475569' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 12px;
+  }
+
+  .start-modal-select:hover {
+    border-color: var(--slate-300);
   }
 
   .start-modal-select:focus {

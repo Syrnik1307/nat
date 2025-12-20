@@ -44,6 +44,9 @@ function TeacherRecordingsPage() {
 
   // Toast уведомления для фоновой загрузки
   const [toasts, setToasts] = useState([]);
+  
+  // Ref для хранения AbortControllers (чтобы избежать проблем с closures)
+  const uploadControllersRef = React.useRef({});
 
   // Функции для toast
   const addToast = useCallback((toast) => {
@@ -54,10 +57,20 @@ function TeacherRecordingsPage() {
 
   const removeToast = useCallback((id) => {
     setToasts(prev => prev.filter(t => t.id !== id));
+    // Также удаляем контроллер если есть
+    delete uploadControllersRef.current[id];
   }, []);
 
   const updateToast = useCallback((id, updates) => {
     setToasts(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  }, []);
+
+  // Функция отмены загрузки
+  const cancelUpload = useCallback((toastId) => {
+    const controller = uploadControllersRef.current[toastId];
+    if (controller) {
+      controller.abort();
+    }
   }, []);
 
   useEffect(() => {
@@ -271,6 +284,15 @@ function TeacherRecordingsPage() {
       const endpoint = formDataToSend.lessonId 
         ? `lessons/${formDataToSend.lessonId}/upload_recording/`
         : 'lessons/upload_standalone_recording/';
+
+      // Создаём AbortController для отмены загрузки
+      const abortController = new AbortController();
+      uploadControllersRef.current[toastId] = abortController;
+      
+      // Добавляем функцию отмены в toast
+      updateToast(toastId, { 
+        onCancel: () => cancelUpload(toastId)
+      });
       
       await api.post(
         endpoint,
@@ -281,6 +303,7 @@ function TeacherRecordingsPage() {
             'Content-Type': 'multipart/form-data'
           },
           timeout: 600000, // 10 минут для больших файлов
+          signal: abortController.signal,
           onUploadProgress: (progressEvent) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             updateToast(toastId, { progress: percentCompleted });
@@ -302,6 +325,16 @@ function TeacherRecordingsPage() {
       
       // Ошибка - заменяем toast
       removeToast(toastId);
+      
+      // Если отменено пользователем - показываем соответствующее сообщение
+      if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+        addToast({
+          type: 'warning',
+          title: 'Загрузка отменена',
+          message: fileName
+        });
+        return;
+      }
       
       let errorMessage = 'Не удалось загрузить видео';
       if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {

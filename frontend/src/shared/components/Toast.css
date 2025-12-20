@@ -131,6 +131,35 @@
   transition: width 0.3s ease;
 }
 
+/* Cancel button for progress toast */
+.toast-cancel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 6px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.toast-cancel::before {
+  content: 'Отменить';
+}
+
+.toast-cancel:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #dc2626;
+}
+
 /* Mobile */
 @media (max-width: 640px) {
   .toast-container {

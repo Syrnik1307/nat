@@ -181,19 +181,32 @@
 }
 
 .teacher-filter-select {
-  padding: 0.75rem 1rem;
-  border: 2px solid var(--border-light);
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  border: 2px solid #E2E8F0;
   border-radius: 8px;
   font-size: 1rem;
   background: white;
   cursor: pointer;
   transition: all 0.2s;
   min-width: 150px;
+  font-family: inherit;
+  color: #334155;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23475569' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 12px;
+}
+
+.teacher-filter-select:hover {
+  border-color: #94a3b8;
 }
 
 .teacher-filter-select:focus {
   outline: none;
-  border-color: var(--color-primary);
+  border-color: #1e3a8a;
   box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
 }
 
@@ -633,37 +646,62 @@
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 600;
-  color: var(--text-main);
+  color: #334155;
   font-size: 0.95rem;
 }
 
-.teacher-upload-input,
-.teacher-upload-select {
+.teacher-upload-input {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 2px solid var(--border-light);
+  border: 2px solid #E2E8F0;
   border-radius: 8px;
   font-size: 1rem;
   transition: all 0.2s;
   font-family: inherit;
+  color: #334155;
+  background: white;
+}
+
+.teacher-upload-select {
+  width: 100%;
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  border: 2px solid #E2E8F0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s;
+  font-family: inherit;
+  color: #334155;
+  background: white;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23475569' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 12px;
+  cursor: pointer;
+}
+
+.teacher-upload-select:hover {
+  border-color: #94a3b8;
 }
 
 .teacher-upload-select optgroup {
   font-weight: 700;
-  color: var(--text-main);
+  color: #334155;
   padding: 0.35rem 0;
 }
 
 .teacher-upload-select option {
   padding: 0.35rem 0.5rem;
-  color: var(--text-main);
+  color: #334155;
 }
 
 .teacher-upload-input:focus,
 .teacher-upload-select:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.15);
 }
 
 .teacher-upload-hint {

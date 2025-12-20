@@ -11,6 +11,7 @@ import './Toast.css';
  * @param {string} props.message - Toast message
  * @param {number} props.progress - Progress percentage (0-100) for progress type
  * @param {number} props.duration - Auto-close duration in ms (0 = no auto-close)
+ * @param {function} props.onCancel - Cancel callback for progress type (shows cancel button if provided)
  */
 const Toast = ({ 
   isOpen, 
@@ -19,7 +20,8 @@ const Toast = ({
   title, 
   message, 
   progress = 0,
-  duration = 5000 
+  duration = 5000,
+  onCancel
 }) => {
   useEffect(() => {
     if (isOpen && duration > 0 && type !== 'progress') {
@@ -57,6 +59,9 @@ const Toast = ({
           </div>
         )}
       </div>
+      {type === 'progress' && onCancel && (
+        <button className="toast-cancel" onClick={onCancel} title="Отменить загрузку" />
+      )}
       {type !== 'progress' && (
         <button className="toast-close" onClick={onClose}>
           ✕
