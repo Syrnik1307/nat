@@ -305,12 +305,6 @@
   margin-bottom: 0.25rem;
 }
 
-.rl-announce-section {
-  margin-top: 0.5rem;
-  padding-top: 0.75rem;
-  border-top: 1px dashed var(--border-light);
-}
-
 /* Warning banner for missing Zoom PMI */
 .rl-warning-banner {
   background: linear-gradient(135deg, #fef3c7, #fde68a);

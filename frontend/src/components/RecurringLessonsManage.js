@@ -33,8 +33,6 @@ const initialForm = {
   telegram_notify_to_group: true,
   telegram_notify_to_students: false,
   telegram_group_chat_id: '',
-  telegram_announce_enabled: false,
-  telegram_announce_time: '',
 };
 
 const dayOptions = [
@@ -108,10 +106,6 @@ const RecurringLessonsManage = () => {
       }
       if (toGroup && !String(form.telegram_group_chat_id || '').trim()) {
         showNotification('warning', 'Внимание', 'Укажите Chat ID группы или привяжите группу через код');
-        return;
-      }
-      if (form.telegram_announce_enabled && !String(form.telegram_announce_time || '').trim()) {
-        showNotification('warning', 'Внимание', 'Укажите время анонса');
         return;
       }
     }
@@ -208,8 +202,6 @@ const RecurringLessonsManage = () => {
       telegram_notify_to_group: item.telegram_notify_to_group !== false,
       telegram_notify_to_students: item.telegram_notify_to_students || false,
       telegram_group_chat_id: item.telegram_group_chat_id || '',
-      telegram_announce_enabled: item.telegram_announce_enabled || false,
-      telegram_announce_time: item.telegram_announce_time ? item.telegram_announce_time.slice(0, 5) : '',
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -435,26 +427,6 @@ const RecurringLessonsManage = () => {
                       />
                       <span>Личные сообщения ученикам</span>
                     </label>
-                  </div>
-
-                  {/* Анонс */}
-                  <div className="rl-announce-section">
-                    <label className="rl-checkbox-row">
-                      <input
-                        type="checkbox"
-                        checked={form.telegram_announce_enabled}
-                        onChange={(e) => setForm({ ...form, telegram_announce_enabled: e.target.checked })}
-                      />
-                      <span>📣 Отправлять анонс утром в день урока</span>
-                    </label>
-
-                    {form.telegram_announce_enabled && (
-                      <TimePicker
-                        label="Время анонса"
-                        value={form.telegram_announce_time}
-                        onChange={(e) => setForm({ ...form, telegram_announce_time: e.target.value })}
-                      />
-                    )}
                   </div>
                 </div>
               )}

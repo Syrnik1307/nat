@@ -393,8 +393,6 @@ class RecurringLessonSerializer(serializers.ModelSerializer):
             'telegram_notify_to_group',
             'telegram_notify_to_students',
             'telegram_group_chat_id',
-            'telegram_announce_enabled',
-            'telegram_announce_time',
             # PMI
             'zoom_pmi_link',
         ]
@@ -433,15 +431,6 @@ class RecurringLessonSerializer(serializers.ModelSerializer):
             telegram_group_chat_id = getattr(self.instance, 'telegram_group_chat_id', '')
         telegram_group_chat_id = (telegram_group_chat_id or '').strip()
 
-        telegram_announce_enabled = attrs.get('telegram_announce_enabled')
-        if telegram_announce_enabled is None and self.instance is not None:
-            telegram_announce_enabled = getattr(self.instance, 'telegram_announce_enabled', False)
-        telegram_announce_enabled = bool(telegram_announce_enabled)
-
-        telegram_announce_time = attrs.get('telegram_announce_time')
-        if telegram_announce_time is None and self.instance is not None:
-            telegram_announce_time = getattr(self.instance, 'telegram_announce_time', None)
-
         if telegram_notify_enabled:
             allowed_minutes = {5, 10, 15, 30}
             try:
@@ -464,11 +453,6 @@ class RecurringLessonSerializer(serializers.ModelSerializer):
             if teacher and not getattr(teacher, 'zoom_pmi_link', '').strip():
                 raise serializers.ValidationError({'telegram_notify_enabled': 'Сначала добавьте постоянную Zoom-ссылку (PMI) в профиле'})
 
-        if telegram_announce_enabled:
-            if not telegram_notify_enabled:
-                raise serializers.ValidationError({'telegram_announce_enabled': 'Анонс включается вместе с уведомлениями'})
-            if not telegram_announce_time:
-                raise serializers.ValidationError({'telegram_announce_time': 'Укажите время анонса'})
         return attrs
 
     def create(self, validated_data):

@@ -54,11 +54,8 @@ class Command(BaseCommand):
             self.stdout.write(f"Текущее время: {now.strftime('%Y-%m-%d %H:%M:%S')}")
             self.stdout.write(f"День недели: {current_weekday}")
 
-        # 1. Напоминания о начале урока
+        # Напоминания о начале урока
         self._process_reminders(bot_token, now, today, current_weekday, dry_run, verbose)
-        
-        # 2. Анонсы (утром в день урока)
-        self._process_announces(bot_token, now, today, current_weekday, dry_run, verbose)
 
     def _process_reminders(self, bot_token, now, today, current_weekday, dry_run, verbose):
         """Обработка напоминаний за N минут до начала урока"""
@@ -140,69 +137,6 @@ class Command(BaseCommand):
                 status = '✓' if not error_message else f'✗ {error_message}'
                 self.stdout.write(f"  Результат: {status} (получателей: {recipients_count})")
 
-    def _process_announces(self, bot_token, now, today, current_weekday, dry_run, verbose):
-        """Обработка анонсов (утром в день урока)"""
-        
-        lessons = RecurringLesson.objects.filter(
-            telegram_notify_enabled=True,
-            telegram_announce_enabled=True,
-            telegram_announce_time__isnull=False,
-            day_of_week=current_weekday,
-            start_date__lte=today,
-            end_date__gte=today,
-        ).select_related('teacher', 'group')
-
-        for rl in lessons:
-            if not self._matches_week_type(rl.week_type, today, rl.start_date):
-                continue
-
-            # Время анонса
-            announce_at = timezone.make_aware(
-                datetime.combine(today, rl.telegram_announce_time),
-                timezone.get_current_timezone()
-            )
-            
-            time_diff = (now - announce_at).total_seconds()
-            if not (-30 <= time_diff <= 90):
-                continue
-
-            already_sent = LessonNotificationLog.objects.filter(
-                recurring_lesson=rl,
-                notification_type='announce',
-                lesson_date=today
-            ).exists()
-
-            if already_sent:
-                continue
-
-            message = self._build_announce_message(rl, today)
-            
-            if verbose or dry_run:
-                self.stdout.write(f"\n{'[DRY-RUN] ' if dry_run else ''}Отправка анонса:")
-                self.stdout.write(f"  Урок: {rl.title}")
-
-            if dry_run:
-                continue
-
-            recipients_count = 0
-            error_message = ''
-            
-            try:
-                recipients_count = self._send_notification(
-                    bot_token, rl, message, verbose
-                )
-            except Exception as e:
-                error_message = str(e)
-
-            with transaction.atomic():
-                LessonNotificationLog.objects.create(
-                    recurring_lesson=rl,
-                    notification_type='announce',
-                    lesson_date=today,
-                    recipients_count=recipients_count,
-                    error_message=error_message
-                )
-
     def _matches_week_type(self, week_type, current_date, start_date):
         """Проверить, подходит ли текущая неделя под тип (ALL/UPPER/LOWER)"""
         if week_type == 'ALL':
@@ -238,28 +172,6 @@ class Command(BaseCommand):
         if pmi_link:
             lines.append("")
             lines.append(f"🔗 [Подключиться к Zoom]({pmi_link})")
-        
-        return "\n".join(lines)
-
-    def _build_announce_message(self, rl, lesson_date):
-        """Построить текст анонса"""
-        teacher_name = rl.teacher.get_full_name() if rl.teacher else 'Преподаватель'
-        pmi_link = getattr(rl.teacher, 'zoom_pmi_link', '') if rl.teacher else ''
-        
-        start_str = rl.start_time.strftime('%H:%M')
-        end_str = rl.end_time.strftime('%H:%M')
-        
-        lines = [
-            f"📣 *Сегодня урок!*",
-            "",
-            f"📚 {rl.title} — {rl.group.name}",
-            f"⏰ {start_str} – {end_str}",
-            f"👨‍🏫 {teacher_name}",
-        ]
-        
-        if pmi_link:
-            lines.append("")
-            lines.append(f"🔗 Ссылка: {pmi_link}")
         
         return "\n".join(lines)
 
