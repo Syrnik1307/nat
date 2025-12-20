@@ -39,6 +39,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'date_of_birth',
             'telegram_username',
             'telegram_verified',
+            'zoom_pmi_link',
             'created_at',
             'updated_at',
         ]

@@ -8,6 +8,7 @@ import {
   deleteRecurringLesson,
   createRecurringLessonTelegramBindCode,
 } from '../apiService';
+import { useAuth } from '../auth';
 import Button from '../shared/components/Button';
 import Input from '../shared/components/Input';
 import Badge from '../shared/components/Badge';
@@ -54,6 +55,7 @@ const weekTypeOptions = [
 
 const RecurringLessonsManage = () => {
   const { notification, confirm, showNotification, closeNotification, showConfirm, closeConfirm } = useNotification();
+  const { user } = useAuth();
   const [groups, setGroups] = useState([]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +65,9 @@ const RecurringLessonsManage = () => {
   const [editingId, setEditingId] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
+
+  // Проверяем, есть ли у пользователя zoom_pmi_link
+  const hasZoomPmi = Boolean(user?.zoom_pmi_link?.trim());
 
   useEffect(() => {
     const load = async () => {
@@ -126,7 +131,38 @@ const RecurringLessonsManage = () => {
       setEditingId(null);
       setShowForm(false);
     } catch (e) {
-      showNotification('error', 'Ошибка', e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка сохранения');
+      // Парсим ошибки валидации от бэкенда
+      let errorMessage = 'Ошибка сохранения';
+      if (e.response?.data) {
+        const data = e.response.data;
+        if (typeof data === 'object') {
+          // Преобразуем {field: [errors]} в читаемый текст
+          const messages = [];
+          for (const [field, errors] of Object.entries(data)) {
+            const errorText = Array.isArray(errors) ? errors.join(', ') : String(errors);
+            // Человекочитаемые названия полей
+            const fieldNames = {
+              telegram_notify_enabled: 'Telegram-уведомления',
+              telegram_group_chat_id: 'Chat ID группы',
+              telegram_notify_to_group: 'Отправка в группу',
+              telegram_notify_minutes: 'Минуты до начала',
+              telegram_announce_enabled: 'Анонс',
+              telegram_announce_time: 'Время анонса',
+              zoom_pmi_link: 'Zoom PMI ссылка',
+              end_time: 'Время окончания',
+              start_time: 'Время начала',
+              group_id: 'Группа',
+              day_of_week: 'День недели',
+            };
+            const fieldName = fieldNames[field] || field;
+            messages.push(`${fieldName}: ${errorText}`);
+          }
+          errorMessage = messages.join('\n') || JSON.stringify(data);
+        } else {
+          errorMessage = String(data);
+        }
+      }
+      showNotification('error', 'Ошибка', errorMessage);
     } finally {
       setSaving(false);
     }
@@ -327,10 +363,18 @@ const RecurringLessonsManage = () => {
             <div className="rl-form-section">
               <h3 className="rl-form-section-title">📱 Telegram-уведомления</h3>
               
+              {!hasZoomPmi && (
+                <div className="rl-warning-banner">
+                  ⚠️ Для включения Telegram-уведомлений добавьте постоянную Zoom-ссылку (PMI) в{' '}
+                  <a href="/profile" target="_blank" rel="noopener noreferrer">настройках профиля</a>
+                </div>
+              )}
+              
               <label className="rl-checkbox-row">
                 <input
                   type="checkbox"
                   checked={form.telegram_notify_enabled}
+                  disabled={!hasZoomPmi}
                   onChange={(e) => setForm({ ...form, telegram_notify_enabled: e.target.checked })}
                 />
                 <span>Включить уведомления о начале урока</span>

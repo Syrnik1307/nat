@@ -311,3 +311,37 @@
   border-top: 1px dashed var(--border-light);
 }
 
+/* Warning banner for missing Zoom PMI */
+.rl-warning-banner {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rl-warning-banner a {
+  color: #b45309;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.rl-warning-banner a:hover {
+  color: #92400e;
+}
+
+/* Disabled checkbox style */
+.rl-checkbox-row input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rl-checkbox-row input[type="checkbox"]:disabled + span {
+  opacity: 0.6;
+}
+
