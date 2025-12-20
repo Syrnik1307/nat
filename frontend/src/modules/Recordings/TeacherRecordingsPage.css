@@ -396,11 +396,105 @@
     grid-template-columns: 1fr;
     gap: 1rem;
   }
+
+  .teacher-upload-modal {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+    border-radius: 12px;
+  }
+
+  .teacher-upload-modal-header {
+    padding: 1rem;
+  }
+
+  .teacher-upload-modal-header h2 {
+    font-size: 1.25rem;
+  }
+
+  .teacher-upload-form {
+    padding: 1rem;
+  }
+
+  .teacher-upload-field {
+    margin-bottom: 1rem;
+  }
+
+  .teacher-dropzone {
+    padding: 2rem 1rem;
+  }
+
+  .teacher-dropzone-icon {
+    font-size: 2.5rem;
+  }
+
+  .teacher-upload-actions {
+    flex-direction: column-reverse;
+    gap: 0.75rem;
+  }
+
+  .teacher-cancel-btn,
+  .teacher-submit-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .teacher-privacy-tabs {
+    flex-direction: column;
+  }
+
+  .teacher-privacy-tab {
+    min-width: 100%;
+    text-align: center;
+  }
+
+  .teacher-file-preview {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+  }
+
+  .teacher-file-info {
+    text-align: center;
+  }
 }
 
 @media (max-width: 480px) {
+  .teacher-recordings-page {
+    padding: 0.75rem;
+  }
+
+  .teacher-recordings-header {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .teacher-recordings-header > div {
+    min-width: 100%;
+  }
+
   .teacher-recordings-header h1 {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
+  }
+
+  .teacher-recordings-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .teacher-upload-btn {
+    width: 100%;
+  }
+
+  .teacher-stat-card {
+    padding: 0.875rem;
+  }
+
+  .teacher-stat-value {
+    font-size: 1.25rem;
+  }
+
+  .teacher-stat-label {
+    font-size: 0.8rem;
   }
 
   .teacher-empty-icon {
@@ -413,6 +507,27 @@
 
   .teacher-recordings-empty p {
     font-size: 0.95rem;
+  }
+
+  .teacher-recordings-filters {
+    padding: 1rem;
+  }
+
+  .teacher-filter-group label {
+    font-size: 0.9rem;
+  }
+
+  .teacher-upload-modal-overlay {
+    padding: 0.5rem;
+  }
+
+  .teacher-checkbox-list {
+    max-height: 150px;
+  }
+
+  .teacher-checkbox-item {
+    padding: 0.625rem;
+    font-size: 0.9rem;
   }
 }
 

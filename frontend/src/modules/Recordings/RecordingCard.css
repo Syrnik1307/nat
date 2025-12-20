@@ -301,13 +301,44 @@
 
 /* Адаптивность */
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
+  .recording-card {
+    border-radius: 12px;
+  }
+
+  .recording-info {
+    padding: 1rem;
+  }
+
   .recording-title {
     font-size: 1.1rem;
   }
 
+  .play-button {
+    width: 60px;
+    height: 60px;
+    font-size: 1.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .recording-card {
+    border-radius: 10px;
+  }
+
+  .recording-info {
+    padding: 0.875rem;
+    gap: 0.5rem;
+  }
+
+  .recording-title {
+    font-size: 1rem;
+    line-height: 1.25;
+  }
+
   .recording-stats {
     gap: 0.5rem;
+    padding: 0.625rem 0;
   }
 
   .stat-icon {
@@ -316,6 +347,45 @@
 
   .stat-value {
     font-size: 1rem;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+  }
+
+  .meta-row {
+    font-size: 0.85rem;
+  }
+
+  .group-pill {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+  }
+
+  .watch-button {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  .delete-button {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9rem;
+  }
+
+  .play-button {
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+  }
+
+  .duration-badge {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .status-badge {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.65rem;
   }
 }
 

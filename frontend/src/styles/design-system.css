@@ -820,5 +820,69 @@ input, textarea, select {
     min-height: 44px;
     padding: 10px var(--space-md);
   }
+
+  /* Prevent horizontal overflow */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Better touch targets */
+  input, select, textarea, button {
+    min-height: 44px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+
+  /* Full-width forms on mobile */
+  .form-group, .form-field {
+    width: 100%;
+  }
+
+  /* Modal improvements */
+  .modal-content, .confirm-modal-content {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+
+  /* Stack buttons on mobile */
+  .btn-group, .button-group, .form-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .btn-group > *, .button-group > *, .form-actions > * {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 13px;
+  }
+
+  /* Even smaller padding on very small screens */
+  .card {
+    padding: var(--space-sm);
+    border-radius: var(--radius-lg);
+  }
+
+  /* Headers */
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.25rem; }
+  h3 { font-size: 1.125rem; }
+
+  /* Tighter spacing */
+  .section, .page-section {
+    padding: 1rem 0.75rem;
+  }
+}
+
+/* Safe area for notch phones */
+@supports (padding: max(0px)) {
+  .page-container, .main-content {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }
 

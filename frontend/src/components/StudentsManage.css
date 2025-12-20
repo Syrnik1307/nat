@@ -552,6 +552,31 @@
 
 /* Адаптивность */
 @media (max-width: 768px) {
+  .students-manage-page {
+    padding: 1rem;
+  }
+
+  .sm-page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .sm-page-header h1 {
+    font-size: 1.5rem;
+    text-align: center;
+  }
+
+  .sm-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .sm-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
   .sm-list-header,
   .sm-student-item {
     grid-template-columns: 1fr;
@@ -568,6 +593,39 @@
 
   .sm-student-actions {
     justify-content: flex-start;
+  }
+
+  .sm-search-bar {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .sm-search-input {
+    width: 100%;
+  }
+
+  .sm-filter-select {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .students-manage-page {
+    padding: 0.75rem;
+  }
+
+  .sm-student-item {
+    padding: 0.875rem;
+    border-radius: 12px;
+  }
+
+  .sm-student-name {
+    font-size: 1rem;
+  }
+
+  .sm-student-actions button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
   }
 }
 

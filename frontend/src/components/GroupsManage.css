@@ -472,7 +472,7 @@
 
 @media (max-width: 768px) {
   .groups-manage-page {
-    padding: 1.5rem;
+    padding: 1rem;
   }
 
   .gm-modal-controls {
@@ -480,7 +480,64 @@
   }
 
   .gm-group-card {
-    padding: 1.1rem 1.25rem;
+    padding: 1rem;
+  }
+
+  .gm-page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .gm-page-header h1 {
+    font-size: 1.5rem;
+    text-align: center;
+  }
+
+  .gm-create-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .gm-group-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .gm-group-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .gm-group-meta {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .gm-students-summary {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .groups-manage-page {
+    padding: 0.75rem;
+  }
+
+  .gm-group-card {
+    padding: 0.875rem;
+    border-radius: 12px;
+  }
+
+  .gm-group-name {
+    font-size: 1rem;
+  }
+
+  .gm-group-actions .gm-action-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
   }
 }
 
