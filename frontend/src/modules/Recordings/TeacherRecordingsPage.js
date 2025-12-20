@@ -537,21 +537,47 @@ function TeacherRecordingsPage() {
             </div>
             <form onSubmit={handleUploadSubmit} className="teacher-upload-form" noValidate>
               <div className="teacher-upload-field">
-                <label>Урок (необязательно)</label>
+                <label>Привязать к уроку (необязательно)</label>
                 <select
                   value={uploadForm.lessonId}
                   onChange={(e) => setUploadForm({...uploadForm, lessonId: e.target.value})}
                   className="teacher-upload-select"
                 >
-                  <option value="">Самостоятельное видео (не привязано к уроку)</option>
-                  {lessons.map(lesson => (
-                    <option key={lesson.id} value={lesson.id}>
-                      {lesson.title} - {lesson.group_name} ({new Date(lesson.start_time).toLocaleDateString()})
-                    </option>
-                  ))}
+                  <option value="">📹 Самостоятельное видео</option>
+                  {(() => {
+                    const now = new Date();
+                    const pastLessons = lessons.filter(l => new Date(l.start_time) < now);
+                    const futureLessons = lessons.filter(l => new Date(l.start_time) >= now);
+                    const formatDate = (dateStr) => {
+                      const d = new Date(dateStr);
+                      return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    };
+                    return (
+                      <>
+                        {pastLessons.length > 0 && (
+                          <optgroup label="📚 Прошедшие уроки">
+                            {pastLessons.sort((a, b) => new Date(b.start_time) - new Date(a.start_time)).map(lesson => (
+                              <option key={lesson.id} value={lesson.id}>
+                                {lesson.title || lesson.subject} • {lesson.group_name} ({formatDate(lesson.start_time)})
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {futureLessons.length > 0 && (
+                          <optgroup label="📅 Предстоящие уроки">
+                            {futureLessons.sort((a, b) => new Date(a.start_time) - new Date(b.start_time)).map(lesson => (
+                              <option key={lesson.id} value={lesson.id}>
+                                {lesson.title || lesson.subject} • {lesson.group_name} ({formatDate(lesson.start_time)})
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </>
+                    );
+                  })()}
                 </select>
                 <small className="teacher-upload-hint">
-                  Оставьте пустым, если это дополнительный материал или видео не привязано к конкретному уроку
+                  Выберите урок для привязки или оставьте "Самостоятельное видео" для дополнительных материалов
                 </small>
               </div>
 
