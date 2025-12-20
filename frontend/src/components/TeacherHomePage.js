@@ -94,6 +94,26 @@ const IconPlay = ({ size = 24, className = '' }) => (
   </svg>
 );
 
+const IconPencil = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+    <path d="m15 5 4 4"/>
+  </svg>
+);
+
+const IconCheck = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+
+const IconX = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
+
 const IconBook = ({ size = 24, className = '' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
@@ -192,6 +212,11 @@ const TeacherHomePage = () => {
   const [recordingTitle, setRecordingTitle] = useState('');
   const [lessonStartError, setLessonStartError] = useState(null);
   const [lessonStarting, setLessonStarting] = useState(false);
+  
+  // State for editing lesson topic inline
+  const [editingTopicLessonId, setEditingTopicLessonId] = useState(null);
+  const [editingTopicValue, setEditingTopicValue] = useState('');
+  const [savingTopic, setSavingTopic] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -258,9 +283,42 @@ const TeacherHomePage = () => {
   const openLessonStartModal = (lesson) => {
     setSelectedLesson(lesson);
     setLessonRecordEnabled(lesson.record_lesson || false);
-    setRecordingTitle(lesson.title || '');
+    setRecordingTitle(lesson.display_name || lesson.title || lesson.group_name || '');
     setLessonStartError(null);
     setShowLessonStartModal(true);
+  };
+  
+  // Начать редактирование темы урока
+  const startEditTopic = (lesson) => {
+    setEditingTopicLessonId(lesson.id);
+    setEditingTopicValue(lesson.title || '');
+  };
+  
+  // Сохранить тему урока
+  const saveTopicEdit = async (lessonId) => {
+    if (savingTopic) return;
+    setSavingTopic(true);
+    try {
+      await updateLesson(lessonId, { title: editingTopicValue });
+      // Обновляем локально
+      setLessons(prev => prev.map(l => 
+        l.id === lessonId 
+          ? { ...l, title: editingTopicValue, display_name: editingTopicValue || l.group_name }
+          : l
+      ));
+      setEditingTopicLessonId(null);
+      setEditingTopicValue('');
+    } catch (err) {
+      console.error('Failed to save topic:', err);
+    } finally {
+      setSavingTopic(false);
+    }
+  };
+  
+  // Отменить редактирование темы
+  const cancelEditTopic = () => {
+    setEditingTopicLessonId(null);
+    setEditingTopicValue('');
   };
 
   // Запустить конкретный урок
@@ -473,8 +531,11 @@ const TeacherHomePage = () => {
             </h3>
 
             <div className="start-modal-lesson-info">
-              <div className="start-modal-lesson-name">{selectedLesson.title || 'Без названия'}</div>
+              <div className="start-modal-lesson-name">{selectedLesson.display_name || selectedLesson.group_name || 'Урок'}</div>
               <div className="start-modal-lesson-group">{selectedLesson.group_name || `Группа #${selectedLesson.group}`}</div>
+              {selectedLesson.title && (
+                <div className="start-modal-lesson-topic">Тема: {selectedLesson.title}</div>
+              )}
             </div>
 
             {/* Record Option */}
@@ -500,6 +561,18 @@ const TeacherHomePage = () => {
                     onChange={(e) => setRecordingTitle(e.target.value)}
                   />
                 </div>
+                <label className="start-modal-use-topic-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={recordingTitle === (selectedLesson.display_name || selectedLesson.group_name)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setRecordingTitle(selectedLesson.display_name || selectedLesson.group_name || '');
+                      }
+                    }}
+                  />
+                  <span>Использовать название урока</span>
+                </label>
                 <div className="start-modal-hint">
                   <IconDisc size={14} />
                   <span>Запись сохранится с указанным названием</span>
@@ -581,39 +654,95 @@ const TeacherHomePage = () => {
             </div>
             <div className="schedule-list">
               {lessons.length > 0 ? (
-                lessons.map((lesson) => (
-                  <div key={lesson.id} className="schedule-item">
-                    <div className="schedule-time-badge">
-                      <span className="schedule-date">{formatDate(lesson.start_time)}</span>
-                      <span className="schedule-hour">{formatTime(lesson.start_time)}</span>
+                lessons.map((lesson) => {
+                  const isEditing = editingTopicLessonId === lesson.id;
+                  const isVirtualLesson = typeof lesson.id !== 'number'; // recurring virtual lessons have string IDs
+                  
+                  return (
+                    <div key={lesson.id} className="schedule-item">
+                      <div className="schedule-time-badge">
+                        <span className="schedule-date">{formatDate(lesson.start_time)}</span>
+                        <span className="schedule-hour">{formatTime(lesson.start_time)}</span>
+                      </div>
+                      <div className="schedule-info">
+                        <div className="schedule-group-name">{lesson.group_name || `Группа #${lesson.group}`}</div>
+                        <div className="schedule-topic-row">
+                          {isEditing ? (
+                            <div className="schedule-topic-edit">
+                              <input
+                                type="text"
+                                className="schedule-topic-input"
+                                value={editingTopicValue}
+                                onChange={(e) => setEditingTopicValue(e.target.value)}
+                                placeholder="Введите тему урока"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') saveTopicEdit(lesson.id);
+                                  if (e.key === 'Escape') cancelEditTopic();
+                                }}
+                              />
+                              <button
+                                className="schedule-topic-btn save"
+                                onClick={() => saveTopicEdit(lesson.id)}
+                                disabled={savingTopic}
+                                title="Сохранить"
+                              >
+                                <IconCheck size={14} />
+                              </button>
+                              <button
+                                className="schedule-topic-btn cancel"
+                                onClick={cancelEditTopic}
+                                title="Отмена"
+                              >
+                                <IconX size={14} />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="schedule-topic">
+                                {lesson.title ? (
+                                  <>Тема: {lesson.title}</>
+                                ) : (
+                                  <span className="schedule-topic-empty">Тема не указана</span>
+                                )}
+                              </span>
+                              {!isVirtualLesson && (
+                                <button
+                                  className="schedule-topic-edit-btn"
+                                  onClick={() => startEditTopic(lesson)}
+                                  title="Указать тему"
+                                >
+                                  <IconPencil size={12} />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="schedule-actions">
+                        {lesson.zoom_start_url ? (
+                          <a 
+                            href={lesson.zoom_start_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="schedule-start-btn active"
+                          >
+                            <IconVideo size={14} />
+                            <span>Продолжить</span>
+                          </a>
+                        ) : (
+                          <button
+                            className="schedule-start-btn"
+                            onClick={() => openLessonStartModal(lesson)}
+                          >
+                            <IconPlay size={14} />
+                            <span>Начать</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="schedule-info">
-                      <div className="schedule-title">{lesson.title || 'Без названия'}</div>
-                      <div className="schedule-group">{lesson.group_name || `Группа #${lesson.group}`}</div>
-                    </div>
-                    <div className="schedule-actions">
-                      {lesson.zoom_start_url ? (
-                        <a 
-                          href={lesson.zoom_start_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="schedule-start-btn active"
-                        >
-                          <IconVideo size={14} />
-                          <span>Продолжить</span>
-                        </a>
-                      ) : (
-                        <button
-                          className="schedule-start-btn"
-                          onClick={() => openLessonStartModal(lesson)}
-                        >
-                          <IconPlay size={14} />
-                          <span>Начать</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="empty-state">
                   <IconCalendar size={32} className="empty-icon" />
@@ -1122,6 +1251,112 @@ const globalStyles = `
   .schedule-info {
     flex: 1;
     min-width: 0;
+  }
+
+  .schedule-group-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: 0.3rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .schedule-topic-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 24px;
+  }
+
+  .schedule-topic {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+  }
+
+  .schedule-topic-empty {
+    font-style: italic;
+    color: var(--slate-400);
+  }
+
+  .schedule-topic-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: transparent;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-sm);
+    color: var(--slate-400);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .schedule-topic-edit-btn:hover {
+    background: var(--indigo-50);
+    border-color: var(--indigo-300);
+    color: var(--indigo-600);
+  }
+
+  .schedule-topic-edit {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex: 1;
+  }
+
+  .schedule-topic-input {
+    flex: 1;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--indigo-300);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-family: var(--font-family);
+    outline: none;
+    background: #fff;
+    min-width: 120px;
+  }
+
+  .schedule-topic-input:focus {
+    border-color: var(--indigo-500);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+
+  .schedule-topic-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .schedule-topic-btn.save {
+    background: var(--indigo-600);
+    color: #fff;
+  }
+
+  .schedule-topic-btn.save:hover:not(:disabled) {
+    background: var(--indigo-700);
+  }
+
+  .schedule-topic-btn.save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .schedule-topic-btn.cancel {
+    background: var(--slate-200);
+    color: var(--slate-600);
+  }
+
+  .schedule-topic-btn.cancel:hover {
+    background: var(--slate-300);
   }
 
   .schedule-title {
@@ -1691,6 +1926,13 @@ const globalStyles = `
     color: var(--color-text-secondary);
   }
 
+  .start-modal-lesson-topic {
+    font-size: 0.8rem;
+    color: var(--indigo-600);
+    margin-top: 0.25rem;
+    font-style: italic;
+  }
+
   .start-modal-checkbox {
     display: flex;
     align-items: center;
@@ -1728,6 +1970,23 @@ const globalStyles = `
     font-size: 0.9rem;
     font-weight: 500;
     color: var(--color-text-primary);
+  }
+
+  .start-modal-use-topic-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    margin-bottom: 0.75rem;
+  }
+
+  .start-modal-use-topic-checkbox input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--color-primary);
+    cursor: pointer;
   }
 
   .start-modal-hint {

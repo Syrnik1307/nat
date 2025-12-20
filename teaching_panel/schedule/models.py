@@ -105,7 +105,7 @@ class Group(models.Model):
 class Lesson(models.Model):
     """Занятие (урок)"""
     
-    title = models.CharField(_('название'), max_length=200)
+    title = models.CharField(_('название'), max_length=200, blank=True, default='')
     group = models.ForeignKey(
         Group,
         on_delete=models.CASCADE,
@@ -196,7 +196,15 @@ class Lesson(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.title} - {self.group.name} ({self.start_time.strftime('%d.%m.%Y %H:%M')})"
+        display = self.display_name
+        return f"{display} ({self.start_time.strftime('%d.%m.%Y %H:%M')})"
+    
+    @property
+    def display_name(self):
+        """Название для отображения: тема урока или имя группы"""
+        if self.title and self.title.strip():
+            return self.title.strip()
+        return self.group.name if self.group else 'Урок'
     
     def duration(self):
         """Длительность урока в минутах"""
@@ -506,7 +514,7 @@ class RecurringLesson(models.Model):
         (6, 'Воскресенье'),
     )
     
-    title = models.CharField(_('название'), max_length=200)
+    title = models.CharField(_('название'), max_length=200, blank=True, default='')
     group = models.ForeignKey(
         Group,
         on_delete=models.CASCADE,
@@ -616,7 +624,15 @@ class RecurringLesson(models.Model):
     def __str__(self):
         day_name = dict(self.DAY_OF_WEEK_CHOICES)[self.day_of_week]
         week_type = dict(self.WEEK_TYPE_CHOICES)[self.week_type]
-        return f"{self.title} - {day_name} {self.start_time.strftime('%H:%M')} ({week_type})"
+        display = self.display_name
+        return f"{display} - {day_name} {self.start_time.strftime('%H:%M')} ({week_type})"
+    
+    @property
+    def display_name(self):
+        """Название для отображения: тема урока или имя группы"""
+        if self.title and self.title.strip():
+            return self.title.strip()
+        return self.group.name if self.group else 'Урок'
 
 
 class TeacherStorageQuota(models.Model):

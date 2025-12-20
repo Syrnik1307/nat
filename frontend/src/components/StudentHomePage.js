@@ -221,6 +221,28 @@ const StudentHomePage = () => {
             </div>
           )}
 
+          {/* Today's Lessons with Topics */}
+          {todayLessons.length > 0 && (
+            <div className="student-lessons-today">
+              <h2 className="student-section-title">Расписание на сегодня</h2>
+              <div className="student-lessons-list">
+                {todayLessons.map((lesson) => (
+                  <div key={lesson.id} className="student-lesson-card">
+                    <div className="student-lesson-time">
+                      {formatTimeHHMM(lesson.start_time)} – {formatTimeHHMM(lesson.end_time)}
+                    </div>
+                    <div className="student-lesson-info">
+                      <div className="student-lesson-group">{lesson.group_name || lesson.display_name || 'Группа'}</div>
+                      {lesson.title && (
+                        <div className="student-lesson-topic">Тема: {lesson.title}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Course List */}
           <div className="student-courses-section">
             <div className="student-section-header">

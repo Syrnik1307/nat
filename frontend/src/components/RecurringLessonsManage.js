@@ -259,15 +259,6 @@ const RecurringLessonsManage = () => {
           </h2>
           <form onSubmit={handleSubmit} className="rl-form">
             <div className="rl-form-grid">
-              <Input
-                label="Название урока"
-                type="text"
-                required
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="Введите название"
-              />
-
               <Select
                 label="Группа"
                 required
@@ -275,6 +266,14 @@ const RecurringLessonsManage = () => {
                 onChange={(e) => setForm({ ...form, group_id: e.target.value })}
                 options={groups.map(g => ({ value: String(g.id), label: g.name }))}
                 placeholder="Выберите группу"
+              />
+
+              <Input
+                label="Тема урока (необязательно)"
+                type="text"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="Если не указано, будет использовано имя группы"
               />
 
               <Select
@@ -442,13 +441,20 @@ const RecurringLessonsManage = () => {
             {filteredItems.map(item => (
               <div key={item.id} className="rl-card">
                 <div className="rl-card-header">
-                  <h3 className="rl-card-title">{item.title}</h3>
+                  <h3 className="rl-card-title">{item.display_name || item.title || item.group?.name || 'Урок'}</h3>
                   <Badge variant="info">
                     {item.group?.name || '—'}
                   </Badge>
                 </div>
 
                 <div className="rl-card-body">
+                  {item.title && (
+                    <div className="rl-card-row">
+                      <span className="rl-card-label">Тема:</span>
+                      <span className="rl-card-value">{item.title}</span>
+                    </div>
+                  )}
+                  
                   <div className="rl-card-row">
                     <span className="rl-card-label">День:</span>
                     <span className="rl-card-value">{item.day_of_week_display}</span>

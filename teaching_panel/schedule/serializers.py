@@ -72,11 +72,13 @@ class LessonSerializer(serializers.ModelSerializer):
     # Для отображения в календаре: есть ли запись и ДЗ
     recording_id = serializers.SerializerMethodField()
     homework_id = serializers.SerializerMethodField()
+    # display_name: тема урока или название группы
+    display_name = serializers.CharField(read_only=True)
     
     class Meta:
         model = Lesson
         fields = [
-            'id', 'title', 'group', 'group_name',
+            'id', 'title', 'display_name', 'group', 'group_name',
             'teacher', 'teacher_name',
             'start_time', 'end_time', 'duration_minutes',
             'topics', 'location',
@@ -247,8 +249,8 @@ class LessonCalendarSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'start', 'end', 'color', 'extendedProps']
     
     def get_title(self, obj):
-        """Формат: Название - Группа"""
-        return f"{obj.title} - {obj.group.name}"
+        """Формат: display_name (тема или группа)"""
+        return obj.display_name
     
     def get_color(self, obj):
         """Цвет в зависимости от группы (можно настроить)"""
@@ -265,6 +267,8 @@ class LessonCalendarSerializer(serializers.ModelSerializer):
             'location': obj.location,
             'topics': obj.topics,
             'zoomUrl': obj.zoom_join_url,
+            'lessonTitle': obj.title,  # Оригинальная тема урока (может быть пустой)
+            'displayName': obj.display_name,  # Полное отображаемое имя
         }
 
 
@@ -289,11 +293,12 @@ class LessonDetailSerializer(serializers.ModelSerializer):
     attendances = AttendanceSerializer(many=True, read_only=True)
     recordings = serializers.SerializerMethodField()
     duration_minutes = serializers.IntegerField(source='duration', read_only=True)
+    display_name = serializers.CharField(read_only=True)
     
     class Meta:
         model = Lesson
         fields = [
-            'id', 'title', 'group', 'teacher',
+            'id', 'title', 'display_name', 'group', 'teacher',
             'start_time', 'end_time', 'duration_minutes',
             'topics', 'location',
             'zoom_meeting_id', 'zoom_start_url', 'zoom_join_url', 'zoom_password',
@@ -360,6 +365,8 @@ class RecurringLessonSerializer(serializers.ModelSerializer):
     week_type_display = serializers.CharField(source='get_week_type_display', read_only=True)
     # PMI ссылка препода (read-only, берём из teacher)
     zoom_pmi_link = serializers.SerializerMethodField()
+    # display_name: тема урока или название группы
+    display_name = serializers.CharField(read_only=True)
     
     def get_day_of_week_display(self, obj):
         days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
@@ -374,7 +381,7 @@ class RecurringLessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecurringLesson
         fields = [
-            'id', 'title', 'teacher', 'group', 'group_id',
+            'id', 'title', 'display_name', 'teacher', 'group', 'group_id',
             'day_of_week', 'day_of_week_display',
             'week_type', 'week_type_display',
             'start_time', 'end_time',
