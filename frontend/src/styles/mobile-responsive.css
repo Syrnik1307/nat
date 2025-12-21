@@ -1,0 +1,541 @@
+/* ================================================
+   MOBILE RESPONSIVE STYLES
+   Общие мобильные стили для всех ЛК
+   Не влияет на десктоп (>768px)
+   ================================================ */
+
+/* ================================================
+   ОБЩИЕ МОБИЛЬНЫЕ СТИЛИ (<768px)
+   ================================================ */
+
+@media (max-width: 768px) {
+  /* Контейнеры страниц */
+  .teacher-home-page,
+  .student-home,
+  .admin-home-page {
+    padding: 1rem !important;
+    overflow-x: hidden;
+  }
+
+  /* Все карточки и секции */
+  .glass-card,
+  .schedule-section,
+  .impact-dashboard,
+  .groups-section,
+  .stats-section,
+  .summary-stats,
+  .student-courses-section,
+  .admin-stat-card,
+  .admin-section {
+    padding: 1rem !important;
+    border-radius: 16px !important;
+    margin-bottom: 1rem;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  /* Сетки становятся одноколоночными */
+  .content-grid,
+  .stats-grid,
+  .summary-grid,
+  .actions-grid,
+  .impact-grid,
+  .admin-stats-grid,
+  .admin-quick-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem !important;
+    width: 100% !important;
+  }
+
+  /* Сайдбар под контент */
+  .sidebar {
+    order: 1;
+    width: 100% !important;
+  }
+
+  /* Заголовки */
+  .page-header,
+  .admin-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 1rem !important;
+    padding: 1rem !important;
+    text-align: left;
+  }
+
+  .page-title,
+  .admin-welcome h1 {
+    font-size: 1.5rem !important;
+    line-height: 1.3;
+  }
+
+  .page-subtitle,
+  .admin-welcome p {
+    font-size: 0.9rem !important;
+  }
+
+  /* Кнопки в заголовке */
+  .header-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .header-actions .btn,
+  .header-message-button {
+    width: 100% !important;
+    justify-content: center;
+  }
+
+  /* Заголовки секций */
+  .section-title {
+    font-size: 1.25rem !important;
+    flex-wrap: wrap;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0.75rem;
+  }
+
+  .link-all {
+    align-self: flex-start;
+  }
+}
+
+/* ================================================
+   МАЛЕНЬКИЕ МОБИЛЬНЫЕ (<480px)
+   ================================================ */
+
+@media (max-width: 480px) {
+  /* Еще компактнее */
+  .teacher-home-page,
+  .student-home,
+  .admin-home-page {
+    padding: 0.75rem !important;
+  }
+
+  .glass-card,
+  .schedule-section,
+  .impact-dashboard,
+  .groups-section,
+  .stats-section,
+  .summary-stats,
+  .student-courses-section,
+  .admin-stat-card,
+  .admin-section {
+    padding: 0.875rem !important;
+    border-radius: 12px !important;
+  }
+
+  .page-title,
+  .admin-welcome h1 {
+    font-size: 1.35rem !important;
+  }
+
+  .section-title {
+    font-size: 1.15rem !important;
+  }
+
+  /* Карточки уроков */
+  .lesson-card {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    padding: 1rem !important;
+  }
+
+  .lesson-time {
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    gap: 0.5rem;
+    min-width: auto !important;
+  }
+
+  .lesson-actions {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .lesson-actions .btn {
+    flex: 1;
+    min-width: 100px;
+    font-size: 0.85rem !important;
+    padding: 0.5rem 0.75rem !important;
+  }
+
+  /* Статистика */
+  .stat-card {
+    flex-direction: row !important;
+    padding: 1rem !important;
+  }
+
+  .stat-icon {
+    font-size: 1.75rem !important;
+  }
+
+  .stat-value,
+  .stat-number {
+    font-size: 1.5rem !important;
+  }
+
+  .stat-label {
+    font-size: 0.8rem !important;
+  }
+
+  /* Кнопки */
+  .btn {
+    font-size: 0.9rem !important;
+    padding: 0.65rem 1rem !important;
+  }
+
+  .btn-sm {
+    font-size: 0.8rem !important;
+    padding: 0.5rem 0.75rem !important;
+  }
+}
+
+/* ================================================
+   TEACHER HOME PAGE MOBILE
+   ================================================ */
+
+@media (max-width: 768px) {
+  /* Quick Lesson Button */
+  .quick-lesson-btn,
+  .winter-quick-lesson-btn {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 1rem !important;
+  }
+
+  /* Impact dashboard */
+  .impact-dashboard {
+    gap: 1rem !important;
+  }
+
+  .badge-card {
+    flex-direction: row !important;
+    gap: 1rem !important;
+    padding: 1rem !important;
+  }
+
+  .badge-icon {
+    flex-shrink: 0;
+  }
+
+  /* Tree Growth - скрываем или уменьшаем */
+  .tree-growth {
+    height: 120px !important;
+  }
+
+  .tree-growth .winter-forest,
+  .tree-growth .santa-scene {
+    display: none;
+  }
+
+  /* Banner */
+  .subscription-banner {
+    padding: 1rem !important;
+    margin: 0 0 1rem 0 !important;
+  }
+
+  .banner-content {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 0.75rem !important;
+  }
+
+  .banner-icon {
+    font-size: 24px !important;
+  }
+
+  .banner-text strong {
+    font-size: 14px !important;
+  }
+
+  .banner-text p {
+    font-size: 13px !important;
+  }
+
+  .pay-button {
+    width: 100% !important;
+  }
+
+  /* Summary Stats */
+  .summary-stats {
+    padding: 1rem !important;
+  }
+
+  .summary-title {
+    font-size: 1.25rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .summary-icon {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 1.5rem !important;
+  }
+
+  .summary-value {
+    font-size: 1.5rem !important;
+  }
+
+  .summary-label {
+    font-size: 0.75rem !important;
+  }
+
+  /* Groups/Students breakdown */
+  .group-row,
+  .student-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    padding: 1rem !important;
+  }
+
+  .metric-block {
+    padding-left: 0 !important;
+  }
+}
+
+/* ================================================
+   STUDENT HOME PAGE MOBILE
+   ================================================ */
+
+@media (max-width: 768px) {
+  .student-main-content {
+    padding: 1rem !important;
+  }
+
+  .student-page-title {
+    font-size: 1.5rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .student-today-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+    padding: 1rem !important;
+  }
+
+  .student-today-actions {
+    width: 100%;
+    margin-left: 0 !important;
+    margin-top: 0.5rem;
+  }
+
+  .student-today-actions .btn {
+    width: 100% !important;
+  }
+
+  .student-courses-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  .student-course-card {
+    padding: 1rem !important;
+  }
+
+  .student-course-top {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+  }
+
+  .student-course-badge {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .student-lesson-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+    text-align: center !important;
+  }
+
+  .student-lesson-time {
+    align-self: center !important;
+    min-width: auto !important;
+  }
+}
+
+/* ================================================
+   ADMIN HOME PAGE MOBILE
+   ================================================ */
+
+@media (max-width: 768px) {
+  /* Сайдбар скрываем на мобильных */
+  .admin-sidebar {
+    display: none !important;
+  }
+
+  .admin-main-content {
+    margin-left: 0 !important;
+    padding: 1rem !important;
+    width: 100% !important;
+  }
+
+  .admin-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-stat-card {
+    flex-direction: row !important;
+    gap: 1rem !important;
+  }
+
+  .admin-quick-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-quick-action {
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    padding: 1rem !important;
+    gap: 1rem !important;
+  }
+
+  .action-icon {
+    flex-shrink: 0 !important;
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .action-label {
+    text-align: left !important;
+    font-size: 0.95rem !important;
+  }
+
+  /* Modals */
+  .admin-modal,
+  .zoom-manager-modal,
+  .zoom-stats-modal {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    margin: 5vh auto !important;
+    border-radius: 12px !important;
+  }
+
+  .modal-header {
+    padding: 1rem !important;
+  }
+
+  .modal-header h2 {
+    font-size: 1.15rem !important;
+  }
+}
+
+/* ================================================
+   ОБЩИЕ ЭЛЕМЕНТЫ UI
+   ================================================ */
+
+@media (max-width: 768px) {
+  /* Empty states */
+  .empty-state,
+  .student-empty-state {
+    padding: 2rem 1rem !important;
+  }
+
+  .empty-state h3,
+  .student-empty-state h3 {
+    font-size: 1.1rem !important;
+  }
+
+  .empty-state p,
+  .student-empty-state p {
+    font-size: 0.9rem !important;
+  }
+
+  /* Progress bars */
+  .progress-bar,
+  .progress-track {
+    height: 8px !important;
+  }
+
+  /* Badges */
+  .student-status-badge {
+    font-size: 0.7rem !important;
+    padding: 0.3rem 0.6rem !important;
+  }
+
+  /* Chips */
+  .student-chip {
+    font-size: 0.75rem !important;
+    padding: 0.3rem 0.5rem !important;
+  }
+
+  /* Loading */
+  .loading-container {
+    min-height: 200px !important;
+    padding: 2rem 1rem !important;
+  }
+
+  .spinner {
+    width: 40px !important;
+    height: 40px !important;
+  }
+}
+
+/* ================================================
+   TOUCH-FRIENDLY TARGETS
+   ================================================ */
+
+@media (max-width: 768px) {
+  /* Минимальный размер для тач */
+  button,
+  .btn,
+  a.nav-link,
+  .dropdown-item,
+  .nav-dropdown-item {
+    min-height: 44px;
+  }
+
+  /* Карточки кликабельные */
+  .lesson-card,
+  .group-card,
+  .student-course-card,
+  .admin-quick-action {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Убираем hover эффекты на тач */
+  @media (hover: none) {
+    .lesson-card:hover,
+    .group-card:hover,
+    .stat-card:hover,
+    .admin-stat-card:hover {
+      transform: none !important;
+    }
+  }
+}
+
+/* ================================================
+   SAFE AREA PADDING (для notch и т.д.)
+   ================================================ */
+
+@supports (padding: max(0px)) {
+  @media (max-width: 768px) {
+    .teacher-home-page,
+    .student-home,
+    .admin-home-page {
+      padding-left: max(0.75rem, env(safe-area-inset-left)) !important;
+      padding-right: max(0.75rem, env(safe-area-inset-right)) !important;
+      padding-bottom: max(1rem, env(safe-area-inset-bottom)) !important;
+    }
+  }
+}

@@ -487,14 +487,86 @@
   max-width: 90vw;
   border-radius: 20px 0 0 20px;
   border-left: 1px solid var(--border-light);
-  padding: 80px 1.5rem 24px;
-  align-items: flex-start;
-  gap: 0.4rem;
+  padding: 80px 1rem 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
   background: var(--bg-paper);
   box-shadow: -4px 0 16px rgba(15, 23, 42, 0.15);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   z-index: 100001;
+}
+
+/* Мобильное меню: равномерные интервалы между кнопками */
+.navbar-menu-portal .nav-link,
+.navbar-menu-portal .nav-dropdown-trigger {
+  width: 100%;
+  padding: 1rem 1.25rem !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  font-size: 1rem !important;
+  font-weight: 500 !important;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: transparent;
+  color: var(--text-main);
+  transition: background 0.2s ease;
+}
+
+.navbar-menu-portal .nav-link:hover,
+.navbar-menu-portal .nav-dropdown-trigger:hover {
+  background: var(--bg-surface);
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.navbar-menu-portal .nav-link:first-child {
+  border-top: 1px solid var(--border-light) !important;
+}
+
+.navbar-menu-portal .nav-dropdown {
+  width: 100%;
+}
+
+.navbar-menu-portal .nav-dropdown-menu {
+  position: static !important;
+  width: 100%;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: var(--bg-app) !important;
+}
+
+.navbar-menu-portal .nav-dropdown-item {
+  padding: 0.875rem 1.25rem 0.875rem 2.5rem !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  font-size: 0.95rem !important;
+}
+
+.navbar-menu-portal .mobile-profile-section {
+  display: flex !important;
+  flex-direction: column;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+.navbar-menu-portal .mobile-profile-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 0 0 0.5rem 0;
+}
+
+.navbar-menu-portal .mobile-logout-btn {
+  color: #dc2626;
+  border-bottom: none !important;
 }
 
 .burger-button {
