@@ -118,7 +118,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
             ) : card ? (
               <div className="student-header">
                 <div className="student-avatar-large">
-                  {(student?.first_name || student?.name || '?').charAt(0).toUpperCase()}
+                  {(card?.first_name || card?.name || '?').charAt(0).toUpperCase()}
                 </div>
                 <div className="student-header-info">
                   <h2 className="modal-title">{card.name}</h2>
