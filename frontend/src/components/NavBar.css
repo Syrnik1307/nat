@@ -1050,6 +1050,8 @@
     text-align: left;
     font-family: inherit;
     color: #dc2626;
+    padding: .55rem .95rem;
+    width: 100%;
   }
 
   .mobile-logout-btn:hover {
