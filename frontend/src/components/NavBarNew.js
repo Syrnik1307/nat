@@ -240,30 +240,32 @@ const NavBar = () => {
             {/* В мобильном боковом меню рендерим inline, на десктопе — через портал (чтобы не перекрывалось слоями) */}
             {showMobileMenu && (
               <div className="nav-dropdown-menu" role="menu">
-                <Link
-                  to="/calendar"
+                <button
+                  type="button"
                   className="nav-dropdown-item"
                   onClick={() => {
                     setShowLessonsMenu(false);
                     setShowMobileMenu(false);
+                    navigate('/calendar');
                   }}
                   role="menuitem"
                 >
                   <span className="item-icon"></span>
                   <span>Календарь</span>
-                </Link>
-                <Link
-                  to="/recurring-lessons/manage"
+                </button>
+                <button
+                  type="button"
                   className="nav-dropdown-item"
                   onClick={() => {
                     setShowLessonsMenu(false);
                     setShowMobileMenu(false);
+                    navigate('/recurring-lessons/manage');
                   }}
                   role="menuitem"
                 >
                   <span className="item-icon"></span>
                   <span>Создать занятие</span>
-                </Link>
+                </button>
               </div>
             )}
           </div>
