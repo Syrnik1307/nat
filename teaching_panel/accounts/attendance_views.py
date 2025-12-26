@@ -25,7 +25,8 @@ from accounts.attendance_serializers import (
     StudentCardSerializer,
     GroupReportSerializer,
 )
-from schedule.models import Lesson, Group
+from schedule.models import Lesson, Group, RecurringLesson
+from datetime import datetime, timedelta, date
 
 
 class AttendanceRecordViewSet(viewsets.ModelViewSet):
@@ -228,6 +229,73 @@ class UserRatingViewSet(viewsets.ReadOnlyModelViewSet):
             return self.queryset
 
 
+def _get_week_number(target_date, semester_start_date):
+    """Определение типа недели (верхняя/нижняя)"""
+    delta = (target_date - semester_start_date).days
+    week_number = delta // 7
+    return 'UPPER' if week_number % 2 == 0 else 'LOWER'
+
+
+def _generate_recurring_lessons_for_group(group, start_date=None, end_date=None):
+    """
+    Генерирует виртуальные уроки из регулярных занятий группы.
+    
+    Args:
+        group: объект Group
+        start_date: начало периода (date). Если None - от начала регулярных уроков
+        end_date: конец периода (date). Если None - сегодня + 30 дней
+    
+    Returns:
+        list[dict]: виртуальные уроки с id вида 'recurring_X_YYYY-MM-DD'
+    """
+    virtual_lessons = []
+    today = timezone.now().date()
+    
+    # Получаем регулярные уроки группы
+    recurring_lessons = RecurringLesson.objects.filter(group=group)
+    
+    for recurring in recurring_lessons:
+        # Определяем границы генерации
+        gen_start = start_date if start_date else recurring.start_date
+        gen_start = max(gen_start, recurring.start_date)
+        
+        gen_end = end_date if end_date else today + timedelta(days=30)
+        gen_end = min(gen_end, recurring.end_date)
+        
+        if gen_start > gen_end:
+            continue
+        
+        # Итерируемся по каждому дню
+        current_date = gen_start
+        while current_date <= gen_end:
+            if current_date.weekday() == recurring.day_of_week:
+                week_type = _get_week_number(current_date, recurring.start_date)
+                
+                if recurring.week_type == 'ALL' or recurring.week_type == week_type:
+                    virtual_id = f'recurring_{recurring.id}_{current_date.isoformat()}'
+                    start_dt = datetime.combine(
+                        current_date,
+                        recurring.start_time,
+                        tzinfo=timezone.get_current_timezone()
+                    )
+                    end_dt = datetime.combine(
+                        current_date,
+                        recurring.end_time,
+                        tzinfo=timezone.get_current_timezone()
+                    )
+                    virtual_lessons.append({
+                        'id': virtual_id,
+                        'title': recurring.title or f'Занятие',
+                        'start_time': start_dt,
+                        'end_time': end_dt,
+                        'is_recurring': True,
+                        'recurring_lesson_id': recurring.id,
+                    })
+            current_date += timedelta(days=1)
+    
+    return virtual_lessons
+
+
 class GroupAttendanceLogViewSet(viewsets.ViewSet):
     """
     ViewSet для журнала посещений группы.
@@ -256,26 +324,56 @@ class GroupAttendanceLogViewSet(viewsets.ViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        lessons = list(
+        # 1. Получаем реальные уроки из БД
+        real_lessons = list(
             Lesson.objects.filter(group=group)
             .only('id', 'title', 'start_time', 'end_time')
             .order_by('start_time')
         )
+        
+        # 2. Получаем виртуальные уроки из регулярного расписания
+        virtual_lessons = _generate_recurring_lessons_for_group(group)
+        
+        # 3. Объединяем: виртуальные уроки не добавляем если есть реальный на эту дату
+        real_dates = set()
+        for lesson in real_lessons:
+            if lesson.start_time:
+                real_dates.add(lesson.start_time.date())
+        
+        # Фильтруем виртуальные - только те даты, где нет реального урока
+        filtered_virtual = []
+        for vl in virtual_lessons:
+            vl_date = vl['start_time'].date() if vl.get('start_time') else None
+            if vl_date and vl_date not in real_dates:
+                filtered_virtual.append(vl)
+        
+        # Формируем lessons_data: реальные + виртуальные
+        lessons_data = []
+        for lesson in real_lessons:
+            lessons_data.append({
+                'id': lesson.id,
+                'title': lesson.title,
+                'start_time': lesson.start_time,
+                'end_time': lesson.end_time,
+            })
+        
+        for vl in filtered_virtual:
+            lessons_data.append({
+                'id': vl['id'],
+                'title': vl['title'],
+                'start_time': vl['start_time'],
+                'end_time': vl['end_time'],
+                'is_recurring': True,
+            })
+        
+        # Сортируем по дате
+        lessons_data.sort(key=lambda x: x['start_time'] if x.get('start_time') else datetime.min.replace(tzinfo=timezone.utc))
+        
         students = list(
             group.students.all()
             .only('id', 'first_name', 'last_name', 'email')
             .order_by('last_name', 'first_name')
         )
-
-        lessons_data = [
-            {
-                'id': lesson.id,
-                'title': lesson.title,
-                'start_time': lesson.start_time,
-                'end_time': lesson.end_time,
-            }
-            for lesson in lessons
-        ]
 
         students_data = [
             {
@@ -308,12 +406,14 @@ class GroupAttendanceLogViewSet(viewsets.ViewSet):
             elif record.status == AttendanceRecord.STATUS_ABSENT:
                 absences_total += 1
 
+        # Для статистики считаем только реальные уроки (с числовым ID)
+        real_lessons_count = sum(1 for ld in lessons_data if isinstance(ld.get('id'), int))
         lessons_count = len(lessons_data)
         students_count = len(students_data)
         avg_attendance_percent = 0
-        if lessons_count and students_count:
+        if real_lessons_count and students_count:
             total_percent = sum(
-                (attendance_counters.get(student['id'], 0) / lessons_count) * 100
+                (attendance_counters.get(student['id'], 0) / real_lessons_count) * 100
                 for student in students_data
             )
             avg_attendance_percent = round(total_percent / students_count)
