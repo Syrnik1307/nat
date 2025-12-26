@@ -144,12 +144,18 @@ const AttendanceLogPage = () => {
   const actualLessons = lessonColumns.length ? lessonColumns : log?.lessons || [];
   const displayLessons = useMemo(() => {
     const normalized = (actualLessons || []).map((lesson) => {
-      const numericId = Number(lesson?.id);
-      const hasValidId = Number.isFinite(numericId);
+      const lessonId = lesson?.id;
+      const numericId = Number(lessonId);
+      const hasNumericId = Number.isFinite(numericId);
+      // Виртуальные уроки из регулярного расписания имеют ID вида "recurring_X_YYYY-MM-DD"
+      const isRecurring = typeof lessonId === 'string' && lessonId.startsWith('recurring_');
+      // Placeholder - это фиктивные ячейки для минимального количества колонок
+      const isPlaceholder = lesson?.isPlaceholder || (typeof lessonId === 'string' && lessonId.startsWith('placeholder-'));
       return {
         ...lesson,
-        numericId: hasValidId ? numericId : null,
-        isPlaceholder: lesson?.isPlaceholder || !hasValidId,
+        numericId: hasNumericId ? numericId : null,
+        isRecurring,
+        isPlaceholder,
       };
     });
     if (normalized.length >= MIN_COLUMNS) {
@@ -162,6 +168,7 @@ const AttendanceLogPage = () => {
       title: `Занятие ${normalized.length + idx + 1}`,
       start_time: null,
       isPlaceholder: true,
+      isRecurring: false,
     }));
     return [...normalized, ...placeholders];
   }, [actualLessons]);
@@ -194,10 +201,8 @@ const AttendanceLogPage = () => {
       const stats = { attended: 0, watched: 0, absent: 0, empty: 0 };
 
       const lessonStatuses = lessons.map((lesson) => {
-        const numericLessonId = Number(lesson?.numericId ?? lesson?.id);
-        const isPlaceholderLesson = lesson.isPlaceholder || !Number.isFinite(numericLessonId);
-
-        if (isPlaceholderLesson) {
+        // Placeholder - фиктивные ячейки для минимального количества колонок
+        if (lesson.isPlaceholder) {
           stats.empty += 1;
           return {
             lessonId: null,
@@ -205,9 +210,24 @@ const AttendanceLogPage = () => {
             status: null,
             autoRecorded: false,
             isPlaceholder: true,
+            isRecurring: false,
           };
         }
 
+        // Виртуальные уроки из регулярного расписания - нет записей посещаемости
+        if (lesson.isRecurring) {
+          stats.empty += 1;
+          return {
+            lessonId: null,
+            rawLessonId: lesson.id,
+            status: null,
+            autoRecorded: false,
+            isPlaceholder: false,
+            isRecurring: true,
+          };
+        }
+
+        // Реальный урок с числовым ID
         const key = `${student.id}_${lesson.id}`;
         const record = records[key];
         const status = record?.status || null;
@@ -218,11 +238,12 @@ const AttendanceLogPage = () => {
         else stats.empty += 1;
 
         return {
-          lessonId: numericLessonId,
+          lessonId: lesson.numericId || lesson.id,
           rawLessonId: lesson.id,
           status,
           autoRecorded: Boolean(record?.auto_recorded),
           isPlaceholder: false,
+          isRecurring: false,
         };
       });
 
@@ -247,9 +268,14 @@ const AttendanceLogPage = () => {
     };
         }, [log, students, lessons, records, actualLessonCount, displayedLessonCount]);
 
-  const handleCellClick = (studentId, lessonId, isPlaceholder, e) => {
+  const handleCellClick = (studentId, lessonId, isPlaceholder, isRecurring, e) => {
     e.stopPropagation();
     if (isPlaceholder) {
+      return;
+    }
+    // Виртуальные уроки из регулярного расписания - нельзя редактировать посещаемость
+    if (isRecurring) {
+      console.info('Виртуальный урок из расписания - посещаемость будет доступна после запуска урока');
       return;
     }
     const numericLessonId = Number(lessonId);
@@ -558,26 +584,28 @@ const AttendanceLogPage = () => {
                       {row.stats.attended} из {displayedLessonCount}
                     </span>
                   </div>
-                  {row.lessonStatuses.map(({ lessonId, rawLessonId, status, autoRecorded, isPlaceholder }, lessonIndex) => {
+                  {row.lessonStatuses.map(({ lessonId, rawLessonId, status, autoRecorded, isPlaceholder, isRecurring }, lessonIndex) => {
                     const cellMeta = getStatusMeta(status);
                     const isSelected =
                       selectedCell?.studentId === row.student.id &&
                       selectedCell?.lessonId === lessonId;
                     const lessonLabel = getLessonLabel(lessons[lessonIndex], lessonIndex);
+                    const isDisabled = isPlaceholder || isRecurring;
 
                     return (
                       <div
                         key={`${row.student.id}_${rawLessonId ?? lessonId ?? lessonIndex}`}
-                        className={`grid-cell lesson-cell ${isPlaceholder ? 'placeholder' : ''}`}
+                        className={`grid-cell lesson-cell ${isPlaceholder ? 'placeholder' : ''} ${isRecurring ? 'recurring' : ''}`}
                       >
                         <button
                           type="button"
                           className={`attendance-cell-button ${cellMeta.className} ${
                             isSelected ? 'selected' : ''
-                          } ${isPlaceholder ? 'placeholder' : ''}`}
-                          onClick={(e) => handleCellClick(row.student.id, lessonId, isPlaceholder, e)}
+                          } ${isPlaceholder ? 'placeholder' : ''} ${isRecurring ? 'recurring' : ''}`}
+                          onClick={(e) => handleCellClick(row.student.id, lessonId, isPlaceholder, isRecurring, e)}
                           aria-label={`Изменить статус: ${row.student.name} — ${lessonLabel}`}
-                          disabled={isPlaceholder}
+                          disabled={isDisabled}
+                          title={isRecurring ? 'Урок из расписания - посещаемость будет доступна после запуска' : undefined}
                         >
                           <span className="status-pill">{cellMeta.short}</span>
                           <span className="status-label">{cellMeta.label}</span>

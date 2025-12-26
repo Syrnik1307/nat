@@ -71,23 +71,52 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
   const students = log?.students || [];
   const records = log?.records || {};
 
+  // Обработка уроков: различаем реальные, виртуальные (recurring) и placeholder
+  const processedLessons = useMemo(() => {
+    return lessons.map((lesson) => {
+      const lessonId = lesson?.id;
+      const isRecurring = typeof lessonId === 'string' && lessonId.startsWith('recurring_');
+      const isPlaceholder = typeof lessonId === 'string' && lessonId.startsWith('placeholder-');
+      return {
+        ...lesson,
+        isRecurring,
+        isPlaceholder,
+      };
+    });
+  }, [lessons]);
+
   const computedData = useMemo(() => {
-    if (!log || !students.length || !lessons.length) {
+    if (!log || !students.length || !processedLessons.length) {
       return {
         rows: [],
         stats: {
           avgAttendance: 0,
           watched: 0,
           absences: 0,
-          lessonsCount: lessons.length,
+          lessonsCount: processedLessons.length,
         },
       };
     }
 
+    // Только реальные уроки для подсчета процента посещаемости
+    const realLessonsCount = processedLessons.filter(l => !l.isRecurring && !l.isPlaceholder).length;
+
     const rows = students.map((student) => {
       const stats = { attended: 0, watched: 0, absent: 0, empty: 0 };
 
-      const lessonStatuses = lessons.map((lesson) => {
+      const lessonStatuses = processedLessons.map((lesson) => {
+        // Виртуальные или placeholder - нет данных о посещаемости
+        if (lesson.isRecurring || lesson.isPlaceholder) {
+          stats.empty += 1;
+          return {
+            lessonId: lesson.id,
+            status: null,
+            autoRecorded: false,
+            isRecurring: lesson.isRecurring,
+            isPlaceholder: lesson.isPlaceholder,
+          };
+        }
+
         const key = `${student.id}_${lesson.id}`;
         const record = records[key];
         const status = record?.status || null;
@@ -101,11 +130,13 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
           lessonId: lesson.id,
           status,
           autoRecorded: Boolean(record?.auto_recorded),
+          isRecurring: false,
+          isPlaceholder: false,
         };
       });
 
-      const attendancePercent = lessons.length
-        ? Math.round((stats.attended / lessons.length) * 100)
+      const attendancePercent = realLessonsCount
+        ? Math.round((stats.attended / realLessonsCount) * 100)
         : 0;
 
       return {
@@ -130,13 +161,17 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
         avgAttendance,
         watched,
         absences,
-        lessonsCount: lessons.length,
+        lessonsCount: processedLessons.length,
       },
     };
-  }, [log, students, lessons, records]);
+  }, [log, students, processedLessons, records]);
 
-  const handleCellClick = (studentId, lessonId, e) => {
+  const handleCellClick = (studentId, lessonId, isRecurring, isPlaceholder, e) => {
     e.stopPropagation();
+    // Виртуальные уроки из расписания - нельзя редактировать
+    if (isRecurring || isPlaceholder) {
+      return;
+    }
     setSelectedCell({ studentId, lessonId });
   };
 
@@ -271,19 +306,22 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
                     </td>
                     <td className="presence-col">
                       <span className="presence-chip">{formatPercent(row.attendancePercent)}</span>
-                      <span className="presence-meta">{row.stats.attended} из {lessons.length} занятий</span>
+                      <span className="presence-meta">{row.stats.attended} из {processedLessons.filter(l => !l.isRecurring && !l.isPlaceholder).length} занятий</span>
                     </td>
-                    {row.lessonStatuses.map(({ lessonId, status, autoRecorded }) => {
+                    {row.lessonStatuses.map(({ lessonId, status, autoRecorded, isRecurring, isPlaceholder }) => {
                       const cellMeta = getStatusMeta(status);
                       const isSelected =
                         selectedCell?.studentId === row.student.id &&
                         selectedCell?.lessonId === lessonId;
+                      const isDisabled = isRecurring || isPlaceholder;
 
                       return (
                         <td
                           key={`${row.student.id}_${lessonId}`}
-                          className={`attendance-cell-modern ${cellMeta.className} ${isSelected ? 'selected' : ''}`}
-                          onClick={(e) => handleCellClick(row.student.id, lessonId, e)}
+                          className={`attendance-cell-modern ${cellMeta.className} ${isSelected ? 'selected' : ''} ${isRecurring ? 'recurring' : ''}`}
+                          onClick={(e) => handleCellClick(row.student.id, lessonId, isRecurring, isPlaceholder, e)}
+                          title={isRecurring ? 'Урок из расписания - посещаемость будет доступна после запуска' : undefined}
+                          style={isDisabled ? { cursor: 'not-allowed', opacity: 0.6 } : undefined}
                         >
                           <span className="status-pill">{cellMeta.short}</span>
                           <span className="status-caption">{cellMeta.label}</span>
