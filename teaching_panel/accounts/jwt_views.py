@@ -274,7 +274,11 @@ class RegisterView(APIView):
         ref_url = (request.data.get('ref_url') or '').strip()[:500]
         cookie_id = (request.data.get('cookie_id') or '').strip()[:64]
 
+        # Debug log for registration data
+        logger.info(f"[RegisterView] Data: email={email}, has_password={bool(password)}, role={role}, first_name={first_name}, last_name={last_name}")
+
         if not email or not password:
+            logger.warning(f"[RegisterView] Missing email or password: email={email}, has_password={bool(password)}")
             return Response(
                 {'detail': 'Email и пароль обязательны'}, 
                 status=status.HTTP_400_BAD_REQUEST
@@ -285,30 +289,35 @@ class RegisterView(APIView):
 
         # Валидация пароля
         if len(password) < 6:
+            logger.warning(f"[RegisterView] Password too short: len={len(password)}")
             return Response(
                 {'detail': 'Пароль должен содержать минимум 6 символов'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         if not any(c.isupper() for c in password):
+            logger.warning(f"[RegisterView] Password missing uppercase")
             return Response(
                 {'detail': 'Пароль должен содержать хотя бы одну заглавную букву'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         if not any(c.islower() for c in password):
+            logger.warning(f"[RegisterView] Password missing lowercase")
             return Response(
                 {'detail': 'Пароль должен содержать хотя бы одну строчную букву'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         if not any(c.isdigit() for c in password):
+            logger.warning(f"[RegisterView] Password missing digit")
             return Response(
                 {'detail': 'Пароль должен содержать хотя бы одну цифру'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         if User.objects.filter(email__iexact=email).exists():
+            logger.warning(f"[RegisterView] Email already exists: {email}")
             return Response(
                 {'detail': 'Пользователь с таким email уже существует'}, 
                 status=status.HTTP_400_BAD_REQUEST
