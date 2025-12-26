@@ -266,13 +266,13 @@ class RegisterView(APIView):
         middle_name = request.data.get('middle_name', '')
         birth_date = request.data.get('birth_date')
         # Реферальные и UTM поля
-        referral_code = (request.data.get('referral_code') or '').strip()
-        utm_source = (request.data.get('utm_source') or '').strip()
-        utm_medium = (request.data.get('utm_medium') or '').strip()
-        utm_campaign = (request.data.get('utm_campaign') or '').strip()
-        channel = (request.data.get('channel') or '').strip()
-        ref_url = (request.data.get('ref_url') or '').strip()
-        cookie_id = (request.data.get('cookie_id') or '').strip()
+        referral_code = (request.data.get('referral_code') or '').strip()[:32]
+        utm_source = (request.data.get('utm_source') or '').strip()[:64]
+        utm_medium = (request.data.get('utm_medium') or '').strip()[:64]
+        utm_campaign = (request.data.get('utm_campaign') or '').strip()[:64]
+        channel = (request.data.get('channel') or '').strip()[:64]
+        ref_url = (request.data.get('ref_url') or '').strip()[:500]
+        cookie_id = (request.data.get('cookie_id') or '').strip()[:64]
 
         if not email or not password:
             return Response(

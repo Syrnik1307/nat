@@ -757,7 +757,7 @@ class ReferralAttribution(models.Model):
     utm_medium = models.CharField(max_length=64, blank=True, default='')
     utm_campaign = models.CharField(max_length=64, blank=True, default='')
     channel = models.CharField(max_length=64, blank=True, default='', help_text=_('Канал (например, Telegram/GroupName)'))
-    ref_url = models.URLField(blank=True, default='')
+    ref_url = models.URLField(max_length=500, blank=True, default='')
     cookie_id = models.CharField(max_length=64, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 

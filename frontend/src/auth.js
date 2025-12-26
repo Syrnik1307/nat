@@ -53,8 +53,10 @@ export const AuthProvider = ({ children }) => {
         if (utm_campaign) localStorage.setItem('tp_utm_campaign', utm_campaign);
         if (channel) localStorage.setItem('tp_channel', channel);
         // Дополнительно сохраним источник URL как ref_url и анонимный cookie_id
-        const ref_url = url.href;
-        localStorage.setItem('tp_ref_url', ref_url);
+        // Сохраняем ref_url только если есть ref параметр
+        if (ref) {
+          localStorage.setItem('tp_ref_url', url.href);
+        }
         if (!localStorage.getItem('tp_cookie_id')) {
           const rand = Math.random().toString(36).slice(2) + Date.now().toString(36);
           localStorage.setItem('tp_cookie_id', rand);
