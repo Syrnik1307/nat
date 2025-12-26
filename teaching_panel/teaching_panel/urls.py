@@ -55,6 +55,15 @@ from schedule.views import zoom_webhook_receiver
 from accounts.debug_views import debug_env  # Debug endpoint
 from django.conf import settings
 from django.conf.urls.static import static
+from accounts.referrals_views import MyReferralLinkView, MyReferralStatsView
+from accounts.referrals_admin_views import (
+    AdminReferralLinksListView,
+    AdminReferralLinkDetailView,
+    AdminReferralPayoutView,
+    AdminReferralCommissionsView,
+    AdminReferralStatsView,
+    ReferralClickTrackView,
+)
 
 # Create a router and register our viewsets with it.
 router = DefaultRouter()
@@ -147,6 +156,18 @@ urlpatterns = [
     path('api/jwt/verify/', TokenVerifyView.as_view(), name='jwt-verify'),
     path('api/jwt/logout/', LogoutView.as_view(), name='jwt-logout'),
     path('api/jwt/register/', RegisterView.as_view(), name='jwt-register'),
+
+    # Referral API
+    path('api/referrals/link/', MyReferralLinkView.as_view(), name='referral-link'),
+    path('api/referrals/stats/', MyReferralStatsView.as_view(), name='referral-stats'),
+    path('api/referrals/track/', ReferralClickTrackView.as_view(), name='referral-track'),
+    
+    # Admin Referrals API
+    path('api/admin/referrals/', AdminReferralLinksListView.as_view(), name='admin-referral-links'),
+    path('api/admin/referrals/<int:link_id>/', AdminReferralLinkDetailView.as_view(), name='admin-referral-link-detail'),
+    path('api/admin/referrals/<int:link_id>/payout/', AdminReferralPayoutView.as_view(), name='admin-referral-payout'),
+    path('api/admin/referrals/commissions/', AdminReferralCommissionsView.as_view(), name='admin-referral-commissions'),
+    path('api/admin/referrals/stats/', AdminReferralStatsView.as_view(), name='admin-referral-stats'),
     
     # Subscription API
     path('api/subscription/', SubscriptionMeView.as_view(), name='subscription_me'),

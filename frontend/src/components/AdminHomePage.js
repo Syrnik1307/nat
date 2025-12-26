@@ -11,6 +11,7 @@ import '../styles/AdminPanel.css';
 import StorageQuotaModal from '../modules/Admin/StorageQuotaModal';
 import SubscriptionsModal from '../modules/Admin/SubscriptionsModal';
 import StorageStats from './StorageStats';
+import AdminReferrals from '../modules/Admin/AdminReferrals';
 
 const AdminHomePage = () => {
   const { user } = useAuth();
@@ -36,6 +37,7 @@ const AdminHomePage = () => {
   const [showStorageModal, setShowStorageModal] = useState(false);
   const [showSubscriptionsModal, setShowSubscriptionsModal] = useState(false);
   const [showStorageStats, setShowStorageStats] = useState(false);
+  const [showReferrals, setShowReferrals] = useState(false);
   const [userRole, setUserRole] = useState('teacher');
   const [teacherForm, setTeacherForm] = useState({
     email: '',
@@ -210,6 +212,10 @@ const AdminHomePage = () => {
           <a className="admin-nav-item" onClick={() => setShowStatusMessages(true)}>
             <span className="admin-nav-icon">📢</span>
             Сообщения
+          </a>
+          <a className="admin-nav-item" onClick={() => setShowReferrals(true)}>
+            <span className="admin-nav-icon">🔗</span>
+            Рефы
           </a>
         </nav>
       </aside>
@@ -534,6 +540,10 @@ const AdminHomePage = () => {
 
       {showSubscriptionsModal && (
         <SubscriptionsModal onClose={() => setShowSubscriptionsModal(false)} />
+      )}
+
+      {showReferrals && (
+        <AdminReferrals onClose={() => setShowReferrals(false)} />
       )}
     </div>
   );

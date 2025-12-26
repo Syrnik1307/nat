@@ -265,6 +265,14 @@ class RegisterView(APIView):
         last_name = request.data.get('last_name', '')
         middle_name = request.data.get('middle_name', '')
         birth_date = request.data.get('birth_date')
+        # Реферальные и UTM поля
+        referral_code = (request.data.get('referral_code') or '').strip()
+        utm_source = (request.data.get('utm_source') or '').strip()
+        utm_medium = (request.data.get('utm_medium') or '').strip()
+        utm_campaign = (request.data.get('utm_campaign') or '').strip()
+        channel = (request.data.get('channel') or '').strip()
+        ref_url = (request.data.get('ref_url') or '').strip()
+        cookie_id = (request.data.get('cookie_id') or '').strip()
 
         if not email or not password:
             return Response(
@@ -321,6 +329,43 @@ class RegisterView(APIView):
                 user.birth_date = birth_date
                 user.save()
             
+            # Если задан referral_code — привязываем пригласившего
+            # Сначала проверяем ReferralLink (admin-созданные ссылки), потом referral_code пользователя
+            try:
+                if referral_code:
+                    from .models import ReferralLink
+                    # Проверяем, есть ли такой код в ReferralLink
+                    ref_link = ReferralLink.objects.filter(code__iexact=referral_code, is_active=True).first()
+                    if ref_link:
+                        # Увеличиваем счётчик регистраций для этой ссылки
+                        ref_link.increment_registrations()
+                        logger.info(f"[RegisterView] ReferralLink {ref_link.code} registration count incremented for {email}")
+                    else:
+                        # Если нет такой ссылки, пробуем найти пользователя с этим referral_code
+                        inviter = User.objects.filter(referral_code__iexact=referral_code).first()
+                        if inviter and inviter.id != user.id:
+                            user.referred_by = inviter
+                            user.save(update_fields=['referred_by'])
+            except Exception as ref_err:
+                logger.warning(f"[RegisterView] referral assign error: {ref_err}")
+
+            # Сохраним атрибуцию для аналитики
+            try:
+                from .models import ReferralAttribution
+                ReferralAttribution.objects.create(
+                    user=user,
+                    referrer=user.referred_by if hasattr(user, 'referred_by') else None,
+                    referral_code=referral_code or '',
+                    utm_source=utm_source or '',
+                    utm_medium=utm_medium or '',
+                    utm_campaign=utm_campaign or '',
+                    channel=channel or '',
+                    ref_url=ref_url or '',
+                    cookie_id=cookie_id or ''
+                )
+            except Exception as attr_err:
+                logger.warning(f"[RegisterView] referral attribution error: {attr_err}")
+
             # Записываем успешную регистрацию для rate limiting
             record_registration(fingerprint)
             
@@ -343,6 +388,7 @@ class RegisterView(APIView):
                 'role': user.role,
                 'access': access_token,
                 'refresh': refresh_token,
+                'referred_by': user.referred_by.id if user.referred_by_id else None,
             }, status=status.HTTP_201_CREATED)
         except Exception as e:
             logger.error(f"[RegisterView] Error creating user: {e}")

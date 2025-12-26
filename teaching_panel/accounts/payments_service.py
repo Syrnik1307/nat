@@ -291,6 +291,36 @@ class PaymentService:
                         'payment_success',
                         f"{message}\nСумма: {payment.amount} {payment.currency}"
                     )
+
+                # Реферальная комиссия: проверяем ReferralLink или referred_by
+                try:
+                    user = sub.user
+                    from .models import ReferralCommission, ReferralAttribution, ReferralLink
+                    
+                    # Проверяем, есть ли уже комиссия для этого платежа
+                    if not ReferralCommission.objects.filter(payment=payment).exists():
+                        # Сначала проверяем ReferralAttribution (код ссылки)
+                        attribution = ReferralAttribution.objects.filter(user=user).first()
+                        if attribution and attribution.referral_code:
+                            ref_link = ReferralLink.objects.filter(code__iexact=attribution.referral_code, is_active=True).first()
+                            if ref_link:
+                                # Записываем оплату для ReferralLink
+                                ref_link.record_payment(ref_link.commission_amount)
+                                logger.info(f"ReferralLink {ref_link.code} payment recorded for user={user.email}")
+                        
+                        # Также проверяем referred_by (личные реферальные коды пользователей)
+                        if user.referred_by:
+                            ReferralCommission.objects.create(
+                                referrer=user.referred_by,
+                                referred_user=user,
+                                payment=payment,
+                                amount=Decimal('750.00'),
+                                status=ReferralCommission.STATUS_PENDING,
+                                notes=f"Комиссия за оплату {user.email}: {metadata}"
+                            )
+                            logger.info(f"Referral commission created: referrer={user.referred_by.email} user={user.email} payment={payment.payment_id}")
+                except Exception as ref_e:
+                    logger.warning(f"Failed to create referral commission: {ref_e}")
                 
                 return True
             

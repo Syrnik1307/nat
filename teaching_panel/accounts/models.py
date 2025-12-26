@@ -128,6 +128,24 @@ class CustomUser(AbstractUser):
         default=False,
         help_text=_('Флаг показывает, что пользователь подтвердил привязку Telegram через бота')
     )
+
+    # Реферальная система
+    referral_code = models.CharField(
+        _('реферальный код'),
+        max_length=12,
+        unique=True,
+        blank=True,
+        default='',
+        help_text=_('Уникальный код для реферальной ссылки (например: ?ref=CODE)')
+    )
+    referred_by = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='referred_users',
+        help_text=_('Пригласивший пользователь (если пришёл по реферальной ссылке)')
+    )
     
     # Zoom credentials для учителей
     zoom_account_id = models.CharField(
@@ -218,6 +236,22 @@ class CustomUser(AbstractUser):
         parts = [self.last_name or '', self.first_name or '', self.middle_name or '']
         full = ' '.join(filter(None, parts)).strip()
         return full or self.email
+
+    def save(self, *args, **kwargs):
+        # Генерируем реферальный код, если пуст
+        if not self.referral_code:
+            # Код из 8 символов: [A-Z0-9]
+            base = get_random_string(8, allowed_chars=string.ascii_uppercase + string.digits)
+            # Убеждаемся в уникальности
+            candidate = base
+            counter = 0
+            while CustomUser.objects.filter(referral_code=candidate).exclude(pk=self.pk).exists():
+                counter += 1
+                candidate = f"{base}{counter}"
+                if len(candidate) > 12:
+                    candidate = get_random_string(10, allowed_chars=string.ascii_uppercase + string.digits)
+            self.referral_code = candidate
+        super().save(*args, **kwargs)
 
 
 class StatusBarMessage(models.Model):
@@ -711,6 +745,72 @@ class Payment(models.Model):
         return f"Payment {self.payment_id} ({self.status})"
 
 
+class ReferralAttribution(models.Model):
+    """
+    Атрибуция реферала/источника трафика для нового пользователя.
+    Хранит UTM-метки и исходный URL/канал для аналитики.
+    """
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='referral_attribution')
+    referrer = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='referral_attributions')
+    referral_code = models.CharField(max_length=32, blank=True, default='')
+    utm_source = models.CharField(max_length=64, blank=True, default='')
+    utm_medium = models.CharField(max_length=64, blank=True, default='')
+    utm_campaign = models.CharField(max_length=64, blank=True, default='')
+    channel = models.CharField(max_length=64, blank=True, default='', help_text=_('Канал (например, Telegram/GroupName)'))
+    ref_url = models.URLField(blank=True, default='')
+    cookie_id = models.CharField(max_length=64, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('атрибуция реферала')
+        verbose_name_plural = _('атрибуции рефералов')
+
+    def __str__(self):
+        return f"ref={self.referral_code} utm={self.utm_source}/{self.utm_medium}/{self.utm_campaign} for {self.user.email}"
+
+
+class ReferralCommission(models.Model):
+    """
+    Комиссия рефереру за оплату приглашённого пользователя.
+    Создаётся при успешном платеже (subscription/storage).
+    """
+    STATUS_PENDING = 'pending'
+    STATUS_PAID = 'paid'
+    STATUS_CANCELLED = 'cancelled'
+
+    STATUS_CHOICES = (
+        (STATUS_PENDING, 'Ожидает выплаты'),
+        (STATUS_PAID, 'Выплачено'),
+        (STATUS_CANCELLED, 'Отменено'),
+    )
+
+    referrer = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='referral_commissions')
+    referred_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='earned_commissions')
+    payment = models.OneToOneField('Payment', on_delete=models.CASCADE, related_name='referral_commission', null=True, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('750.00'))
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True, default='')
+
+    class Meta:
+        verbose_name = _('реферальная комиссия')
+        verbose_name_plural = _('реферальные комиссии')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['referrer', 'status']),
+            models.Index(fields=['referred_user']),
+        ]
+
+    def __str__(self):
+        return f"{self.referrer.email} ← {self.referred_user.email}: {self.amount} ({self.status})"
+
+    def mark_paid(self):
+        self.status = self.STATUS_PAID
+        self.paid_at = timezone.now()
+        self.save(update_fields=['status', 'paid_at'])
+
+
 class NotificationSettings(models.Model):
     """Персональные настройки уведомлений пользователя."""
 
@@ -970,4 +1070,165 @@ class IndividualStudent(models.Model):
     
     def __str__(self):
         return f"{self.user.get_full_name()} (индивидуальный)"
+
+
+# ============================================================================
+# РЕФЕРАЛЬНЫЕ ССЫЛКИ И ПАРТНЁРЫ (для админки)
+# ============================================================================
+
+class ReferralLink(models.Model):
+    """
+    Реферальная ссылка для рекламы в ТГ-каналах и других источниках.
+    Каждая ссылка имеет уникальный код и привязана к партнёру/каналу.
+    """
+    code = models.CharField(
+        _('код ссылки'),
+        max_length=32,
+        unique=True,
+        help_text=_('Уникальный код для URL (?ref=CODE)')
+    )
+    name = models.CharField(
+        _('название'),
+        max_length=128,
+        help_text=_('Название для идентификации (например, "ТГ канал @example")')
+    )
+    partner_name = models.CharField(
+        _('имя партнёра'),
+        max_length=128,
+        blank=True,
+        default='',
+        help_text=_('Имя/контакт человека, который рекламирует')
+    )
+    partner_contact = models.CharField(
+        _('контакт партнёра'),
+        max_length=255,
+        blank=True,
+        default='',
+        help_text=_('Telegram/email/телефон партнёра для выплат')
+    )
+    commission_amount = models.DecimalField(
+        _('комиссия за оплату'),
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('750.00'),
+        help_text=_('Сумма выплаты партнёру за каждую оплату')
+    )
+    utm_source = models.CharField(max_length=64, blank=True, default='telegram')
+    utm_medium = models.CharField(max_length=64, blank=True, default='referral')
+    utm_campaign = models.CharField(max_length=64, blank=True, default='')
+    
+    # Статистика (обновляется триггерами или вручную)
+    clicks_count = models.IntegerField(_('кликов'), default=0)
+    registrations_count = models.IntegerField(_('регистраций'), default=0)
+    payments_count = models.IntegerField(_('оплат'), default=0)
+    total_earned = models.DecimalField(
+        _('всего заработано партнёром'),
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00')
+    )
+    total_paid_out = models.DecimalField(
+        _('выплачено партнёру'),
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00')
+    )
+    
+    is_active = models.BooleanField(_('активна'), default=True)
+    created_at = models.DateTimeField(_('создана'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('обновлена'), auto_now=True)
+    notes = models.TextField(_('заметки'), blank=True, default='')
+    
+    class Meta:
+        verbose_name = _('реферальная ссылка')
+        verbose_name_plural = _('реферальные ссылки')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['code']),
+            models.Index(fields=['is_active', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+    
+    def get_full_url(self, base_url='https://lectio.space'):
+        """Генерирует полную реферальную ссылку"""
+        params = f"ref={self.code}"
+        if self.utm_source:
+            params += f"&utm_source={self.utm_source}"
+        if self.utm_medium:
+            params += f"&utm_medium={self.utm_medium}"
+        if self.utm_campaign:
+            params += f"&utm_campaign={self.utm_campaign}"
+        return f"{base_url}/?{params}"
+    
+    def increment_clicks(self):
+        """Увеличить счётчик кликов"""
+        self.clicks_count += 1
+        self.save(update_fields=['clicks_count', 'updated_at'])
+    
+    def increment_registrations(self):
+        """Увеличить счётчик регистраций"""
+        self.registrations_count += 1
+        self.save(update_fields=['registrations_count', 'updated_at'])
+    
+    def record_payment(self, amount=None):
+        """Записать оплату и комиссию"""
+        self.payments_count += 1
+        commission = amount if amount else self.commission_amount
+        self.total_earned += commission
+        self.save(update_fields=['payments_count', 'total_earned', 'updated_at'])
+    
+    def record_payout(self, amount):
+        """Записать выплату партнёру"""
+        self.total_paid_out += amount
+        self.save(update_fields=['total_paid_out', 'updated_at'])
+    
+    @classmethod
+    def generate_code(cls, length=8):
+        """Генерирует уникальный код"""
+        while True:
+            code = get_random_string(length, allowed_chars=string.ascii_uppercase + string.digits)
+            if not cls.objects.filter(code=code).exists():
+                return code
+
+
+class ReferralClick(models.Model):
+    """
+    Лог кликов по реферальным ссылкам для детальной аналитики.
+    """
+    link = models.ForeignKey(
+        ReferralLink,
+        on_delete=models.CASCADE,
+        related_name='clicks',
+        verbose_name=_('ссылка')
+    )
+    ip_address = models.GenericIPAddressField(_('IP адрес'), null=True, blank=True)
+    user_agent = models.TextField(_('User Agent'), blank=True, default='')
+    referer = models.URLField(_('Referer'), blank=True, default='')
+    cookie_id = models.CharField(max_length=64, blank=True, default='')
+    created_at = models.DateTimeField(_('время клика'), auto_now_add=True)
+    
+    # Результат клика
+    resulted_in_registration = models.BooleanField(_('привёл к регистрации'), default=False)
+    registered_user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='referral_clicks',
+        verbose_name=_('зарегистрированный пользователь')
+    )
+    
+    class Meta:
+        verbose_name = _('клик по реферальной ссылке')
+        verbose_name_plural = _('клики по реферальным ссылкам')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['link', '-created_at']),
+            models.Index(fields=['cookie_id']),
+        ]
+    
+    def __str__(self):
+        return f"Click on {self.link.code} at {self.created_at}"
 

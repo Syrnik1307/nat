@@ -36,6 +36,36 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [subscription, setSubscription] = useState(null);
 
+  // Захват referral/UTM меток из URL при первом заходе
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        const params = url.searchParams;
+        const ref = params.get('ref');
+        const utm_source = params.get('utm_source');
+        const utm_medium = params.get('utm_medium');
+        const utm_campaign = params.get('utm_campaign');
+        const channel = params.get('channel');
+        if (ref) localStorage.setItem('tp_referral_code', ref);
+        if (utm_source) localStorage.setItem('tp_utm_source', utm_source);
+        if (utm_medium) localStorage.setItem('tp_utm_medium', utm_medium);
+        if (utm_campaign) localStorage.setItem('tp_utm_campaign', utm_campaign);
+        if (channel) localStorage.setItem('tp_channel', channel);
+        // Дополнительно сохраним источник URL как ref_url и анонимный cookie_id
+        const ref_url = url.href;
+        localStorage.setItem('tp_ref_url', ref_url);
+        if (!localStorage.getItem('tp_cookie_id')) {
+          const rand = Math.random().toString(36).slice(2) + Date.now().toString(36);
+          localStorage.setItem('tp_cookie_id', rand);
+        }
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to capture referral params:', e);
+    }
+  }, []);
+
   const loadSubscription = useCallback(async () => {
     try {
       const res = await apiClient.get('subscription/');
@@ -168,6 +198,14 @@ export const AuthProvider = ({ children }) => {
       role: initialRole,
       birth_date: birthDate || null,
       recaptcha_token: null,
+      // Реферальные поля
+      referral_code: localStorage.getItem('tp_referral_code') || '',
+      utm_source: localStorage.getItem('tp_utm_source') || '',
+      utm_medium: localStorage.getItem('tp_utm_medium') || '',
+      utm_campaign: localStorage.getItem('tp_utm_campaign') || '',
+      channel: localStorage.getItem('tp_channel') || '',
+      ref_url: localStorage.getItem('tp_ref_url') || '',
+      cookie_id: localStorage.getItem('tp_cookie_id') || '',
     });
 
     // 2. Очистим устаревшие ключи (совместимость со старым кодом)
