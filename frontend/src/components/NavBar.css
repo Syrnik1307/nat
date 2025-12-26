@@ -1047,16 +1047,16 @@
     background: none;
     border: none;
     cursor: pointer;
-    text-align: left;
     font-family: inherit;
     color: #dc2626;
-    padding: .55rem .95rem;
+    padding: 0.875rem 1.5rem;
     width: 100%;
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: .55rem;
     font-weight: 600;
-    font-size: .95rem;
+    font-size: 1rem;
   }
 
   .mobile-logout-btn:hover {
