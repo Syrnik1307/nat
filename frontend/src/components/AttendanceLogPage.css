@@ -49,7 +49,7 @@
 
 .page-title {
   font-size: 1.375rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
   margin: 0;
 }
@@ -129,7 +129,7 @@
   border: none;
   border-radius: 10px;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
@@ -414,7 +414,7 @@
 /* ===== Даты в колонках ===== */
 .lesson-date-main {
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
 }
 
@@ -446,7 +446,7 @@
 }
 
 .student-name {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-main);
   font-size: 0.875rem;
   white-space: nowrap;
@@ -468,7 +468,7 @@
   background: var(--bg-paper);
   color: var(--color-primary);
   border-radius: 8px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.85rem;
 }
 
@@ -838,7 +838,7 @@
 .ai-modal .modal-header h3 {
   margin: 0;
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .ai-modal .close-btn {
@@ -868,8 +868,8 @@
 .analysis-section h4 {
   margin: 0 0 0.5rem;
   font-size: 0.85rem;
-  color: var(--text-muted);
-  font-weight: 500;
+  color: var(--text-main);
+  font-weight: 600;
 }
 
 .analysis-section p {

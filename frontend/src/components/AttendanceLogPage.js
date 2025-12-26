@@ -516,13 +516,13 @@ const AttendanceLogPage = () => {
           className={`tab-button ${activeTab === 'journal' ? 'active' : ''}`}
           onClick={() => setActiveTab('journal')}
         >
-          📋 Журнал
+          Журнал
         </button>
         <button
           className={`tab-button ${activeTab === 'reports' ? 'active' : ''}`}
           onClick={() => setActiveTab('reports')}
         >
-          🤖 Отчёты
+          Отчёты
           {aiReports.length > 0 && (
             <span className="tab-badge">{aiReports.length}</span>
           )}
@@ -826,7 +826,7 @@ const AttendanceLogPage = () => {
         <div className="ai-modal-overlay" onClick={() => setSelectedAiReport(null)}>
           <div className="ai-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>🤖 AI-отчёт: {selectedAiReport.student_name}</h3>
+              <h3>AI-отчёт: {selectedAiReport.student_name}</h3>
               <button className="close-btn" onClick={() => setSelectedAiReport(null)}>✕</button>
             </div>
             <div className="modal-body">
@@ -841,25 +841,25 @@ const AttendanceLogPage = () => {
                   </div>
                   {selectedAiReport.ai_analysis.strengths && (
                     <div className="analysis-section">
-                      <h4>💪 Сильные стороны</h4>
+                      <h4>Сильные стороны</h4>
                       <p>{selectedAiReport.ai_analysis.strengths}</p>
                     </div>
                   )}
                   {selectedAiReport.ai_analysis.weaknesses && (
                     <div className="analysis-section">
-                      <h4>📌 Области для улучшения</h4>
+                      <h4>Области для улучшения</h4>
                       <p>{selectedAiReport.ai_analysis.weaknesses}</p>
                     </div>
                   )}
                   {selectedAiReport.ai_analysis.recommendations && (
                     <div className="analysis-section">
-                      <h4>💡 Рекомендации</h4>
+                      <h4>Рекомендации</h4>
                       <p>{selectedAiReport.ai_analysis.recommendations}</p>
                     </div>
                   )}
                   {selectedAiReport.ai_analysis.homework_patterns && (
                     <div className="analysis-section">
-                      <h4>📝 Паттерны в домашних заданиях</h4>
+                      <h4>Паттерны в домашних заданиях</h4>
                       <p>{selectedAiReport.ai_analysis.homework_patterns}</p>
                     </div>
                   )}
