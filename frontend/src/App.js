@@ -35,6 +35,8 @@ import RecordingsPage from './modules/Recordings/RecordingsPage';
 import TeacherRecordingsPage from './modules/Recordings/TeacherRecordingsPage';
 // Журнал посещений
 import AttendanceLogPage from './components/AttendanceLogPage';
+// AI Отчёты
+import StudentAIReports from './components/StudentAIReports';
 // Админ - управление хранилищем
 
 const RoleRouter = () => {
@@ -106,6 +108,7 @@ const AppRoutes = () => {
         />
         <Route path="/recurring-lessons/manage" element={<Protected allowRoles={['teacher']}><RecurringLessonsManage /></Protected>} />
         <Route path="/groups/manage" element={<Protected allowRoles={['teacher']}><GroupsManage /></Protected>} />
+        <Route path="/teacher/ai-reports" element={<Protected allowRoles={['teacher']}><StudentAIReports /></Protected>} />
         
         {/* Student */}
         <Route path="/student" element={<Protected allowRoles={['student']}><StudentHomePage /></Protected>} />

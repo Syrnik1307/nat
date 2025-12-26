@@ -1,16 +1,24 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Avg, Count, Q, F, DurationField, ExpressionWrapper, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
-from .models import ControlPoint, ControlPointResult
-from .serializers import ControlPointSerializer, ControlPointResultSerializer
+from django.shortcuts import get_object_or_404
+from django.conf import settings
+from .models import ControlPoint, ControlPointResult, StudentAIReport
+from .serializers import (
+    ControlPointSerializer, 
+    ControlPointResultSerializer,
+    StudentAIReportSerializer,
+    StudentAIReportListSerializer
+)
 from schedule.models import Attendance, Group
 from homework.models import StudentSubmission
 from homework.models import Homework
 from homework.models import Answer
+from accounts.models import CustomUser
 
 class ControlPointViewSet(viewsets.ModelViewSet):
     queryset = ControlPoint.objects.all().select_related('teacher', 'group', 'lesson')
@@ -430,3 +438,199 @@ class StudentStatsViewSet(viewsets.ViewSet):
             },
             'groups': groups_payload,
         })
+
+
+class StudentAIReportViewSet(viewsets.ModelViewSet):
+    """
+    API для AI-отчётов по студентам
+    
+    GET /api/analytics/ai-reports/ - список отчётов
+    GET /api/analytics/ai-reports/{id}/ - детали отчёта
+    POST /api/analytics/ai-reports/generate/ - сгенерировать новый отчёт
+    GET /api/analytics/ai-reports/for-student/{student_id}/ - отчёты по студенту
+    """
+    queryset = StudentAIReport.objects.all().select_related('student', 'teacher', 'group')
+    permission_classes = [IsAuthenticated]
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return StudentAIReportListSerializer
+        return StudentAIReportSerializer
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        
+        if not user.is_authenticated:
+            return qs.none()
+        
+        if getattr(user, 'role', None) == 'teacher':
+            qs = qs.filter(teacher=user)
+        elif getattr(user, 'role', None) == 'admin':
+            pass  # Admin видит все
+        else:
+            return qs.none()
+        
+        # Фильтры
+        group_id = self.request.query_params.get('group')
+        if group_id:
+            qs = qs.filter(group_id=group_id)
+        
+        student_id = self.request.query_params.get('student')
+        if student_id:
+            qs = qs.filter(student_id=student_id)
+        
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        
+        return qs.order_by('-created_at')
+    
+    @action(detail=False, methods=['post'], url_path='generate')
+    def generate_report(self, request):
+        """
+        Сгенерировать AI-отчёт по студенту
+        
+        POST /api/analytics/ai-reports/generate/
+        {
+            "student_id": 123,
+            "group_id": 456,  // опционально
+            "period_days": 30  // опционально, по умолчанию 30
+        }
+        """
+        user = request.user
+        if getattr(user, 'role', None) not in ['teacher', 'admin']:
+            return Response(
+                {'detail': 'Только для преподавателей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        student_id = request.data.get('student_id')
+        if not student_id:
+            return Response(
+                {'detail': 'student_id обязателен'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            student = CustomUser.objects.get(id=student_id, role='student')
+        except CustomUser.DoesNotExist:
+            return Response(
+                {'detail': 'Студент не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        group_id = request.data.get('group_id')
+        group = None
+        if group_id:
+            try:
+                group = Group.objects.get(id=group_id)
+            except Group.DoesNotExist:
+                pass
+        
+        period_days = int(request.data.get('period_days', 30))
+        
+        # Генерируем отчёт
+        from .ai_analytics_service import generate_student_report
+        
+        report = generate_student_report(
+            student=student,
+            teacher=user,
+            group=group,
+            period_days=period_days,
+            provider=getattr(settings, 'AI_ANALYTICS_PROVIDER', 'deepseek')
+        )
+        
+        serializer = StudentAIReportSerializer(report)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=False, methods=['post'], url_path='generate-for-group')
+    def generate_for_group(self, request):
+        """
+        Сгенерировать AI-отчёты для всех студентов группы
+        
+        POST /api/analytics/ai-reports/generate-for-group/
+        {
+            "group_id": 456,
+            "period_days": 30
+        }
+        """
+        user = request.user
+        if getattr(user, 'role', None) not in ['teacher', 'admin']:
+            return Response(
+                {'detail': 'Только для преподавателей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        group_id = request.data.get('group_id')
+        if not group_id:
+            return Response(
+                {'detail': 'group_id обязателен'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            group = Group.objects.get(id=group_id)
+        except Group.DoesNotExist:
+            return Response(
+                {'detail': 'Группа не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Проверяем что это группа преподавателя
+        if group.teacher != user and getattr(user, 'role', None) != 'admin':
+            return Response(
+                {'detail': 'Нет доступа к этой группе'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        period_days = int(request.data.get('period_days', 30))
+        
+        from .ai_analytics_service import generate_student_report
+        from django.conf import settings
+        
+        students = group.students.all()
+        reports = []
+        errors = []
+        
+        for student in students:
+            try:
+                report = generate_student_report(
+                    student=student,
+                    teacher=user,
+                    group=group,
+                    period_days=period_days,
+                    provider=getattr(settings, 'AI_ANALYTICS_PROVIDER', 'deepseek')
+                )
+                reports.append(report)
+            except Exception as e:
+                errors.append({
+                    'student_id': student.id,
+                    'student_email': student.email,
+                    'error': str(e)
+                })
+        
+        return Response({
+            'generated': len(reports),
+            'total_students': students.count(),
+            'errors': errors,
+            'reports': StudentAIReportListSerializer(reports, many=True).data
+        })
+    
+    @action(detail=False, methods=['get'], url_path='for-student/(?P<student_id>[^/.]+)')
+    def for_student(self, request, student_id=None):
+        """
+        Получить все отчёты по конкретному студенту
+        
+        GET /api/analytics/ai-reports/for-student/{student_id}/
+        """
+        user = request.user
+        if getattr(user, 'role', None) not in ['teacher', 'admin']:
+            return Response(
+                {'detail': 'Только для преподавателей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        reports = self.get_queryset().filter(student_id=student_id)
+        serializer = StudentAIReportListSerializer(reports, many=True)
+        return Response(serializer.data)

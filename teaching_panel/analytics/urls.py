@@ -1,6 +1,13 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ControlPointViewSet, ControlPointResultViewSet, GradebookViewSet, TeacherStatsViewSet, StudentStatsViewSet
+from .views import (
+    ControlPointViewSet, 
+    ControlPointResultViewSet, 
+    GradebookViewSet, 
+    TeacherStatsViewSet, 
+    StudentStatsViewSet,
+    StudentAIReportViewSet
+)
 
 router = DefaultRouter()
 router.register(r'control-points', ControlPointViewSet, basename='control-point')
@@ -8,6 +15,7 @@ router.register(r'control-point-results', ControlPointResultViewSet, basename='c
 router.register(r'gradebook', GradebookViewSet, basename='gradebook')
 router.register(r'teacher-stats', TeacherStatsViewSet, basename='teacher-stats')
 router.register(r'student-stats', StudentStatsViewSet, basename='student-stats')
+router.register(r'ai-reports', StudentAIReportViewSet, basename='ai-reports')
 
 urlpatterns = [
     path('', include(router.urls)),

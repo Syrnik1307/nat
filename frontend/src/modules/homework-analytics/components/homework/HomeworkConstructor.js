@@ -28,6 +28,10 @@ const initialMeta = {
   deadline: '',
   maxScore: 100,
   gamificationEnabled: true,
+  // AI grading settings
+  aiGradingEnabled: false,
+  aiProvider: 'deepseek',
+  aiGradingPrompt: '',
 };
 
 const QUESTION_COMPONENTS = {
@@ -498,6 +502,62 @@ const HomeworkConstructor = () => {
               <button type="button" className="gm-btn-surface" onClick={handleAutoMaxScore}>
                 Рассчитать по сумме вопросов
               </button>
+            </div>
+
+            {/* AI Grading Section */}
+            <div className="form-group hc-ai-grading-section">
+              <div className="hc-ai-toggle-row">
+                <label className="form-label">🤖 AI-проверка текстовых ответов</label>
+                <label className="hc-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={assignmentMeta.aiGradingEnabled}
+                    onChange={(e) => handleMetaChange('aiGradingEnabled', e.target.checked)}
+                  />
+                  <span className="hc-toggle-slider"></span>
+                </label>
+              </div>
+              
+              {assignmentMeta.aiGradingEnabled && (
+                <div className="hc-ai-options">
+                  <div className="form-group">
+                    <label className="form-label">Провайдер AI</label>
+                    <select
+                      className="form-input"
+                      value={assignmentMeta.aiProvider}
+                      onChange={(e) => handleMetaChange('aiProvider', e.target.value)}
+                    >
+                      <option value="deepseek">DeepSeek (рекомендуется)</option>
+                      <option value="openai">OpenAI GPT-4o-mini</option>
+                    </select>
+                    <small className="form-hint">
+                      DeepSeek — бесплатный/дешевый, качественная проверка
+                    </small>
+                  </div>
+                  
+                  <div className="form-group">
+                    <label className="form-label">Контекст для AI (опционально)</label>
+                    <textarea
+                      className="form-textarea"
+                      rows={3}
+                      placeholder="Например: Тема урока — Present Perfect. Оценивай знание грамматики и правильность употребления времен."
+                      value={assignmentMeta.aiGradingPrompt}
+                      onChange={(e) => handleMetaChange('aiGradingPrompt', e.target.value)}
+                    />
+                    <small className="form-hint">
+                      Помогает AI лучше понять критерии оценки
+                    </small>
+                  </div>
+                  
+                  <div className="hc-ai-info">
+                    <span>ℹ️</span>
+                    <span>
+                      AI автоматически проверит текстовые ответы и выставит предварительные баллы. 
+                      Вы всегда можете изменить оценку вручную.
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="gm-actions hc-action-buttons">

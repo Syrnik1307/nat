@@ -71,6 +71,10 @@ export const buildHomeworkPayload = (meta, questions) => ({
   title: meta.title?.trim() || '',
   description: meta.description?.trim() || '',
   questions: questions.map((question, index) => mapQuestionToPayload(question, index)),
+  // AI grading settings
+  ai_grading_enabled: Boolean(meta.aiGradingEnabled),
+  ai_provider: meta.aiProvider || 'deepseek',
+  ai_grading_prompt: meta.aiGradingPrompt?.trim() || '',
 });
 
 export const homeworkService = {

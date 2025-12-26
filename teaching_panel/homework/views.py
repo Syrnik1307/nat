@@ -285,8 +285,11 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         if not answers_payload:
             return
 
+        homework = submission.homework
+        use_ai = homework.ai_grading_enabled  # Проверяем настройку AI
+
         questions_map = {
-            q.id: q for q in submission.homework.questions.all().prefetch_related('choices')
+            q.id: q for q in homework.questions.all().prefetch_related('choices')
         }
 
         for question_id, raw_value in answers_payload.items():
@@ -333,7 +336,7 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
                 except TypeError:
                     answer_obj.text_answer = ''
 
-            answer_obj.evaluate()
+            answer_obj.evaluate(use_ai=use_ai)
             answer_obj.save()
 
         submission.compute_auto_score()

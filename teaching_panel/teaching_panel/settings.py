@@ -598,6 +598,17 @@ YOOKASSA_WEBHOOK_SECRET = os.environ.get('YOOKASSA_WEBHOOK_SECRET', '')
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
 # =============================================================================
+# AI GRADING SETTINGS
+# =============================================================================
+# DeepSeek API (рекомендуется) - бесплатные кредиты при регистрации
+# Получить ключ: https://platform.deepseek.com/
+DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
+
+# OpenAI API (альтернатива)
+# Получить ключ: https://platform.openai.com/
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+
+# =============================================================================
 # LOGGING CONFIGURATION
 # =============================================================================
 LOGGING = {

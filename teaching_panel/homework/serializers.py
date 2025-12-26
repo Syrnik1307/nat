@@ -112,7 +112,12 @@ class HomeworkSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Homework
-        fields = ['id', 'title', 'description', 'teacher', 'teacher_email', 'lesson', 'questions', 'created_at', 'updated_at']
+        fields = [
+            'id', 'title', 'description', 'teacher', 'teacher_email', 'lesson', 
+            'questions', 'created_at', 'updated_at',
+            # AI grading fields
+            'ai_grading_enabled', 'ai_provider', 'ai_grading_prompt'
+        ]
         read_only_fields = ['teacher']
 
     def create(self, validated_data):
@@ -243,11 +248,13 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
             graded_at=None,
         )
         if answers_data:
+            homework = submission.homework
+            use_ai = homework.ai_grading_enabled  # Проверяем настройку AI
             for ans in answers_data:
                 selected_choices = ans.pop('selected_choices', [])
                 answer = Answer.objects.create(submission=submission, **ans)
                 if selected_choices:
                     answer.selected_choices.set(selected_choices)
-                answer.evaluate()
+                answer.evaluate(use_ai=use_ai)
             submission.compute_auto_score()
         return submission

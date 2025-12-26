@@ -357,25 +357,23 @@
 
   .nav-link,
   .nav-dropdown-trigger {
-    border-radius: 0;
+    border-radius: 8px;
     border: none;
-    border-bottom: 1px solid var(--border-light);
-    padding: 1rem 1.5rem;
+    padding: 0.875rem 1.5rem;
     font-size: 1rem;
     justify-content: flex-start;
     box-shadow: none;
-    border-left: 3px solid transparent;
   }
 
   .nav-link:hover,
   .nav-dropdown-trigger:hover {
     transform: none;
-    background: var(--bg-app);
+    background: var(--bg-surface);
   }
 
   .nav-link.active {
-    border-left-color: var(--color-primary);
-    background: #f0f9ff;
+    background: var(--bg-surface);
+    color: var(--color-primary);
   }
 
   .nav-dropdown {
@@ -400,7 +398,6 @@
 
   .nav-dropdown-item {
     padding: 0.9rem 2.5rem;
-    border-bottom: 1px solid var(--border-light);
   }
 
   .mobile-menu-overlay {
@@ -503,11 +500,10 @@
 .navbar-menu-portal .nav-link,
 .navbar-menu-portal .nav-dropdown-trigger {
   width: 100%;
-  padding: 1rem 1.25rem !important;
+  padding: 0.875rem 1.5rem !important;
   margin: 0 !important;
-  border-radius: 0 !important;
+  border-radius: 8px !important;
   border: none !important;
-  border-bottom: 1px solid var(--border-light) !important;
   font-size: 1rem !important;
   font-weight: 500 !important;
   display: flex;
@@ -526,7 +522,7 @@
 }
 
 .navbar-menu-portal .nav-link:first-child {
-  border-top: 1px solid var(--border-light) !important;
+  border-top: none !important;
 }
 
 .navbar-menu-portal .nav-dropdown {
@@ -546,7 +542,7 @@
 
 .navbar-menu-portal .nav-dropdown-item {
   padding: 0.875rem 1.25rem 0.875rem 2.5rem !important;
-  border-bottom: 1px solid var(--border-light) !important;
+  border-bottom: none !important;
   font-size: 0.95rem !important;
 }
 
@@ -559,9 +555,7 @@
 }
 
 .navbar-menu-portal .mobile-profile-divider {
-  height: 1px;
-  background: var(--border-light);
-  margin: 0 0 0.5rem 0;
+  display: none;
 }
 
 .navbar-menu-portal .mobile-logout-btn {
@@ -885,9 +879,7 @@
   font-weight: 600;
 }
 .dropdown-divider {
-  height: 1px; 
-  background: linear-gradient(90deg, transparent, var(--border-light), transparent); 
-  margin: .35rem .3rem .4rem;
+  display: none;
 }
 
 .dropdown-item {

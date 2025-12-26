@@ -10,6 +10,12 @@ class Homework(models.Model):
         ('archived', 'Архивировано'),
     )
     
+    AI_PROVIDER_CHOICES = (
+        ('none', 'Без AI'),
+        ('deepseek', 'DeepSeek'),
+        ('openai', 'OpenAI'),
+    )
+    
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='homeworks', limit_choices_to={'role': 'teacher'})
     lesson = models.ForeignKey(Lesson, on_delete=models.SET_NULL, null=True, blank=True, related_name='homeworks')
     title = models.CharField(max_length=255)
@@ -18,6 +24,11 @@ class Homework(models.Model):
     published_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    # AI проверка
+    ai_grading_enabled = models.BooleanField(default=False, help_text='Включить AI проверку текстовых ответов')
+    ai_provider = models.CharField(max_length=20, choices=AI_PROVIDER_CHOICES, default='deepseek', help_text='Провайдер AI для проверки')
+    ai_grading_prompt = models.TextField(blank=True, help_text='Дополнительные инструкции для AI при проверке (контекст темы, критерии оценки)')
 
     class Meta:
         ordering = ['-created_at']
@@ -131,15 +142,24 @@ class Answer(models.Model):
     def __str__(self):
         return f"Answer q{self.question.id} by submission {self.submission.id}"
 
-    def evaluate(self):
-        """Автоматическая оценка ответа на основе типа вопроса и config."""
+    def evaluate(self, use_ai: bool = False):
+        """Автоматическая оценка ответа на основе типа вопроса и config.
+        
+        Args:
+            use_ai: Использовать AI для проверки TEXT вопросов
+        """
         q = self.question
         config = q.config or {}
+        homework = q.homework
         
         if q.question_type == 'TEXT':
-            # Текстовые ответы требуют ручной проверки
-            self.needs_manual_review = True
-            self.auto_score = None
+            # Проверяем, включена ли AI проверка
+            if use_ai and homework.ai_grading_enabled:
+                self._evaluate_with_ai(homework)
+            else:
+                # Текстовые ответы требуют ручной проверки
+                self.needs_manual_review = True
+                self.auto_score = None
             
         elif q.question_type == 'SINGLE_CHOICE':
             # Один правильный вариант
@@ -334,3 +354,48 @@ class Answer(models.Model):
             
         self.save()
         return self.auto_score
+
+    def _evaluate_with_ai(self, homework):
+        """Проверка текстового ответа с помощью AI.
+        
+        Args:
+            homework: Объект Homework с настройками AI
+        """
+        from .ai_grading_service import grade_text_answer
+        
+        q = self.question
+        config = q.config or {}
+        
+        # Получаем эталонный ответ если есть
+        correct_answer = config.get('correctAnswer', '')
+        
+        try:
+            result = grade_text_answer(
+                question_text=q.prompt,
+                student_answer=self.text_answer,
+                max_points=q.points,
+                provider=homework.ai_provider or 'deepseek',
+                correct_answer=correct_answer if correct_answer else None,
+                teacher_context=homework.ai_grading_prompt if homework.ai_grading_prompt else None
+            )
+            
+            if result.error:
+                # AI не смог проверить - требуется ручная проверка
+                self.needs_manual_review = True
+                self.auto_score = None
+                self.teacher_feedback = f"[AI ошибка: {result.error}] {result.feedback}"
+            else:
+                # AI успешно проверил
+                self.auto_score = result.score
+                self.teacher_feedback = f"[AI оценка, уверенность: {result.confidence:.0%}] {result.feedback}"
+                # Если уверенность низкая - всё равно требуем ручную проверку
+                self.needs_manual_review = result.confidence < 0.7
+                
+        except Exception as e:
+            # При любой ошибке - ручная проверка
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.exception(f"AI grading failed for answer {self.id}")
+            self.needs_manual_review = True
+            self.auto_score = None
+            self.teacher_feedback = f"[AI недоступен] Требуется ручная проверка"

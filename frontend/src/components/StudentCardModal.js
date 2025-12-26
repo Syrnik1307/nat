@@ -14,10 +14,16 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
   const [editing, setEditing] = useState(false);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  
+  // AI-отчёт
+  const [aiReport, setAiReport] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [generatingAi, setGeneratingAi] = useState(false);
 
   useEffect(() => {
     if (isOpen && studentId) {
       loadStudentCard();
+      loadAiReport();
     }
   }, [isOpen, studentId, groupId]);
 
@@ -37,6 +43,39 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
       setError('Не удалось загрузить информацию об ученике');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAiReport = async () => {
+    try {
+      setAiLoading(true);
+      const params = groupId ? `student_id=${studentId}&group_id=${groupId}` : `student_id=${studentId}`;
+      const response = await apiClient.get(`/analytics/ai-reports/?${params}`);
+      const reports = response.data.results || response.data || [];
+      // Берём последний отчёт
+      if (Array.isArray(reports) && reports.length > 0) {
+        setAiReport(reports[0]);
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки AI-отчёта:', err);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleGenerateAiReport = async () => {
+    try {
+      setGeneratingAi(true);
+      await apiClient.post('/analytics/ai-reports/generate/', {
+        student_id: studentId,
+        group_id: groupId || null,
+        period: 'month'
+      });
+      await loadAiReport();
+    } catch (err) {
+      console.error('Ошибка генерации AI-отчёта:', err);
+    } finally {
+      setGeneratingAi(false);
     }
   };
 
@@ -220,6 +259,85 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
                     ) : (
                       <p className="notes-empty">Нет замечаний</p>
                     )}
+                  </div>
+                )}
+              </div>
+
+              {/* AI-анализ ученика */}
+              <div className="ai-report-section">
+                <div className="ai-report-header">
+                  <h3 className="section-title">🤖 AI-анализ</h3>
+                  <button
+                    className="generate-btn"
+                    onClick={handleGenerateAiReport}
+                    disabled={generatingAi || aiLoading}
+                  >
+                    {generatingAi ? 'Генерация...' : aiReport ? 'Обновить' : 'Сгенерировать'}
+                  </button>
+                </div>
+
+                {aiLoading ? (
+                  <div className="ai-loading">Загрузка AI-отчёта...</div>
+                ) : aiReport && aiReport.status === 'completed' && aiReport.ai_analysis ? (
+                  <div className="ai-report-content">
+                    {/* Тренд */}
+                    <div className="ai-trend">
+                      <span className="trend-label">Тренд прогресса:</span>
+                      <span className={`trend-value trend-${aiReport.ai_analysis.progress_trend || 'stable'}`}>
+                        {aiReport.ai_analysis.progress_trend === 'improving' ? '↑ Улучшение' :
+                         aiReport.ai_analysis.progress_trend === 'declining' ? '↓ Снижение' : '→ Стабильно'}
+                      </span>
+                    </div>
+
+                    {/* Сильные стороны */}
+                    {aiReport.ai_analysis.strengths?.length > 0 && (
+                      <div className="ai-section strengths">
+                        <h4>✅ Сильные стороны</h4>
+                        <ul>
+                          {aiReport.ai_analysis.strengths.slice(0, 3).map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Слабые стороны */}
+                    {aiReport.ai_analysis.weaknesses?.length > 0 && (
+                      <div className="ai-section weaknesses">
+                        <h4>⚠️ Требуют внимания</h4>
+                        <ul>
+                          {aiReport.ai_analysis.weaknesses.slice(0, 3).map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Рекомендации */}
+                    {aiReport.ai_analysis.recommendations?.length > 0 && (
+                      <div className="ai-section recommendations">
+                        <h4>💡 Рекомендации</h4>
+                        <ul>
+                          {aiReport.ai_analysis.recommendations.slice(0, 3).map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <p className="ai-report-date">
+                      Отчёт от {new Date(aiReport.created_at).toLocaleDateString('ru-RU')}
+                    </p>
+                  </div>
+                ) : aiReport && aiReport.status === 'processing' ? (
+                  <div className="ai-processing">
+                    <div className="ai-spinner"></div>
+                    <span>AI анализирует данные ученика...</span>
+                  </div>
+                ) : (
+                  <div className="ai-empty">
+                    <p>AI-отчёт ещё не сгенерирован</p>
+                    <p className="ai-hint">Нажмите «Сгенерировать» для создания анализа</p>
                   </div>
                 )}
               </div>
