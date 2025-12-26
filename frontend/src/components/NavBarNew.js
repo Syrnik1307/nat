@@ -415,6 +415,7 @@ const NavBar = () => {
               handleLogout();
             }}
           >
+            <span className="nav-icon"></span>
             <span>Выйти</span>
           </button>
         </div>
