@@ -177,6 +177,17 @@
   font-size: 0.75rem;
 }
 
+.lesson-date-main {
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 0.85rem;
+}
+
+.lesson-time {
+  color: var(--text-light);
+  font-size: 0.7rem;
+}
+
 .attendance-table tbody tr {
   border-bottom: 1px solid var(--bg-surface);
 }

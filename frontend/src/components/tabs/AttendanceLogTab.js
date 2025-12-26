@@ -28,6 +28,12 @@ const formatDate = (value) => {
   return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
 };
 
+const formatTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+};
+
 const getStatusMeta = (status) => STATUS_META[status] || STATUS_META.default;
 
 const formatPercent = (value) => `${Math.max(0, Math.min(100, Math.round(value || 0)))}%`;
@@ -282,9 +288,9 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
                   <th className="student-col">Ученик</th>
                   <th className="presence-col">Посещаемость</th>
                   {lessons.map((lesson, idx) => (
-                    <th key={lesson.id} className="lesson-col" title={lesson.title}>
-                      <div className="lesson-index">Занятие {idx + 1}</div>
-                      <div className="lesson-date">{formatDate(lesson.start_time)}</div>
+                    <th key={lesson.id} className="lesson-col" title={lesson.title || `Занятие ${idx + 1}`}>
+                      <div className="lesson-date-main">{formatDate(lesson.start_time)}</div>
+                      <div className="lesson-time">{formatTime(lesson.start_time)}</div>
                     </th>
                   ))}
                 </tr>

@@ -361,7 +361,7 @@
 }
 
 .lesson-col {
-  min-width: 88px;
+  min-width: 72px;
   text-align: center;
 }
 
@@ -373,6 +373,17 @@
 .lesson-date {
   font-size: 0.625rem;
   color: var(--text-light);
+}
+
+.lesson-date-main {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.lesson-time {
+  font-size: 0.7rem;
+  color: var(--text-muted);
 }
 
 .avatar-circle {

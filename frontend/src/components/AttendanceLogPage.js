@@ -30,6 +30,12 @@ const formatDate = (value) => {
   return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
 };
 
+const formatTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+};
+
 const getLessonLabel = (lesson, index) => {
   if (!lesson) {
     return `Занятие ${index + 1}`;
@@ -598,10 +604,10 @@ const AttendanceLogPage = () => {
                 <div
                   key={lesson.id}
                   className="grid-header-cell lesson-col"
-                  title={lesson.title || lesson.topic || undefined}
+                  title={lesson.title || lesson.topic || `Занятие ${idx + 1}`}
                 >
-                  <div className="lesson-index">{getLessonLabel(lesson, idx)}</div>
-                  <div className="lesson-date">{formatDate(lesson.start_time)}</div>
+                  <div className="lesson-date-main">{formatDate(lesson.start_time)}</div>
+                  <div className="lesson-time">{formatTime(lesson.start_time)}</div>
                 </div>
               ))}
             </div>
