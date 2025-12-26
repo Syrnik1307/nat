@@ -15,6 +15,7 @@ import {
   apiClient,
 } from '../apiService';
 import AttendanceStatusPicker from './AttendanceStatusPicker';
+import GroupReportsTab from './tabs/GroupReportsTab';
 import './AttendanceLogPage.css';
 
 const STATUS_META = {
@@ -100,10 +101,17 @@ const AttendanceLogPage = () => {
     try {
       setLoading(true);
       setError(null);
+      // Загружаем уроки за 1 год назад и 1 год вперёд, чтобы получить все уроки группы
+      const now = new Date();
+      const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+      const oneYearAhead = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+      const start = oneYearAgo.toISOString();
+      const end = oneYearAhead.toISOString();
+      
       const [groupResponse, logResponse, lessonsResponse] = await Promise.all([
         getGroup(groupId),
         getGroupAttendanceLog(groupId),
-        getLessons({ group: groupId }),
+        getLessons({ group: groupId, start, end, include_recurring: 'true' }),
       ]);
 
       const lessonsFromLog = logResponse.data?.lessons || [];
@@ -736,143 +744,9 @@ const AttendanceLogPage = () => {
       </div>
       )}
 
-      {/* AI Reports Tab */}
+      {/* Algorithmic Reports Tab */}
       {activeTab === 'reports' && (
-      <div className="ai-reports-panel">
-        <div className="ai-reports-content">
-            {aiReportsLoading ? (
-              <div className="ai-loading">Загрузка AI-отчётов...</div>
-            ) : aiReports.length === 0 ? (
-              <div className="ai-empty">
-                <p>AI-отчёты пока не созданы</p>
-                <p className="ai-hint">Выберите ученика для генерации персонального AI-анализа</p>
-              </div>
-            ) : (
-              <div className="ai-reports-grid">
-                {aiReports.map((report) => (
-                  <div
-                    key={report.id}
-                    className={`ai-report-card ${report.status === 'completed' ? 'completed' : ''}`}
-                    onClick={() => report.status === 'completed' && setSelectedAiReport(report)}
-                  >
-                    <div className="report-header">
-                      <span className="student-avatar">
-                        {(report.student_name || '?').charAt(0).toUpperCase()}
-                      </span>
-                      <div className="student-info">
-                        <span className="student-name">{report.student_name}</span>
-                        <span className="report-date">
-                          {new Date(report.created_at).toLocaleDateString('ru-RU', {
-                            day: 'numeric', month: 'short'
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                    {report.status === 'completed' && report.ai_analysis && (
-                      <div className="report-summary">
-                        <span className={`trend-badge trend-${report.ai_analysis.progress_trend || 'stable'}`}>
-                          {report.ai_analysis.progress_trend === 'improving' ? '↑ Улучшение' :
-                           report.ai_analysis.progress_trend === 'declining' ? '↓ Снижение' : '→ Стабильно'}
-                        </span>
-                        {report.ai_analysis.recommendations && (
-                          <p className="recommendations-preview">
-                            {report.ai_analysis.recommendations.slice(0, 80)}...
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    {report.status === 'processing' && (
-                      <div className="report-status">Генерируется...</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-          {/* Генерация для учеников без отчёта */}
-          {rows.length > 0 && (
-            <div className="generate-reports-section">
-              <h4>Сгенерировать отчёт</h4>
-              <div className="students-list">
-                {rows.map((row) => {
-                  const hasReport = aiReports.some(r => r.student === row.student.id);
-                  const isGenerating = generatingAi === row.student.id;
-                  return (
-                    <button
-                      key={row.student.id}
-                      className={`generate-btn ${hasReport ? 'has-report' : ''}`}
-                      onClick={() => handleGenerateAiReport(row.student.id, row.student.name)}
-                      disabled={isGenerating}
-                    >
-                      <span className="student-avatar small">
-                        {(row.student.name || '?').charAt(0).toUpperCase()}
-                      </span>
-                      <span className="student-name">{row.student.name}</span>
-                      <span className="action-label">
-                        {isGenerating ? '⏳' : hasReport ? '🔄' : '➕'}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      )}
-
-      {/* AI Report Detail Modal */}
-      {selectedAiReport && (
-        <div className="ai-modal-overlay" onClick={() => setSelectedAiReport(null)}>
-          <div className="ai-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>AI-отчёт: {selectedAiReport.student_name}</h3>
-              <button className="close-btn" onClick={() => setSelectedAiReport(null)}>✕</button>
-            </div>
-            <div className="modal-body">
-              {selectedAiReport.ai_analysis && (
-                <>
-                  <div className="analysis-section">
-                    <h4>Тренд прогресса</h4>
-                    <span className={`trend-badge large trend-${selectedAiReport.ai_analysis.progress_trend || 'stable'}`}>
-                      {selectedAiReport.ai_analysis.progress_trend === 'improving' ? '↑ Улучшение' :
-                       selectedAiReport.ai_analysis.progress_trend === 'declining' ? '↓ Снижение' : '→ Стабильно'}
-                    </span>
-                  </div>
-                  {selectedAiReport.ai_analysis.strengths && (
-                    <div className="analysis-section">
-                      <h4>Сильные стороны</h4>
-                      <p>{selectedAiReport.ai_analysis.strengths}</p>
-                    </div>
-                  )}
-                  {selectedAiReport.ai_analysis.weaknesses && (
-                    <div className="analysis-section">
-                      <h4>Области для улучшения</h4>
-                      <p>{selectedAiReport.ai_analysis.weaknesses}</p>
-                    </div>
-                  )}
-                  {selectedAiReport.ai_analysis.recommendations && (
-                    <div className="analysis-section">
-                      <h4>Рекомендации</h4>
-                      <p>{selectedAiReport.ai_analysis.recommendations}</p>
-                    </div>
-                  )}
-                  {selectedAiReport.ai_analysis.homework_patterns && (
-                    <div className="analysis-section">
-                      <h4>Паттерны в домашних заданиях</h4>
-                      <p>{selectedAiReport.ai_analysis.homework_patterns}</p>
-                    </div>
-                  )}
-                </>
-              )}
-              <div className="modal-footer">
-                <span className="report-meta">
-                  Создан: {new Date(selectedAiReport.created_at).toLocaleString('ru-RU')}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <GroupReportsTab groupId={groupId} />
       )}
     </div>
   );
