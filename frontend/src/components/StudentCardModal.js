@@ -19,11 +19,17 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
   const [aiReport, setAiReport] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [generatingAi, setGeneratingAi] = useState(false);
+  
+  // Поведенческий отчёт
+  const [behaviorReport, setBehaviorReport] = useState(null);
+  const [behaviorLoading, setBehaviorLoading] = useState(false);
+  const [generatingBehavior, setGeneratingBehavior] = useState(false);
 
   useEffect(() => {
     if (isOpen && studentId) {
       loadStudentCard();
       loadAiReport();
+      loadBehaviorReport();
     }
   }, [isOpen, studentId, groupId]);
 
@@ -76,6 +82,38 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
       console.error('Ошибка генерации AI-отчёта:', err);
     } finally {
       setGeneratingAi(false);
+    }
+  };
+
+  const loadBehaviorReport = async () => {
+    try {
+      setBehaviorLoading(true);
+      const params = groupId ? `student=${studentId}&group=${groupId}` : `student=${studentId}`;
+      const response = await apiClient.get(`/analytics/behavior-reports/?${params}`);
+      const reports = response.data.results || response.data || [];
+      if (Array.isArray(reports) && reports.length > 0) {
+        setBehaviorReport(reports[0]);
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки поведенческого отчёта:', err);
+    } finally {
+      setBehaviorLoading(false);
+    }
+  };
+
+  const handleGenerateBehaviorReport = async () => {
+    try {
+      setGeneratingBehavior(true);
+      await apiClient.post('/analytics/behavior-reports/generate/', {
+        student_id: studentId,
+        group_id: groupId || null,
+        period_days: 30
+      });
+      await loadBehaviorReport();
+    } catch (err) {
+      console.error('Ошибка генерации поведенческого отчёта:', err);
+    } finally {
+      setGeneratingBehavior(false);
     }
   };
 
@@ -338,6 +376,95 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
                   <div className="ai-empty">
                     <p>AI-отчёт ещё не сгенерирован</p>
                     <p className="ai-hint">Нажмите «Сгенерировать» для создания анализа</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Поведенческий AI-анализ */}
+              <div className="behavior-report-section">
+                <div className="ai-report-header">
+                  <h3 className="section-title">📊 Поведенческий анализ</h3>
+                  <button
+                    className="generate-btn"
+                    onClick={handleGenerateBehaviorReport}
+                    disabled={generatingBehavior || behaviorLoading}
+                  >
+                    {generatingBehavior ? 'Генерация...' : behaviorReport ? 'Обновить' : 'Сгенерировать'}
+                  </button>
+                </div>
+
+                {behaviorLoading ? (
+                  <div className="ai-loading">Загрузка поведенческого отчёта...</div>
+                ) : behaviorReport && behaviorReport.status === 'completed' ? (
+                  <div className="behavior-report-content">
+                    {/* Риск и надёжность */}
+                    <div className="behavior-stats-row">
+                      <div className={`risk-badge risk-${behaviorReport.risk_level || 'medium'}`}>
+                        {behaviorReport.risk_level === 'low' ? '🟢 Низкий риск' :
+                         behaviorReport.risk_level === 'high' ? '🔴 Высокий риск' : '🟡 Средний риск'}
+                      </div>
+                      {behaviorReport.reliability_score !== null && (
+                        <div className="reliability-score">
+                          Надёжность: <strong>{behaviorReport.reliability_score}%</strong>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Статистика */}
+                    <div className="behavior-metrics">
+                      <div className="metric-item">
+                        <span className="metric-label">Посещаемость</span>
+                        <span className="metric-value">{behaviorReport.attendance_rate?.toFixed(0) || 0}%</span>
+                        <span className="metric-detail">{behaviorReport.attended_lessons}/{behaviorReport.total_lessons} занятий</span>
+                      </div>
+                      <div className="metric-item">
+                        <span className="metric-label">Сдача ДЗ</span>
+                        <span className="metric-value">{behaviorReport.homework_rate?.toFixed(0) || 0}%</span>
+                        <span className="metric-detail">{behaviorReport.submitted_on_time + behaviorReport.submitted_late}/{behaviorReport.total_homework} заданий</span>
+                      </div>
+                    </div>
+
+                    {/* Алерты */}
+                    {behaviorReport.ai_analysis?.alerts?.length > 0 && (
+                      <div className="behavior-alerts">
+                        {behaviorReport.ai_analysis.alerts.map((alert, i) => (
+                          <div key={i} className={`alert-item alert-${alert.type}`}>
+                            {alert.type === 'warning' ? '⚠️' : 'ℹ️'} {alert.message}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Рекомендации */}
+                    {behaviorReport.ai_analysis?.recommendations?.length > 0 && (
+                      <div className="ai-section recommendations">
+                        <h4>💡 Рекомендации</h4>
+                        <ul>
+                          {behaviorReport.ai_analysis.recommendations.slice(0, 3).map((rec, i) => (
+                            <li key={i}>
+                              {rec.priority === 'high' && '🔴 '}
+                              {rec.priority === 'medium' && '🟡 '}
+                              {rec.priority === 'low' && '🟢 '}
+                              {rec.action}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Резюме */}
+                    {behaviorReport.ai_analysis?.summary && (
+                      <p className="behavior-summary">{behaviorReport.ai_analysis.summary}</p>
+                    )}
+
+                    <p className="ai-report-date">
+                      Отчёт от {new Date(behaviorReport.created_at).toLocaleDateString('ru-RU')}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="ai-empty">
+                    <p>Поведенческий отчёт не сгенерирован</p>
+                    <p className="ai-hint">Анализ посещаемости, сдачи ДЗ и рисков</p>
                   </div>
                 )}
               </div>

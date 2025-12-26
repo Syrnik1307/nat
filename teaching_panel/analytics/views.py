@@ -7,12 +7,14 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.conf import settings
-from .models import ControlPoint, ControlPointResult, StudentAIReport
+from .models import ControlPoint, ControlPointResult, StudentAIReport, StudentBehaviorReport
 from .serializers import (
     ControlPointSerializer, 
     ControlPointResultSerializer,
     StudentAIReportSerializer,
-    StudentAIReportListSerializer
+    StudentAIReportListSerializer,
+    StudentBehaviorReportSerializer,
+    StudentBehaviorReportListSerializer
 )
 from schedule.models import Attendance, Group
 from homework.models import StudentSubmission
@@ -633,4 +635,248 @@ class StudentAIReportViewSet(viewsets.ModelViewSet):
         
         reports = self.get_queryset().filter(student_id=student_id)
         serializer = StudentAIReportListSerializer(reports, many=True)
+        return Response(serializer.data)
+
+class StudentBehaviorReportViewSet(viewsets.ModelViewSet):
+    """
+    API для поведенческих AI-отчётов
+    
+    Анализирует:
+    - Посещаемость (присутствие, пропуски, опоздания)
+    - Сдачу ДЗ (вовремя, с опозданием, не сдано)  
+    - Динамику оценок
+    - Риск ухода ученика
+    
+    Endpoints:
+    GET /api/analytics/behavior-reports/ - список отчётов
+    GET /api/analytics/behavior-reports/{id}/ - детали отчёта
+    POST /api/analytics/behavior-reports/generate/ - сгенерировать отчёт
+    GET /api/analytics/behavior-reports/for-student/{student_id}/ - отчёты по студенту
+    GET /api/analytics/behavior-reports/for-group/{group_id}/ - отчёты по группе
+    """
+    queryset = StudentBehaviorReport.objects.all().select_related('student', 'teacher', 'group')
+    permission_classes = [IsAuthenticated]
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return StudentBehaviorReportListSerializer
+        return StudentBehaviorReportSerializer
+    
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        
+        if not user.is_authenticated:
+            return qs.none()
+        
+        if getattr(user, 'role', None) == 'teacher':
+            qs = qs.filter(teacher=user)
+        elif getattr(user, 'role', None) == 'admin':
+            pass  # Admin видит все
+        else:
+            return qs.none()
+        
+        # Фильтры
+        group_id = self.request.query_params.get('group')
+        if group_id:
+            qs = qs.filter(group_id=group_id)
+        
+        student_id = self.request.query_params.get('student')
+        if student_id:
+            qs = qs.filter(student_id=student_id)
+        
+        risk_level = self.request.query_params.get('risk_level')
+        if risk_level:
+            qs = qs.filter(risk_level=risk_level)
+        
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        
+        return qs.order_by('-created_at')
+    
+    @action(detail=False, methods=['post'], url_path='generate')
+    def generate_report(self, request):
+        """
+        Сгенерировать поведенческий отчёт
+        
+        POST /api/analytics/behavior-reports/generate/
+        {
+            "student_id": 123,
+            "group_id": 456,  // опционально
+            "period_days": 30  // опционально
+        }
+        """
+        user = request.user
+        if getattr(user, 'role', None) not in ['teacher', 'admin']:
+            return Response(
+                {'detail': 'Только для преподавателей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        student_id = request.data.get('student_id')
+        if not student_id:
+            return Response(
+                {'detail': 'student_id обязателен'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            student = CustomUser.objects.get(id=student_id, role='student')
+        except CustomUser.DoesNotExist:
+            return Response(
+                {'detail': 'Студент не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        group_id = request.data.get('group_id')
+        group = None
+        if group_id:
+            try:
+                group = Group.objects.get(id=group_id)
+            except Group.DoesNotExist:
+                pass
+        
+        period_days = int(request.data.get('period_days', 30))
+        period_end = timezone.now().date()
+        period_start = period_end - timezone.timedelta(days=period_days)
+        
+        # Генерируем отчёт
+        from .ai_behavior_service import BehaviorAnalyticsService
+        
+        service = BehaviorAnalyticsService(
+            provider=getattr(settings, 'AI_ANALYTICS_PROVIDER', 'deepseek')
+        )
+        
+        report = service.generate_report(
+            student=student,
+            teacher=user,
+            group=group,
+            period_start=period_start,
+            period_end=period_end
+        )
+        
+        serializer = StudentBehaviorReportSerializer(report)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=False, methods=['post'], url_path='generate-for-group')
+    def generate_for_group(self, request):
+        """
+        Сгенерировать отчёты для всех студентов группы
+        
+        POST /api/analytics/behavior-reports/generate-for-group/
+        {
+            "group_id": 456,
+            "period_days": 30
+        }
+        """
+        user = request.user
+        if getattr(user, 'role', None) not in ['teacher', 'admin']:
+            return Response(
+                {'detail': 'Только для преподавателей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        group_id = request.data.get('group_id')
+        if not group_id:
+            return Response(
+                {'detail': 'group_id обязателен'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            group = Group.objects.get(id=group_id)
+        except Group.DoesNotExist:
+            return Response(
+                {'detail': 'Группа не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        period_days = int(request.data.get('period_days', 30))
+        period_end = timezone.now().date()
+        period_start = period_end - timezone.timedelta(days=period_days)
+        
+        # Получаем студентов группы
+        students = group.students.filter(role='student')
+        
+        from .ai_behavior_service import BehaviorAnalyticsService
+        
+        service = BehaviorAnalyticsService(
+            provider=getattr(settings, 'AI_ANALYTICS_PROVIDER', 'deepseek')
+        )
+        
+        reports = []
+        for student in students:
+            report = service.generate_report(
+                student=student,
+                teacher=user,
+                group=group,
+                period_start=period_start,
+                period_end=period_end
+            )
+            reports.append(report)
+        
+        serializer = StudentBehaviorReportListSerializer(reports, many=True)
+        return Response({
+            'count': len(reports),
+            'results': serializer.data
+        }, status=status.HTTP_201_CREATED)
+    
+    @action(detail=False, methods=['get'], url_path='for-student/(?P<student_id>[^/.]+)')
+    def for_student(self, request, student_id=None):
+        """
+        Получить все поведенческие отчёты по студенту
+        
+        GET /api/analytics/behavior-reports/for-student/{student_id}/
+        """
+        user = request.user
+        if getattr(user, 'role', None) not in ['teacher', 'admin']:
+            return Response(
+                {'detail': 'Только для преподавателей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        reports = self.get_queryset().filter(student_id=student_id)
+        serializer = StudentBehaviorReportListSerializer(reports, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], url_path='for-group/(?P<group_id>[^/.]+)')
+    def for_group(self, request, group_id=None):
+        """
+        Получить все поведенческие отчёты по группе
+        
+        GET /api/analytics/behavior-reports/for-group/{group_id}/
+        """
+        user = request.user
+        if getattr(user, 'role', None) not in ['teacher', 'admin']:
+            return Response(
+                {'detail': 'Только для преподавателей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        reports = self.get_queryset().filter(group_id=group_id)
+        serializer = StudentBehaviorReportListSerializer(reports, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], url_path='at-risk')
+    def at_risk_students(self, request):
+        """
+        Получить студентов с высоким риском
+        
+        GET /api/analytics/behavior-reports/at-risk/
+        """
+        user = request.user
+        if getattr(user, 'role', None) not in ['teacher', 'admin']:
+            return Response(
+                {'detail': 'Только для преподавателей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Последние отчёты с высоким/средним риском
+        reports = self.get_queryset().filter(
+            risk_level__in=['high', 'medium'],
+            status='completed'
+        ).order_by('risk_level', '-created_at')[:20]
+        
+        serializer = StudentBehaviorReportListSerializer(reports, many=True)
         return Response(serializer.data)
