@@ -46,12 +46,12 @@ BOT_DETECTION_CONFIG = {
     'failed_login_window_hours': 1,
     
     # Бан после подозрительной активности
-    'ban_duration_hours': 24,
-    'permanent_ban_after_violations': 5,
+    'ban_duration_hours': 1,  # Было 24ч - слишком агрессивно, теперь 1ч
+    'permanent_ban_after_violations': 10,  # Было 5, теперь 10
     
     # Score thresholds (0-100, чем выше - тем подозрительнее)
-    'bot_score_threshold': 70,
-    'suspicious_score_threshold': 50,
+    'bot_score_threshold': 85,  # Было 70 - слишком ловило мобильные, теперь 85
+    'suspicious_score_threshold': 60,  # Было 50, теперь 60
 }
 
 # Префиксы для cache ключей
@@ -172,7 +172,7 @@ def calculate_bot_score(request, fp_data: dict, behavioral_data: dict = None) ->
     expected_headers = ['Accept', 'Accept-Language', 'Accept-Encoding']
     missing_headers = sum(1 for h in expected_headers if not request.headers.get(h))
     if missing_headers > 1:
-        score += 15 * missing_headers
+        score += 10 * missing_headers  # Было 15, уменьшено - мобильные часто не шлют все заголовки
         reasons.append(f'missing_headers_{missing_headers}')
     
     # 3. Проверка консистентности данных
@@ -181,21 +181,21 @@ def calculate_bot_score(request, fp_data: dict, behavioral_data: dict = None) ->
         screen_w = fp_data.get('screenWidth', 0)
         screen_h = fp_data.get('screenHeight', 0)
         if screen_w == 0 or screen_h == 0:
-            score += 20
+            score += 10  # Было 20 - мобильные/privacy режимы могут не давать
             reasons.append('no_screen_data')
         elif screen_w < 100 or screen_h < 100:
-            score += 15
+            score += 10  # Было 15
             reasons.append('unrealistic_screen')
         
         # Отсутствие WebGL (часто отключено у ботов)
         if not fp_data.get('webglVendor') and not fp_data.get('webglRenderer'):
-            score += 10
+            score += 5  # Было 10 - на мобильных WebGL часто недоступен
             reasons.append('no_webgl')
         
         # Нереалистичное количество ядер CPU
         cpu_cores = fp_data.get('hardwareConcurrency', 0)
         if cpu_cores == 0 or cpu_cores > 128:
-            score += 10
+            score += 5  # Было 10 - мобильные могут скрывать эту информацию
             reasons.append('unrealistic_cpu')
     
     # 4. Поведенческий анализ
