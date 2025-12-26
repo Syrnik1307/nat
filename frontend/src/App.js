@@ -1,43 +1,71 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import './App.css';
 import { AuthProvider, useAuth, Protected } from './auth';
-import RegisterPage from './components/RegisterPage';
-import StudentDashboard from './components/StudentDashboard';
-import StudentHomePage from './components/StudentHomePage';
-import HomeworkList from './components/HomeworkList';
-import HomeworkSubmission from './components/HomeworkSubmission';
-import HomeworkTake from './modules/homework-analytics/components/homework/HomeworkTake';
-import SubmissionReview from './modules/homework-analytics/components/teacher/SubmissionReview';
-import SubmissionsList from './modules/homework-analytics/components/teacher/SubmissionsList';
-import HomeworkManage from './components/HomeworkManage';
-import RecurringLessonsManage from './components/RecurringLessonsManage';
-import GroupsManage from './components/GroupsManage';
-// Импорт новых компонентов из модуля Core
-import { Calendar } from './modules/core';
-import { HomeworkConstructor } from './modules/homework-analytics';
-import HomeworkPage from './modules/homework-analytics/components/HomeworkPage';
-// Новый дизайн - синяя тема
-import AuthPage from './components/AuthPage';
-import EmailVerificationPage from './components/EmailVerificationPage';
-import PasswordResetPage from './components/PasswordResetPage';
-import TeacherHomePage from './components/TeacherHomePage';
-import AdminHomePage from './components/AdminHomePage';
+
+// Навбары загружаются синхронно - они нужны сразу
 import NavBarNew from './components/NavBarNew';
 import StudentNavBar from './components/StudentNavBar';
-import ProfilePage from './components/ProfilePage';
-import SubscriptionPage from './components/SubscriptionPage';
-import MockPaymentPage from './components/MockPaymentPage';
-// Chat система
-import ChatPage from './components/ChatPage';
-// Записи уроков
-import RecordingsPage from './modules/Recordings/RecordingsPage';
-import TeacherRecordingsPage from './modules/Recordings/TeacherRecordingsPage';
-// Журнал посещений
-import AttendanceLogPage from './components/AttendanceLogPage';
-// AI Отчёты
-import StudentAIReports from './components/StudentAIReports';
-// Админ - управление хранилищем
+
+// Глобальный лоадер для Suspense
+const PageLoader = () => (
+  <div style={{ 
+    display: 'flex', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    height: '60vh',
+    color: '#64748b'
+  }}>
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ 
+        width: 40, 
+        height: 40, 
+        border: '3px solid #e2e8f0', 
+        borderTopColor: '#3b82f6', 
+        borderRadius: '50%', 
+        animation: 'spin 0.8s linear infinite',
+        margin: '0 auto 12px'
+      }} />
+      Загрузка...
+    </div>
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+  </div>
+);
+
+// Lazy-loaded компоненты - грузятся по требованию
+const AuthPage = lazy(() => import('./components/AuthPage'));
+const RegisterPage = lazy(() => import('./components/RegisterPage'));
+const EmailVerificationPage = lazy(() => import('./components/EmailVerificationPage'));
+const PasswordResetPage = lazy(() => import('./components/PasswordResetPage'));
+const MockPaymentPage = lazy(() => import('./components/MockPaymentPage'));
+
+// Teacher pages
+const TeacherHomePage = lazy(() => import('./components/TeacherHomePage'));
+const AttendanceLogPage = lazy(() => import('./components/AttendanceLogPage'));
+const TeacherRecordingsPage = lazy(() => import('./modules/Recordings/TeacherRecordingsPage'));
+const HomeworkManage = lazy(() => import('./components/HomeworkManage'));
+const HomeworkPage = lazy(() => import('./modules/homework-analytics/components/HomeworkPage'));
+const SubmissionsList = lazy(() => import('./modules/homework-analytics/components/teacher/SubmissionsList'));
+const SubmissionReview = lazy(() => import('./modules/homework-analytics/components/teacher/SubmissionReview'));
+const RecurringLessonsManage = lazy(() => import('./components/RecurringLessonsManage'));
+const GroupsManage = lazy(() => import('./components/GroupsManage'));
+const StudentAIReports = lazy(() => import('./components/StudentAIReports'));
+
+// Student pages
+const StudentHomePage = lazy(() => import('./components/StudentHomePage'));
+const StudentDashboard = lazy(() => import('./components/StudentDashboard'));
+const RecordingsPage = lazy(() => import('./modules/Recordings/RecordingsPage'));
+const HomeworkList = lazy(() => import('./components/HomeworkList'));
+const HomeworkTake = lazy(() => import('./modules/homework-analytics/components/homework/HomeworkTake'));
+
+// Admin pages
+const AdminHomePage = lazy(() => import('./components/AdminHomePage'));
+
+// Common pages
+const Calendar = lazy(() => import('./modules/core/calendar/Calendar').then(m => ({ default: m.Calendar })));
+const ProfilePage = lazy(() => import('./components/ProfilePage'));
+const SubscriptionPage = lazy(() => import('./components/SubscriptionPage'));
+const ChatPage = lazy(() => import('./components/ChatPage'));
 
 const RoleRouter = () => {
   const { accessTokenValid, role, loading } = useAuth();
@@ -71,65 +99,67 @@ const AppRoutes = () => {
     <>
       {shouldShowStudentNav && <StudentNavBar />}
       {shouldShowNav && <NavBarNew />}
-      <Routes>
-        <Route path="/" element={<RootRedirect />} />
-        {/* Auth */}
-        <Route path="/auth-new" element={<AuthPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/verify-email" element={<EmailVerificationPage />} />
-        <Route path="/reset-password/:uid/:token" element={<PasswordResetPage />} />
-        <Route path="/mock-payment" element={<MockPaymentPage />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<RootRedirect />} />
+          {/* Auth */}
+          <Route path="/auth-new" element={<AuthPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<EmailVerificationPage />} />
+          <Route path="/reset-password/:uid/:token" element={<PasswordResetPage />} />
+          <Route path="/mock-payment" element={<MockPaymentPage />} />
+          
+          {/* Teacher */}
+          <Route path="/home-new" element={<Protected allowRoles={['teacher', 'admin']}><TeacherHomePage /></Protected>} />
+          <Route path="/teacher" element={<Navigate to="/home-new" replace />} />
+          <Route path="/attendance/:groupId" element={<Protected allowRoles={['teacher', 'admin']}><AttendanceLogPage /></Protected>} />
+          <Route path="/teacher/recordings" element={<Protected allowRoles={['teacher']}><TeacherRecordingsPage /></Protected>} />
+          <Route path="/homework/manage" element={<Protected allowRoles={['teacher']}><HomeworkManage /></Protected>} />
+          <Route
+            path="/homework/constructor"
+            element={<Protected allowRoles={['teacher']}><HomeworkPage /></Protected>}
+          />
+          <Route
+            path="/homework/to-review"
+            element={<Protected allowRoles={['teacher']}><HomeworkPage /></Protected>}
+          />
+          <Route
+            path="/homework/graded"
+            element={<Protected allowRoles={['teacher']}><HomeworkPage /></Protected>}
+          />
+          <Route
+            path="/submissions"
+            element={<Protected allowRoles={['teacher']}><SubmissionsList /></Protected>}
+          />
+          <Route
+            path="/submissions/:submissionId/review"
+            element={<Protected allowRoles={['teacher']}><SubmissionReview /></Protected>}
+          />
+          <Route path="/recurring-lessons/manage" element={<Protected allowRoles={['teacher']}><RecurringLessonsManage /></Protected>} />
+          <Route path="/groups/manage" element={<Protected allowRoles={['teacher']}><GroupsManage /></Protected>} />
+          <Route path="/teacher/ai-reports" element={<Protected allowRoles={['teacher']}><StudentAIReports /></Protected>} />
+          
+          {/* Student */}
+          <Route path="/student" element={<Protected allowRoles={['student']}><StudentHomePage /></Protected>} />
+          <Route path="/student/courses" element={<Protected allowRoles={['student']}><StudentHomePage /></Protected>} />
+          <Route path="/student/stats" element={<Protected allowRoles={['student']}><StudentDashboard /></Protected>} />
+          <Route path="/student/recordings" element={<Protected allowRoles={['student']}><RecordingsPage /></Protected>} />
+          <Route path="/homework" element={<Protected allowRoles={['student']}><HomeworkList /></Protected>} />
+          <Route path="/student/homework/:id" element={<Protected allowRoles={['student']}><HomeworkTake /></Protected>} />
         
-        {/* Teacher */}
-        <Route path="/home-new" element={<Protected allowRoles={['teacher', 'admin']}><TeacherHomePage /></Protected>} />
-        <Route path="/teacher" element={<Navigate to="/home-new" replace />} />
-        <Route path="/attendance/:groupId" element={<Protected allowRoles={['teacher', 'admin']}><AttendanceLogPage /></Protected>} />
-        <Route path="/teacher/recordings" element={<Protected allowRoles={['teacher']}><TeacherRecordingsPage /></Protected>} />
-        <Route path="/homework/manage" element={<Protected allowRoles={['teacher']}><HomeworkManage /></Protected>} />
-        <Route
-          path="/homework/constructor"
-          element={<Protected allowRoles={['teacher']}><HomeworkPage /></Protected>}
-        />
-        <Route
-          path="/homework/to-review"
-          element={<Protected allowRoles={['teacher']}><HomeworkPage /></Protected>}
-        />
-        <Route
-          path="/homework/graded"
-          element={<Protected allowRoles={['teacher']}><HomeworkPage /></Protected>}
-        />
-        <Route
-          path="/submissions"
-          element={<Protected allowRoles={['teacher']}><SubmissionsList /></Protected>}
-        />
-        <Route
-          path="/submissions/:submissionId/review"
-          element={<Protected allowRoles={['teacher']}><SubmissionReview /></Protected>}
-        />
-        <Route path="/recurring-lessons/manage" element={<Protected allowRoles={['teacher']}><RecurringLessonsManage /></Protected>} />
-        <Route path="/groups/manage" element={<Protected allowRoles={['teacher']}><GroupsManage /></Protected>} />
-        <Route path="/teacher/ai-reports" element={<Protected allowRoles={['teacher']}><StudentAIReports /></Protected>} />
-        
-        {/* Student */}
-        <Route path="/student" element={<Protected allowRoles={['student']}><StudentHomePage /></Protected>} />
-        <Route path="/student/courses" element={<Protected allowRoles={['student']}><StudentHomePage /></Protected>} />
-        <Route path="/student/stats" element={<Protected allowRoles={['student']}><StudentDashboard /></Protected>} />
-        <Route path="/student/recordings" element={<Protected allowRoles={['student']}><RecordingsPage /></Protected>} />
-        <Route path="/homework" element={<Protected allowRoles={['student']}><HomeworkList /></Protected>} />
-        <Route path="/student/homework/:id" element={<Protected allowRoles={['student']}><HomeworkTake /></Protected>} />
-        
-        {/* Admin */}
-        <Route path="/admin-home" element={<Protected allowRoles={['admin']}><AdminHomePage /></Protected>} />
-        
-        {/* Common */}
-        <Route path="/calendar" element={<Protected allowRoles={['teacher', 'student']}><Calendar /></Protected>} />
-        <Route path="/profile" element={<Protected allowRoles={['teacher', 'student', 'admin']}><ProfilePage /></Protected>} />
-        <Route path="/billing" element={<Navigate to="/teacher/subscription" replace />} />
-        <Route path="/teacher/subscription" element={<Protected allowRoles={['teacher', 'admin']}><SubscriptionPage /></Protected>} />
-        <Route path="/chat" element={<Protected allowRoles={['teacher', 'student']}><ChatPage /></Protected>} />
-        <Route path="/redirect" element={<RoleRouter />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Admin */}
+          <Route path="/admin-home" element={<Protected allowRoles={['admin']}><AdminHomePage /></Protected>} />
+          
+          {/* Common */}
+          <Route path="/calendar" element={<Protected allowRoles={['teacher', 'student']}><Calendar /></Protected>} />
+          <Route path="/profile" element={<Protected allowRoles={['teacher', 'student', 'admin']}><ProfilePage /></Protected>} />
+          <Route path="/billing" element={<Navigate to="/teacher/subscription" replace />} />
+          <Route path="/teacher/subscription" element={<Protected allowRoles={['teacher', 'admin']}><SubscriptionPage /></Protected>} />
+          <Route path="/chat" element={<Protected allowRoles={['teacher', 'student']}><ChatPage /></Protected>} />
+          <Route path="/redirect" element={<RoleRouter />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </>
   );
 };
