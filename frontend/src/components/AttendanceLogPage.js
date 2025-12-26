@@ -11,8 +11,6 @@ import {
   updateGroupAttendanceLog,
   getGroup,
   getLessons,
-  createLesson,
-  apiClient,
 } from '../apiService';
 import AttendanceStatusPicker from './AttendanceStatusPicker';
 import GroupReportsTab from './tabs/GroupReportsTab';
@@ -61,23 +59,8 @@ const AttendanceLogPage = () => {
   const [selectedCell, setSelectedCell] = useState(null);
   const [updating, setUpdating] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [showLessonCreator, setShowLessonCreator] = useState(false);
-  const [lessonDraft, setLessonDraft] = useState({
-    title: '',
-    date: '',
-    time: '19:00',
-    duration: 60,
-  });
-  const [creatingLesson, setCreatingLesson] = useState(false);
-  const [lessonCreateError, setLessonCreateError] = useState(null);
   const tableWrapperRef = useRef(null);
   const hydratedFromPreloadRef = useRef(false);
-
-  // AI Reports state
-  const [aiReports, setAiReports] = useState([]);
-  const [aiReportsLoading, setAiReportsLoading] = useState(false);
-  const [generatingAi, setGeneratingAi] = useState(null);
-  const [selectedAiReport, setSelectedAiReport] = useState(null);
   
   // Tabs: 'journal' или 'reports'
   const [activeTab, setActiveTab] = useState('journal');
@@ -160,47 +143,9 @@ const AttendanceLogPage = () => {
     }
   }, [groupId]);
 
-  // Загрузка AI отчётов
-  const loadAiReports = useCallback(async () => {
-    try {
-      setAiReportsLoading(true);
-      const response = await apiClient.get(`/analytics/ai-reports/?group_id=${groupId}`);
-      const data = response.data.results || response.data || [];
-      setAiReports(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Ошибка загрузки AI-отчётов:', err);
-    } finally {
-      setAiReportsLoading(false);
-    }
-  }, [groupId]);
-
-  // Генерация AI отчёта для студента
-  const handleGenerateAiReport = async (studentId, studentName) => {
-    try {
-      setGeneratingAi(studentId);
-      await apiClient.post('/analytics/ai-reports/generate/', {
-        student_id: studentId,
-        group_id: groupId,
-        period: 'month'
-      });
-      await loadAiReports();
-    } catch (err) {
-      console.error(`Ошибка генерации AI-отчёта для ${studentName}:`, err);
-    } finally {
-      setGeneratingAi(null);
-    }
-  };
-
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // Загружаем AI отчёты когда открыта вкладка отчётов
-  useEffect(() => {
-    if (activeTab === 'reports' && aiReports.length === 0) {
-      loadAiReports();
-    }
-  }, [activeTab, aiReports.length, loadAiReports]);
 
   const MIN_COLUMNS = 6;
   const actualLessons = lessonColumns.length ? lessonColumns : log?.lessons || [];
@@ -348,75 +293,6 @@ const AttendanceLogPage = () => {
     setSelectedCell({ studentId, lessonId: numericLessonId });
   };
 
-  const resetLessonDraft = useCallback(() => {
-    const now = new Date();
-    const defaultTitle = `Занятие ${realLessonsCount + 1}`;
-    setLessonDraft({
-      title: defaultTitle,
-      date: now.toISOString().slice(0, 10),
-      time: '19:00',
-      duration: 60,
-    });
-    setLessonCreateError(null);
-  }, [realLessonsCount]);
-
-  useEffect(() => {
-    if (showLessonCreator) {
-      resetLessonDraft();
-    }
-  }, [showLessonCreator, resetLessonDraft]);
-
-  const handleLessonDraftChange = (field, value) => {
-    setLessonDraft((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleCreateLesson = async (event) => {
-    event.preventDefault();
-    setLessonCreateError(null);
-
-    if (!lessonDraft.date || !lessonDraft.time) {
-      setLessonCreateError('Укажите дату и время урока');
-      return;
-    }
-
-    const start = new Date(`${lessonDraft.date}T${lessonDraft.time}`);
-    if (Number.isNaN(start.getTime())) {
-      setLessonCreateError('Неверный формат даты или времени');
-      return;
-    }
-
-    const durationMinutes = Number(lessonDraft.duration) || 60;
-    const end = new Date(start.getTime() + durationMinutes * 60000);
-    const safeTitle = (lessonDraft.title || '').trim() || `Занятие ${realLessonsCount + 1}`;
-    const parsedGroupId = Number(groupId);
-    const targetGroupId = Number.isFinite(parsedGroupId) ? parsedGroupId : group?.id;
-
-    if (!targetGroupId) {
-      setLessonCreateError('Не удалось определить группу для урока');
-      return;
-    }
-
-    try {
-      setCreatingLesson(true);
-      await createLesson({
-        title: safeTitle,
-        group: targetGroupId,
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        topics: '',
-        location: '',
-        notes: '',
-      });
-      await loadData();
-      setShowLessonCreator(false);
-    } catch (lessonErr) {
-      console.error('Не удалось создать занятие:', lessonErr);
-      setLessonCreateError('Не удалось создать занятие. Попробуйте ещё раз.');
-    } finally {
-      setCreatingLesson(false);
-    }
-  };
-
   const handleStatusChange = async (status) => {
     if (!selectedCell) return;
 
@@ -490,27 +366,10 @@ const AttendanceLogPage = () => {
         </div>
         <div className="header-actions">
           {activeTab === 'journal' && (
-            <>
-              <button
-                className="action-button ghost"
-                onClick={() => setShowLessonCreator((prev) => !prev)}
-              >
-                {showLessonCreator ? 'Скрыть форму' : 'Добавить занятие'}
-              </button>
-              <button 
-                className="action-button secondary" 
-                onClick={loadData}
-                disabled={loading}
-              >
-                Обновить
-              </button>
-            </>
-          )}
-          {activeTab === 'reports' && (
             <button 
               className="action-button secondary" 
-              onClick={loadAiReports}
-              disabled={aiReportsLoading}
+              onClick={loadData}
+              disabled={loading}
             >
               Обновить
             </button>
@@ -531,9 +390,6 @@ const AttendanceLogPage = () => {
           onClick={() => setActiveTab('reports')}
         >
           Отчёты
-          {aiReports.length > 0 && (
-            <span className="tab-badge">{aiReports.length}</span>
-          )}
         </button>
       </div>
 
@@ -576,66 +432,6 @@ const AttendanceLogPage = () => {
               </a>
             </div>
           </div>
-        )}
-
-        {showLessonCreator && (
-          <form className="quick-lesson-form" onSubmit={handleCreateLesson}>
-            <div className="form-grid">
-              <label>
-                <span>Название</span>
-                <input
-                  type="text"
-                  value={lessonDraft.title}
-                  onChange={(e) => handleLessonDraftChange('title', e.target.value)}
-                  placeholder="Например: Разбор Домашки"
-                  required
-                />
-              </label>
-              <label>
-                <span>Дата</span>
-                <input
-                  type="date"
-                  value={lessonDraft.date}
-                  onChange={(e) => handleLessonDraftChange('date', e.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                <span>Время начала</span>
-                <input
-                  type="time"
-                  value={lessonDraft.time}
-                  onChange={(e) => handleLessonDraftChange('time', e.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                <span>Длительность (мин)</span>
-                <input
-                  type="number"
-                  min="15"
-                  step="15"
-                  value={lessonDraft.duration}
-                  onChange={(e) => handleLessonDraftChange('duration', e.target.value)}
-                  required
-                />
-              </label>
-            </div>
-            {lessonCreateError && <p className="form-error">{lessonCreateError}</p>}
-            <div className="form-actions">
-              <button type="submit" className="action-button" disabled={creatingLesson}>
-                {creatingLesson ? 'Создание...' : 'Создать занятие'}
-              </button>
-              <button
-                type="button"
-                className="action-button ghost"
-                onClick={() => setShowLessonCreator(false)}
-                disabled={creatingLesson}
-              >
-                Отменить
-              </button>
-            </div>
-          </form>
         )}
 
         <div className="table-wrapper" ref={tableWrapperRef}>
