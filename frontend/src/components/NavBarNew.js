@@ -238,7 +238,7 @@ const NavBar = () => {
               <span className={`caret ${showLessonsMenu ? 'open' : ''}`}>▾</span>
             </button>
             {/* В мобильном боковом меню рендерим inline, на десктопе — через портал (чтобы не перекрывалось слоями) */}
-            {showMobileMenu && (
+            {showMobileMenu && showLessonsMenu && (
               <div className="nav-dropdown-menu" role="menu">
                 <button
                   type="button"
@@ -405,8 +405,8 @@ const NavBar = () => {
             className="nav-link"
             onClick={() => setShowMobileMenu(false)}
           >
-            <span className="nav-icon">⚙️</span>
-            <span>Настройки профиля</span>
+            <span className="nav-icon"></span>
+            <span>Профиль</span>
           </Link>
           <button 
             className="nav-link mobile-logout-btn"
@@ -605,7 +605,7 @@ const NavBar = () => {
                     onClick={() => setShowProfileMenu(false)}
                   >
                     <span></span>
-                    <span>Настройки профиля</span>
+                    <span>Профиль</span>
                   </Link>
                   
                   <button 
