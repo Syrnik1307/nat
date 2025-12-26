@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Prefetch, Q, Max
 from django.utils import timezone
+from datetime import timedelta
 
 from accounts.models import (
     AttendanceRecord, 
@@ -760,9 +761,176 @@ class GroupReportViewSet(viewsets.ViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        serializer = GroupReportSerializer(
-            {},
-            context={'group_id': group_id}
+        now = timezone.now()
+
+        # Берём только прошедшие занятия, чтобы отчёт не “проседал” из‑за будущих уроков
+        lessons_qs = group.lessons.filter(end_time__lte=now).only('id', 'start_time', 'end_time')
+        lesson_ids = list(lessons_qs.values_list('id', flat=True))
+
+        students_qs = group.students.all().only('id', 'email', 'first_name', 'last_name', 'middle_name').order_by(
+            'last_name', 'first_name', 'email'
         )
-        data = serializer.get_representation({})
+        students = list(students_qs)
+        student_ids = [s.id for s in students]
+
+        # ===== Посещаемость (AttendanceRecord) =====
+        # Опоздание: авто‑запись + время записи > start_time + threshold
+        late_threshold = timedelta(minutes=5)
+
+        attendance_by_student = {
+            sid: {
+                'attended': 0,
+                'absent': 0,
+                'watched_recording': 0,
+                'late': 0,
+            }
+            for sid in student_ids
+        }
+
+        if lesson_ids and student_ids:
+            attendance_qs = AttendanceRecord.objects.filter(
+                lesson_id__in=lesson_ids,
+                student_id__in=student_ids,
+            ).select_related('lesson').only(
+                'student_id',
+                'status',
+                'auto_recorded',
+                'recorded_at',
+                'lesson__start_time',
+            )
+
+            for rec in attendance_qs:
+                bucket = attendance_by_student.get(rec.student_id)
+                if bucket is None:
+                    continue
+
+                if rec.status == AttendanceRecord.STATUS_ATTENDED:
+                    bucket['attended'] += 1
+
+                    if (
+                        rec.auto_recorded
+                        and rec.recorded_at is not None
+                        and rec.lesson is not None
+                        and rec.lesson.start_time is not None
+                        and rec.recorded_at > (rec.lesson.start_time + late_threshold)
+                    ):
+                        bucket['late'] += 1
+                elif rec.status == AttendanceRecord.STATUS_ABSENT:
+                    bucket['absent'] += 1
+                elif rec.status == AttendanceRecord.STATUS_WATCHED_RECORDING:
+                    bucket['watched_recording'] += 1
+
+        total_lessons = len(lesson_ids)
+        total_students = len(students)
+        total_possible = total_lessons * total_students
+
+        total_attended = sum(v['attended'] for v in attendance_by_student.values())
+        attendance_percent = (total_attended / total_possible * 100) if total_possible > 0 else 0
+
+        # ===== Домашние задания (Homework / StudentSubmission) =====
+        # В отчёте считаем только опубликованные ДЗ, привязанные к прошедшим урокам.
+        homework_total = 0
+        homework_by_student = {
+            sid: {
+                'submitted': 0,
+                'graded': 0,
+                'missing': 0,
+            }
+            for sid in student_ids
+        }
+        homework_percent = 0
+
+        try:
+            from homework.models import Homework, StudentSubmission
+
+            homeworks_qs = Homework.objects.filter(
+                lesson__group=group,
+                status='published',
+            )
+            if lesson_ids:
+                homeworks_qs = homeworks_qs.filter(lesson_id__in=lesson_ids)
+
+            homework_ids = list(homeworks_qs.values_list('id', flat=True))
+            homework_total = len(homework_ids)
+
+            if homework_ids and student_ids:
+                submissions_qs = StudentSubmission.objects.filter(
+                    homework_id__in=homework_ids,
+                    student_id__in=student_ids,
+                ).only('student_id', 'status')
+
+                for sub in submissions_qs:
+                    bucket = homework_by_student.get(sub.student_id)
+                    if bucket is None:
+                        continue
+
+                    if sub.status in ('submitted', 'graded'):
+                        bucket['submitted'] += 1
+                    if sub.status == 'graded':
+                        bucket['graded'] += 1
+
+            # missing = total_homework - submitted (in_progress считается как не сдано)
+            for sid in student_ids:
+                bucket = homework_by_student[sid]
+                bucket['missing'] = max(0, homework_total - bucket['submitted'])
+
+            total_homework_possible = homework_total * total_students
+            total_homework_submitted = sum(v['submitted'] for v in homework_by_student.values())
+            homework_percent = (
+                (total_homework_submitted / total_homework_possible) * 100
+                if total_homework_possible > 0
+                else 0
+            )
+        except Exception:
+            # Модуль ДЗ может быть выключен/не доступен в части окружений —
+            # отчёт по посещаемости должен работать независимо.
+            homework_total = 0
+            homework_percent = 0
+
+        # ===== Сборка ответа =====
+        students_data = []
+        for s in students:
+            att = attendance_by_student.get(s.id, {'attended': 0, 'absent': 0, 'watched_recording': 0, 'late': 0})
+            hw = homework_by_student.get(s.id, {'submitted': 0, 'graded': 0, 'missing': homework_total})
+
+            att_percent = (att['attended'] / total_lessons * 100) if total_lessons > 0 else 0
+            hw_percent = (hw['submitted'] / homework_total * 100) if homework_total > 0 else 0
+
+            students_data.append({
+                'student_id': s.id,
+                'name': s.get_full_name(),
+                'email': s.email,
+                'attendance': {
+                    'total_lessons': total_lessons,
+                    'attended': att['attended'],
+                    'absent': att['absent'],
+                    'watched_recording': att['watched_recording'],
+                    'late': att['late'],
+                    'percent': round(att_percent, 1),
+                },
+                'homework': {
+                    'total_homework': homework_total,
+                    'submitted': hw['submitted'],
+                    'graded': hw['graded'],
+                    'missing': hw['missing'],
+                    'percent': round(hw_percent, 1),
+                }
+            })
+
+        data = {
+            'group_id': group.id,
+            'group_name': group.name,
+            'attendance_percent': round(attendance_percent, 1),
+            'homework_percent': round(homework_percent, 1),
+            'control_points_percent': 0,
+            'total_lessons': total_lessons,
+            'total_students': total_students,
+            'students': students_data,
+            'meta': {
+                'lessons_scope': 'past_only',
+                'late_threshold_minutes': int(late_threshold.total_seconds() // 60),
+                'homework_scope': 'published_for_past_lessons',
+            }
+        }
+
         return Response(data)
