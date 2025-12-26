@@ -12,6 +12,7 @@ import {
   getGroup,
   getLessons,
   createLesson,
+  apiClient,
 } from '../apiService';
 import AttendanceStatusPicker from './AttendanceStatusPicker';
 import './AttendanceLogPage.css';
@@ -64,6 +65,13 @@ const AttendanceLogPage = () => {
   const [lessonCreateError, setLessonCreateError] = useState(null);
   const tableWrapperRef = useRef(null);
   const hydratedFromPreloadRef = useRef(false);
+
+  // AI Reports state
+  const [aiReports, setAiReports] = useState([]);
+  const [aiReportsLoading, setAiReportsLoading] = useState(false);
+  const [generatingAi, setGeneratingAi] = useState(null);
+  const [selectedAiReport, setSelectedAiReport] = useState(null);
+  const [showAiSection, setShowAiSection] = useState(false);
 
   useEffect(() => {
     hydratedFromPreloadRef.current = false;
@@ -136,9 +144,47 @@ const AttendanceLogPage = () => {
     }
   }, [groupId]);
 
+  // Загрузка AI отчётов
+  const loadAiReports = useCallback(async () => {
+    try {
+      setAiReportsLoading(true);
+      const response = await apiClient.get(`/analytics/ai-reports/?group_id=${groupId}`);
+      const data = response.data.results || response.data || [];
+      setAiReports(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Ошибка загрузки AI-отчётов:', err);
+    } finally {
+      setAiReportsLoading(false);
+    }
+  }, [groupId]);
+
+  // Генерация AI отчёта для студента
+  const handleGenerateAiReport = async (studentId, studentName) => {
+    try {
+      setGeneratingAi(studentId);
+      await apiClient.post('/analytics/ai-reports/generate/', {
+        student_id: studentId,
+        group_id: groupId,
+        period: 'month'
+      });
+      await loadAiReports();
+    } catch (err) {
+      console.error(`Ошибка генерации AI-отчёта для ${studentName}:`, err);
+    } finally {
+      setGeneratingAi(null);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Загружаем AI отчёты когда открыта секция
+  useEffect(() => {
+    if (showAiSection && aiReports.length === 0) {
+      loadAiReports();
+    }
+  }, [showAiSection, aiReports.length, loadAiReports]);
 
   const MIN_COLUMNS = 6;
   const actualLessons = lessonColumns.length ? lessonColumns : log?.lessons || [];
@@ -647,6 +693,156 @@ const AttendanceLogPage = () => {
           })}
         </div>
       </div>
+
+      {/* AI Reports Section */}
+      <div className="ai-reports-section">
+        <button
+          className="ai-section-toggle"
+          onClick={() => setShowAiSection(!showAiSection)}
+        >
+          <span className="toggle-icon">{showAiSection ? '▼' : '▶'}</span>
+          <span className="toggle-title">🤖 AI-анализ успеваемости</span>
+          {aiReports.length > 0 && (
+            <span className="reports-count">{aiReports.length} отчётов</span>
+          )}
+        </button>
+
+        {showAiSection && (
+          <div className="ai-reports-content">
+            {aiReportsLoading ? (
+              <div className="ai-loading">Загрузка AI-отчётов...</div>
+            ) : aiReports.length === 0 ? (
+              <div className="ai-empty">
+                <p>AI-отчёты пока не созданы</p>
+                <p className="ai-hint">Выберите ученика для генерации персонального AI-анализа</p>
+              </div>
+            ) : (
+              <div className="ai-reports-grid">
+                {aiReports.map((report) => (
+                  <div
+                    key={report.id}
+                    className={`ai-report-card ${report.status === 'completed' ? 'completed' : ''}`}
+                    onClick={() => report.status === 'completed' && setSelectedAiReport(report)}
+                  >
+                    <div className="report-header">
+                      <span className="student-avatar">
+                        {(report.student_name || '?').charAt(0).toUpperCase()}
+                      </span>
+                      <div className="student-info">
+                        <span className="student-name">{report.student_name}</span>
+                        <span className="report-date">
+                          {new Date(report.created_at).toLocaleDateString('ru-RU', {
+                            day: 'numeric', month: 'short'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                    {report.status === 'completed' && report.ai_analysis && (
+                      <div className="report-summary">
+                        <span className={`trend-badge trend-${report.ai_analysis.progress_trend || 'stable'}`}>
+                          {report.ai_analysis.progress_trend === 'improving' ? '↑ Улучшение' :
+                           report.ai_analysis.progress_trend === 'declining' ? '↓ Снижение' : '→ Стабильно'}
+                        </span>
+                        {report.ai_analysis.recommendations && (
+                          <p className="recommendations-preview">
+                            {report.ai_analysis.recommendations.slice(0, 80)}...
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {report.status === 'processing' && (
+                      <div className="report-status">Генерируется...</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Генерация для учеников без отчёта */}
+            {rows.length > 0 && (
+              <div className="generate-reports-section">
+                <h4>Сгенерировать отчёт</h4>
+                <div className="students-list">
+                  {rows.map((row) => {
+                    const hasReport = aiReports.some(r => r.student === row.student.id);
+                    const isGenerating = generatingAi === row.student.id;
+                    return (
+                      <button
+                        key={row.student.id}
+                        className={`generate-btn ${hasReport ? 'has-report' : ''}`}
+                        onClick={() => handleGenerateAiReport(row.student.id, row.student.name)}
+                        disabled={isGenerating}
+                      >
+                        <span className="student-avatar small">
+                          {(row.student.name || '?').charAt(0).toUpperCase()}
+                        </span>
+                        <span className="student-name">{row.student.name}</span>
+                        <span className="action-label">
+                          {isGenerating ? '⏳' : hasReport ? '🔄' : '➕'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* AI Report Detail Modal */}
+      {selectedAiReport && (
+        <div className="ai-modal-overlay" onClick={() => setSelectedAiReport(null)}>
+          <div className="ai-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>🤖 AI-отчёт: {selectedAiReport.student_name}</h3>
+              <button className="close-btn" onClick={() => setSelectedAiReport(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              {selectedAiReport.ai_analysis && (
+                <>
+                  <div className="analysis-section">
+                    <h4>Тренд прогресса</h4>
+                    <span className={`trend-badge large trend-${selectedAiReport.ai_analysis.progress_trend || 'stable'}`}>
+                      {selectedAiReport.ai_analysis.progress_trend === 'improving' ? '↑ Улучшение' :
+                       selectedAiReport.ai_analysis.progress_trend === 'declining' ? '↓ Снижение' : '→ Стабильно'}
+                    </span>
+                  </div>
+                  {selectedAiReport.ai_analysis.strengths && (
+                    <div className="analysis-section">
+                      <h4>💪 Сильные стороны</h4>
+                      <p>{selectedAiReport.ai_analysis.strengths}</p>
+                    </div>
+                  )}
+                  {selectedAiReport.ai_analysis.weaknesses && (
+                    <div className="analysis-section">
+                      <h4>📌 Области для улучшения</h4>
+                      <p>{selectedAiReport.ai_analysis.weaknesses}</p>
+                    </div>
+                  )}
+                  {selectedAiReport.ai_analysis.recommendations && (
+                    <div className="analysis-section">
+                      <h4>💡 Рекомендации</h4>
+                      <p>{selectedAiReport.ai_analysis.recommendations}</p>
+                    </div>
+                  )}
+                  {selectedAiReport.ai_analysis.homework_patterns && (
+                    <div className="analysis-section">
+                      <h4>📝 Паттерны в домашних заданиях</h4>
+                      <p>{selectedAiReport.ai_analysis.homework_patterns}</p>
+                    </div>
+                  )}
+                </>
+              )}
+              <div className="modal-footer">
+                <span className="report-meta">
+                  Создан: {new Date(selectedAiReport.created_at).toLocaleString('ru-RU')}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
