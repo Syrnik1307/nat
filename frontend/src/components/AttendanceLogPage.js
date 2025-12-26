@@ -77,7 +77,9 @@ const AttendanceLogPage = () => {
   const [aiReportsLoading, setAiReportsLoading] = useState(false);
   const [generatingAi, setGeneratingAi] = useState(null);
   const [selectedAiReport, setSelectedAiReport] = useState(null);
-  const [showAiSection, setShowAiSection] = useState(false);
+  
+  // Tabs: 'journal' или 'reports'
+  const [activeTab, setActiveTab] = useState('journal');
 
   useEffect(() => {
     hydratedFromPreloadRef.current = false;
@@ -185,12 +187,12 @@ const AttendanceLogPage = () => {
     loadData();
   }, [loadData]);
 
-  // Загружаем AI отчёты когда открыта секция
+  // Загружаем AI отчёты когда открыта вкладка отчётов
   useEffect(() => {
-    if (showAiSection && aiReports.length === 0) {
+    if (activeTab === 'reports' && aiReports.length === 0) {
       loadAiReports();
     }
-  }, [showAiSection, aiReports.length, loadAiReports]);
+  }, [activeTab, aiReports.length, loadAiReports]);
 
   const MIN_COLUMNS = 6;
   const actualLessons = lessonColumns.length ? lessonColumns : log?.lessons || [];
@@ -479,22 +481,55 @@ const AttendanceLogPage = () => {
           </div>
         </div>
         <div className="header-actions">
-          <button
-            className="action-button ghost"
-            onClick={() => setShowLessonCreator((prev) => !prev)}
-          >
-            {showLessonCreator ? 'Скрыть форму' : 'Добавить занятие'}
-          </button>
-          <button 
-            className="action-button secondary" 
-            onClick={loadData}
-            disabled={loading}
-          >
-            Обновить
-          </button>
+          {activeTab === 'journal' && (
+            <>
+              <button
+                className="action-button ghost"
+                onClick={() => setShowLessonCreator((prev) => !prev)}
+              >
+                {showLessonCreator ? 'Скрыть форму' : 'Добавить занятие'}
+              </button>
+              <button 
+                className="action-button secondary" 
+                onClick={loadData}
+                disabled={loading}
+              >
+                Обновить
+              </button>
+            </>
+          )}
+          {activeTab === 'reports' && (
+            <button 
+              className="action-button secondary" 
+              onClick={loadAiReports}
+              disabled={aiReportsLoading}
+            >
+              Обновить
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Вкладки */}
+      <div className="page-tabs">
+        <button
+          className={`tab-button ${activeTab === 'journal' ? 'active' : ''}`}
+          onClick={() => setActiveTab('journal')}
+        >
+          📋 Журнал
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'reports' ? 'active' : ''}`}
+          onClick={() => setActiveTab('reports')}
+        >
+          🤖 Отчёты
+          {aiReports.length > 0 && (
+            <span className="tab-badge">{aiReports.length}</span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'journal' && (
       <div className="attendance-board">
         <div className="board-toolbar">
           <div className="board-meta">
@@ -699,22 +734,12 @@ const AttendanceLogPage = () => {
           })}
         </div>
       </div>
+      )}
 
-      {/* AI Reports Section */}
-      <div className="ai-reports-section">
-        <button
-          className="ai-section-toggle"
-          onClick={() => setShowAiSection(!showAiSection)}
-        >
-          <span className="toggle-icon">{showAiSection ? '▼' : '▶'}</span>
-          <span className="toggle-title">🤖 AI-анализ успеваемости</span>
-          {aiReports.length > 0 && (
-            <span className="reports-count">{aiReports.length} отчётов</span>
-          )}
-        </button>
-
-        {showAiSection && (
-          <div className="ai-reports-content">
+      {/* AI Reports Tab */}
+      {activeTab === 'reports' && (
+      <div className="ai-reports-panel">
+        <div className="ai-reports-content">
             {aiReportsLoading ? (
               <div className="ai-loading">Загрузка AI-отчётов...</div>
             ) : aiReports.length === 0 ? (
@@ -764,37 +789,37 @@ const AttendanceLogPage = () => {
               </div>
             )}
 
-            {/* Генерация для учеников без отчёта */}
-            {rows.length > 0 && (
-              <div className="generate-reports-section">
-                <h4>Сгенерировать отчёт</h4>
-                <div className="students-list">
-                  {rows.map((row) => {
-                    const hasReport = aiReports.some(r => r.student === row.student.id);
-                    const isGenerating = generatingAi === row.student.id;
-                    return (
-                      <button
-                        key={row.student.id}
-                        className={`generate-btn ${hasReport ? 'has-report' : ''}`}
-                        onClick={() => handleGenerateAiReport(row.student.id, row.student.name)}
-                        disabled={isGenerating}
-                      >
-                        <span className="student-avatar small">
-                          {(row.student.name || '?').charAt(0).toUpperCase()}
-                        </span>
-                        <span className="student-name">{row.student.name}</span>
-                        <span className="action-label">
-                          {isGenerating ? '⏳' : hasReport ? '🔄' : '➕'}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+          {/* Генерация для учеников без отчёта */}
+          {rows.length > 0 && (
+            <div className="generate-reports-section">
+              <h4>Сгенерировать отчёт</h4>
+              <div className="students-list">
+                {rows.map((row) => {
+                  const hasReport = aiReports.some(r => r.student === row.student.id);
+                  const isGenerating = generatingAi === row.student.id;
+                  return (
+                    <button
+                      key={row.student.id}
+                      className={`generate-btn ${hasReport ? 'has-report' : ''}`}
+                      onClick={() => handleGenerateAiReport(row.student.id, row.student.name)}
+                      disabled={isGenerating}
+                    >
+                      <span className="student-avatar small">
+                        {(row.student.name || '?').charAt(0).toUpperCase()}
+                      </span>
+                      <span className="student-name">{row.student.name}</span>
+                      <span className="action-label">
+                        {isGenerating ? '⏳' : hasReport ? '🔄' : '➕'}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
+      )}
 
       {/* AI Report Detail Modal */}
       {selectedAiReport && (
