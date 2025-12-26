@@ -8,6 +8,8 @@ import {
   getAccessToken,
 } from '../apiService';
 import GroupInviteModal from './GroupInviteModal';
+import GroupDetailModal from './GroupDetailModal';
+import StudentCardModal from './StudentCardModal';
 import {
   useIndividualInvitesData,
   IndividualInviteForm,
@@ -60,6 +62,10 @@ const GroupsManage = () => {
     message: '',
     variant: 'info'
   });
+
+  // Состояния для карточки группы и ученика
+  const [detailModal, setDetailModal] = useState({ isOpen: false, group: null });
+  const [studentModal, setStudentModal] = useState({ isOpen: false, studentId: null, groupId: null });
 
   // shared state for individual invites (used on both columns when таб "Индивидуальные")
   const invitesData = useIndividualInvitesData();
@@ -382,6 +388,13 @@ const GroupsManage = () => {
                       <div className="gm-group-card-actions">
                         <button
                           type="button"
+                          className="gm-btn-primary"
+                          onClick={() => setDetailModal({ isOpen: true, group })}
+                        >
+                          📊 Открыть
+                        </button>
+                        <button
+                          type="button"
                           className="gm-btn-surface"
                           onClick={() => startEdit(group)}
                         >
@@ -389,7 +402,7 @@ const GroupsManage = () => {
                         </button>
                         <button
                           type="button"
-                          className="gm-btn-primary"
+                          className="gm-btn-surface"
                           onClick={() => setInviteModalGroup(group)}
                         >
                           📨 Пригласить
@@ -508,6 +521,24 @@ const GroupsManage = () => {
           </div>
         </div>
       )}
+
+      {/* Модальное окно карточки группы */}
+      <GroupDetailModal
+        group={detailModal.group}
+        isOpen={detailModal.isOpen}
+        onClose={() => setDetailModal({ isOpen: false, group: null })}
+        onStudentClick={(studentId, groupId) => {
+          setStudentModal({ isOpen: true, studentId, groupId });
+        }}
+      />
+
+      {/* Модальное окно карточки ученика */}
+      <StudentCardModal
+        studentId={studentModal.studentId}
+        groupId={studentModal.groupId}
+        isOpen={studentModal.isOpen}
+        onClose={() => setStudentModal({ isOpen: false, studentId: null, groupId: null })}
+      />
     </div>
   );
 };
