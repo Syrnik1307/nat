@@ -1,5 +1,5 @@
 /* ===================================
-   GroupReportsTab v2 — Premium Minimalist
+   GroupReportsTab v3 — Clean Table
    =================================== */
 
 .group-reports-tab {
@@ -7,233 +7,130 @@
 }
 
 /* ─────────────────────────────────────────
-   СВОДКА (4 карточки в ряд)
+   СВОДКА (горизонтальная строка)
    ───────────────────────────────────────── */
-.grt-summary {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.grt-summary-card {
+.grt-stats-row {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--border-light, #e2e8f0);
-  border-radius: 14px;
-  padding: 1rem 1.15rem;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-.grt-summary-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.12);
-}
-.grt-summary-card--accent {
-  background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.06));
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
 }
 
-.grt-summary-icon {
-  font-size: 1.5rem;
-  line-height: 1;
-}
-
-.grt-summary-data {
+.grt-stat {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  min-width: 70px;
 }
 
-.grt-summary-value {
-  font-size: 1.35rem;
+.grt-stat-value {
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--text-main, #1e293b);
   line-height: 1.2;
 }
 
-.grt-summary-label {
-  font-size: 0.72rem;
+.grt-stat-label {
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   color: var(--text-muted, #64748b);
+  margin-top: 0.15rem;
 }
+
+/* Цвета для % */
+.grt-good { color: #059669; }
+.grt-warn { color: #d97706; }
+.grt-bad  { color: #e11d48; }
 
 /* ─────────────────────────────────────────
-   СЕКЦИЯ УЧЕНИКОВ
+   ТАБЛИЦА
    ───────────────────────────────────────── */
-.grt-students {
-  margin-top: 0.5rem;
-}
-
-.grt-section-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-main, #1e293b);
-  margin-bottom: 1rem;
-}
-
-.grt-students-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
-}
-
-/* ─────────────────────────────────────────
-   КАРТОЧКА УЧЕНИКА
-   ───────────────────────────────────────── */
-.student-report-card {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(14px);
+.grt-table-wrap {
+  overflow-x: auto;
   border: 1px solid var(--border-light, #e2e8f0);
-  border-radius: 16px;
-  padding: 1.25rem;
-  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.05);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-.student-report-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.10);
-  border-color: rgba(99, 102, 241, 0.25);
-}
-
-/* Заголовок карточки */
-.src-header {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  margin-bottom: 1rem;
-  padding-bottom: 0.85rem;
-  border-bottom: 1px dashed var(--border-light, #e2e8f0);
-}
-
-.src-avatar {
-  width: 42px;
-  height: 42px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 0.95rem;
-  flex-shrink: 0;
+  background: #fff;
 }
 
-.src-info {
-  overflow: hidden;
+.grt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  min-width: 600px;
 }
 
-.src-name {
+.grt-table thead {
+  background: var(--bg-app, #f8fafc);
+}
+
+.grt-table th {
+  padding: 0.65rem 0.75rem;
+  text-align: center;
   font-weight: 600;
-  font-size: 0.95rem;
-  color: var(--text-main, #1e293b);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.src-email {
   font-size: 0.75rem;
   color: var(--text-muted, #64748b);
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-/* Секция внутри карточки */
-.src-section {
-  margin-bottom: 1rem;
-}
-.src-section:last-child {
-  margin-bottom: 0;
+.grt-th-name {
+  text-align: left;
+  min-width: 180px;
 }
 
-.src-section-title {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.78rem;
+.grt-th-group {
+  background: rgba(99, 102, 241, 0.05);
+  border-left: 1px solid var(--border-light, #e2e8f0);
+}
+
+.grt-subheader th {
+  font-size: 0.68rem;
+  padding: 0.4rem 0.5rem;
+  color: var(--text-light, #94a3b8);
+}
+
+.grt-table tbody tr {
+  transition: background 0.15s ease;
+}
+.grt-table tbody tr:hover {
+  background: rgba(99, 102, 241, 0.03);
+}
+
+.grt-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.grt-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.grt-cell-name {
+  text-align: left;
+}
+
+.grt-name {
+  font-weight: 500;
+  color: var(--text-main, #1e293b);
+}
+
+.grt-cell-pct {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.grt-cell-num {
   font-weight: 600;
-  color: var(--text-muted, #64748b);
-  margin-bottom: 0.5rem;
-}
-
-.src-section-icon {
   font-size: 0.85rem;
 }
 
-.src-pct {
-  margin-left: auto;
-  font-weight: 700;
-  font-size: 0.82rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 6px;
-}
-.src-pct-success { background: rgba(16,185,129,0.12); color: #059669; }
-.src-pct-warning { background: rgba(245,158,11,0.12); color: #d97706; }
-.src-pct-danger  { background: rgba(244,63,94,0.12);  color: #e11d48; }
-
-/* ─────────────────────────────────────────
-   МИНИ‑ПРОГРЕСС БАР
-   ───────────────────────────────────────── */
-.mini-progress {
-  height: 6px;
-  background: var(--border-light, #e2e8f0);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 0.65rem;
-}
-
-.mini-progress-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.4s ease;
-}
-.mini-progress-success { background: linear-gradient(90deg, #10b981, #34d399); }
-.mini-progress-warning { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-.mini-progress-danger  { background: linear-gradient(90deg, #f43f5e, #fb7185); }
-.mini-progress-primary { background: linear-gradient(90deg, #6366f1, #818cf8); }
-
-/* ─────────────────────────────────────────
-   МЕТРИКИ (иконки + цифры)
-   ───────────────────────────────────────── */
-.src-metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-}
-
-.metric-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.3rem 0.6rem;
-  border-radius: 8px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  background: rgba(100, 116, 139, 0.08);
-  color: var(--text-muted, #64748b);
-}
-.metric-badge-success { background: rgba(16,185,129,0.10); color: #059669; }
-.metric-badge-warning { background: rgba(245,158,11,0.10); color: #d97706; }
-.metric-badge-danger  { background: rgba(244,63,94,0.10);  color: #e11d48; }
-.metric-badge-info    { background: rgba(99,102,241,0.10); color: #4f46e5; }
-
-.metric-icon {
-  font-size: 0.78rem;
-}
-
-.metric-value {
-  font-weight: 700;
-}
-
-.metric-label {
-  font-weight: 500;
-  opacity: 0.85;
-}
+.grt-c-good { color: #059669; }
+.grt-c-warn { color: #d97706; }
+.grt-c-bad  { color: #e11d48; }
 
 /* ─────────────────────────────────────────
    СОСТОЯНИЯ: Loading / Error / Empty
@@ -248,8 +145,8 @@
 }
 
 .grt-spinner {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: 3px solid var(--border-light, #e2e8f0);
   border-top-color: #6366f1;
   border-radius: 50%;
@@ -264,20 +161,20 @@
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  padding: 2.5rem;
+  padding: 2rem;
   background: rgba(244,63,94,0.06);
-  border-radius: 14px;
+  border-radius: 12px;
   color: #e11d48;
   font-size: 0.9rem;
 }
 
 .grt-error-icon {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
 }
 
 .grt-retry-btn {
   margin-top: 0.5rem;
-  padding: 0.45rem 1rem;
+  padding: 0.4rem 0.9rem;
   border: none;
   border-radius: 8px;
   background: #e11d48;
@@ -292,7 +189,7 @@
 
 .grt-empty {
   text-align: center;
-  padding: 2.5rem;
+  padding: 2rem;
   color: var(--text-muted, #64748b);
   font-size: 0.9rem;
 }
@@ -300,17 +197,13 @@
 /* ─────────────────────────────────────────
    АДАПТИВ
    ───────────────────────────────────────── */
-@media (max-width: 900px) {
-  .grt-summary {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 600px) {
+  .grt-stats-row {
+    flex-wrap: wrap;
+    gap: 1rem;
   }
-}
-@media (max-width: 540px) {
-  .grt-summary {
-    grid-template-columns: 1fr;
-  }
-  .grt-students-grid {
-    grid-template-columns: 1fr;
+  .grt-stat {
+    flex: 1 1 45%;
   }
 }
 
