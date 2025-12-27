@@ -19,14 +19,14 @@ def _add_invite_code_column_and_constraint(schema_editor):
                     ALTER TABLE schedule_group
                     ADD COLUMN invite_code varchar(8);
                 END IF;
-
-                BEGIN
-                    ALTER TABLE schedule_group
-                    ADD CONSTRAINT schedule_group_invite_code_key UNIQUE (invite_code);
-                EXCEPTION
-                    WHEN duplicate_object THEN NULL;
-                END;
             END $$;
+            """
+        )
+        # Create unique index (idempotent via IF NOT EXISTS)
+        schema_editor.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS schedule_group_invite_code_key
+            ON schedule_group (invite_code);
             """
         )
     else:
@@ -92,17 +92,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='group',
-            name='invite_code',
-            field=models.CharField(
-                blank=True,
-                help_text='Уникальный код для присоединения учеников к группе',
-                max_length=8,
-                null=True,
-                unique=True,
-                verbose_name='код приглашения',
-            ),
-        ),
+        # Используем только RunPython с idempotent SQL-логикой,
+        # чтобы миграция работала как на SQLite, так и на PostgreSQL
         migrations.RunPython(forwards, backwards),
     ]
