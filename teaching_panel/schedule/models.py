@@ -137,8 +137,8 @@ class Lesson(models.Model):
     
     # Интеграция с пулом Zoom аккаунтов
     zoom_meeting_id = models.CharField(_('ID встречи Zoom'), max_length=100, blank=True, null=True)
-    zoom_start_url = models.URLField(_('ссылка для запуска (преподаватель)'), blank=True, null=True)
-    zoom_join_url = models.URLField(_('ссылка для входа (студенты)'), blank=True, null=True)
+    zoom_start_url = models.URLField(_('ссылка для запуска (преподаватель)'), max_length=1000, blank=True, null=True)
+    zoom_join_url = models.URLField(_('ссылка для входа (студенты)'), max_length=500, blank=True, null=True)
     zoom_password = models.CharField(_('пароль Zoom'), max_length=50, blank=True, null=True)
     
     # Связь с новым пулом Zoom аккаунтов (zoom_pool app)
