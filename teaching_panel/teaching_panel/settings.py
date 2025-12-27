@@ -155,12 +155,12 @@ else:
     }
 
 # Cache Configuration
-# Production: Use Redis for caching
+# Production: Use Redis for caching (django-redis)
 # Development: Use local memory cache
 if os.environ.get('REDIS_URL'):
     CACHES = {
         'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'BACKEND': 'django_redis.cache.RedisCache',
             'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1'),
             'OPTIONS': {
                 'CLIENT_CLASS': 'django_redis.client.DefaultClient',
@@ -171,7 +171,7 @@ if os.environ.get('REDIS_URL'):
                 'SOCKET_CONNECT_TIMEOUT': 5,
                 'SOCKET_TIMEOUT': 5,
             },
-            'KEY_PREFIX': 'teaching_panel',
+            'KEY_PREFIX': 'tp',
             'TIMEOUT': 300,  # 5 minutes default
         }
     }
