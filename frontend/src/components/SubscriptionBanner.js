@@ -14,23 +14,24 @@ const SubscriptionBanner = ({ subscription, onPayClick }) => {
 
   const isExpired = daysLeft <= 0;
   const isExpiringSoon = !isExpired && daysLeft <= 7;
+  const isPending = subscription.status === 'pending';
 
   return (
-    <div className={`subscription-banner ${isExpired ? 'expired' : isExpiringSoon ? 'warning' : ''}`}>
+    <div className={`subscription-banner ${isExpired || isPending ? 'expired' : isExpiringSoon ? 'warning' : ''}`}>
       <div className="banner-content">
         <div className="banner-icon">
-          {isExpired ? '!' : '⭕'}
+          {isExpired || isPending ? '!' : '⭕'}
         </div>
         <div className="banner-text">
-          {isExpired ? (
+          {isPending ? (
+            <>
+              <strong>Подписка не оплачена</strong>
+              <p>Для запуска занятий через Zoom необходимо оформить подписку. После оплаты вы получите доступ ко всем функциям.</p>
+            </>
+          ) : isExpired ? (
             <>
               <strong>Подписка истекла</strong>
               <p>Доступ к урокам, записям и другим функциям ограничен. Оплатите подписку для продолжения работы.</p>
-            </>
-          ) : subscription.status === 'pending' ? (
-            <>
-              <strong>Ожидается оплата</strong>
-              <p>Завершите оплату чтобы активировать подписку.</p>
             </>
           ) : subscription.status === 'cancelled' ? (
             <>

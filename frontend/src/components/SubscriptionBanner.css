@@ -1,90 +1,141 @@
+/*
+ * ✨ SUBSCRIPTION BANNER - Premium Minimalist Style
+ * Следует дизайн-системе Lectio Space
+ */
+
 .subscription-banner {
   position: sticky;
-  top: 12px;
-  z-index: 100;
-  background: linear-gradient(135deg, var(--color-error-light) 0%, var(--color-error-light) 100%);
-  border: 2px solid var(--color-error);
-  border-radius: 16px;
-  padding: 16px 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  animation: slideDown 0.3s ease-out;
+  top: var(--space-sm, 12px);
+  z-index: var(--z-sticky, 1020);
   max-width: 900px;
-  margin: 0 auto 12px auto;
-  width: calc(100% - 32px);
+  margin: 0 auto var(--space-sm, 12px) auto;
+  width: calc(100% - var(--space-xl, 32px));
+  
+  /* Glass morphism effect */
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  
+  border: 1px solid var(--border-light, #E2E8F0);
+  border-radius: var(--radius-xl, 20px);
+  padding: var(--space-md, 16px) var(--space-lg, 24px);
+  
+  box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.08));
+  animation: bannerSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Expired / Pending state - needs attention */
 .subscription-banner.expired {
-  background: linear-gradient(135deg, var(--color-error-light) 0%, var(--color-error-light) 100%);
-  border-bottom: 2px solid var(--color-error);
+  background: linear-gradient(135deg, 
+    rgba(254, 226, 226, 0.95) 0%, 
+    rgba(254, 202, 202, 0.9) 100%);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  box-shadow: 
+    var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.08)),
+    0 0 20px rgba(244, 63, 94, 0.1);
 }
 
+/* Warning state - expiring soon */
 .subscription-banner.warning {
-  background: linear-gradient(135deg, var(--color-error-light) 0%, var(--color-error-light) 100%);
-  border-bottom: 2px solid var(--color-error);
+  background: linear-gradient(135deg, 
+    rgba(254, 243, 199, 0.95) 0%, 
+    rgba(253, 230, 138, 0.9) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  box-shadow: 
+    var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.08)),
+    0 0 20px rgba(245, 158, 11, 0.1);
 }
 
 .banner-content {
   display: flex;
   align-items: center;
-  gap: 16px;
-  max-width: 1200px;
-  margin: 0 auto;
+  gap: var(--space-md, 16px);
 }
 
 .banner-icon {
-  font-size: 32px;
+  font-size: 2rem;
   flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: var(--radius-lg, 16px);
 }
 
 .banner-text {
   flex: 1;
+  min-width: 0;
 }
 
 .banner-text strong {
   display: block;
-  font-size: 16px;
-  font-weight: 600;
+  font-family: var(--font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: var(--text-base, 1rem);
+  font-weight: var(--font-semibold, 600);
+  color: var(--text-main, #1E293B);
   margin-bottom: 4px;
-  color: #1F2937;
+  line-height: var(--leading-snug, 1.375);
 }
 
 .banner-text p {
   margin: 0;
-  font-size: 14px;
-  color: #4B5563;
-  line-height: 1.4;
+  font-family: var(--font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-muted, #64748B);
+  line-height: var(--leading-normal, 1.5);
 }
 
 .banner-actions {
   flex-shrink: 0;
 }
 
+/* Primary action button */
 .pay-button {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs, 8px);
+  
+  background: linear-gradient(135deg, 
+    var(--color-primary, #4F46E5) 0%, 
+    var(--color-primary-dark, #4338CA) 100%);
   color: white;
+  
   border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  padding: var(--space-sm, 12px) var(--space-lg, 24px);
+  border-radius: var(--radius-lg, 16px);
+  
+  font-family: var(--font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: var(--font-semibold, 600);
+  
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  box-shadow: 
+    0 2px 8px rgba(79, 70, 229, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .pay-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
-  background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 4px 12px rgba(79, 70, 229, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .pay-button:active {
   transform: translateY(0);
+  box-shadow: 
+    0 2px 4px rgba(79, 70, 229, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-@keyframes slideDown {
+/* Animation */
+@keyframes bannerSlideIn {
   from {
-    transform: translateY(-100%);
+    transform: translateY(-20px);
     opacity: 0;
   }
   to {
@@ -93,11 +144,22 @@
   }
 }
 
+/* Responsive */
 @media (max-width: 768px) {
+  .subscription-banner {
+    width: calc(100% - var(--space-md, 16px));
+    padding: var(--space-md, 16px);
+    border-radius: var(--radius-lg, 16px);
+  }
+  
   .banner-content {
     flex-direction: column;
     text-align: center;
-    gap: 12px;
+    gap: var(--space-sm, 12px);
+  }
+
+  .banner-icon {
+    margin: 0 auto;
   }
 
   .banner-actions {
@@ -106,6 +168,7 @@
 
   .pay-button {
     width: 100%;
+    justify-content: center;
+    padding: var(--space-md, 16px);
   }
 }
-
