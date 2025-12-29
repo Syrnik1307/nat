@@ -123,11 +123,15 @@ class GoogleDriveManager:
             # Создаем клиент Drive API
             self.service = build('drive', 'v3', credentials=creds)
             
-            # ID корневой папки для хранения записей
-            self.root_folder_id = getattr(settings, 'GDRIVE_RECORDINGS_FOLDER_ID', None)
+            # ID корневой папки для хранения (GDRIVE_ROOT_FOLDER_ID - главная папка lectio.space)
+            # Fallback на GDRIVE_RECORDINGS_FOLDER_ID для обратной совместимости
+            self.root_folder_id = getattr(settings, 'GDRIVE_ROOT_FOLDER_ID', None) or \
+                                  getattr(settings, 'GDRIVE_RECORDINGS_FOLDER_ID', None)
             
             if not self.root_folder_id:
-                logger.warning("GDRIVE_RECORDINGS_FOLDER_ID not set in settings")
+                logger.error("GDRIVE_ROOT_FOLDER_ID not set in settings! Teacher folders will be created in root!")
+            else:
+                logger.info(f"Using root folder ID: {self.root_folder_id}")
                 
         except Exception as e:
             logger.error(f"Failed to initialize Google Drive Manager: {e}")
