@@ -31,7 +31,7 @@ from .serializers import (
     RecurringLessonSerializer,
     IndividualInviteCodeSerializer
 )
-from .zoom_client import my_zoom_api_client
+# my_zoom_api_client удалён - каждый учитель использует свои credentials
 from accounts.subscriptions_utils import require_active_subscription
 from accounts.models import CustomUser
 
@@ -883,99 +883,28 @@ class LessonViewSet(viewsets.ModelViewSet):
             )
 
     def _start_zoom_via_pool(self, lesson, user, request):
-        """Создать Zoom встречу. Сначала пробует персональные credentials учителя, затем пул."""
+        """
+        Создать Zoom встречу используя credentials учителя.
+        
+        ВАЖНО: Глобальный пул удалён. У каждого учителя должны быть свои Zoom credentials.
+        Если credentials не настроены - возвращаем ошибку.
+        """
+        from .zoom_client import ZoomAPIClient
         
         # Проверяем, есть ли у учителя персональные Zoom credentials
         if user.zoom_account_id and user.zoom_client_id and user.zoom_client_secret:
             logger.info(f"Using personal Zoom credentials for teacher {user.email}")
             return self._start_zoom_with_teacher_credentials(lesson, user, request)
         
-        # Fallback на пул аккаунтов
-        logger.info(f"Using Zoom pool for teacher {user.email} (no personal credentials)")
-        zoom_account = None
-        try:
-            with transaction.atomic():
-                # Сначала пробуем взять аккаунт, привязанный к этому учителю (teacher affinity)
-                zoom_account = (
-                    ZoomAccount.objects.select_for_update()
-                    .filter(
-                        is_active=True,
-                        current_meetings__lt=F('max_concurrent_meetings'),
-                        preferred_teachers=user,
-                    )
-                    .order_by('current_meetings', 'last_used_at')
-                    .first()
-                )
-
-                # Если привязанного нет — берём любой доступный
-                if not zoom_account:
-                    zoom_account = (
-                        ZoomAccount.objects.select_for_update()
-                        .filter(
-                            is_active=True,
-                            current_meetings__lt=F('max_concurrent_meetings')
-                        )
-                        .order_by('current_meetings', 'last_used_at')
-                        .first()
-                    )
-
-                if not zoom_account:
-                    return None, Response(
-                        {'detail': 'Все Zoom аккаунты заняты. Попробуйте позже.'},
-                        status=status.HTTP_503_SERVICE_UNAVAILABLE
-                    )
-
-                zoom_account.acquire()
-
-                meeting_data = my_zoom_api_client.create_meeting(
-                    user_id=zoom_account.zoom_user_id or None,
-                    topic=f"{lesson.group.name} - {lesson.title}",
-                    start_time=lesson.start_time,
-                    duration=lesson.duration(),
-                    auto_record=lesson.record_lesson  # Передаём флаг автозаписи
-                )
-
-                lesson.zoom_meeting_id = meeting_data['id']
-                lesson.zoom_join_url = meeting_data['join_url']
-                lesson.zoom_start_url = meeting_data['start_url']
-                lesson.zoom_password = meeting_data.get('password', '')
-                lesson.zoom_account = zoom_account
-                lesson.save()
-
-                log_audit(
-                    user=user,
-                    action='lesson_start',
-                    resource_type='Lesson',
-                    resource_id=lesson.id,
-                    request=request,
-                    details={
-                        'lesson_title': lesson.title,
-                        'group_name': lesson.group.name,
-                        'zoom_account_email': zoom_account.email,
-                        'zoom_meeting_id': meeting_data['id'],
-                        'start_time': lesson.start_time.isoformat(),
-                    }
-                )
-
-            payload = {
-                'zoom_join_url': lesson.zoom_join_url,
-                'zoom_start_url': lesson.zoom_start_url,
-                'zoom_meeting_id': lesson.zoom_meeting_id,
-                'zoom_password': lesson.zoom_password,
-                'account_email': zoom_account.email,
-            }
-            return payload, None
-        except Exception as e:
-            logger.exception(f"Failed to create Zoom meeting for lesson {lesson.id}: {e}")
-            if zoom_account:
-                try:
-                    zoom_account.release()
-                except Exception:
-                    logger.exception('Failed to release Zoom account after error')
-            return None, Response(
-                {'detail': f'Ошибка при создании встречи: {e}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        # НЕТ персональных credentials = нельзя создать встречу
+        logger.warning(f"Teacher {user.email} has no Zoom credentials configured")
+        return None, Response(
+            {
+                'detail': 'Zoom не настроен. Обратитесь к администратору для настройки Zoom credentials.',
+                'error_code': 'zoom_not_configured'
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
     @action(detail=True, methods=['post'])
     def mark_attendance(self, request, pk=None):
@@ -2048,6 +1977,13 @@ def student_recordings_list(request):
 
 def sync_missing_zoom_recordings_for_teacher(teacher):
     """Подтягивает облачные записи Zoom, если вебхук не пришел."""
+    from .zoom_client import ZoomAPIClient
+    
+    # Проверяем что у учителя настроены Zoom credentials
+    if not (teacher.zoom_account_id and teacher.zoom_client_id and teacher.zoom_client_secret):
+        logger.warning(f"Cannot sync recordings: teacher {teacher.email} has no Zoom credentials")
+        return 0
+    
     try:
         now = timezone.now()
         recent_from = now - timedelta(days=3)
@@ -2064,7 +2000,15 @@ def sync_missing_zoom_recordings_for_teacher(teacher):
         if not lessons_to_sync:
             return 0
 
-        recordings_response = my_zoom_api_client.list_user_recordings(
+        # Создаём клиент с credentials учителя
+        zoom_client = ZoomAPIClient(
+            account_id=teacher.zoom_account_id,
+            client_id=teacher.zoom_client_id,
+            client_secret=teacher.zoom_client_secret
+        )
+        
+        recordings_response = zoom_client.list_user_recordings(
+            user_id=teacher.zoom_user_id or 'me',
             from_date=recent_from.date().isoformat(),
             to_date=now.date().isoformat(),
         )

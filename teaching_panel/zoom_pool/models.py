@@ -9,11 +9,35 @@ from django.db.models import Sum
 
 
 class ZoomAccount(models.Model):
-    """Zoom аккаунт в пуле для распределения лицензий"""
+    """
+    Zoom аккаунт в пуле для распределения лицензий.
+    
+    Каждый ZoomAccount соответствует отдельному Zoom Server-to-Server OAuth приложению.
+    Credentials хранятся здесь, а не в глобальных settings.
+    """
     email = models.EmailField(unique=True)
-    api_key = models.CharField(max_length=255)
-    api_secret = models.CharField(max_length=255)
-    zoom_user_id = models.CharField(max_length=255, blank=True)
+    
+    # Server-to-Server OAuth credentials (обязательные)
+    zoom_account_id = models.CharField(
+        max_length=255,
+        default='',
+        blank=True,
+        help_text='Account ID из Zoom Server-to-Server OAuth App'
+    )
+    api_key = models.CharField(
+        max_length=255,
+        help_text='Client ID из Zoom Server-to-Server OAuth App'
+    )
+    api_secret = models.CharField(
+        max_length=255,
+        help_text='Client Secret из Zoom Server-to-Server OAuth App'
+    )
+    zoom_user_id = models.CharField(
+        max_length=255, 
+        blank=True,
+        default='me',
+        help_text='User ID в Zoom (обычно "me" или email)'
+    )
     
     max_concurrent_meetings = models.IntegerField(default=1)
     current_meetings = models.IntegerField(default=0)

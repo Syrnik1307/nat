@@ -18,14 +18,29 @@ class ZoomAPIClient:
     BASE_URL = 'https://api.zoom.us/v2'
     TOKEN_URL = 'https://zoom.us/oauth/token'
     
-    def __init__(self, account_id=None, client_id=None, client_secret=None):
+    def __init__(self, account_id, client_id, client_secret):
         """
         Инициализация клиента.
-        Если credentials не переданы, используются из settings (глобальные).
+        
+        ВАЖНО: Все credentials ОБЯЗАТЕЛЬНЫ. Глобальные fallback убраны.
+        Каждый учитель должен иметь свои Zoom credentials.
+        
+        Args:
+            account_id: Zoom Account ID (обязательный)
+            client_id: Zoom Client ID (обязательный)
+            client_secret: Zoom Client Secret (обязательный)
+        
+        Raises:
+            ValueError: если любой из credentials не передан
         """
-        self.account_id = account_id or settings.ZOOM_ACCOUNT_ID
-        self.client_id = client_id or settings.ZOOM_CLIENT_ID
-        self.client_secret = client_secret or settings.ZOOM_CLIENT_SECRET
+        if not account_id or not client_id or not client_secret:
+            raise ValueError(
+                'Zoom credentials не настроены. '
+                'Укажите zoom_account_id, zoom_client_id и zoom_client_secret в профиле учителя.'
+            )
+        self.account_id = account_id
+        self.client_id = client_id
+        self.client_secret = client_secret
     
     def _get_access_token(self):
         """
@@ -218,6 +233,6 @@ class ZoomAPIClient:
             raise Exception(f"Failed to list Zoom recordings: {str(e)}")
 
 
-# Глобальный экземпляр для использования в views
-my_zoom_api_client = ZoomAPIClient()
+# Глобальный экземпляр убран - каждый учитель использует свои credentials
+# my_zoom_api_client = ZoomAPIClient()  # УДАЛЕНО: нет глобальных credentials
 
