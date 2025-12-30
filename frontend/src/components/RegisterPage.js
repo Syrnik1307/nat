@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input, Button } from '../shared/components';
 import { useAuth } from '../auth';
+import { useNotifications } from '../shared/context/NotificationContext';
 // import { useRecaptcha } from '../hooks/useRecaptcha'; // отключено
 
 const RegisterPage = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const { toast } = useNotifications();
   // const { executeRecaptcha } = useRecaptcha(); // отключено
   
   const [formData, setFormData] = useState({
@@ -86,7 +88,7 @@ const RegisterPage = () => {
     
     if (hasErrors) {
       setErrors(newErrors);
-      alert('Пожалуйста, заполните все обязательные поля корректно:\n' + JSON.stringify(newErrors, null, 2));
+      toast.warning('Пожалуйста, заполните все обязательные поля корректно');
       return;
     }
 
@@ -153,7 +155,6 @@ const RegisterPage = () => {
               role="listitem"
               tabIndex={0}
               onClick={() => { 
-                alert('Клик на Ученик!');
                 console.log('🎓 Выбрана роль: Ученик');
                 setFormData({ ...formData, role: 'student' }); 
                 setStep(1); 

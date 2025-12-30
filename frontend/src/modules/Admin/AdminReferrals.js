@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../../apiService';
+import { useNotifications } from '../../shared/context/NotificationContext';
 import './AdminReferrals.css';
 
 /**
@@ -10,6 +11,7 @@ import './AdminReferrals.css';
  * - Управление выплатами
  */
 const AdminReferrals = ({ onClose }) => {
+  const { toast, showConfirm } = useNotifications();
   const [links, setLinks] = useState([]);
   const [totals, setTotals] = useState({});
   const [loading, setLoading] = useState(true);
@@ -109,14 +111,21 @@ const AdminReferrals = ({ onClose }) => {
   };
 
   const handleDelete = async (linkId) => {
-    if (!window.confirm('Удалить эту ссылку?')) return;
+    const confirmed = await showConfirm({
+      title: 'Удаление ссылки',
+      message: 'Удалить эту ссылку?',
+      variant: 'danger',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена'
+    });
+    if (!confirmed) return;
     try {
       await apiClient.delete(`admin/referrals/${linkId}/`);
       loadLinks();
       setSelectedLink(null);
       setLinkDetail(null);
     } catch (err) {
-      alert('Ошибка удаления');
+      toast.error('Ошибка удаления');
     }
   };
 
@@ -125,9 +134,9 @@ const AdminReferrals = ({ onClose }) => {
       await apiClient.post(`admin/referrals/${linkId}/payout/`, { amount });
       loadLinks();
       if (linkDetail) loadLinkDetail(linkId);
-      alert('Выплата записана');
+      toast.success('Выплата записана');
     } catch (err) {
-      alert(err.response?.data?.detail || 'Ошибка выплаты');
+      toast.error(err.response?.data?.detail || 'Ошибка выплаты');
     }
   };
 
@@ -136,9 +145,9 @@ const AdminReferrals = ({ onClose }) => {
       await apiClient.post('admin/referrals/commissions/', { commission_ids: ids });
       loadCommissions();
       loadOverallStats();
-      alert('Комиссии отмечены как выплаченные');
+      toast.success('Комиссии отмечены как выплаченные');
     } catch (err) {
-      alert('Ошибка');
+      toast.error('Ошибка');
     }
   };
 

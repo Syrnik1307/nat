@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import apiService from '../apiService';
+import { useNotifications } from '../shared/context/NotificationContext';
 import Card from '../shared/components/Card';
 import Button from '../shared/components/Button';
 import Input from '../shared/components/Input';
@@ -11,6 +12,7 @@ import './AdminDashboard.css';
 const AdminDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { showConfirm } = useNotifications();
   
   const [zoomAccounts, setZoomAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,9 +91,14 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteAccount = async (id) => {
-    if (!window.confirm('Вы уверены, что хотите удалить этот Zoom аккаунт?')) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: 'Удаление Zoom аккаунта',
+      message: 'Вы уверены, что хотите удалить этот Zoom аккаунт?',
+      variant: 'danger',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена'
+    });
+    if (!confirmed) return;
     
     try {
       await apiService.deleteZoomAccount(id);

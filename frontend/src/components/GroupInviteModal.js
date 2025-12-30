@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { regenerateGroupInviteCode } from '../apiService';
+import { useNotifications } from '../shared/context/NotificationContext';
 import ConfirmModal from '../shared/components/ConfirmModal';
 import '../styles/InviteModal.css';
 
 const GroupInviteModal = ({ group, onClose }) => {
+  const { toast } = useNotifications();
   const [inviteCode, setInviteCode] = useState(group?.invite_code || '');
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -46,11 +48,11 @@ const GroupInviteModal = ({ group, onClose }) => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } else {
-        alert('Не удалось скопировать. Пожалуйста, скопируйте вручную:\n' + text);
+        toast.warning('Скопируйте вручную: ' + text);
       }
     } catch (err) {
       console.error('Fallback copy failed:', err);
-      alert('Не удалось скопировать. Пожалуйста, скопируйте вручную:\n' + text);
+      toast.warning('Скопируйте вручную: ' + text);
     }
   };
 
@@ -65,7 +67,7 @@ const GroupInviteModal = ({ group, onClose }) => {
       setInviteCode(response.data.invite_code);
     } catch (error) {
       console.error('Error regenerating code:', error);
-      alert('Ошибка при генерации нового кода');
+      toast.error('Ошибка при генерации нового кода');
     } finally {
       setRegenerating(false);
     }

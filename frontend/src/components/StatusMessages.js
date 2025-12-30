@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { getAccessToken } from '../apiService';
+import { useNotifications } from '../shared/context/NotificationContext';
 import './StatusMessages.css';
 
 const StatusMessages = ({ onClose }) => {
+  const { toast, showConfirm } = useNotifications();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState('');
@@ -78,9 +80,14 @@ const StatusMessages = ({ onClose }) => {
   };
 
   const handleDeleteMessage = async (messageId) => {
-    if (!window.confirm('Удалить это сообщение?')) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: 'Удаление сообщения',
+      message: 'Удалить это сообщение?',
+      variant: 'danger',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена'
+    });
+    if (!confirmed) return;
 
     try {
       const token = getAccessToken();
@@ -95,7 +102,7 @@ const StatusMessages = ({ onClose }) => {
 
       await loadMessages();
     } catch (error) {
-      alert('Ошибка: ' + error.message);
+      toast.error(error.message);
     }
   };
 

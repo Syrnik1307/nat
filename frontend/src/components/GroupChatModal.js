@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Modal, Button } from '../shared/components';
+import { useNotifications } from '../shared/context/NotificationContext';
 import './GroupChatModal.css';
 
 /**
@@ -8,6 +9,7 @@ import './GroupChatModal.css';
  * Преподаватель выбирает группу и участников
  */
 const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
+  const { toast } = useNotifications();
   const [mode, setMode] = useState('group'); // 'group' или 'custom'
   const [groups, setGroups] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
@@ -133,7 +135,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
       handleClose();
     } catch (error) {
       console.error('Ошибка создания группового чата:', error);
-      alert('Ошибка создания чата. Попробуйте еще раз.');
+      toast.error('Ошибка создания чата. Попробуйте еще раз.');
     } finally {
       setCreating(false);
     }

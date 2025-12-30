@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth';
+import { useNotifications } from '../shared/context/NotificationContext';
 import {
   updateCurrentUser,
   changePassword,
@@ -18,6 +19,7 @@ const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
 
 const ProfilePage = () => {
   const { user, refreshUser } = useAuth();
+  const { toast, showConfirm } = useNotifications();
   const [form, setForm] = useState({
     firstName: '',
     middleName: '',
@@ -227,9 +229,14 @@ const ProfilePage = () => {
   };
 
   const handleUnlinkTelegram = async () => {
-    if (!window.confirm('Вы уверены, что хотите отвязать Telegram?')) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: 'Отвязать Telegram',
+      message: 'Вы уверены, что хотите отвязать Telegram?',
+      variant: 'warning',
+      confirmText: 'Отвязать',
+      cancelText: 'Отмена'
+    });
+    if (!confirmed) return;
     setTelegramError('');
     setTelegramSuccess('');
     try {
@@ -271,21 +278,26 @@ const ProfilePage = () => {
       }
     } catch (err) {
       console.error('Failed to create payment:', err);
-      alert('Не удалось создать платёж. Попробуйте позже.');
+      toast.error('Не удалось создать платёж. Попробуйте позже.');
     }
   };
 
   const handleCancelSubscription = async () => {
-    if (!window.confirm('Отменить автопродление подписки? Доступ сохранится до конца оплаченного периода.')) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: 'Отмена подписки',
+      message: 'Отменить автопродление подписки? Доступ сохранится до конца оплаченного периода.',
+      variant: 'warning',
+      confirmText: 'Отменить подписку',
+      cancelText: 'Назад'
+    });
+    if (!confirmed) return;
     try {
       const { data } = await cancelSubscription();
       setSubscription(data);
-      alert('Автопродление отменено');
+      toast.success('Автопродление отменено');
     } catch (err) {
       console.error('Failed to cancel subscription:', err);
-      alert('Не удалось отменить подписку');
+      toast.error('Не удалось отменить подписку');
     }
   };
 

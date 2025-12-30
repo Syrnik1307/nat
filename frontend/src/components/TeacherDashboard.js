@@ -3,10 +3,12 @@ import { getTeacherStatsSummary, getGroups, getLessons, startLesson, startLesson
 import LessonAttendance from './LessonAttendance';
 import { Notification } from '../shared/components';
 import useNotification from '../shared/hooks/useNotification';
+import { useNotifications } from '../shared/context/NotificationContext';
 import { useAuth } from '../auth';
 
 const TeacherDashboard = () => {
   const { notification, showNotification, closeNotification } = useNotification();
+  const { toast } = useNotifications();
   const { logout } = useAuth();
   const [stats, setStats] = useState(null);
   const [groups, setGroups] = useState([]);
@@ -87,7 +89,7 @@ const TeacherDashboard = () => {
       setShowNewLesson(false);
       setNewLesson({ title:'', group:'', start_time:'', end_time:'', topics:'' });
     } catch (e) {
-      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка создания');
+      toast.error(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка создания');
     } finally {
       setCreating(false);
     }

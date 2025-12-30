@@ -351,6 +351,18 @@
 				"prod_students_smoke.ps1"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "prod: create test teacher",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && python -c 'from django.contrib.auth import get_user_model, authenticate; from django.utils import timezone; from accounts.models import Subscription; import secrets,string; User=get_user_model(); now=timezone.now(); alphabet=string.ascii_letters+string.digits; pw=\\\"\\\".join(secrets.choice(alphabet) for _ in range(16)); suffix=secrets.token_hex(3); day=now.strftime(\\\"%Y%m%d\\\"); email=\\\"test_teacher_{}_{}@test.local\\\".format(day,suffix); user=User.objects.create_user(email=email,password=pw,role=\\\"teacher\\\",first_name=\\\"Тест\\\",last_name=\\\"Учитель\\\"); sub=Subscription.objects.create(user=user,plan=Subscription.PLAN_MONTHLY,status=Subscription.STATUS_ACTIVE,expires_at=now+timezone.timedelta(days=30),auto_renew=False); ok=authenticate(username=email,password=pw) is not None; print(\\\"CREATED_TEACHER_EMAIL=\\\",email); print(\\\"CREATED_TEACHER_PASSWORD=\\\",pw); print(\\\"SUB_STATUS=\\\",sub.status); print(\\\"SUB_EXPIRES_AT=\\\",sub.expires_at.isoformat()); print(\\\"AUTH_OK=\\\",int(ok));'\""
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
 		}
 	]
 }

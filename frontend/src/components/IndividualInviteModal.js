@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { regenerateIndividualInviteCode } from '../apiService';
+import { useNotifications } from '../shared/context/NotificationContext';
 import ConfirmModal from '../shared/components/ConfirmModal';
 import '../styles/InviteModal.css';
 
 const IndividualInviteModal = ({ code, onClose }) => {
+  const { toast } = useNotifications();
   const [inviteCode, setInviteCode] = useState(code?.invite_code || '');
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -44,11 +46,11 @@ const IndividualInviteModal = ({ code, onClose }) => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } else {
-        alert('Не удалось скопировать. Пожалуйста, скопируйте вручную:\n' + text);
+        toast.warning('Скопируйте вручную: ' + text);
       }
     } catch (error) {
       console.error('Copy failed:', error);
-      alert('Не удалось скопировать');
+      toast.error('Не удалось скопировать');
     }
   };
 
@@ -62,7 +64,7 @@ const IndividualInviteModal = ({ code, onClose }) => {
       }
     } catch (error) {
       console.error('Failed to regenerate code:', error);
-      alert('Ошибка при регенерации кода');
+      toast.error('Ошибка при регенерации кода');
     } finally {
       setRegenerating(false);
       setShowConfirm(false);
