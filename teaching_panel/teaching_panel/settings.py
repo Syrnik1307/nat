@@ -268,11 +268,11 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '3000/hour',  # Increased for 1000 teachers + 3000 students
-        'anon': '200/hour',     # Increased for mobile login attempts
-        'login': '50/hour',     # Specific rate for login endpoint (per IP)
-        'submissions': '100/hour',  # Specific rate for homework submissions
-        'grading': '500/hour',      # Higher rate for teacher grading
+        'user': '5000/hour',  # Increased for 1000 teachers + 3000 students
+        'anon': '500/hour',     # Increased for mobile login attempts
+        'login': '300/hour',     # Relaxed: was 50, too aggressive
+        'submissions': '200/hour',  # Specific rate for homework submissions
+        'grading': '1000/hour',      # Higher rate for teacher grading
     },
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',

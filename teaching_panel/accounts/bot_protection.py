@@ -35,23 +35,23 @@ logger = logging.getLogger(__name__)
 # Пороги для определения ботов
 BOT_DETECTION_CONFIG = {
     # Минимальное время заполнения формы (секунды)
-    'min_form_fill_time': 2.0,
+    'min_form_fill_time': 1.0,  # Было 2.0 - слишком долго для быстрого ввода
     
     # Максимальное количество регистраций с одного fingerprint
-    'max_registrations_per_fingerprint': 3,
+    'max_registrations_per_fingerprint': 10,  # Было 3 - слишком мало
     'registration_window_hours': 24,
     
-    # Максимальное количество неудачных логинов (5 попыток за час = бан на 1ч)
-    'max_failed_logins_per_fingerprint': 5,
+    # Максимальное количество неудачных логинов
+    'max_failed_logins_per_fingerprint': 50,  # Было 5 - СЛИШКОМ МАЛО! Увеличено
     'failed_login_window_hours': 1,
     
     # Бан после подозрительной активности
-    'ban_duration_hours': 1,  # Было 24ч - слишком агрессивно, теперь 1ч
-    'permanent_ban_after_violations': 10,  # Было 5, теперь 10
+    'ban_duration_hours': 0.5,  # Было 1ч - теперь 30 минут
+    'permanent_ban_after_violations': 50,  # Было 10 - теперь 50
     
     # Score thresholds (0-100, чем выше - тем подозрительнее)
-    'bot_score_threshold': 85,  # Было 70 - слишком ловило мобильные, теперь 85
-    'suspicious_score_threshold': 60,  # Было 50, теперь 60
+    'bot_score_threshold': 95,  # Было 85 - ловило реальных пользователей, теперь 95
+    'suspicious_score_threshold': 80,  # Было 60, теперь 80
 }
 
 # Префиксы для cache ключей
