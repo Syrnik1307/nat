@@ -62,7 +62,7 @@ const HomeworkTake = lazy(() => import('./modules/homework-analytics/components/
 const AdminHomePage = lazy(() => import('./components/AdminHomePage'));
 
 // Common pages
-const Calendar = lazy(() => import('./modules/core/calendar/Calendar').then(m => ({ default: m.Calendar })));
+const Calendar = lazy(() => import('./modules/core/calendar/Calendar'));
 const ProfilePage = lazy(() => import('./components/ProfilePage'));
 const SubscriptionPage = lazy(() => import('./components/SubscriptionPage'));
 const ChatPage = lazy(() => import('./components/ChatPage'));
