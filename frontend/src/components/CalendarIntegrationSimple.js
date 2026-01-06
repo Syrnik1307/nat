@@ -203,11 +203,7 @@ const CalendarIntegrationSimple = () => {
 
   const handleConnect = (provider) => {
     if (!links?.feed_url) return;
-    // Сразу отмечаем как подключено (нельзя проверить автоматически внешние календари)
-    const newConnected = [...connectedCalendars.filter(id => id !== provider.id), provider.id];
-    setConnectedCalendars(newConnected);
-    localStorage.setItem('lectio_connected_calendars', JSON.stringify(newConnected));
-    // Показываем инструкцию
+    // Показываем инструкцию; отметим как подключено только после нажатия "Открыть ..."
     setActiveModal(provider);
     setCopied(false);
   };
