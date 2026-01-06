@@ -51,6 +51,7 @@ const SubmissionReview = lazy(() => import('./modules/homework-analytics/compone
 const RecurringLessonsManage = lazy(() => import('./components/RecurringLessonsManage'));
 const GroupsManage = lazy(() => import('./components/GroupsManage'));
 const StudentAIReports = lazy(() => import('./components/StudentAIReports'));
+const CalendarIntegrationPage = lazy(() => import('./components/CalendarIntegrationSimple'));
 
 // Student pages
 const StudentHomePage = lazy(() => import('./components/StudentHomePage'));
@@ -139,6 +140,7 @@ const AppRoutes = () => {
           <Route path="/recurring-lessons/manage" element={<Protected allowRoles={['teacher']}><RecurringLessonsManage /></Protected>} />
           <Route path="/groups/manage" element={<Protected allowRoles={['teacher']}><GroupsManage /></Protected>} />
           <Route path="/teacher/ai-reports" element={<Protected allowRoles={['teacher']}><StudentAIReports /></Protected>} />
+          <Route path="/calendar/settings" element={<Protected allowRoles={['teacher', 'student']}><CalendarIntegrationPage /></Protected>} />
           
           {/* Student */}
           <Route path="/student" element={<Protected allowRoles={['student']}><StudentHomePage /></Protected>} />

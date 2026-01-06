@@ -5,6 +5,7 @@ from . import celery_metrics
 from . import webhooks
 from . import storage_views
 from . import material_views
+from . import calendar_views
 
 app_name = 'schedule'
 
@@ -63,6 +64,13 @@ urlpatterns = [
     path('api/materials/<int:material_id>/view/', material_views.track_material_view, name='track_material_view'),
     path('api/materials/<int:material_id>/views/', material_views.get_material_views, name='material_views'),
     path('api/materials/<int:material_id>/delete/', material_views.delete_material, name='delete_material'),
+    
+    # Calendar export / subscription (iCal) для Google, Яндекс, Apple Calendar
+    path('api/calendar/export/ics/', calendar_views.export_calendar_ics, name='calendar_export_ics'),
+    path('api/calendar/feed/<int:user_id>/<str:token>/', calendar_views.calendar_feed, name='calendar_feed'),
+    path('api/calendar/lesson/<int:lesson_id>/ics/', calendar_views.lesson_ics, name='calendar_lesson_ics'),
+    path('api/calendar/subscribe-links/', calendar_views.subscribe_links, name='calendar_subscribe_links'),
+    path('api/calendar/regenerate-token/', calendar_views.regenerate_calendar_token, name='calendar_regenerate_token'),
     
     # API endpoints
     path('', include(router.urls)),

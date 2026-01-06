@@ -1,0 +1,403 @@
+/* =====================================================
+   CALENDAR INTEGRATION - SIMPLE "GRANDMA-FRIENDLY" STYLE
+   Большие кнопки, понятные иконки, минимум текста
+   ===================================================== */
+
+.cal-simple-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f0f4ff 0%, #e8f0fe 100%);
+  padding: 20px;
+}
+
+.cal-simple-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Loading */
+.cal-simple-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 16px;
+}
+
+.cal-simple-spinner {
+  width: 48px;
+  height: 48px;
+  border: 5px solid #e2e8f0;
+  border-top-color: #4f46e5;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.cal-simple-loading p {
+  color: #64748b;
+  font-size: 18px;
+}
+
+/* Header */
+.cal-simple-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.cal-simple-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: white;
+  border-radius: 12px;
+  color: #64748b;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.cal-simple-back:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.cal-simple-header-content h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.cal-simple-header-content p {
+  margin: 6px 0 0 0;
+  font-size: 16px;
+  color: #64748b;
+}
+
+/* Error */
+.cal-simple-error {
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.cal-simple-error p {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #dc2626;
+}
+
+.cal-simple-error button {
+  padding: 10px 20px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Success Toast */
+.cal-simple-success {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 2px solid #34d399;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cal-simple-success-icon {
+  width: 48px;
+  height: 48px;
+  background: #10b981;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.cal-simple-success-text strong {
+  display: block;
+  font-size: 18px;
+  color: #065f46;
+  margin-bottom: 4px;
+}
+
+.cal-simple-success-text p {
+  margin: 0;
+  font-size: 15px;
+  color: #047857;
+}
+
+/* Main Section */
+.cal-simple-main {
+  background: white;
+  border-radius: 24px;
+  padding: 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+
+.cal-simple-main h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1e293b;
+  text-align: center;
+}
+
+.cal-simple-hint {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 15px;
+  margin: 8px 0 24px 0;
+}
+
+/* Calendar Grid - 2x2 */
+.cal-simple-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+/* Calendar Card */
+.cal-simple-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 16px;
+  background: #f8fafc;
+  border: 3px solid #e2e8f0;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cal-simple-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+  border-color: #cbd5e1;
+}
+
+.cal-simple-card:active {
+  transform: translateY(-2px);
+}
+
+/* Connected state */
+.cal-simple-card.connected {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border-color: #34d399;
+}
+
+.cal-simple-card-logo {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cal-simple-card-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.cal-simple-card-desc {
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.cal-simple-card-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #10b981;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+/* Info Section */
+.cal-simple-info {
+  background: white;
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+
+.cal-simple-info h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.cal-simple-info ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cal-simple-info li {
+  font-size: 15px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.cal-simple-info li strong {
+  color: #1e293b;
+}
+
+/* Connected Info */
+.cal-simple-connected-info {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.cal-simple-connected-info p {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #065f46;
+}
+
+.cal-simple-disconnect {
+  padding: 10px 20px;
+  background: transparent;
+  color: #047857;
+  border: 2px solid #34d399;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cal-simple-disconnect:hover {
+  background: #d1fae5;
+}
+
+/* FAQ */
+.cal-simple-faq {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.cal-simple-faq summary {
+  padding: 18px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cal-simple-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.cal-simple-faq summary::after {
+  content: '+';
+  font-size: 24px;
+  color: #94a3b8;
+  transition: transform 0.2s;
+}
+
+.cal-simple-faq[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.cal-simple-faq-content {
+  padding: 0 24px 20px;
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.cal-simple-faq-content p {
+  margin: 0 0 12px 0;
+}
+
+.cal-simple-faq-content ol {
+  margin: 0 0 16px 0;
+  padding-left: 20px;
+}
+
+.cal-simple-faq-content li {
+  margin-bottom: 6px;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .cal-simple-page {
+    padding: 16px;
+  }
+  
+  .cal-simple-header-content h1 {
+    font-size: 22px;
+  }
+  
+  .cal-simple-main {
+    padding: 20px;
+  }
+  
+  .cal-simple-grid {
+    gap: 12px;
+  }
+  
+  .cal-simple-card {
+    padding: 20px 12px;
+  }
+  
+  .cal-simple-card-name {
+    font-size: 16px;
+  }
+}

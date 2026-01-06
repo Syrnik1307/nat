@@ -400,5 +400,28 @@ export const updateIndividualStudent = (id, data) =>
 export const updateIndividualStudentNotes = (id, notes) =>
   apiClient.patch(`individual-students/${id}/update_notes/`, { teacher_notes: notes });
 
+// =============== CALENDAR EXPORT (iCal) ===============
+
+// Get calendar subscription links for Google, Apple, Yandex
+export const getCalendarSubscribeLinks = () => apiClient.get('schedule/api/calendar/subscribe-links/');
+
+// Download .ics file for all lessons
+export const downloadCalendarIcs = (params = {}) => {
+  return apiClient.get('schedule/api/calendar/export/ics/', { 
+    params,
+    responseType: 'blob' 
+  });
+};
+
+// Download .ics file for a single lesson
+export const downloadLessonIcs = (lessonId) => {
+  return apiClient.get(`schedule/api/calendar/lesson/${lessonId}/ics/`, { 
+    responseType: 'blob' 
+  });
+};
+
+// Regenerate calendar token (invalidates old subscription links)
+export const regenerateCalendarToken = () => apiClient.post('schedule/api/calendar/regenerate-token/');
+
 export default apiClient;
 

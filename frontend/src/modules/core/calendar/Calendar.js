@@ -275,8 +275,37 @@ const Calendar = () => {
               </button>
             ))}
           </div>
+          <Button
+            variant="secondary"
+            size="small"
+            onClick={() => navigate('/calendar/settings')}
+            className="calendar-settings-btn"
+          >
+            <span style={{ marginRight: '6px' }}>📱</span>
+            В телефон
+          </Button>
         </div>
       </div>
+
+      {/* Подсказка о синхронизации с телефоном */}
+      {!localStorage.getItem('lectio_connected_calendar') && !localStorage.getItem('lectio_sync_tip_hidden') && (
+        <div className="calendar-sync-tip">
+          <span className="calendar-sync-tip-icon">💡</span>
+          <span className="calendar-sync-tip-text">
+            <strong>Совет:</strong> Добавьте занятия в телефон — нажмите «📱 В телефон»
+          </span>
+          <button 
+            className="calendar-sync-tip-close"
+            onClick={() => {
+              localStorage.setItem('lectio_sync_tip_hidden', 'true');
+              window.location.reload();
+            }}
+            aria-label="Закрыть подсказку"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="calendar-layout" style={{ gridTemplateColumns: '1fr' }}>
         <div className="calendar-container">
@@ -485,6 +514,47 @@ const Calendar = () => {
             align-items: center;
             justify-content: space-between;
             gap: 1.5rem;
+          }
+
+          /* Sync Tip Banner */
+          .calendar-sync-tip {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 2px solid #f59e0b;
+            border-radius: 14px;
+            padding: 14px 18px;
+            margin-bottom: -0.5rem;
+          }
+
+          .calendar-sync-tip-icon {
+            font-size: 20px;
+          }
+
+          .calendar-sync-tip-text {
+            flex: 1;
+            font-size: 14px;
+            color: #92400e;
+          }
+
+          .calendar-sync-tip-text strong {
+            color: #78350f;
+          }
+
+          .calendar-sync-tip-close {
+            background: transparent;
+            border: none;
+            font-size: 16px;
+            color: #92400e;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+          }
+
+          .calendar-sync-tip-close:hover {
+            background: rgba(0,0,0,0.1);
           }
 
           .calendar-title h1 {
