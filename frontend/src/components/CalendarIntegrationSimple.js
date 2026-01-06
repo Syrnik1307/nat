@@ -213,23 +213,30 @@ const CalendarIntegrationSimple = () => {
     
     const provider = activeModal;
     
-    // Mark as connected
-    const newConnected = [...connectedCalendars.filter(id => id !== provider.id), provider.id];
-    setConnectedCalendars(newConnected);
-    localStorage.setItem('lectio_connected_calendars', JSON.stringify(newConnected));
-    
-    // Open settings URL or use webcal://
+    let opened = null;
+
     if (provider.settingsUrl) {
-      window.open(provider.settingsUrl, '_blank');
+      opened = window.open(provider.settingsUrl, '_blank');
+      // Если окно реально открылось — считаем подключённым
+      if (opened) {
+        const newConnected = [...connectedCalendars.filter(id => id !== provider.id), provider.id];
+        setConnectedCalendars(newConnected);
+        localStorage.setItem('lectio_connected_calendars', JSON.stringify(newConnected));
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 5000);
+      }
     } else {
-      // For Apple - try webcal:// link
+      // Apple / webcal
       const webcalUrl = links.feed_url.replace('https://', 'webcal://').replace('http://', 'webcal://');
       window.location.href = webcalUrl;
+      const newConnected = [...connectedCalendars.filter(id => id !== provider.id), provider.id];
+      setConnectedCalendars(newConnected);
+      localStorage.setItem('lectio_connected_calendars', JSON.stringify(newConnected));
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 5000);
     }
-    
+
     setActiveModal(null);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 5000);
   };
 
   const handleDisconnect = (providerId) => {
