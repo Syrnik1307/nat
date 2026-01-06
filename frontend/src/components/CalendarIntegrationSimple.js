@@ -22,6 +22,20 @@ const IconCheck = () => (
   </svg>
 );
 
+const IconCopy = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+  </svg>
+);
+
+const IconClose = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
+
 const IconCalendar = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -106,6 +120,8 @@ const CalendarIntegrationSimple = () => {
   const [error, setError] = useState(null);
   const [connectedCalendar, setConnectedCalendar] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const backLink = role === 'student' ? '/student' : '/calendar';
 
@@ -129,23 +145,44 @@ const CalendarIntegrationSimple = () => {
     }
   };
 
+  const handleCopyUrl = async () => {
+    if (!links?.feed_url) return;
+    try {
+      await navigator.clipboard.writeText(links.feed_url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   const handleConnect = (providerId) => {
     if (!links?.feed_url) return;
     
     const feedUrl = links.feed_url;
-    let targetUrl = '';
 
     if (providerId === 'google') {
-      targetUrl = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(feedUrl)}`;
-      window.open(targetUrl, '_blank');
-    } else {
-      // webcal:// для Apple, Yandex, Outlook
-      targetUrl = feedUrl.replace('https://', 'webcal://').replace('http://', 'webcal://');
-      window.location.href = targetUrl;
+      // Google Calendar требует ручного добавления через настройки
+      setShowGoogleModal(true);
+      return;
     }
+
+    // webcal:// для Apple, Yandex, Outlook
+    const webcalUrl = feedUrl.replace('https://', 'webcal://').replace('http://', 'webcal://');
+    window.location.href = webcalUrl;
 
     localStorage.setItem('lectio_connected_calendar', providerId);
     setConnectedCalendar(providerId);
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 5000);
+  };
+
+  const handleGoogleContinue = () => {
+    // Открываем Google Calendar настройки для добавления по URL
+    window.open('https://calendar.google.com/calendar/u/0/r/settings/addbyurl', '_blank');
+    localStorage.setItem('lectio_connected_calendar', 'google');
+    setConnectedCalendar('google');
+    setShowGoogleModal(false);
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 5000);
   };
@@ -250,6 +287,80 @@ const CalendarIntegrationSimple = () => {
           </ul>
         </div>
       </div>
+
+      {/* Модалка для Google Calendar */}
+      {showGoogleModal && (
+        <div className="cal-modal-overlay" onClick={() => setShowGoogleModal(false)}>
+          <div className="cal-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="cal-modal-close" onClick={() => setShowGoogleModal(false)}>
+              <IconClose />
+            </button>
+            
+            <div className="cal-modal-header">
+              <svg width="40" height="40" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22 5.5H2v13a2 2 0 002 2h16a2 2 0 002-2v-13z"/>
+                <path fill="#fff" d="M4 8h16v10H4z"/>
+                <path fill="#EA4335" d="M6 10h4v3H6z"/>
+                <path fill="#FBBC05" d="M10 10h4v3h-4z"/>
+                <path fill="#34A853" d="M14 10h4v3h-4z"/>
+                <path fill="#4285F4" d="M6 13h4v3H6z"/>
+                <path fill="#EA4335" d="M10 13h4v3h-4z"/>
+                <rect fill="#4285F4" x="7" y="2" width="2" height="5" rx="1"/>
+                <rect fill="#4285F4" x="15" y="2" width="2" height="5" rx="1"/>
+              </svg>
+              <h2>Добавление в Google Calendar</h2>
+            </div>
+
+            <div className="cal-modal-body">
+              <p className="cal-modal-desc">
+                Google Calendar требует добавления по ссылке вручную. Это займёт 30 секунд:
+              </p>
+
+              <div className="cal-modal-steps">
+                <div className="cal-modal-step">
+                  <span className="cal-modal-step-num">1</span>
+                  <span>Скопируйте ссылку на календарь:</span>
+                </div>
+                
+                <div className="cal-modal-url-box">
+                  <input 
+                    type="text" 
+                    value={links?.feed_url || ''} 
+                    readOnly 
+                    className="cal-modal-url-input"
+                  />
+                  <button 
+                    className={`cal-modal-copy-btn ${copied ? 'copied' : ''}`}
+                    onClick={handleCopyUrl}
+                  >
+                    {copied ? <IconCheck /> : <IconCopy />}
+                    {copied ? 'Скопировано' : 'Копировать'}
+                  </button>
+                </div>
+
+                <div className="cal-modal-step">
+                  <span className="cal-modal-step-num">2</span>
+                  <span>Нажмите кнопку ниже — откроются настройки Google Calendar</span>
+                </div>
+
+                <div className="cal-modal-step">
+                  <span className="cal-modal-step-num">3</span>
+                  <span>Вставьте скопированную ссылку и нажмите «Добавить календарь»</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="cal-modal-footer">
+              <Button variant="secondary" onClick={() => setShowGoogleModal(false)}>
+                Отмена
+              </Button>
+              <Button variant="primary" onClick={handleGoogleContinue}>
+                Открыть Google Calendar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
