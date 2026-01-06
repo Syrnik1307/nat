@@ -281,8 +281,7 @@ const Calendar = () => {
             onClick={() => navigate('/calendar/settings')}
             className="calendar-settings-btn"
           >
-            <span style={{ marginRight: '6px' }}>📱</span>
-            В телефон
+            Добавить в календарь
           </Button>
         </div>
       </div>
@@ -290,9 +289,8 @@ const Calendar = () => {
       {/* Подсказка о синхронизации с телефоном */}
       {!localStorage.getItem('lectio_connected_calendar') && !localStorage.getItem('lectio_sync_tip_hidden') && (
         <div className="calendar-sync-tip">
-          <span className="calendar-sync-tip-icon">💡</span>
           <span className="calendar-sync-tip-text">
-            <strong>Совет:</strong> Добавьте занятия в телефон — нажмите «📱 В телефон»
+            <strong>Совет:</strong> Добавьте расписание в свой календарь для автоматической синхронизации
           </span>
           <button 
             className="calendar-sync-tip-close"

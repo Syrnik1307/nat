@@ -403,11 +403,13 @@ export const updateIndividualStudentNotes = (id, notes) =>
 // =============== CALENDAR EXPORT (iCal) ===============
 
 // Get calendar subscription links for Google, Apple, Yandex
-export const getCalendarSubscribeLinks = () => apiClient.get('schedule/api/calendar/subscribe-links/');
+// Note: schedule endpoints are under /schedule/api/, so we use withScheduleApiBase
+export const getCalendarSubscribeLinks = () => apiClient.get('calendar/subscribe-links/', withScheduleApiBase());
 
 // Download .ics file for all lessons
 export const downloadCalendarIcs = (params = {}) => {
-  return apiClient.get('schedule/api/calendar/export/ics/', { 
+  return apiClient.get('calendar/export/ics/', { 
+    ...withScheduleApiBase(),
     params,
     responseType: 'blob' 
   });
@@ -415,13 +417,14 @@ export const downloadCalendarIcs = (params = {}) => {
 
 // Download .ics file for a single lesson
 export const downloadLessonIcs = (lessonId) => {
-  return apiClient.get(`schedule/api/calendar/lesson/${lessonId}/ics/`, { 
+  return apiClient.get(`calendar/lesson/${lessonId}/ics/`, { 
+    ...withScheduleApiBase(),
     responseType: 'blob' 
   });
 };
 
 // Regenerate calendar token (invalidates old subscription links)
-export const regenerateCalendarToken = () => apiClient.post('schedule/api/calendar/regenerate-token/');
+export const regenerateCalendarToken = () => apiClient.post('calendar/regenerate-token/', {}, withScheduleApiBase());
 
 export default apiClient;
 

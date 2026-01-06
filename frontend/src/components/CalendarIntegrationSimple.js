@@ -2,118 +2,151 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getCalendarSubscribeLinks } from '../apiService';
 import { useAuth } from '../auth';
+import { Button } from '../shared/components';
 import './CalendarIntegrationSimple.css';
 
-/* =====================================================
-   CALENDAR INTEGRATION - SIMPLE VERSION
-   Максимально простой UI "для бабушки"
-   Один клик - готово!
-   ===================================================== */
+/**
+ * Страница интеграции с календарём
+ * Минималистичный дизайн в стиле платформы
+ */
 
-// Иконка стрелки назад
 const IconArrowLeft = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M19 12H5M12 19l-7-7 7-7"/>
   </svg>
 );
 
-// Иконка галочки
 const IconCheck = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
     <polyline points="20,6 9,17 4,12"/>
   </svg>
 );
 
-// Большие красивые логотипы календарей
-const GoogleLogo = () => (
-  <svg width="56" height="56" viewBox="0 0 56 56">
-    <rect x="4" y="10" width="48" height="42" rx="6" fill="#4285F4"/>
-    <rect x="10" y="20" width="36" height="28" fill="white"/>
-    <rect x="14" y="24" width="10" height="8" fill="#EA4335"/>
-    <rect x="24" y="24" width="10" height="8" fill="#FBBC05"/>
-    <rect x="34" y="24" width="10" height="8" fill="#34A853"/>
-    <rect x="14" y="32" width="10" height="8" fill="#4285F4"/>
-    <rect x="24" y="32" width="10" height="8" fill="#EA4335"/>
-    <rect x="34" y="32" width="10" height="8" fill="#FBBC05"/>
-    <rect x="18" y="4" width="6" height="12" rx="2" fill="#4285F4"/>
-    <rect x="34" y="4" width="6" height="12" rx="2" fill="#4285F4"/>
+const IconCalendar = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+    <line x1="16" y1="2" x2="16" y2="6"/>
+    <line x1="8" y1="2" x2="8" y2="6"/>
+    <line x1="3" y1="10" x2="21" y2="10"/>
   </svg>
 );
 
-const AppleLogo = () => (
-  <svg width="56" height="56" viewBox="0 0 56 56">
-    <rect x="4" y="10" width="48" height="42" rx="6" fill="#FF3B30"/>
-    <rect x="10" y="20" width="36" height="28" fill="white"/>
-    <text x="28" y="42" textAnchor="middle" fontSize="22" fontWeight="bold" fill="#FF3B30">31</text>
-    <rect x="18" y="4" width="6" height="12" rx="2" fill="#FF3B30"/>
-    <rect x="34" y="4" width="6" height="12" rx="2" fill="#FF3B30"/>
-  </svg>
-);
-
-const YandexLogo = () => (
-  <svg width="56" height="56" viewBox="0 0 56 56">
-    <rect x="4" y="10" width="48" height="42" rx="6" fill="#FC3F1D"/>
-    <rect x="10" y="20" width="36" height="28" fill="white"/>
-    <text x="28" y="42" textAnchor="middle" fontSize="18" fontWeight="bold" fill="#FC3F1D">Я</text>
-    <rect x="18" y="4" width="6" height="12" rx="2" fill="#FC3F1D"/>
-    <rect x="34" y="4" width="6" height="12" rx="2" fill="#FC3F1D"/>
-  </svg>
-);
-
-const OutlookLogo = () => (
-  <svg width="56" height="56" viewBox="0 0 56 56">
-    <rect x="4" y="10" width="48" height="42" rx="6" fill="#0078D4"/>
-    <rect x="10" y="20" width="36" height="28" fill="white"/>
-    <text x="28" y="42" textAnchor="middle" fontSize="18" fontWeight="bold" fill="#0078D4">O</text>
-    <rect x="18" y="4" width="6" height="12" rx="2" fill="#0078D4"/>
-    <rect x="34" y="4" width="6" height="12" rx="2" fill="#0078D4"/>
-  </svg>
-);
+// Провайдеры календарей
+const PROVIDERS = [
+  {
+    id: 'google',
+    name: 'Google Calendar',
+    subtitle: 'Android, Gmail',
+    color: '#4285F4',
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22 5.5H2v13a2 2 0 002 2h16a2 2 0 002-2v-13z"/>
+        <path fill="#fff" d="M4 8h16v10H4z"/>
+        <path fill="#EA4335" d="M6 10h4v3H6z"/>
+        <path fill="#FBBC05" d="M10 10h4v3h-4z"/>
+        <path fill="#34A853" d="M14 10h4v3h-4z"/>
+        <path fill="#4285F4" d="M6 13h4v3H6z"/>
+        <path fill="#EA4335" d="M10 13h4v3h-4z"/>
+        <rect fill="#4285F4" x="7" y="2" width="2" height="5" rx="1"/>
+        <rect fill="#4285F4" x="15" y="2" width="2" height="5" rx="1"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'apple',
+    name: 'Apple Calendar',
+    subtitle: 'iPhone, iPad, Mac',
+    color: '#FF3B30',
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 24 24">
+        <rect x="2" y="5" width="20" height="17" rx="2" fill="#FF3B30"/>
+        <rect x="4" y="9" width="16" height="11" fill="#fff"/>
+        <text x="12" y="17" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#FF3B30">31</text>
+        <rect x="7" y="2" width="2" height="5" rx="1" fill="#FF3B30"/>
+        <rect x="15" y="2" width="2" height="5" rx="1" fill="#FF3B30"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'yandex',
+    name: 'Яндекс Календарь',
+    subtitle: 'Яндекс почта',
+    color: '#FC3F1D',
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 24 24">
+        <rect x="2" y="5" width="20" height="17" rx="2" fill="#FC3F1D"/>
+        <rect x="4" y="9" width="16" height="11" fill="#fff"/>
+        <text x="12" y="17" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#FC3F1D">Я</text>
+        <rect x="7" y="2" width="2" height="5" rx="1" fill="#FC3F1D"/>
+        <rect x="15" y="2" width="2" height="5" rx="1" fill="#FC3F1D"/>
+      </svg>
+    ),
+  },
+  {
+    id: 'outlook',
+    name: 'Outlook',
+    subtitle: 'Microsoft 365',
+    color: '#0078D4',
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 24 24">
+        <rect x="2" y="5" width="20" height="17" rx="2" fill="#0078D4"/>
+        <rect x="4" y="9" width="16" height="11" fill="#fff"/>
+        <text x="12" y="17" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#0078D4">O</text>
+        <rect x="7" y="2" width="2" height="5" rx="1" fill="#0078D4"/>
+        <rect x="15" y="2" width="2" height="5" rx="1" fill="#0078D4"/>
+      </svg>
+    ),
+  },
+];
 
 const CalendarIntegrationSimple = () => {
   const { role } = useAuth();
   const [links, setLinks] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [connectedCalendar, setConnectedCalendar] = useState(null); // Какой календарь подключён
+  const [connectedCalendar, setConnectedCalendar] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const backLink = role === 'student' ? '/student' : '/calendar';
 
   useEffect(() => {
     loadLinks();
-    // Проверяем, был ли уже подключён календарь
     const saved = localStorage.getItem('lectio_connected_calendar');
     if (saved) setConnectedCalendar(saved);
   }, []);
 
   const loadLinks = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await getCalendarSubscribeLinks();
       setLinks(response.data);
     } catch (err) {
       console.error('Failed to load calendar links:', err);
-      setError('Не удалось загрузить. Попробуйте обновить страницу.');
+      setError('Не удалось загрузить данные');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConnect = (provider, url) => {
-    // Сохраняем что подключили
-    localStorage.setItem('lectio_connected_calendar', provider);
-    setConnectedCalendar(provider);
-    setShowSuccess(true);
+  const handleConnect = (providerId) => {
+    if (!links?.feed_url) return;
     
-    // Открываем URL
-    if (provider === 'google') {
-      window.open(url, '_blank');
+    const feedUrl = links.feed_url;
+    let targetUrl = '';
+
+    if (providerId === 'google') {
+      targetUrl = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(feedUrl)}`;
+      window.open(targetUrl, '_blank');
     } else {
-      window.location.href = url;
+      // webcal:// для Apple, Yandex, Outlook
+      targetUrl = feedUrl.replace('https://', 'webcal://').replace('http://', 'webcal://');
+      window.location.href = targetUrl;
     }
-    
-    // Скрываем success через 5 секунд
+
+    localStorage.setItem('lectio_connected_calendar', providerId);
+    setConnectedCalendar(providerId);
+    setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 5000);
   };
 
@@ -124,167 +157,98 @@ const CalendarIntegrationSimple = () => {
 
   if (loading) {
     return (
-      <div className="cal-simple-page">
-        <div className="cal-simple-loading">
-          <div className="cal-simple-spinner"></div>
-          <p>Загрузка...</p>
+      <div className="cal-page">
+        <div className="cal-container">
+          <div className="cal-loading">
+            <div className="cal-spinner" />
+            <p>Загрузка...</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  const feedUrl = links?.feed_url || '';
-  const googleUrl = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(feedUrl)}`;
-  const webcalUrl = feedUrl.replace('https://', 'webcal://').replace('http://', 'webcal://');
-
   return (
-    <div className="cal-simple-page">
-      <div className="cal-simple-container">
-        
+    <div className="cal-page">
+      <div className="cal-container">
         {/* Шапка */}
-        <header className="cal-simple-header">
-          <Link to={backLink} className="cal-simple-back">
+        <header className="cal-header">
+          <Link to={backLink} className="cal-back">
             <IconArrowLeft />
           </Link>
-          <div className="cal-simple-header-content">
-            <h1>📅 Мои занятия в календаре</h1>
-            <p>Все уроки будут в вашем телефоне</p>
+          <div className="cal-header-text">
+            <h1>Добавить в свой календарь</h1>
+            <p>Все занятия будут автоматически синхронизироваться</p>
           </div>
         </header>
 
+        {/* Ошибка */}
         {error && (
-          <div className="cal-simple-error">
-            <p>😕 {error}</p>
-            <button onClick={loadLinks}>Попробовать снова</button>
+          <div className="cal-error">
+            <p>{error}</p>
+            <Button variant="secondary" size="small" onClick={loadLinks}>
+              Попробовать снова
+            </Button>
           </div>
         )}
 
-        {/* Успешное подключение */}
+        {/* Успех */}
         {showSuccess && (
-          <div className="cal-simple-success">
-            <div className="cal-simple-success-icon">
-              <IconCheck />
-            </div>
-            <div className="cal-simple-success-text">
-              <strong>Отлично! 🎉</strong>
+          <div className="cal-success">
+            <span className="cal-success-icon"><IconCheck /></span>
+            <div>
+              <strong>Готово</strong>
               <p>Подтвердите добавление в открывшемся окне</p>
             </div>
           </div>
         )}
 
-        {/* Главный блок - выбор календаря */}
-        <div className="cal-simple-main">
-          <h2>Выберите ваш календарь:</h2>
-          <p className="cal-simple-hint">Нажмите на тот, которым пользуетесь</p>
-          
-          <div className="cal-simple-grid">
-            
-            {/* Google */}
-            <button 
-              className={`cal-simple-card ${connectedCalendar === 'google' ? 'connected' : ''}`}
-              onClick={() => handleConnect('google', googleUrl)}
-            >
-              <div className="cal-simple-card-logo">
-                <GoogleLogo />
-              </div>
-              <div className="cal-simple-card-name">Google</div>
-              <div className="cal-simple-card-desc">Android, Gmail</div>
-              {connectedCalendar === 'google' && (
-                <div className="cal-simple-card-badge">✓ Подключён</div>
-              )}
-            </button>
+        {/* Выбор провайдера */}
+        {!error && (
+          <div className="cal-main">
+            <div className="cal-section-header">
+              <IconCalendar />
+              <span>Выберите ваш календарь</span>
+            </div>
 
-            {/* Apple */}
-            <button 
-              className={`cal-simple-card ${connectedCalendar === 'apple' ? 'connected' : ''}`}
-              onClick={() => handleConnect('apple', webcalUrl)}
-            >
-              <div className="cal-simple-card-logo">
-                <AppleLogo />
-              </div>
-              <div className="cal-simple-card-name">Apple</div>
-              <div className="cal-simple-card-desc">iPhone, iPad, Mac</div>
-              {connectedCalendar === 'apple' && (
-                <div className="cal-simple-card-badge">✓ Подключён</div>
-              )}
-            </button>
+            <div className="cal-grid">
+              {PROVIDERS.map((provider) => {
+                const isConnected = connectedCalendar === provider.id;
+                return (
+                  <button
+                    key={provider.id}
+                    className={`cal-card ${isConnected ? 'cal-card--connected' : ''}`}
+                    onClick={() => isConnected ? handleDisconnect() : handleConnect(provider.id)}
+                    disabled={!links?.feed_url}
+                  >
+                    <div className="cal-card-icon">{provider.icon}</div>
+                    <div className="cal-card-info">
+                      <span className="cal-card-name">{provider.name}</span>
+                      <span className="cal-card-subtitle">{provider.subtitle}</span>
+                    </div>
+                    {isConnected && (
+                      <span className="cal-card-badge">Подключено</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-            {/* Яндекс */}
-            <button 
-              className={`cal-simple-card ${connectedCalendar === 'yandex' ? 'connected' : ''}`}
-              onClick={() => handleConnect('yandex', webcalUrl)}
-            >
-              <div className="cal-simple-card-logo">
-                <YandexLogo />
-              </div>
-              <div className="cal-simple-card-name">Яндекс</div>
-              <div className="cal-simple-card-desc">Яндекс Почта</div>
-              {connectedCalendar === 'yandex' && (
-                <div className="cal-simple-card-badge">✓ Подключён</div>
-              )}
-            </button>
-
-            {/* Outlook */}
-            <button 
-              className={`cal-simple-card ${connectedCalendar === 'outlook' ? 'connected' : ''}`}
-              onClick={() => handleConnect('outlook', webcalUrl)}
-            >
-              <div className="cal-simple-card-logo">
-                <OutlookLogo />
-              </div>
-              <div className="cal-simple-card-name">Outlook</div>
-              <div className="cal-simple-card-desc">Microsoft, работа</div>
-              {connectedCalendar === 'outlook' && (
-                <div className="cal-simple-card-badge">✓ Подключён</div>
-              )}
-            </button>
-
-          </div>
-        </div>
-
-        {/* Что произойдёт */}
-        <div className="cal-simple-info">
-          <h3>Что получите:</h3>
-          <ul>
-            <li>📱 <strong>Все занятия в телефоне</strong> — не нужно заходить на сайт</li>
-            <li>🔔 <strong>Напоминания</strong> — телефон напомнит о занятии</li>
-            <li>🔄 <strong>Автообновление</strong> — новые занятия появятся сами</li>
-            <li>🔗 <strong>Zoom ссылки</strong> — присоединяйтесь в один клик</li>
-          </ul>
-        </div>
-
-        {/* Уже подключено */}
-        {connectedCalendar && (
-          <div className="cal-simple-connected-info">
-            <p>
-              ✅ Вы подключили <strong>{
-                connectedCalendar === 'google' ? 'Google Calendar' :
-                connectedCalendar === 'apple' ? 'Apple Calendar' :
-                connectedCalendar === 'yandex' ? 'Яндекс Календарь' :
-                'Outlook'
-              }</strong>
+            <p className="cal-hint">
+              После нажатия откроется ваш календарь. Подтвердите подписку — и все занятия появятся автоматически.
             </p>
-            <button className="cal-simple-disconnect" onClick={handleDisconnect}>
-              Подключить другой
-            </button>
           </div>
         )}
 
-        {/* FAQ */}
-        <details className="cal-simple-faq">
-          <summary>❓ Не работает?</summary>
-          <div className="cal-simple-faq-content">
-            <p><strong>Если ничего не происходит:</strong></p>
-            <ol>
-              <li>Проверьте, что вы залогинены в календаре</li>
-              <li>Попробуйте другой браузер</li>
-              <li>На iPhone: откройте через Safari</li>
-            </ol>
-            <p><strong>Если занятия не появились:</strong></p>
-            <p>Подождите 5-10 минут, календари обновляются не сразу.</p>
-          </div>
-        </details>
-
+        {/* Дополнительная информация */}
+        <div className="cal-info">
+          <h3>Как это работает</h3>
+          <ul>
+            <li>Занятия синхронизируются автоматически каждые 15-30 минут</li>
+            <li>Новые уроки появятся в календаре без дополнительных действий</li>
+            <li>Изменения в расписании также обновятся автоматически</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
