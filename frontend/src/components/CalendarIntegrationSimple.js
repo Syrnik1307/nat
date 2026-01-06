@@ -154,8 +154,19 @@ const CalendarIntegrationSimple = () => {
 
   useEffect(() => {
     loadLinks();
-    // Load connected calendars from localStorage
-    const saved = localStorage.getItem('lectio_connected_calendars');
+    // Load connected calendars from localStorage (migrate old key if needed)
+    let saved = localStorage.getItem('lectio_connected_calendars');
+    if (!saved) {
+      // Migrate from old single-calendar key
+      const oldSaved = localStorage.getItem('lectio_connected_calendar');
+      if (oldSaved) {
+        const migrated = [oldSaved];
+        localStorage.setItem('lectio_connected_calendars', JSON.stringify(migrated));
+        localStorage.removeItem('lectio_connected_calendar');
+        setConnectedCalendars(migrated);
+        return;
+      }
+    }
     if (saved) {
       try {
         setConnectedCalendars(JSON.parse(saved));

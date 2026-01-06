@@ -229,11 +229,8 @@ def calendar_feed(request, user_id: int, token: str):
     homeworks = list(_get_user_homeworks(user, days_forward=180))
     control_points = list(_get_user_control_points(user, days_back=30, days_forward=180))
     
-    # Генерируем календарь
-    if user.role == 'teacher':
-        calendar_name = f"Lectio - {user.get_full_name()}"
-    else:
-        calendar_name = f"Lectio - {user.first_name}"
+    # Генерируем календарь - простое название для всех клиентов
+    calendar_name = "Lectio"
     
     ical_content = generate_full_calendar(
         list(lessons),
