@@ -366,6 +366,19 @@
   line-height: 1.5;
 }
 
+.cal-modal-connected {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  color: #166534;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
 .cal-modal-steps {
   display: flex;
   flex-direction: column;
