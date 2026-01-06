@@ -45,7 +45,7 @@ const IconCalendar = () => (
   </svg>
 );
 
-// Провайдеры календарей
+// Провайдеры календарей с инструкциями
 const PROVIDERS = [
   {
     id: 'google',
@@ -65,6 +65,12 @@ const PROVIDERS = [
         <rect fill="#4285F4" x="15" y="2" width="2" height="5" rx="1"/>
       </svg>
     ),
+    settingsUrl: 'https://calendar.google.com/calendar/u/0/r/settings/addbyurl',
+    instructions: [
+      'Скопируйте ссылку на календарь',
+      'Нажмите кнопку — откроются настройки Google Calendar',
+      'Вставьте ссылку в поле "URL календаря" и нажмите "Добавить"',
+    ],
   },
   {
     id: 'apple',
@@ -80,6 +86,13 @@ const PROVIDERS = [
         <rect x="15" y="2" width="2" height="5" rx="1" fill="#FF3B30"/>
       </svg>
     ),
+    settingsUrl: null, // webcal:// link
+    instructions: [
+      'Скопируйте ссылку на календарь',
+      'На iPhone/iPad: Настройки → Календарь → Учётные записи → Добавить → Другое → Подписка на календарь',
+      'На Mac: Календарь → Файл → Новая подписка на календарь',
+      'Вставьте скопированную ссылку',
+    ],
   },
   {
     id: 'yandex',
@@ -95,6 +108,13 @@ const PROVIDERS = [
         <rect x="15" y="2" width="2" height="5" rx="1" fill="#FC3F1D"/>
       </svg>
     ),
+    settingsUrl: 'https://calendar.yandex.ru/week?sidebar=addFeed',
+    instructions: [
+      'Скопируйте ссылку на календарь',
+      'Нажмите кнопку — откроется Яндекс Календарь',
+      'В левой панели найдите "Подписки" → "Добавить"',
+      'Вставьте ссылку и нажмите "Подписаться"',
+    ],
   },
   {
     id: 'outlook',
@@ -110,6 +130,13 @@ const PROVIDERS = [
         <rect x="15" y="2" width="2" height="5" rx="1" fill="#0078D4"/>
       </svg>
     ),
+    settingsUrl: 'https://outlook.live.com/calendar/0/addcalendar',
+    instructions: [
+      'Скопируйте ссылку на календарь',
+      'Нажмите кнопку — откроется Outlook Calendar',
+      'Выберите "Подписаться из Интернета"',
+      'Вставьте ссылку и нажмите "Импорт"',
+    ],
   },
 ];
 
@@ -118,17 +145,24 @@ const CalendarIntegrationSimple = () => {
   const [links, setLinks] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [connectedCalendar, setConnectedCalendar] = useState(null);
+  const [connectedCalendars, setConnectedCalendars] = useState([]);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [activeModal, setActiveModal] = useState(null); // provider object or null
   const [copied, setCopied] = useState(false);
 
   const backLink = role === 'student' ? '/student' : '/calendar';
 
   useEffect(() => {
     loadLinks();
-    const saved = localStorage.getItem('lectio_connected_calendar');
-    if (saved) setConnectedCalendar(saved);
+    // Load connected calendars from localStorage
+    const saved = localStorage.getItem('lectio_connected_calendars');
+    if (saved) {
+      try {
+        setConnectedCalendars(JSON.parse(saved));
+      } catch {
+        setConnectedCalendars([]);
+      }
+    }
   }, []);
 
   const loadLinks = async () => {
@@ -156,40 +190,41 @@ const CalendarIntegrationSimple = () => {
     }
   };
 
-  const handleConnect = (providerId) => {
+  const handleConnect = (provider) => {
     if (!links?.feed_url) return;
+    // Show modal for all providers
+    setActiveModal(provider);
+    setCopied(false);
+  };
+
+  const handleModalContinue = () => {
+    if (!activeModal) return;
     
-    const feedUrl = links.feed_url;
-
-    if (providerId === 'google') {
-      // Google Calendar требует ручного добавления через настройки
-      setShowGoogleModal(true);
-      return;
+    const provider = activeModal;
+    
+    // Mark as connected
+    const newConnected = [...connectedCalendars.filter(id => id !== provider.id), provider.id];
+    setConnectedCalendars(newConnected);
+    localStorage.setItem('lectio_connected_calendars', JSON.stringify(newConnected));
+    
+    // Open settings URL or use webcal://
+    if (provider.settingsUrl) {
+      window.open(provider.settingsUrl, '_blank');
+    } else {
+      // For Apple - try webcal:// link
+      const webcalUrl = links.feed_url.replace('https://', 'webcal://').replace('http://', 'webcal://');
+      window.location.href = webcalUrl;
     }
-
-    // webcal:// для Apple, Yandex, Outlook
-    const webcalUrl = feedUrl.replace('https://', 'webcal://').replace('http://', 'webcal://');
-    window.location.href = webcalUrl;
-
-    localStorage.setItem('lectio_connected_calendar', providerId);
-    setConnectedCalendar(providerId);
+    
+    setActiveModal(null);
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 5000);
   };
 
-  const handleGoogleContinue = () => {
-    // Открываем Google Calendar настройки для добавления по URL
-    window.open('https://calendar.google.com/calendar/u/0/r/settings/addbyurl', '_blank');
-    localStorage.setItem('lectio_connected_calendar', 'google');
-    setConnectedCalendar('google');
-    setShowGoogleModal(false);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 5000);
-  };
-
-  const handleDisconnect = () => {
-    localStorage.removeItem('lectio_connected_calendar');
-    setConnectedCalendar(null);
+  const handleDisconnect = (providerId) => {
+    const newConnected = connectedCalendars.filter(id => id !== providerId);
+    setConnectedCalendars(newConnected);
+    localStorage.setItem('lectio_connected_calendars', JSON.stringify(newConnected));
   };
 
   if (loading) {
@@ -250,12 +285,12 @@ const CalendarIntegrationSimple = () => {
 
             <div className="cal-grid">
               {PROVIDERS.map((provider) => {
-                const isConnected = connectedCalendar === provider.id;
+                const isConnected = connectedCalendars.includes(provider.id);
                 return (
                   <button
                     key={provider.id}
                     className={`cal-card ${isConnected ? 'cal-card--connected' : ''}`}
-                    onClick={() => isConnected ? handleDisconnect() : handleConnect(provider.id)}
+                    onClick={() => isConnected ? handleDisconnect(provider.id) : handleConnect(provider)}
                     disabled={!links?.feed_url}
                   >
                     <div className="cal-card-icon">{provider.icon}</div>
@@ -288,74 +323,59 @@ const CalendarIntegrationSimple = () => {
         </div>
       </div>
 
-      {/* Модалка для Google Calendar */}
-      {showGoogleModal && (
-        <div className="cal-modal-overlay" onClick={() => setShowGoogleModal(false)}>
+      {/* Универсальная модалка для всех провайдеров */}
+      {activeModal && (
+        <div className="cal-modal-overlay" onClick={() => setActiveModal(null)}>
           <div className="cal-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="cal-modal-close" onClick={() => setShowGoogleModal(false)}>
+            <button className="cal-modal-close" onClick={() => setActiveModal(null)}>
               <IconClose />
             </button>
             
             <div className="cal-modal-header">
-              <svg width="40" height="40" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22 5.5H2v13a2 2 0 002 2h16a2 2 0 002-2v-13z"/>
-                <path fill="#fff" d="M4 8h16v10H4z"/>
-                <path fill="#EA4335" d="M6 10h4v3H6z"/>
-                <path fill="#FBBC05" d="M10 10h4v3h-4z"/>
-                <path fill="#34A853" d="M14 10h4v3h-4z"/>
-                <path fill="#4285F4" d="M6 13h4v3H6z"/>
-                <path fill="#EA4335" d="M10 13h4v3h-4z"/>
-                <rect fill="#4285F4" x="7" y="2" width="2" height="5" rx="1"/>
-                <rect fill="#4285F4" x="15" y="2" width="2" height="5" rx="1"/>
-              </svg>
-              <h2>Добавление в Google Calendar</h2>
+              {activeModal.icon}
+              <h2>Добавление в {activeModal.name}</h2>
             </div>
 
             <div className="cal-modal-body">
               <p className="cal-modal-desc">
-                Google Calendar требует добавления по ссылке вручную. Это займёт 30 секунд:
+                Следуйте инструкции ниже. Это займёт меньше минуты:
               </p>
 
               <div className="cal-modal-steps">
-                <div className="cal-modal-step">
-                  <span className="cal-modal-step-num">1</span>
-                  <span>Скопируйте ссылку на календарь:</span>
-                </div>
+                {activeModal.instructions.map((instruction, index) => (
+                  <div key={index} className="cal-modal-step">
+                    <span className="cal-modal-step-num">{index + 1}</span>
+                    <span>{instruction}</span>
+                  </div>
+                ))}
                 
-                <div className="cal-modal-url-box">
-                  <input 
-                    type="text" 
-                    value={links?.feed_url || ''} 
-                    readOnly 
-                    className="cal-modal-url-input"
-                  />
-                  <button 
-                    className={`cal-modal-copy-btn ${copied ? 'copied' : ''}`}
-                    onClick={handleCopyUrl}
-                  >
-                    {copied ? <IconCheck /> : <IconCopy />}
-                    {copied ? 'Скопировано' : 'Копировать'}
-                  </button>
-                </div>
-
-                <div className="cal-modal-step">
-                  <span className="cal-modal-step-num">2</span>
-                  <span>Нажмите кнопку ниже — откроются настройки Google Calendar</span>
-                </div>
-
-                <div className="cal-modal-step">
-                  <span className="cal-modal-step-num">3</span>
-                  <span>Вставьте скопированную ссылку и нажмите «Добавить календарь»</span>
-                </div>
+                {/* URL box after first step */}
+                {activeModal.instructions.length > 0 && (
+                  <div className="cal-modal-url-box">
+                    <input 
+                      type="text" 
+                      value={links?.feed_url || ''} 
+                      readOnly 
+                      className="cal-modal-url-input"
+                    />
+                    <button 
+                      className={`cal-modal-copy-btn ${copied ? 'copied' : ''}`}
+                      onClick={handleCopyUrl}
+                    >
+                      {copied ? <IconCheck /> : <IconCopy />}
+                      {copied ? 'Скопировано' : 'Копировать'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="cal-modal-footer">
-              <Button variant="secondary" onClick={() => setShowGoogleModal(false)}>
+              <Button variant="secondary" onClick={() => setActiveModal(null)}>
                 Отмена
               </Button>
-              <Button variant="primary" onClick={handleGoogleContinue}>
-                Открыть Google Calendar
+              <Button variant="primary" onClick={handleModalContinue}>
+                {activeModal.settingsUrl ? `Открыть ${activeModal.name}` : 'Добавить в календарь'}
               </Button>
             </div>
           </div>
