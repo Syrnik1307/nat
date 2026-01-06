@@ -190,10 +190,17 @@ def verify_calendar_token(user_id: int, token: str, salt: str = '') -> bool:
 def get_google_calendar_add_url(ical_url: str) -> str:
     """
     Генерация ссылки для добавления в Google Calendar.
-    Google поддерживает подписку по URL.
+    Google Calendar требует webcal:// протокол для подписки через cid=.
+    Также можно использовать /calendar/u/0/r/settings/addbyurl для ручного добавления.
     """
     from urllib.parse import quote
-    return f"https://calendar.google.com/calendar/r?cid={quote(ical_url, safe='')}"
+    # Преобразуем https:// в webcal:// для корректной подписки
+    webcal_url = ical_url
+    if ical_url.startswith('https://'):
+        webcal_url = ical_url.replace('https://', 'webcal://', 1)
+    elif ical_url.startswith('http://'):
+        webcal_url = ical_url.replace('http://', 'webcal://', 1)
+    return f"https://calendar.google.com/calendar/r?cid={quote(webcal_url, safe='')}"
 
 
 def get_apple_calendar_url(ical_url: str) -> str:
