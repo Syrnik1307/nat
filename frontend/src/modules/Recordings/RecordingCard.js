@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import './RecordingCard.css';
-import LessonAnalyticsModal from './LessonAnalyticsModal';
 
 function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
-  const [showAnalytics, setShowAnalytics] = useState(false);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -166,19 +164,6 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
           )}
         </button>
 
-        <button 
-          className="watch-button"
-          onClick={(e) => {
-             e.stopPropagation();
-             setShowAnalytics(true);
-          }}
-          title="AI Анализ урока"
-          style={{ marginTop: '8px', backgroundColor: '#eef2ff', color: '#4f46e5', border: '1px solid #c7d2fe' }}
-        >
-          <span className="button-icon">📊</span>
-          AI Анализ
-        </button>
-
         {/* Кнопка удаления для преподавателей */}
         {showDelete && (
           <button 
@@ -197,14 +182,6 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
       
         {getStatusBadge()}
       </div>
-
-      {showAnalytics && (
-        <LessonAnalyticsModal
-          isOpen={showAnalytics}
-          onClose={() => setShowAnalytics(false)}
-          lessonId={recording.lesson_id || recording.lesson}
-        />
-      )}
     </div>
   );
 }
