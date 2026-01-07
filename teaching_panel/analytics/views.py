@@ -14,13 +14,98 @@ from .serializers import (
     StudentAIReportSerializer,
     StudentAIReportListSerializer,
     StudentBehaviorReportSerializer,
-    StudentBehaviorReportListSerializer
+    StudentBehaviorReportListSerializer,
 )
-from schedule.models import Attendance, Group
+from .serializers_analytics_extra import LessonTranscriptStatsSerializer
+from schedule.models import Attendance, Group, LessonTranscriptStats
 from homework.models import StudentSubmission
 from homework.models import Homework
 from homework.models import Answer
 from accounts.models import CustomUser
+
+class AnalyticsDashboardViewSet(viewsets.ViewSet):
+    """
+    Dashboard analytics for teacher.
+    Aggregates data across all groups.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        user = request.user
+        if getattr(user, 'role', '') != 'teacher':
+             return Response({'detail': 'Not allowed'}, status=403)
+        
+        # Groups count
+        groups = Group.objects.filter(teacher=user)
+        groups_count = groups.count()
+        
+        # Students count
+        students_count = CustomUser.objects.filter(role='student', group_students__in=groups).distinct().count()
+
+        return Response({
+            'groups_count': groups_count,
+            'students_count': students_count,
+        })
+
+    @action(detail=False, methods=['get'], url_path='group-transcript-summary')
+    def group_transcript_summary(self, request):
+        group_id = request.query_params.get('group_id')
+        if not group_id:
+            return Response({'detail': 'group_id required'}, status=400)
+            
+        group = get_object_or_404(Group, id=group_id)
+        # Check permission (simple check if teacher is related or admin)
+        if request.user.role == 'teacher' and group.teacher != request.user:
+             return Response({'detail': 'Not your group'}, status=403)
+
+        # Get all stats for lessons in this group
+        stats_qs = LessonTranscriptStats.objects.filter(lesson__group_id=group_id)
+        
+        if not stats_qs.exists():
+             return Response({'detail': 'No analytics found'}, status=200)
+
+        # Aggregate data manually from JSON fields (since JSON aggregation is complex/db-specific)
+        # or just sum up pre-calculated fields if we had them per student.
+        # We only have stats_json.
+        
+        # Structure of stats_json:
+        # {
+        #   "clean_talk_time": { "Student Name": 120, "Teacher": 500 },
+        #   "mentions": { "Student Name": 5 }
+        # }
+        
+        total_student_talk = {} # "Name": seconds
+        total_mentions = {} # "Name": count
+        lesson_dates = []
+        
+        for stat in stats_qs:
+            data = stat.stats_json
+            date_label = stat.lesson.start_time.strftime('%Y-%m-%d')
+            lesson_dates.append(date_label)
+            
+            # Talk time
+            talk_times = data.get('clean_talk_time', {})
+            for name, seconds in talk_times.items():
+                if name == 'Teacher' or name == 'Preacher':
+                    continue
+                total_student_talk[name] = total_student_talk.get(name, 0) + seconds
+                
+            # Mentions
+            mentions = data.get('mentions', {})
+            for name, count in mentions.items():
+                total_mentions[name] = total_mentions.get(name, 0) + count
+
+        # Sort top talkers
+        sorted_talk = sorted(total_student_talk.items(), key=lambda x: x[1], reverse=True)
+        # Sort top mentions
+        sorted_mentions = sorted(total_mentions.items(), key=lambda x: x[1], reverse=True)
+
+        return Response({
+            'total_lessons_analyzed': stats_qs.count(),
+            'talk_time_leaderboard': [{'name': k, 'seconds': v} for k, v in sorted_talk],
+            'mentions_leaderboard': [{'name': k, 'count': v} for k, v in sorted_mentions],
+        })
 
 class ControlPointViewSet(viewsets.ModelViewSet):
     queryset = ControlPoint.objects.all().select_related('teacher', 'group', 'lesson')

@@ -427,8 +427,5 @@ export const downloadLessonIcs = (lessonId) => {
 // Regenerate calendar token (invalidates old subscription links)
 export const regenerateCalendarToken = () => apiClient.post('calendar/regenerate-token/', {}, withScheduleApiBase());
 
-// =============== ANALYTICS ===============
-export const getLessonAnalytics = (lessonId) => apiClient.get(`lessons/${lessonId}/analytics/`, withScheduleApiBase());
-
 export default apiClient;
 

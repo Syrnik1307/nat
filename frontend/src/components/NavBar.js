@@ -69,6 +69,7 @@ const NavBar = () => {
                 <Link className="navbar-link" to="/recurring-lessons/manage">Расписание</Link>
                 <Link className="navbar-link" to="/calendar">Календарь</Link>
                 <Link className="navbar-link" to="/teacher-recordings">Записи</Link>
+                <Link className="navbar-link" to="/analytics">Аналитика</Link>
               </>
             )}
             {accessTokenValid && role === 'student' && (

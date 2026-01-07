@@ -7,10 +7,12 @@ from .views import (
     TeacherStatsViewSet, 
     StudentStatsViewSet,
     StudentAIReportViewSet,
-    StudentBehaviorReportViewSet
+    StudentBehaviorReportViewSet,
+    AnalyticsDashboardViewSet
 )
 
 router = DefaultRouter()
+router.register(r'dashboard', AnalyticsDashboardViewSet, basename='analytics-dashboard')
 router.register(r'control-points', ControlPointViewSet, basename='control-point')
 router.register(r'control-point-results', ControlPointResultViewSet, basename='control-point-result')
 router.register(r'gradebook', GradebookViewSet, basename='gradebook')
