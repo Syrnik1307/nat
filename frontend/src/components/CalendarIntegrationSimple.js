@@ -71,6 +71,11 @@ const PROVIDERS = [
       'Нажмите кнопку — откроются настройки Google Calendar',
       'Вставьте ссылку в поле "URL календаря" и нажмите "Добавить"',
     ],
+    removeInstructions: [
+      'Откройте Google Calendar → Настройки',
+      'В разделе «Добавленные по URL» найдите календарь Lectio',
+      'Удалите или отключите подписку на Lectio',
+    ],
   },
   {
     id: 'apple',
@@ -92,6 +97,11 @@ const PROVIDERS = [
       'На iPhone/iPad: Настройки → Календарь → Учётные записи → Добавить → Другое → Подписка на календарь',
       'На Mac: Календарь → Файл → Новая подписка на календарь',
       'Вставьте скопированную ссылку',
+    ],
+    removeInstructions: [
+      'iPhone/iPad: Настройки → Календарь → Учётные записи',
+      'Выберите подписку Lectio и нажмите «Удалить аккаунт»',
+      'Mac: Календарь → список календарей → правый клик на Lectio → Удалить',
     ],
   },
   {
@@ -115,6 +125,11 @@ const PROVIDERS = [
       'В левой панели найдите "Подписки" → "Добавить"',
       'Вставьте ссылку и нажмите "Подписаться"',
     ],
+    removeInstructions: [
+      'Откройте Яндекс Календарь',
+      'В левой панели «Подписки» найдите Lectio',
+      'Нажмите на троеточие/крестик и удалите подписку',
+    ],
   },
   {
     id: 'outlook',
@@ -137,6 +152,11 @@ const PROVIDERS = [
       'Выберите "Подписаться из Интернета"',
       'Вставьте ссылку и нажмите "Импорт"',
     ],
+    removeInstructions: [
+      'Откройте Outlook Calendar',
+      'В боковом списке найдите подписку Lectio (Other calendars)',
+      'Правый клик → Remove / Удалить',
+    ],
   },
 ];
 
@@ -147,8 +167,10 @@ const CalendarIntegrationSimple = () => {
   const [error, setError] = useState(null);
   const [connectedCalendars, setConnectedCalendars] = useState([]);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('Подтвердите добавление в открывшемся окне');
   const [activeModal, setActiveModal] = useState(null); // provider object or null
   const [copied, setCopied] = useState(false);
+  const [modalMode, setModalMode] = useState('connect'); // 'connect' | 'disconnect'
 
   const backLink = role === 'student' ? '/student' : '/calendar';
 
@@ -206,6 +228,13 @@ const CalendarIntegrationSimple = () => {
     // Показываем инструкцию; отметим как подключено только после нажатия "Открыть ..."
     setActiveModal(provider);
     setCopied(false);
+    setModalMode('connect');
+  };
+
+  const handleDisconnectFlow = (provider) => {
+    setActiveModal(provider);
+    setCopied(false);
+    setModalMode('disconnect');
   };
 
   const handleModalContinue = () => {
@@ -216,6 +245,16 @@ const CalendarIntegrationSimple = () => {
       const newConnected = [...connectedCalendars.filter(id => id !== provider.id), provider.id];
       setConnectedCalendars(newConnected);
       localStorage.setItem('lectio_connected_calendars', JSON.stringify(newConnected));
+      setSuccessMessage('Подтвердите добавление в открывшемся окне');
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 5000);
+    };
+
+    const markDisconnected = () => {
+      const newConnected = connectedCalendars.filter(id => id !== provider.id);
+      setConnectedCalendars(newConnected);
+      localStorage.setItem('lectio_connected_calendars', JSON.stringify(newConnected));
+      setSuccessMessage('Статус отключён. Удалите подписку в календаре.');
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 5000);
     };
@@ -224,15 +263,23 @@ const CalendarIntegrationSimple = () => {
 
     if (provider.settingsUrl) {
       opened = window.open(provider.settingsUrl, '_blank');
-      // Если окно реально открылось — считаем подключённым
+      // Если окно реально открылось — считаем по режиму
       if (opened) {
-        markConnected();
+        if (modalMode === 'connect') {
+          markConnected();
+        } else {
+          markDisconnected();
+        }
       }
     } else {
-      // Apple / webcal
-      const webcalUrl = links.feed_url.replace('https://', 'webcal://').replace('http://', 'webcal://');
-      window.location.href = webcalUrl;
-      markConnected();
+      // Apple / webcal — при подключении идём в webcal, при отключении просто снимаем статус
+      if (modalMode === 'connect') {
+        const webcalUrl = links.feed_url.replace('https://', 'webcal://').replace('http://', 'webcal://');
+        window.location.href = webcalUrl;
+        markConnected();
+      } else {
+        markDisconnected();
+      }
     }
 
     setActiveModal(null);
@@ -242,6 +289,9 @@ const CalendarIntegrationSimple = () => {
     const newConnected = connectedCalendars.filter(id => id !== providerId);
     setConnectedCalendars(newConnected);
     localStorage.setItem('lectio_connected_calendars', JSON.stringify(newConnected));
+    setSuccessMessage('Статус отключён. Удалите подписку в календаре.');
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 5000);
   };
 
   if (loading) {
@@ -287,7 +337,7 @@ const CalendarIntegrationSimple = () => {
             <span className="cal-success-icon"><IconCheck /></span>
             <div>
               <strong>Готово</strong>
-              <p>Подтвердите добавление в открывшемся окне</p>
+              <p>{successMessage}</p>
             </div>
           </div>
         )}
@@ -304,21 +354,40 @@ const CalendarIntegrationSimple = () => {
               {PROVIDERS.map((provider) => {
                 const isConnected = connectedCalendars.includes(provider.id);
                 return (
-                  <button
+                  <div
                     key={provider.id}
                     className={`cal-card ${isConnected ? 'cal-card--connected' : ''}`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleConnect(provider)}
-                    disabled={!links?.feed_url}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleConnect(provider);
+                      }
+                    }}
                   >
-                    <div className="cal-card-icon">{provider.icon}</div>
-                    <div className="cal-card-info">
-                      <span className="cal-card-name">{provider.name}</span>
-                      <span className="cal-card-subtitle">{provider.subtitle}</span>
+                    <div className="cal-card-main">
+                      <div className="cal-card-icon">{provider.icon}</div>
+                      <div className="cal-card-info">
+                        <span className="cal-card-name">{provider.name}</span>
+                        <span className="cal-card-subtitle">{provider.subtitle}</span>
+                      </div>
+                      {isConnected && (
+                        <span className="cal-card-badge">Подключено</span>
+                      )}
                     </div>
-                    {isConnected && (
-                      <span className="cal-card-badge">Подключено</span>
-                    )}
-                  </button>
+                    <div className="cal-card-actions">
+                      <button className="cal-card-action secondary" onClick={(e) => { e.stopPropagation(); handleConnect(provider); }}>
+                        Настроить
+                      </button>
+                      {isConnected && (
+                        <button className="cal-card-action ghost" onClick={(e) => { e.stopPropagation(); handleDisconnectFlow(provider); }}>
+                          Отключить
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -350,12 +419,12 @@ const CalendarIntegrationSimple = () => {
             
             <div className="cal-modal-header">
               {activeModal.icon}
-              <h2>Добавление в {activeModal.name}</h2>
+              <h2>{modalMode === 'disconnect' ? `Удаление из ${activeModal.name}` : `Добавление в ${activeModal.name}`}</h2>
             </div>
 
             <div className="cal-modal-body">
               <p className="cal-modal-desc">
-                Следуйте инструкции ниже. Это займёт меньше минуты:
+                {modalMode === 'disconnect' ? 'Как убрать подписку из календаря:' : 'Следуйте инструкции ниже. Это займёт меньше минуты:'}
               </p>
 
               {connectedCalendars.includes(activeModal.id) && (
@@ -366,7 +435,7 @@ const CalendarIntegrationSimple = () => {
               )}
 
               <div className="cal-modal-steps">
-                {activeModal.instructions.map((instruction, index) => (
+                {(modalMode === 'disconnect' ? activeModal.removeInstructions : activeModal.instructions).map((instruction, index) => (
                   <div key={index} className="cal-modal-step">
                     <span className="cal-modal-step-num">{index + 1}</span>
                     <span>{instruction}</span>
@@ -374,7 +443,7 @@ const CalendarIntegrationSimple = () => {
                 ))}
                 
                 {/* URL box after first step */}
-                {activeModal.instructions.length > 0 && (
+                {modalMode === 'connect' && activeModal.instructions.length > 0 && (
                   <div className="cal-modal-url-box">
                     <input 
                       type="text" 
@@ -404,7 +473,9 @@ const CalendarIntegrationSimple = () => {
                 </Button>
               )}
               <Button variant="primary" onClick={handleModalContinue}>
-                {activeModal.settingsUrl ? `Открыть ${activeModal.name}` : 'Добавить в календарь'}
+                {modalMode === 'disconnect'
+                  ? 'Отключить'
+                  : (activeModal.settingsUrl ? `Открыть ${activeModal.name}` : 'Добавить в календарь')}
               </Button>
             </div>
           </div>

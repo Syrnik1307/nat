@@ -348,6 +348,36 @@ def process_zoom_recording(recording_id):
         original_size = os.path.getsize(temp_file_path)
         logger.info(f"Downloaded from Zoom: {original_size / (1024**2):.1f} MB")
         
+        # 1.5. Если это транскрипт - анализируем его
+        if recording.recording_type == 'transcript':
+            try:
+                from .services.transcript_service import TranscriptService
+                from .models import LessonTranscriptStats
+                
+                logger.info(f"Analyzing transcript for recording {recording_id}")
+                service = TranscriptService()
+                stats = service.analyze_transcript(temp_file_path, recording.lesson)
+                
+                # Сохраняем статистику
+                if stats:
+                    # Считаем проценты для полей модели
+                    total_dur = stats.get('total_duration', 1)
+                    stats_by_type = stats.get('stats_by_type', {})
+                    teacher_percent = (stats_by_type.get('teacher', 0) / total_dur * 100) if total_dur > 0 else 0
+                    student_percent = (stats_by_type.get('student', 0) / total_dur * 100) if total_dur > 0 else 0
+                    
+                    LessonTranscriptStats.objects.update_or_create(
+                        lesson=recording.lesson,
+                        defaults={
+                            'stats_json': stats,
+                            'teacher_talk_time_percent': teacher_percent,
+                            'student_talk_time_percent': student_percent
+                        }
+                    )
+                    logger.info(f"Transcript analysis saved for lesson {recording.lesson.id}")
+            except Exception as e:
+                logger.error(f"Failed to analyze transcript: {e}")
+
         # 2. Сжатие через FFmpeg (если включено)
         upload_file_path = temp_file_path
         compression_enabled = getattr(settings, 'VIDEO_COMPRESSION_ENABLED', True)
@@ -482,6 +512,8 @@ def _download_from_zoom(recording):
         
         if recording.recording_type == 'audio_only':
             file_extension = 'm4a'
+        elif recording.recording_type == 'transcript':
+            file_extension = 'vtt'
         
         filename = f"lesson_{lesson.id}_{recording.zoom_recording_id}.{file_extension}"
         temp_file_path = os.path.join(temp_dir, filename)
@@ -540,6 +572,8 @@ def _upload_to_gdrive(recording, file_path):
         mime_type = 'video/mp4'
         if file_path.endswith('.m4a'):
             mime_type = 'audio/mp4'
+        elif file_path.endswith('.vtt'):
+            mime_type = 'text/vtt'
         
         logger.info(f"Uploading to Google Drive: {file_name}")
         

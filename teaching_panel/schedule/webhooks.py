@@ -172,8 +172,8 @@ def handle_recording_completed(payload):
         for file_data in recording_files:
             file_type = file_data.get('file_type', '').lower()
             
-            # Пропускаем chat, timeline и другие не-видео файлы
-            if file_type not in ['mp4', 'm4a']:
+            # Пропускаем chat, timeline и другие не-видео/не-транскрипт файлы
+            if file_type not in ['mp4', 'm4a', 'transcript']:
                 continue
             
             recording_id = file_data.get('id')

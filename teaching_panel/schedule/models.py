@@ -1131,3 +1131,34 @@ class RecurringLessonTelegramBindCode(models.Model):
     def __str__(self):
         return f"{self.code} → {self.recurring_lesson_id}"
 
+
+class LessonTranscriptStats(models.Model):
+    """Статистика по транскрипту урока (участие, упоминания)"""
+    lesson = models.OneToOneField(
+        Lesson,
+        on_delete=models.CASCADE,
+        related_name='transcript_stats',
+        verbose_name=_('урок')
+    )
+    
+    # Сырые данные анализа
+    stats_json = models.JSONField(
+        _('данные анализа'),
+        default=dict, 
+        help_text=_("JSON со статистикой: speakers, mentions, timeline")
+    )
+    
+    # Агрегированные метрики для быстрых отчетов
+    teacher_talk_time_percent = models.FloatField(_('% времени учителя'), default=0)
+    student_talk_time_percent = models.FloatField(_('% времени учеников'), default=0)
+    
+    created_at = models.DateTimeField(_('дата анализа'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
+    
+    class Meta:
+        verbose_name = _('статистика транскрипта')
+        verbose_name_plural = _('статистика транскриптов')
+
+    def __str__(self):
+        return f"Stats for {self.lesson}"
+

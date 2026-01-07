@@ -17,7 +17,7 @@ from django.core.cache import cache
 import hashlib
 import logging
 from datetime import datetime, timedelta
-from .models import Group, Lesson, Attendance, RecurringLesson, LessonRecording, AuditLog, IndividualInviteCode
+from .models import Group, Lesson, Attendance, RecurringLesson, LessonRecording, AuditLog, IndividualInviteCode, LessonTranscriptStats
 from zoom_pool.models import ZoomAccount
 from django.db.models import F
 from .permissions import IsLessonOwnerOrReadOnly, IsGroupOwnerOrReadOnly
@@ -716,6 +716,41 @@ class LessonViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # serializer create already validates teacher/group ownership
         serializer.save()
+    
+    @action(detail=True, methods=['get'])
+    def analytics(self, request, pk=None):
+        """Возвращает статистику по транскрипту урока"""
+        lesson = self.get_object()
+        
+        # Проверяем права: учитель этой группы или студент этой группы
+        user = request.user
+        if not user.is_authenticated:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+            
+        group = lesson.group
+        if not group:
+             # Если группа удалена или не привязана, проверяем только владельца-учителя
+             if user.id != lesson.teacher_id:
+                  return Response(status=status.HTTP_403_FORBIDDEN)
+        else:
+            is_teacher = (user.id == group.teacher_id) or (getattr(user, 'role', '') == 'admin')
+            is_student = group.students.filter(id=user.id).exists()
+            
+            if not (is_teacher or is_student):
+                return Response(status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            stats = lesson.transcript_stats
+            data = {
+                'stats': stats.stats_json,
+                'summary': {
+                    'teacher_percent': stats.teacher_talk_time_percent,
+                    'student_percent': stats.student_talk_time_percent
+                }
+            }
+            return Response(data)
+        except LessonTranscriptStats.DoesNotExist:
+             return Response({'error': 'No analytics available'}, status=status.HTTP_404_NOT_FOUND)
     
     @action(detail=False, methods=['get'])
     def calendar_feed(self, request):
