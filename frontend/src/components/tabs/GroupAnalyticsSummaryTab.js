@@ -21,7 +21,7 @@ const GroupAnalyticsSummaryTab = ({ groupId }) => {
   const loadSummary = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/analytics/dashboard/group-transcript-summary/', {
+      const response = await apiClient.get('/dashboard/group-transcript-summary/', {
         params: { group_id: groupId }
       });
       setData(response.data);

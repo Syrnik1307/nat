@@ -19,7 +19,7 @@ const AnalyticsPage = () => {
         try {
             setLoading(true);
             const [summaryRes, groupsRes] = await Promise.all([
-                apiClient.get('/analytics/dashboard/summary/').catch(() => ({ data: {} })),
+                apiClient.get('/dashboard/summary/').catch(() => ({ data: {} })),
                 apiClient.get('/groups/')
             ]);
             setSummary(summaryRes.data);
