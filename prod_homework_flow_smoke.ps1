@@ -1,6 +1,6 @@
 param(
     [string]$SSHAlias = 'tp',
-    [string]$BaseUrl = 'https://lectio.space',
+    [string]$BaseUrl = $(if ($env:TP_BASE_URL -and $env:TP_BASE_URL.Trim()) { $env:TP_BASE_URL.Trim().TrimEnd('/') } else { 'https://lectio.tw1.ru' }),
     [string]$StudentEmail = 'smoke_student_20251216@test.com'
 )
 

@@ -268,6 +268,7 @@ export const startLessonNew = (id, data = {}) => apiClient.post(`schedule/lesson
 export const joinLesson = (id) => apiClient.post(`schedule/lessons/${id}/join/`);
 export const startQuickLesson = (payload = {}) => apiClient.post('schedule/lessons/quick-start/', payload);
 export const addLessonRecording = (id, url) => apiClient.post(`schedule/lessons/${id}/add_recording/`, { url });
+export const getLessonAnalytics = (id) => apiClient.get(`schedule/lessons/${id}/analytics/`);
 
 // Groups
 export const getGroups = () => apiClient.get('groups/');
@@ -425,6 +426,9 @@ export const downloadLessonIcs = (lessonId) => {
 
 // Regenerate calendar token (invalidates old subscription links)
 export const regenerateCalendarToken = () => apiClient.post('calendar/regenerate-token/', {}, withScheduleApiBase());
+
+// =============== ANALYTICS ===============
+export const getLessonAnalytics = (lessonId) => apiClient.get(`lessons/${lessonId}/analytics/`, withScheduleApiBase());
 
 export default apiClient;
 

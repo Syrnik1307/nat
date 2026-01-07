@@ -16,7 +16,9 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 user = get_user_model().objects.get(email='syrnik1307@gmail.com')
 tok = str(RefreshToken.for_user(user).access_token)
-base = 'https://lectio.space'
+import os
+
+base = os.environ.get('TP_BASE_URL', 'https://lectio.tw1.ru').rstrip('/')
 headers = {'Authorization': 'Bearer ' + tok}
 
 

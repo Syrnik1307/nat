@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $sshAlias = 'tp'
-$baseUrl = 'https://lectio.space'
+$baseUrl = if ($env:TP_BASE_URL -and $env:TP_BASE_URL.Trim()) { $env:TP_BASE_URL.Trim().TrimEnd('/') } else { 'https://lectio.tw1.ru' }
 
 function Invoke-RemotePy {
     param([Parameter(Mandatory=$true)][string]$Py)

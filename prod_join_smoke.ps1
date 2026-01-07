@@ -1,7 +1,9 @@
 $ErrorActionPreference = 'Stop'
 
 $sshAlias = 'tp'
-$baseUrl = 'https://lectio.space'
+# Base URL for API calls. Override with env var `TP_BASE_URL`.
+# Default points to the current temporary host.
+$baseUrl = if ($env:TP_BASE_URL -and $env:TP_BASE_URL.Trim()) { $env:TP_BASE_URL.Trim().TrimEnd('/') } else { 'https://lectio.tw1.ru' }
 
 function Get-AccessTokenForEmail {
     param([Parameter(Mandatory=$true)][string]$Email)

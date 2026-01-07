@@ -16,7 +16,9 @@ import urllib.request, urllib.error, urllib.parse
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 
-BASE = 'https://lectio.space'
+$envBase = $env:TP_BASE_URL
+$BaseUrl = if ($envBase -and $envBase.Trim()) { $envBase.Trim().TrimEnd('/') } else { 'https://lectio.tw1.ru' }
+BASE = $BaseUrl
 
 User = get_user_model()
 
