@@ -340,6 +340,15 @@ const NavBar = () => {
             <span className="nav-icon"></span>
             <span>Записи</span>
           </Link>
+
+          <Link 
+            to="/analytics" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>Аналитика</span>
+          </Link>
           
           <Link 
             to="/teacher/subscription" 
@@ -386,14 +395,25 @@ const NavBar = () => {
 
       {/* Меню для админа */}
       {accessTokenValid && role === 'admin' && (
-        <Link 
-          to="/admin-home" 
-          className="nav-link nav-link-highlight"
-          onClick={() => setShowMobileMenu(false)}
-        >
-          <span className="nav-icon"></span>
-          <span>Админ-панель</span>
-        </Link>
+        <>
+          <Link 
+            to="/admin-home" 
+            className="nav-link nav-link-highlight"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>Админ-панель</span>
+          </Link>
+
+          <Link 
+            to="/analytics" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>Аналитика</span>
+          </Link>
+        </>
       )}
 
       {/* Мобильный профиль и выход */}
