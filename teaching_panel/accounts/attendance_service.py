@@ -396,3 +396,79 @@ class RatingService:
             'watched_recording': watched,
             'attendance_percent': round(attendance_percent, 1),
         }
+
+    @staticmethod
+    def get_consecutive_absences(student_id, group_id=None):
+        """
+        Подсчитать количество пропусков подряд (начиная с последнего урока).
+        
+        Args:
+            student_id (int): ID ученика
+            group_id (int, optional): ID группы
+        
+        Returns:
+            int: Количество пропусков подряд
+        """
+        if group_id:
+            lessons = Lesson.objects.filter(
+                group_id=group_id,
+                end_time__lt=timezone.now()
+            ).order_by('-start_time')[:20]  # Последние 20 уроков
+        else:
+            lessons = Lesson.objects.filter(
+                end_time__lt=timezone.now()
+            ).order_by('-start_time')[:50]
+        
+        consecutive = 0
+        for lesson in lessons:
+            record = AttendanceRecord.objects.filter(
+                lesson=lesson,
+                student_id=student_id
+            ).first()
+            
+            if record and record.status == AttendanceRecord.STATUS_ABSENT:
+                consecutive += 1
+            elif record and record.status in [AttendanceRecord.STATUS_ATTENDED, 
+                                               AttendanceRecord.STATUS_WATCHED_RECORDING]:
+                break  # Прерываем серию
+            else:
+                # Нет записи — считаем как пропуск (урок закончился)
+                consecutive += 1
+        
+        return consecutive
+
+    @staticmethod
+    def get_students_with_consecutive_absences(group_id, min_absences=3):
+        """
+        Получить список учеников с N+ пропусками подряд.
+        
+        Args:
+            group_id (int): ID группы
+            min_absences (int): Минимальное количество пропусков (по умолчанию 3)
+        
+        Returns:
+            list: Список dict с информацией об ученике и количеством пропусков
+        """
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        group = Group.objects.get(id=group_id)
+        students = group.students.all()
+        
+        alerts = []
+        for student in students:
+            consecutive = RatingService.get_consecutive_absences(
+                student_id=student.id,
+                group_id=group_id
+            )
+            
+            if consecutive >= min_absences:
+                alerts.append({
+                    'student_id': student.id,
+                    'student_name': student.get_full_name() or student.email,
+                    'student_email': student.email,
+                    'consecutive_absences': consecutive,
+                    'severity': 'critical' if consecutive >= 5 else 'warning',
+                })
+        
+        return alerts

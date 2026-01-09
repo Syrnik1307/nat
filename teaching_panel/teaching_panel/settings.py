@@ -386,6 +386,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'schedule.tasks.cleanup_old_recordings',
         'schedule': 86400.0,  # каждые 24 часа (03:00 UTC)
     },
+    'check-consecutive-absences': {
+        'task': 'accounts.tasks.check_consecutive_absences',
+        'schedule': 86400.0,  # ежедневно (проверка пропусков)
+    },
 }
 
 # Azure Cosmos DB integration (feature-flagged)

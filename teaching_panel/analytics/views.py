@@ -965,3 +965,416 @@ class StudentBehaviorReportViewSet(viewsets.ModelViewSet):
         
         serializer = StudentBehaviorReportListSerializer(reports, many=True)
         return Response(serializer.data)
+
+
+# =============================================================================
+# РАСШИРЕННАЯ АНАЛИТИКА УЧЕНИКОВ
+# =============================================================================
+
+class ExtendedStudentAnalyticsViewSet(viewsets.ViewSet):
+    """
+    Расширенная аналитика ученика: когнитивный профиль, мотивация, социальная динамика
+    
+    Endpoints:
+    GET /api/analytics/extended/student/{student_id}/ - полная аналитика ученика
+    GET /api/analytics/extended/student/{student_id}/cognitive/ - когнитивный профиль
+    GET /api/analytics/extended/student/{student_id}/errors/ - паттерны ошибок
+    GET /api/analytics/extended/student/{student_id}/activity/ - хитмап активности
+    GET /api/analytics/extended/group/{group_id}/social/ - социальная динамика группы
+    GET /api/analytics/extended/group/{group_id}/rankings/ - рейтинг группы
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def _check_teacher_access(self, request):
+        """Проверка что пользователь — учитель или админ"""
+        if getattr(request.user, 'role', None) not in ['teacher', 'admin']:
+            return Response(
+                {'detail': 'Только для преподавателей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return None
+    
+    @action(detail=False, methods=['get'], url_path='student/(?P<student_id>[^/.]+)')
+    def full_analytics(self, request, student_id=None):
+        """
+        Полная расширенная аналитика ученика
+        
+        GET /api/analytics/extended/student/{student_id}/?group_id=123&period_days=30
+        """
+        error = self._check_teacher_access(request)
+        if error:
+            return error
+        
+        student = get_object_or_404(CustomUser, id=student_id, role='student')
+        
+        group_id = request.query_params.get('group_id')
+        group = Group.objects.filter(id=group_id).first() if group_id else None
+        
+        period_days = int(request.query_params.get('period_days', 30))
+        
+        from .extended_analytics_service import ExtendedAnalyticsService
+        service = ExtendedAnalyticsService()
+        analytics = service.collect_full_analytics(student, group, period_days)
+        
+        # Сериализуем dataclass
+        from dataclasses import asdict
+        data = asdict(analytics)
+        
+        # Конвертируем даты в строки
+        data['period_start'] = str(analytics.period_start)
+        data['period_end'] = str(analytics.period_end)
+        
+        return Response(data)
+    
+    @action(detail=False, methods=['get'], url_path='student/(?P<student_id>[^/.]+)/cognitive')
+    def cognitive_profile(self, request, student_id=None):
+        """
+        Когнитивный профиль ученика
+        
+        GET /api/analytics/extended/student/{student_id}/cognitive/
+        """
+        error = self._check_teacher_access(request)
+        if error:
+            return error
+        
+        student = get_object_or_404(CustomUser, id=student_id, role='student')
+        
+        group_id = request.query_params.get('group_id')
+        group = Group.objects.filter(id=group_id).first() if group_id else None
+        
+        from .extended_analytics_service import ExtendedAnalyticsService
+        service = ExtendedAnalyticsService()
+        analytics = service.collect_full_analytics(student, group, 30)
+        
+        from dataclasses import asdict
+        return Response({
+            'student_id': student_id,
+            'student_name': analytics.student_name,
+            'cognitive': asdict(analytics.cognitive),
+            'energy': asdict(analytics.energy),
+        })
+    
+    @action(detail=False, methods=['get'], url_path='student/(?P<student_id>[^/.]+)/errors')
+    def error_patterns(self, request, student_id=None):
+        """
+        Паттерны ошибок по типам вопросов
+        
+        GET /api/analytics/extended/student/{student_id}/errors/
+        """
+        error = self._check_teacher_access(request)
+        if error:
+            return error
+        
+        student = get_object_or_404(CustomUser, id=student_id, role='student')
+        
+        group_id = request.query_params.get('group_id')
+        group = Group.objects.filter(id=group_id).first() if group_id else None
+        
+        from .extended_analytics_service import ExtendedAnalyticsService
+        service = ExtendedAnalyticsService()
+        analytics = service.collect_full_analytics(student, group, 30)
+        
+        from dataclasses import asdict
+        return Response({
+            'student_id': student_id,
+            'student_name': analytics.student_name,
+            'error_patterns': [asdict(p) for p in analytics.error_patterns],
+            'avg_score': analytics.avg_score,
+            'score_trend': analytics.score_trend,
+        })
+    
+    @action(detail=False, methods=['get'], url_path='student/(?P<student_id>[^/.]+)/activity')
+    def activity_heatmap(self, request, student_id=None):
+        """
+        Хитмап активности ученика
+        
+        GET /api/analytics/extended/student/{student_id}/activity/
+        """
+        error = self._check_teacher_access(request)
+        if error:
+            return error
+        
+        student = get_object_or_404(CustomUser, id=student_id, role='student')
+        
+        group_id = request.query_params.get('group_id')
+        group = Group.objects.filter(id=group_id).first() if group_id else None
+        
+        from .extended_analytics_service import ExtendedAnalyticsService
+        service = ExtendedAnalyticsService()
+        analytics = service.collect_full_analytics(student, group, 30)
+        
+        from dataclasses import asdict
+        energy = asdict(analytics.energy)
+        
+        # Формируем удобный формат для фронтенда
+        heatmap_data = []
+        for day, hours in energy.get('activity_heatmap', {}).items():
+            for hour, count in hours.items():
+                heatmap_data.append({
+                    'day': int(day),
+                    'hour': int(hour),
+                    'value': count,
+                })
+        
+        return Response({
+            'student_id': student_id,
+            'student_name': analytics.student_name,
+            'heatmap': heatmap_data,
+            'optimal_hours': energy.get('optimal_hours', []),
+            'best_days': energy.get('best_days', []),
+            'fatigue_onset_minute': energy.get('fatigue_onset_minute'),
+        })
+    
+    @action(detail=False, methods=['get'], url_path='group/(?P<group_id>[^/.]+)/social')
+    def group_social_dynamics(self, request, group_id=None):
+        """
+        Социальная динамика группы: роли, влиятельность, взаимодействия
+        
+        GET /api/analytics/extended/group/{group_id}/social/
+        """
+        error = self._check_teacher_access(request)
+        if error:
+            return error
+        
+        group = get_object_or_404(Group, id=group_id)
+        
+        # Проверяем что учитель имеет доступ
+        if request.user.role == 'teacher' and group.teacher != request.user:
+            return Response({'detail': 'Нет доступа к этой группе'}, status=403)
+        
+        from accounts.models import ChatAnalyticsSummary
+        from datetime import timedelta
+        
+        period_end = timezone.now().date()
+        period_start = period_end - timedelta(days=30)
+        
+        # Получаем агрегированную аналитику чатов
+        summaries = ChatAnalyticsSummary.objects.filter(
+            group=group,
+            period_end__gte=period_start
+        ).select_related('student').order_by('-influence_score')
+        
+        students_data = []
+        for summary in summaries:
+            students_data.append({
+                'student_id': summary.student_id,
+                'student_name': summary.student.get_full_name(),
+                'total_messages': summary.total_messages,
+                'questions_asked': summary.questions_asked,
+                'answers_given': summary.answers_given,
+                'helpful_messages': summary.helpful_messages,
+                'times_mentioned': summary.times_mentioned,
+                'influence_score': summary.influence_score,
+                'avg_sentiment': summary.avg_sentiment,
+                'detected_role': summary.detected_role,
+                'role_display': dict(ChatAnalyticsSummary.ROLE_CHOICES).get(summary.detected_role, ''),
+            })
+        
+        # Считаем распределение ролей
+        roles_count = {}
+        for s in students_data:
+            role = s['detected_role']
+            roles_count[role] = roles_count.get(role, 0) + 1
+        
+        return Response({
+            'group_id': group_id,
+            'group_name': group.name,
+            'period_start': str(period_start),
+            'period_end': str(period_end),
+            'students': students_data,
+            'roles_distribution': roles_count,
+            'total_students': len(students_data),
+        })
+    
+    @action(detail=False, methods=['get'], url_path='group/(?P<group_id>[^/.]+)/rankings')
+    def group_rankings(self, request, group_id=None):
+        """
+        Рейтинг учеников группы по разным метрикам
+        
+        GET /api/analytics/extended/group/{group_id}/rankings/
+        """
+        error = self._check_teacher_access(request)
+        if error:
+            return error
+        
+        group = get_object_or_404(Group, id=group_id)
+        
+        if request.user.role == 'teacher' and group.teacher != request.user:
+            return Response({'detail': 'Нет доступа к этой группе'}, status=403)
+        
+        from accounts.models import UserRating, AttendanceRecord
+        from homework.models import StudentSubmission
+        from datetime import timedelta
+        
+        period_end = timezone.now().date()
+        period_start = period_end - timedelta(days=30)
+        
+        # Получаем студентов группы
+        students = CustomUser.objects.filter(
+            group_students__id=group_id,
+            role='student'
+        ).distinct()
+        
+        rankings = []
+        
+        for student in students:
+            # Рейтинг
+            rating = UserRating.objects.filter(user=student, group=group).first()
+            total_points = rating.total_points if rating else 0
+            
+            # Посещаемость
+            attendance = AttendanceRecord.objects.filter(
+                student=student,
+                lesson__group=group,
+                lesson__start_time__date__gte=period_start
+            )
+            total_lessons = attendance.count()
+            attended = attendance.filter(status='attended').count()
+            attendance_rate = (attended / total_lessons * 100) if total_lessons else 0
+            
+            # Средний балл
+            avg_score = StudentSubmission.objects.filter(
+                student=student,
+                homework__lesson__group=group,
+                status='graded',
+                graded_at__date__gte=period_start
+            ).aggregate(avg=Avg('total_score'))['avg']
+            
+            rankings.append({
+                'student_id': student.id,
+                'student_name': student.get_full_name(),
+                'total_points': total_points,
+                'attendance_rate': round(attendance_rate, 1),
+                'avg_score': round(avg_score, 1) if avg_score else None,
+            })
+        
+        # Сортируем по баллам
+        rankings.sort(key=lambda x: x['total_points'], reverse=True)
+        
+        # Добавляем ранг
+        for i, r in enumerate(rankings):
+            r['rank'] = i + 1
+        
+        return Response({
+            'group_id': group_id,
+            'group_name': group.name,
+            'rankings': rankings,
+        })
+    
+    @action(detail=False, methods=['post'], url_path='recalculate-chat')
+    def recalculate_chat_analytics(self, request):
+        """
+        Пересчитать чат-аналитику для группы
+        
+        POST /api/analytics/extended/recalculate-chat/
+        {"group_id": 123}
+        """
+        error = self._check_teacher_access(request)
+        if error:
+            return error
+        
+        group_id = request.data.get('group_id')
+        if not group_id:
+            return Response({'detail': 'group_id required'}, status=400)
+        
+        group = get_object_or_404(Group, id=group_id)
+        
+        if request.user.role == 'teacher' and group.teacher != request.user:
+            return Response({'detail': 'Нет доступа к этой группе'}, status=403)
+        
+        from .extended_analytics_service import recalculate_chat_analytics
+        recalculate_chat_analytics(group, period_days=30)
+        
+        return Response({'status': 'ok', 'message': 'Chat analytics recalculated'})
+
+
+class StudentQuestionViewSet(viewsets.ModelViewSet):
+    """
+    CRUD для вопросов учеников (для анализа качества вопросов)
+    
+    Endpoints:
+    GET /api/analytics/student-questions/ - список вопросов
+    POST /api/analytics/student-questions/ - создать вопрос
+    GET /api/analytics/student-questions/stats/ - статистика по качеству
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        from homework.models import StudentQuestion
+        user = self.request.user
+        
+        if user.role == 'teacher':
+            return StudentQuestion.objects.filter(teacher=user)
+        elif user.role == 'student':
+            return StudentQuestion.objects.filter(student=user)
+        elif user.role == 'admin':
+            return StudentQuestion.objects.all()
+        return StudentQuestion.objects.none()
+    
+    def get_serializer_class(self):
+        from rest_framework import serializers
+        from homework.models import StudentQuestion
+        
+        class StudentQuestionSerializer(serializers.ModelSerializer):
+            student_name = serializers.CharField(source='student.get_full_name', read_only=True)
+            quality_display = serializers.CharField(source='get_quality_display', read_only=True)
+            
+            class Meta:
+                model = StudentQuestion
+                fields = '__all__'
+                read_only_fields = ['ai_quality_score', 'ai_classification']
+        
+        return StudentQuestionSerializer
+    
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role == 'student':
+            serializer.save(student=user)
+        else:
+            serializer.save()
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """
+        Статистика качества вопросов по ученикам
+        
+        GET /api/analytics/student-questions/stats/?group_id=123
+        """
+        from homework.models import StudentQuestion
+        from django.db.models import Count
+        
+        if request.user.role not in ['teacher', 'admin']:
+            return Response({'detail': 'Forbidden'}, status=403)
+        
+        group_id = request.query_params.get('group_id')
+        
+        qs = self.get_queryset()
+        if group_id:
+            qs = qs.filter(group_id=group_id)
+        
+        # Агрегируем по студентам
+        stats = qs.values('student', 'student__first_name', 'student__last_name').annotate(
+            total=Count('id'),
+            procedural=Count('id', filter=Q(quality='procedural')),
+            conceptual=Count('id', filter=Q(quality='conceptual')),
+            clarification=Count('id', filter=Q(quality='clarification')),
+        ).order_by('-conceptual')
+        
+        result = []
+        for s in stats:
+            name = f"{s['student__first_name']} {s['student__last_name']}".strip() or f"Student {s['student']}"
+            quality_score = 0
+            if s['total'] > 0:
+                quality_score = (s['conceptual'] * 2 + s['procedural']) / (s['total'] * 2)
+            
+            result.append({
+                'student_id': s['student'],
+                'student_name': name,
+                'total_questions': s['total'],
+                'procedural': s['procedural'],
+                'conceptual': s['conceptual'],
+                'clarification': s['clarification'],
+                'quality_score': round(quality_score, 2),
+            })
+        
+        return Response(result)

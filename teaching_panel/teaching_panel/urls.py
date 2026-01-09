@@ -35,6 +35,7 @@ from accounts.attendance_views import (
     GroupRatingViewSet,
     GroupReportViewSet,
     StudentCardViewSet,
+    AttendanceAlertsViewSet,
 )
 from accounts.subscriptions_views import (
     SubscriptionMeView,
@@ -133,6 +134,14 @@ urlpatterns = [
         path('api/groups/<int:group_id>/report/', 
             GroupReportViewSet.as_view({'get': 'list'}), 
             name='group-report'),
+        
+        # Attendance alerts
+        path('api/attendance-alerts/',
+            AttendanceAlertsViewSet.as_view({'get': 'list'}),
+            name='attendance-alerts'),
+        path('api/groups/<int:group_id>/attendance-alerts/',
+            AttendanceAlertsViewSet.as_view({'get': 'list'}),
+            name='group-attendance-alerts'),
 
         # Student card endpoints
         path('api/students/<int:pk>/card/', 

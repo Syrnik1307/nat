@@ -8,7 +8,9 @@ from .views import (
     StudentStatsViewSet,
     StudentAIReportViewSet,
     StudentBehaviorReportViewSet,
-    AnalyticsDashboardViewSet
+    AnalyticsDashboardViewSet,
+    ExtendedStudentAnalyticsViewSet,
+    StudentQuestionViewSet,
 )
 
 router = DefaultRouter()
@@ -20,7 +22,10 @@ router.register(r'teacher-stats', TeacherStatsViewSet, basename='teacher-stats')
 router.register(r'student-stats', StudentStatsViewSet, basename='student-stats')
 router.register(r'ai-reports', StudentAIReportViewSet, basename='ai-reports')
 router.register(r'behavior-reports', StudentBehaviorReportViewSet, basename='behavior-reports')
+router.register(r'extended', ExtendedStudentAnalyticsViewSet, basename='extended-analytics')
+router.register(r'student-questions', StudentQuestionViewSet, basename='student-questions')
 
 urlpatterns = [
     path('', include(router.urls)),
 ]
+

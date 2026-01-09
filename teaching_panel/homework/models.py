@@ -135,10 +135,31 @@ class Answer(models.Model):
     teacher_score = models.IntegerField(null=True, blank=True, help_text='Оценка учителя (переопределяет auto_score)')
     teacher_feedback = models.TextField(blank=True, help_text='Комментарий учителя')
     needs_manual_review = models.BooleanField(default=False)
+    
+    # === НОВЫЕ ПОЛЯ ДЛЯ АНАЛИТИКИ ===
+    answered_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Время ответа на вопрос (для анализа порядка и скорости)'
+    )
+    time_spent_seconds = models.IntegerField(
+        null=True, blank=True,
+        help_text='Время в секундах, затраченное на ответ'
+    )
+    started_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Когда ученик начал отвечать на вопрос'
+    )
+    revision_count = models.IntegerField(
+        default=0,
+        help_text='Сколько раз ученик изменял ответ (самокоррекция)'
+    )
 
     class Meta:
         verbose_name = 'ответ'
         verbose_name_plural = 'ответы'
+        indexes = [
+            models.Index(fields=['submission', 'answered_at'], name='answer_timing_idx'),
+        ]
 
     def __str__(self):
         return f"Answer q{self.question.id} by submission {self.submission.id}"
@@ -400,3 +421,152 @@ class Answer(models.Model):
             self.needs_manual_review = True
             self.auto_score = None
             self.teacher_feedback = f"[AI недоступен] Требуется ручная проверка"
+
+
+# =============================================================================
+# МОДЕЛИ ДЛЯ РАСШИРЕННОЙ АНАЛИТИКИ УЧЕНИКОВ
+# =============================================================================
+
+class AnswerVersion(models.Model):
+    """
+    Версия ответа для отслеживания самокоррекции.
+    Каждое изменение ответа сохраняется как новая версия.
+    """
+    answer = models.ForeignKey(
+        Answer,
+        on_delete=models.CASCADE,
+        related_name='versions',
+        verbose_name='ответ'
+    )
+    version_number = models.PositiveIntegerField(
+        default=1,
+        help_text='Номер версии (1 = первый ответ)'
+    )
+    text_content = models.TextField(
+        blank=True,
+        help_text='Текст ответа на момент этой версии'
+    )
+    selected_choice_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='ID выбранных вариантов на момент этой версии'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'версия ответа'
+        verbose_name_plural = 'версии ответов'
+        ordering = ['answer', 'version_number']
+        unique_together = ('answer', 'version_number')
+        indexes = [
+            models.Index(fields=['answer', '-created_at'], name='answer_version_idx'),
+        ]
+    
+    def __str__(self):
+        return f"Answer {self.answer_id} v{self.version_number}"
+
+
+class StudentQuestion(models.Model):
+    """
+    Вопрос от ученика (для анализа качества вопросов: "как?" vs "почему?").
+    Может быть задан в чате, на уроке или через форму.
+    """
+    QUESTION_QUALITY_CHOICES = (
+        ('procedural', 'Процедурный (как?)'),
+        ('conceptual', 'Концептуальный (почему?)'),
+        ('clarification', 'Уточнение'),
+        ('off_topic', 'Не по теме'),
+        ('unclassified', 'Не классифицирован'),
+    )
+    
+    SOURCE_CHOICES = (
+        ('chat', 'Чат группы'),
+        ('lesson', 'На уроке'),
+        ('homework', 'В домашнем задании'),
+        ('direct', 'Личное сообщение'),
+    )
+    
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='asked_questions',
+        limit_choices_to={'role': 'student'},
+        verbose_name='ученик'
+    )
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='received_questions',
+        limit_choices_to={'role': 'teacher'},
+        verbose_name='учитель'
+    )
+    group = models.ForeignKey(
+        'schedule.Group',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='student_questions',
+        verbose_name='группа'
+    )
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='student_questions',
+        verbose_name='урок'
+    )
+    
+    question_text = models.TextField(verbose_name='текст вопроса')
+    source = models.CharField(
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        default='chat',
+        verbose_name='источник'
+    )
+    quality = models.CharField(
+        max_length=20,
+        choices=QUESTION_QUALITY_CHOICES,
+        default='unclassified',
+        verbose_name='качество вопроса'
+    )
+    
+    # AI-анализ вопроса
+    ai_quality_score = models.FloatField(
+        null=True,
+        blank=True,
+        help_text='AI оценка качества вопроса 0-1'
+    )
+    ai_classification = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='AI классификация: {"type": "...", "confidence": 0.9, "topics": [...]}'
+    )
+    
+    is_answered = models.BooleanField(default=False)
+    answer_text = models.TextField(blank=True)
+    answered_at = models.DateTimeField(null=True, blank=True)
+    answered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='answered_student_questions',
+        verbose_name='ответил'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'вопрос ученика'
+        verbose_name_plural = 'вопросы учеников'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['student', '-created_at'], name='student_questions_idx'),
+            models.Index(fields=['quality', 'created_at'], name='question_quality_idx'),
+        ]
+    
+    def __str__(self):
+        return f"{self.student.get_full_name()}: {self.question_text[:50]}..."
+

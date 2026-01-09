@@ -211,3 +211,155 @@ def _notify_storage_warning(teacher, subscription, stats):
     
     send_telegram_notification(teacher, 'storage_warning', message)
     return True
+
+
+ABSENCE_ALERT_THRESHOLD = 3  # Минимальное количество пропусков подряд для алерта
+ABSENCE_ALERT_COOLDOWN_HOURS = 48  # Интервал между повторными уведомлениями
+
+
+@shared_task
+def check_consecutive_absences():
+    """
+    Проверяет учеников с 3+ пропусками подряд и отправляет уведомления учителям.
+    
+    Запускается ежедневно в 10:00.
+    """
+    import logging
+    from django.contrib.auth import get_user_model
+    from schedule.models import Group
+    from .attendance_service import RatingService
+    
+    logger = logging.getLogger(__name__)
+    now = timezone.now()
+    
+    User = get_user_model()
+    teachers = User.objects.filter(role='teacher', is_active=True)
+    
+    total_alerts = 0
+    sent_notifications = 0
+    
+    for teacher in teachers:
+        groups = Group.objects.filter(teacher=teacher)
+        
+        teacher_alerts = []
+        for group in groups:
+            try:
+                alerts = RatingService.get_students_with_consecutive_absences(
+                    group_id=group.id,
+                    min_absences=ABSENCE_ALERT_THRESHOLD
+                )
+                for alert in alerts:
+                    alert['group_name'] = group.name
+                    teacher_alerts.append(alert)
+            except Exception as e:
+                logger.error(f"Error checking absences for group {group.id}: {e}")
+                continue
+        
+        if not teacher_alerts:
+            continue
+        
+        total_alerts += len(teacher_alerts)
+        
+        # Проверяем cooldown для этого учителя
+        recently_notified = NotificationLog.objects.filter(
+            user=teacher,
+            notification_type='absence_alert',
+            created_at__gte=now - timedelta(hours=ABSENCE_ALERT_COOLDOWN_HOURS),
+        ).exists()
+        
+        if recently_notified:
+            logger.info(f"Skipping absence alert for teacher {teacher.id} - recently notified")
+            continue
+        
+        # Формируем сообщение
+        critical = [a for a in teacher_alerts if a['severity'] == 'critical']
+        warning = [a for a in teacher_alerts if a['severity'] == 'warning']
+        
+        message_parts = ["🔔 Внимание! Ученики пропускают занятия\n"]
+        
+        if critical:
+            message_parts.append(f"🚨 Критично ({len(critical)}):")
+            for a in critical[:5]:  # Максимум 5 критичных
+                message_parts.append(
+                    f"  • {a['student_name']} ({a['group_name']}) — {a['consecutive_absences']} пропусков подряд"
+                )
+            if len(critical) > 5:
+                message_parts.append(f"  ... и ещё {len(critical) - 5}")
+        
+        if warning:
+            message_parts.append(f"\n⚠️ Предупреждение ({len(warning)}):")
+            for a in warning[:5]:  # Максимум 5 предупреждений
+                message_parts.append(
+                    f"  • {a['student_name']} ({a['group_name']}) — {a['consecutive_absences']} пропусков"
+                )
+            if len(warning) > 5:
+                message_parts.append(f"  ... и ещё {len(warning) - 5}")
+        
+        message_parts.append("\nОткройте раздел Аналитика для подробностей.")
+        
+        message = "\n".join(message_parts)
+        
+        if send_telegram_notification(teacher, 'absence_alert', message):
+            sent_notifications += 1
+            logger.info(f"Sent absence alert to teacher {teacher.id} with {len(teacher_alerts)} alerts")
+    
+    return {
+        'total_alerts': total_alerts,
+        'sent_notifications': sent_notifications,
+        'timestamp': now.isoformat(),
+    }
+
+
+@shared_task
+def notify_recording_available(recording_id):
+    """
+    Отправляет уведомление ученикам о доступности записи урока.
+    
+    Вызывается после обработки записи (process_zoom_recording).
+    """
+    import logging
+    from schedule.models import LessonRecording
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        recording = LessonRecording.objects.select_related(
+            'lesson', 'lesson__group'
+        ).get(id=recording_id)
+    except LessonRecording.DoesNotExist:
+        logger.warning(f"Recording {recording_id} not found")
+        return {'status': 'error', 'message': 'Recording not found'}
+    
+    lesson = recording.lesson
+    if not lesson or not lesson.group:
+        return {'status': 'skipped', 'reason': 'no-group'}
+    
+    students = lesson.group.students.filter(is_active=True)
+    if not students.exists():
+        return {'status': 'skipped', 'reason': 'no-students'}
+    
+    lesson_title = lesson.title or "Занятие"
+    lesson_date = lesson.start_time.strftime('%d.%m.%Y') if lesson.start_time else ""
+    group_name = lesson.group.name
+    
+    message = (
+        "📹 Запись урока доступна!\n\n"
+        f"Урок: {lesson_title}\n"
+        f"Группа: {group_name}\n"
+        f"Дата: {lesson_date}\n\n"
+        "Зайдите в раздел Записи, чтобы посмотреть."
+    )
+    
+    sent = 0
+    for student in students:
+        if send_telegram_notification(student, 'recording_available', message):
+            sent += 1
+    
+    logger.info(f"Sent recording notification to {sent}/{students.count()} students for lesson {lesson.id}")
+    
+    return {
+        'status': 'success',
+        'recording_id': recording_id,
+        'sent': sent,
+        'total_students': students.count(),
+    }

@@ -934,3 +934,71 @@ class GroupReportViewSet(viewsets.ViewSet):
         }
 
         return Response(data)
+
+
+class AttendanceAlertsViewSet(viewsets.ViewSet):
+    """
+    ViewSet для оповещений о посещаемости.
+    
+    Endpoints:
+    - GET /api/attendance-alerts/ - все алерты учителя
+    - GET /api/groups/{group_id}/attendance-alerts/ - алерты группы
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def list(self, request, group_id=None):
+        """GET /api/attendance-alerts/ или /api/groups/{id}/attendance-alerts/"""
+        from .attendance_service import RatingService
+        
+        user = request.user
+        if user.role not in ['teacher', 'admin']:
+            return Response(
+                {'error': 'Только для преподавателей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        min_absences = int(request.query_params.get('min_absences', 3))
+        
+        if group_id:
+            # Алерты для конкретной группы
+            try:
+                group = Group.objects.get(id=group_id)
+                if user.role == 'teacher' and group.teacher != user:
+                    return Response(
+                        {'error': 'Нет доступа к этой группе'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                groups = [group]
+            except Group.DoesNotExist:
+                return Response(
+                    {'error': 'Группа не найдена'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            # Алерты для всех групп учителя
+            if user.role == 'admin':
+                groups = Group.objects.all()
+            else:
+                groups = Group.objects.filter(teacher=user)
+        
+        all_alerts = []
+        for group in groups:
+            alerts = RatingService.get_students_with_consecutive_absences(
+                group_id=group.id,
+                min_absences=min_absences
+            )
+            for alert in alerts:
+                alert['group_id'] = group.id
+                alert['group_name'] = group.name
+                all_alerts.append(alert)
+        
+        # Сортируем по количеству пропусков (критичные вверху)
+        all_alerts.sort(key=lambda x: -x['consecutive_absences'])
+        
+        return Response({
+            'alerts': all_alerts,
+            'total_count': len(all_alerts),
+            'critical_count': sum(1 for a in all_alerts if a['severity'] == 'critical'),
+            'warning_count': sum(1 for a in all_alerts if a['severity'] == 'warning'),
+        })

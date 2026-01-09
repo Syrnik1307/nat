@@ -314,6 +314,14 @@ class Chat(models.Model):
 class Message(models.Model):
     """Сообщение в чате"""
     
+    MESSAGE_TYPE_CHOICES = (
+        ('text', 'Текст'),
+        ('question', 'Вопрос'),
+        ('answer', 'Ответ на вопрос'),
+        ('file', 'Файл'),
+        ('system', 'Системное'),
+    )
+    
     chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name='messages', verbose_name='Чат')
     sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sent_messages', verbose_name='Отправитель')
     text = models.TextField('Текст сообщения')
@@ -321,13 +329,58 @@ class Message(models.Model):
     created_at = models.DateTimeField('Отправлено', auto_now_add=True)
     updated_at = models.DateTimeField('Обновлено', auto_now=True)
     
+    # === НОВЫЕ ПОЛЯ ДЛЯ АНАЛИТИКИ ===
+    message_type = models.CharField(
+        'Тип сообщения',
+        max_length=20,
+        choices=MESSAGE_TYPE_CHOICES,
+        default='text'
+    )
+    reply_to = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='replies',
+        verbose_name='Ответ на'
+    )
+    mentioned_users = models.ManyToManyField(
+        CustomUser,
+        blank=True,
+        related_name='mentioned_in_messages',
+        verbose_name='Упомянутые пользователи'
+    )
+    # AI-анализ сентимента
+    sentiment_score = models.FloatField(
+        null=True,
+        blank=True,
+        help_text='Оценка тональности -1 (негатив) до +1 (позитив)'
+    )
+    is_helpful = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text='Является ли сообщение помощью другому ученику'
+    )
+    
     class Meta:
         verbose_name = 'Сообщение'
         verbose_name_plural = 'Сообщения'
         ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['chat', 'sender', 'created_at'], name='msg_analytics_idx'),
+        ]
     
     def __str__(self):
         return f"{self.sender.get_full_name()}: {self.text[:50]}"
+    
+    def extract_mentions(self):
+        """Извлекает @упоминания из текста и связывает с пользователями"""
+        import re
+        mentions = re.findall(r'@(\w+)', self.text)
+        if mentions:
+            users = CustomUser.objects.filter(username_handle__in=mentions)
+            self.mentioned_users.set(users)
+        return mentions
 
 
 class MessageReadStatus(models.Model):
@@ -1232,3 +1285,183 @@ class ReferralClick(models.Model):
     def __str__(self):
         return f"Click on {self.link.code} at {self.created_at}"
 
+
+# =============================================================================
+# МОДЕЛИ ДЛЯ РАСШИРЕННОЙ АНАЛИТИКИ УЧЕНИКОВ
+# =============================================================================
+
+class StudentActivityLog(models.Model):
+    """
+    Лог активности ученика для построения хитмапа активности.
+    Записывает действия с привязкой ко времени.
+    """
+    ACTION_TYPES = (
+        ('homework_start', 'Начал ДЗ'),
+        ('homework_submit', 'Сдал ДЗ'),
+        ('answer_save', 'Сохранил ответ'),
+        ('lesson_join', 'Зашёл на урок'),
+        ('recording_watch', 'Смотрел запись'),
+        ('chat_message', 'Написал в чат'),
+        ('question_ask', 'Задал вопрос'),
+        ('login', 'Вход в систему'),
+    )
+    
+    student = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='activity_logs',
+        limit_choices_to={'role': 'student'},
+        verbose_name=_('ученик')
+    )
+    action_type = models.CharField(
+        _('тип действия'),
+        max_length=30,
+        choices=ACTION_TYPES
+    )
+    group = models.ForeignKey(
+        'schedule.Group',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='student_activity_logs',
+        verbose_name=_('группа')
+    )
+    
+    # Детали действия
+    details = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Дополнительные данные: {"homework_id": 123, "score": 85}'
+    )
+    
+    # Временные метки для хитмапа
+    created_at = models.DateTimeField(auto_now_add=True)
+    day_of_week = models.PositiveSmallIntegerField(
+        _('день недели'),
+        help_text='0=Понедельник, 6=Воскресенье'
+    )
+    hour_of_day = models.PositiveSmallIntegerField(
+        _('час дня'),
+        help_text='0-23'
+    )
+    
+    class Meta:
+        verbose_name = _('лог активности ученика')
+        verbose_name_plural = _('логи активности учеников')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['student', '-created_at'], name='activity_student_idx'),
+            models.Index(fields=['day_of_week', 'hour_of_day'], name='activity_heatmap_idx'),
+            models.Index(fields=['action_type', 'created_at'], name='activity_type_idx'),
+        ]
+    
+    def __str__(self):
+        return f"{self.student.email} - {self.get_action_type_display()} @ {self.created_at}"
+    
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            from django.utils import timezone
+            now = timezone.now()
+            self.day_of_week = now.weekday()
+            self.hour_of_day = now.hour
+        super().save(*args, **kwargs)
+
+
+class ChatAnalyticsSummary(models.Model):
+    """
+    Агрегированная статистика активности ученика в чатах группы.
+    Пересчитывается периодически.
+    """
+    student = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='chat_analytics',
+        limit_choices_to={'role': 'student'},
+        verbose_name=_('ученик')
+    )
+    group = models.ForeignKey(
+        'schedule.Group',
+        on_delete=models.CASCADE,
+        related_name='student_chat_analytics',
+        verbose_name=_('группа')
+    )
+    period_start = models.DateField(_('начало периода'))
+    period_end = models.DateField(_('конец периода'))
+    
+    # Метрики активности
+    total_messages = models.IntegerField(default=0, help_text='Всего сообщений')
+    questions_asked = models.IntegerField(default=0, help_text='Вопросов задано')
+    answers_given = models.IntegerField(default=0, help_text='Ответов на вопросы других')
+    helpful_messages = models.IntegerField(default=0, help_text='Полезных сообщений (помощь)')
+    
+    # Упоминания
+    times_mentioned = models.IntegerField(default=0, help_text='Сколько раз упомянули этого ученика')
+    times_mentioning_others = models.IntegerField(default=0, help_text='Сколько раз упоминал других')
+    
+    # Сентимент
+    avg_sentiment = models.FloatField(null=True, blank=True, help_text='Средний сентимент -1..+1')
+    positive_messages = models.IntegerField(default=0)
+    negative_messages = models.IntegerField(default=0)
+    neutral_messages = models.IntegerField(default=0)
+    
+    # Индекс влиятельности (0-100)
+    influence_score = models.IntegerField(
+        default=0,
+        help_text='Индекс влиятельности: частота упоминаний + ответы на вопросы'
+    )
+    
+    # Роль в группе (вычисляемая)
+    ROLE_CHOICES = (
+        ('leader', '👑 Лидер'),
+        ('helper', '🤝 Помощник'),
+        ('active', '💬 Активный'),
+        ('observer', '👀 Наблюдатель'),
+        ('silent', '🔇 Молчун'),
+    )
+    detected_role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default='observer',
+        help_text='Автоматически определённая роль в группе'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _('статистика чата ученика')
+        verbose_name_plural = _('статистика чатов учеников')
+        unique_together = ('student', 'group', 'period_start', 'period_end')
+        indexes = [
+            models.Index(fields=['group', 'period_end'], name='chat_group_period_idx'),
+            models.Index(fields=['influence_score'], name='chat_influence_idx'),
+        ]
+    
+    def __str__(self):
+        return f"{self.student.email} in {self.group.name}: {self.total_messages} msgs"
+    
+    def compute_influence_score(self):
+        """Вычисляет индекс влиятельности"""
+        # Формула: упоминания*3 + ответы_помощь*2 + всего_сообщений*0.1
+        score = (
+            self.times_mentioned * 3 +
+            self.answers_given * 2 +
+            self.helpful_messages * 2 +
+            int(self.total_messages * 0.1)
+        )
+        self.influence_score = min(100, score)
+        return self.influence_score
+    
+    def detect_role(self):
+        """Определяет роль ученика в группе на основе метрик"""
+        if self.influence_score >= 50 and self.total_messages >= 20:
+            self.detected_role = 'leader'
+        elif self.helpful_messages >= 5 or self.answers_given >= 10:
+            self.detected_role = 'helper'
+        elif self.total_messages >= 10:
+            self.detected_role = 'active'
+        elif self.total_messages >= 3:
+            self.detected_role = 'observer'
+        else:
+            self.detected_role = 'silent'
+        return self.detected_role
