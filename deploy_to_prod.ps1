@@ -1,5 +1,12 @@
+#+#+#+#+#+#+#+#+#+#+#+#+###############################################
 # Teaching Panel Production Deployment Script
 # Запуск: .\deploy_to_prod.ps1
+#
+# Цель: детерминированный деплой (бек + фронт) без "грязного" git-дерева
+# на сервере. Критично: НЕ использовать `npm install` на проде, т.к.
+# это часто модифицирует tracked `frontend/package-lock.json` и ломает
+# последующие `git pull`.
+########################################################################
 
 param(
     [string]$SSHAlias = "tp",
@@ -13,58 +20,85 @@ Write-Host "🚀 Teaching Panel Production Deployment" -ForegroundColor Green
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""
 
-$deployCommands = @(
-    "echo '📥 Updating code from Git...'",
-    "cd /var/www/teaching_panel && sudo -u www-data git pull origin $GitBranch",
-    "",
-    "echo '📦 Installing dependencies...'",
-    "cd teaching_panel && source ../venv/bin/activate && pip install -r requirements.txt --quiet",
-    ""
-)
+$remoteScript = @'
+set -e
+set -u
+set -o pipefail
 
-if (-not $SkipMigrations) {
-    $deployCommands += @(
-        "echo '🗄️  Running database migrations...'",
-        "python manage.py migrate",
-        ""
-    )
+echo '📥 Updating code from Git (force sync)...'
+cd /var/www/teaching_panel
+
+# Важно: npm иногда модифицирует tracked package-lock.json.
+# Чтобы git pull всегда был предсказуемым — принудительно синхронизируемся с origin.
+sudo -u www-data git fetch origin
+sudo -u www-data git reset --hard origin/__BRANCH__
+
+# Удаляем известные артефакты, которые не должны жить в репозитории
+sudo rm -rf frontend_build || true
+
+echo '📦 Installing backend dependencies...'
+cd teaching_panel
+source ../venv/bin/activate
+pip install -r requirements.txt --quiet
+
+__MIGRATIONS_BLOCK__
+
+echo '📂 Collecting static files...'
+python manage.py collectstatic --noinput
+
+__FRONTEND_BLOCK__
+
+echo '🔄 Restarting services...'
+sudo systemctl restart teaching_panel nginx redis-server celery celery-beat || true
+
+echo '✅ Deployment completed!'
+sleep 2
+sudo systemctl status teaching_panel --no-pager || true
+echo ''
+echo '📊 Recent logs:'
+sudo journalctl -u teaching_panel -n 15 --no-pager || true
+
+echo ''
+echo '🌐 Frontend index timestamp (tw1):'
+ls -la /var/www/teaching_panel/frontend/build/index.html || true
+'@
+
+$remoteScript = $remoteScript.Replace('__BRANCH__', $GitBranch)
+
+if ($SkipMigrations) {
+    $remoteScript = $remoteScript.Replace('__MIGRATIONS_BLOCK__', "echo '⏭️  Skipping migrations'\n")
+} else {
+    $remoteScript = $remoteScript.Replace('__MIGRATIONS_BLOCK__', @"
+echo '🗄️  Running database migrations...'
+python manage.py migrate
+"@)
 }
 
-$deployCommands += @(
-    "echo '📂 Collecting static files...'",
-    "python manage.py collectstatic --noinput",
-    ""
-)
+if ($SkipFrontend) {
+    $remoteScript = $remoteScript.Replace('__FRONTEND_BLOCK__', "echo '⏭️  Skipping frontend build'\n")
+} else {
+    $remoteScript = $remoteScript.Replace('__FRONTEND_BLOCK__', @"
+echo '🎨 Building frontend (npm ci)...'
+cd ../frontend
+sudo chown -R www-data:www-data .
 
-if (-not $SkipFrontend) {
-    $deployCommands += @(
-        "echo '🎨 Building frontend...'",
-        "cd ../frontend && sudo chown -R www-data:www-data . && sudo -u www-data npm install --quiet && sudo -u www-data npm run build && cd ../teaching_panel",
-        ""
-    )
+# Важно: npm ci НЕ должен менять package-lock.json (и даёт воспроизводимый билд)
+sudo -u www-data npm ci --quiet
+sudo -u www-data npm run build
+
+cd ../teaching_panel
+"@)
 }
-
-$deployCommands += @(
-    "echo '🔄 Restarting services...'",
-    "sudo systemctl restart teaching_panel nginx redis-server celery celery-beat || true",
-    "",
-    "echo '✅ Deployment completed!'",
-    "sleep 3",
-    "sudo systemctl status teaching_panel --no-pager",
-    "echo ''",
-    "echo '📊 Recent logs:'",
-    "sudo journalctl -u teaching_panel -n 10"
-)
-
-$script = ($deployCommands | Where-Object { $_ -and $_.Trim() -ne "" }) -join "; "
 
 Write-Host "📋 Running deployment on: $SSHAlias" -ForegroundColor Yellow
 Write-Host "🌿 Git branch: $GitBranch" -ForegroundColor Yellow
 Write-Host "⏭️  Skipping frontend build: $SkipFrontend" -ForegroundColor Yellow
 Write-Host ""
 
-# Execute remote commands
-ssh $SSHAlias $script
+# Execute remote script via stdin (надёжнее, чем длинная строка с ; и quoting)
+# Нормализуем CRLF -> LF, иначе bash может увидеть одиночный '\r' как команду.
+$remoteScriptLf = $remoteScript.Replace("`r`n", "`n")
+$remoteScriptLf | ssh $SSHAlias "bash -s"
 
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Green
