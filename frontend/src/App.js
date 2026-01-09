@@ -67,7 +67,6 @@ const AdminHomePage = lazy(() => import('./components/AdminHomePage'));
 // Common pages
 const Calendar = lazy(() => import('./modules/core/calendar/Calendar'));
 const ProfilePage = lazy(() => import('./components/ProfilePage'));
-const SubscriptionPage = lazy(() => import('./components/SubscriptionPage'));
 const ChatPage = lazy(() => import('./components/ChatPage'));
 
 const RoleRouter = () => {
@@ -158,8 +157,8 @@ const AppRoutes = () => {
           {/* Common */}
           <Route path="/calendar" element={<Protected allowRoles={['teacher', 'student']}><Calendar /></Protected>} />
           <Route path="/profile" element={<Protected allowRoles={['teacher', 'student', 'admin']}><ProfilePage /></Protected>} />
-          <Route path="/billing" element={<Navigate to="/teacher/subscription" replace />} />
-          <Route path="/teacher/subscription" element={<Protected allowRoles={['teacher', 'admin']}><SubscriptionPage /></Protected>} />
+          <Route path="/billing" element={<Navigate to="/profile?tab=subscription" replace />} />
+          <Route path="/teacher/subscription" element={<Navigate to="/profile?tab=subscription" replace />} />
           <Route path="/chat" element={<Protected allowRoles={['teacher', 'student']}><ChatPage /></Protected>} />
           <Route path="/redirect" element={<RoleRouter />} />
           <Route path="*" element={<Navigate to="/" replace />} />

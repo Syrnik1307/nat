@@ -12,11 +12,21 @@
               #f8fafc;
 }
 
+.subscription-page.embedded {
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+}
+
 .sub-header {
   display: flex;
   align-items: center;
   gap: 1.5rem;
   margin-bottom: 2rem;
+}
+
+.sub-header-embedded {
+  margin-bottom: 1.25rem;
 }
 
 .back-btn {

@@ -1,25 +1,26 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { useNotifications } from '../shared/context/NotificationContext';
 import {
   updateCurrentUser,
   changePassword,
-  getSubscription,
-  createSubscriptionPayment,
-  cancelSubscription,
   getTelegramStatus,
   generateTelegramCode,
   unlinkTelegramAccount,
   getNotificationSettings,
   patchNotificationSettings,
 } from '../apiService';
+import SubscriptionPage from './SubscriptionPage';
 import './ProfilePage.css';
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
 
 const ProfilePage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
-  const { toast, showConfirm } = useNotifications();
+  const { showConfirm } = useNotifications();
   const [form, setForm] = useState({
     firstName: '',
     middleName: '',
@@ -59,11 +60,13 @@ const ProfilePage = () => {
   const [notificationError, setNotificationError] = useState('');
   const [notificationSuccess, setNotificationSuccess] = useState('');
 
-  // Состояние для подписки (только для учителей)
-  const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'security' | 'subscription'
-  const [subscription, setSubscription] = useState(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
-  const [subscriptionError, setSubscriptionError] = useState('');
+  const resolveInitialTab = () => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    return tab || 'profile';
+  };
+
+  const [activeTab, setActiveTab] = useState(resolveInitialTab); // 'profile' | 'security' | 'subscription'
 
   const tabConfig = useMemo(() => {
     if (!user) {
@@ -81,6 +84,30 @@ const ProfilePage = () => {
   }, [user]);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get('tab');
+    const allowedKeys = tabConfig.map((tab) => tab.key);
+
+    if (tabParam && allowedKeys.includes(tabParam)) {
+      setActiveTab(tabParam);
+    } else if (!allowedKeys.includes(activeTab)) {
+      setActiveTab('profile');
+    }
+  }, [location.search, tabConfig, activeTab]);
+
+  const handleTabChange = (tabKey) => {
+    setActiveTab(tabKey);
+    const params = new URLSearchParams(location.search);
+    if (tabKey === 'profile') {
+      params.delete('tab');
+    } else {
+      params.set('tab', tabKey);
+    }
+    const search = params.toString();
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : '' }, { replace: true });
+  };
+
+  useEffect(() => {
     if (!user) return;
     setForm({
       firstName: user.first_name || '',
@@ -89,26 +116,7 @@ const ProfilePage = () => {
       avatar: user.avatar || '',
     });
     setAvatarPreview(user.avatar || '');
-
-    // Загрузка подписки для учителей
-    if (user.role === 'teacher' && activeTab === 'subscription') {
-      loadSubscription();
-    }
   }, [user, activeTab]);
-
-  const loadSubscription = async () => {
-    setSubscriptionLoading(true);
-    setSubscriptionError('');
-    try {
-      const { data } = await getSubscription();
-      setSubscription(data);
-    } catch (err) {
-      console.error('Failed to load subscription:', err);
-      setSubscriptionError('Не удалось загрузить данные подписки');
-    } finally {
-      setSubscriptionLoading(false);
-    }
-  };
 
   const fetchTelegramStatus = useCallback(async () => {
     setTelegramLoading(true);
@@ -248,56 +256,6 @@ const ProfilePage = () => {
     } catch (err) {
       console.error('Failed to unlink telegram:', err);
       setTelegramError(err.response?.data?.detail || 'Не удалось отвязать Telegram. Попробуйте позже.');
-    }
-  };
-
-  const formatExpiration = (isoDate) => {
-    if (!isoDate) {
-      return '';
-    }
-    try {
-      return new Date(isoDate).toLocaleString('ru-RU', {
-        day: '2-digit',
-        month: 'long',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (err) {
-      console.error('Failed to format date', err);
-      return isoDate;
-    }
-  };
-
-  const handleCreatePayment = async (planType) => {
-    try {
-      const { data } = await createSubscriptionPayment(planType);
-      setSubscription(data.subscription);
-      const paymentUrl = data.payment?.payment_url;
-      if (paymentUrl) {
-        window.location.href = paymentUrl;
-      }
-    } catch (err) {
-      console.error('Failed to create payment:', err);
-      toast.error('Не удалось создать платёж. Попробуйте позже.');
-    }
-  };
-
-  const handleCancelSubscription = async () => {
-    const confirmed = await showConfirm({
-      title: 'Отмена подписки',
-      message: 'Отменить автопродление подписки? Доступ сохранится до конца оплаченного периода.',
-      variant: 'warning',
-      confirmText: 'Отменить подписку',
-      cancelText: 'Назад'
-    });
-    if (!confirmed) return;
-    try {
-      const { data } = await cancelSubscription();
-      setSubscription(data);
-      toast.success('Автопродление отменено');
-    } catch (err) {
-      console.error('Failed to cancel subscription:', err);
-      toast.error('Не удалось отменить подписку');
     }
   };
 
@@ -443,7 +401,7 @@ const ProfilePage = () => {
             <button
               key={tab.key}
               className={`profile-tab ${activeTab === tab.key ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => handleTabChange(tab.key)}
             >
               {tab.label}
             </button>
@@ -920,174 +878,7 @@ const ProfilePage = () => {
         {/* Subscription Tab */}
         {activeTab === 'subscription' && user.role === 'teacher' && (
           <div className="profile-content subscription-tab">
-            {subscriptionLoading ? (
-              <div className="subscription-loading">
-                <div className="spinner"></div>
-                <p>Загрузка данных подписки...</p>
-              </div>
-            ) : subscriptionError ? (
-              <div className="subscription-error">
-                <span className="error-icon"></span>
-                <p>{subscriptionError}</p>
-                <button onClick={loadSubscription} className="retry-btn">
-                  Повторить
-                </button>
-              </div>
-            ) : subscription ? (
-              <div className="subscription-content">
-                <section className="subscription-info-section">
-                  <h3>Текущая подписка</h3>
-                  
-                  <div className="subscription-card">
-                    <div className="subscription-plan-badge">
-                      {subscription.plan === 'trial' && '🎁 Пробная'}
-                      {subscription.plan === 'monthly' && 'Месячная'}
-                      {subscription.plan === 'yearly' && '🎯 Годовая'}
-                    </div>
-                    
-                    <div className="subscription-status">
-                      {subscription.status === 'active' && (
-                        <span className="status-badge active">Активна</span>
-                      )}
-                      {subscription.status === 'pending' && (
-                        <span className="status-badge pending">Ожидает оплаты</span>
-                      )}
-                      {subscription.status === 'cancelled' && (
-                        <span className="status-badge cancelled">Отменена</span>
-                      )}
-                      {subscription.status === 'expired' && (
-                        <span className="status-badge expired">⏱️ Истекла</span>
-                      )}
-                    </div>
-
-                    <div className="subscription-details">
-                      <div className="detail-row">
-                        <span className="label">Начало:</span>
-                        <span className="value">
-                          {new Date(subscription.started_at).toLocaleDateString('ru-RU')}
-                        </span>
-                      </div>
-                      <div className="detail-row">
-                        <span className="label">Истекает:</span>
-                        <span className="value">
-                          {new Date(subscription.expires_at).toLocaleDateString('ru-RU')}
-                        </span>
-                      </div>
-                      <div className="detail-row">
-                        <span className="label">Автопродление:</span>
-                        <span className="value">
-                          {subscription.auto_renew ? 'Включено' : 'Выключено'}
-                        </span>
-                      </div>
-                      <div className="detail-row">
-                        <span className="label">Всего оплачено:</span>
-                        <span className="value">
-                          {subscription.total_paid} {subscription.currency || 'RUB'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                {subscription.status === 'active' && subscription.plan === 'trial' && (
-                  <section className="subscription-upgrade-section">
-                    <h3>Расширенные возможности</h3>
-                    <p className="section-subtitle">
-                      Выберите план для продолжения работы после пробного периода
-                    </p>
-                    
-                    <div className="pricing-cards">
-                      <div className="pricing-card">
-                        <div className="pricing-header">
-                          <h4>Месячная подписка</h4>
-                          <div className="pricing-amount">990 ₽</div>
-                          <div className="pricing-period">в месяц</div>
-                        </div>
-                        <ul className="pricing-features">
-                          <li>Без ограничений по студентам</li>
-                          <li>Zoom интеграция</li>
-                          <li>Конструктор ДЗ</li>
-                          <li>Материалы уроков</li>
-                        </ul>
-                        <button
-                          onClick={() => handleCreatePayment('monthly')}
-                          className="pricing-btn btn-primary"
-                        >
-                          Оплатить месяц
-                        </button>
-                      </div>
-
-                      <div className="pricing-card featured">
-                        <div className="pricing-badge">Выгодно</div>
-                        <div className="pricing-header">
-                          <h4>Годовая подписка</h4>
-                          <div className="pricing-amount">9 900 ₽</div>
-                          <div className="pricing-period">в год</div>
-                          <div className="pricing-save">Экономия 990 ₽</div>
-                        </div>
-                        <ul className="pricing-features">
-                          <li>Все возможности месячной</li>
-                          <li>2 месяца в подарок</li>
-                          <li>Приоритетная поддержка</li>
-                          <li>Ранний доступ к новым функциям</li>
-                        </ul>
-                        <button
-                          onClick={() => handleCreatePayment('yearly')}
-                          className="pricing-btn btn-featured"
-                        >
-                          Оплатить год
-                        </button>
-                      </div>
-                    </div>
-                  </section>
-                )}
-
-                {subscription.status === 'active' && subscription.auto_renew && (
-                  <section className="subscription-actions-section">
-                    <button
-                      onClick={handleCancelSubscription}
-                      className="cancel-subscription-btn"
-                    >
-                      Отменить автопродление
-                    </button>
-                    <p className="cancel-hint">
-                      Доступ сохранится до {new Date(subscription.expires_at).toLocaleDateString('ru-RU')}
-                    </p>
-                  </section>
-                )}
-
-                {subscription.payments && subscription.payments.length > 0 && (
-                  <section className="subscription-payments-section">
-                    <h3>История платежей</h3>
-                    <div className="payments-list">
-                      {subscription.payments.map(payment => (
-                        <div key={payment.id} className="payment-row">
-                          <div className="payment-info">
-                            <span className="payment-amount">
-                              {payment.amount} {payment.currency || 'RUB'}
-                            </span>
-                            <span className="payment-date">
-                              {new Date(payment.created_at).toLocaleDateString('ru-RU')}
-                            </span>
-                          </div>
-                          <span className={`payment-status status-${payment.status}`}>
-                            {payment.status === 'succeeded' && 'Успешно'}
-                            {payment.status === 'pending' && 'Ожидание'}
-                            {payment.status === 'failed' && 'Ошибка'}
-                            {payment.status === 'refunded' && 'Возврат'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-              </div>
-            ) : (
-              <div className="subscription-empty">
-                <span className="empty-icon">💳</span>
-                <p>Подписка не найдена</p>
-              </div>
-            )}
+            <SubscriptionPage embedded />
           </div>
         )}
       </div>

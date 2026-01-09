@@ -1,14 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../auth';
-import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../apiService';
 import Modal from '../shared/components/Modal';
 import Button from '../shared/components/Button';
 import './SubscriptionPage.css';
 
-const SubscriptionPage = () => {
-  const { user, subscription } = useAuth();
-  const navigate = useNavigate();
+const SubscriptionPage = ({ embedded = false }) => {
   const [loading, setLoading] = useState(true);
   const [subData, setSubData] = useState(null);
   const [storageStats, setStorageStats] = useState(null);
@@ -171,9 +167,11 @@ const SubscriptionPage = () => {
     );
   }
 
+  const containerClassName = `subscription-page${embedded ? ' embedded' : ''}`;
+
   return (
-    <div className="subscription-page">
-      <header className="sub-header">
+    <div className={containerClassName}>
+      <header className={`sub-header${embedded ? ' sub-header-embedded' : ''}`}>
         <h1>Подписка</h1>
       </header>
 
