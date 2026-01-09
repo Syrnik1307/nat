@@ -8,7 +8,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('schedule', '0013_add_telegram_fields'),
+        ('schedule', '0019_increase_zoom_url_length'),
         ('accounts', '0023_ref_url_max_length'),
     ]
 
