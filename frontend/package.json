@@ -23,6 +23,9 @@
     "serve": "^14.2.5",
     "web-vitals": "^2.1.4"
   },
+  "devDependencies": {
+    "typescript": "4.9.5"
+  },
   "resolutions": {
     "webpack-dev-server": "^4.15.1"
   },
