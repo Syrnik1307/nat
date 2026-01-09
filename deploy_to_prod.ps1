@@ -2,10 +2,13 @@
 # Teaching Panel Production Deployment Script
 # Запуск: .\deploy_to_prod.ps1
 #
-# Цель: детерминированный деплой (бек + фронт) без "грязного" git-дерева
-# на сервере. Критично: НЕ использовать `npm install` на проде, т.к.
-# это часто модифицирует tracked `frontend/package-lock.json` и ломает
-# последующие `git pull`.
+# Цель: воспроизводимый деплой (бек + фронт) без "грязного" git-дерева
+# на сервере.
+#
+# На практике `npm ci` может падать из-за lockfile/peer-deps нюансов.
+# Поэтому используем `npm install` для сборки фронта, но обязательно
+# откатываем tracked `frontend/package-lock.json` обратно, чтобы
+# последующие `git pull/reset` всегда работали с первого раза.
 ########################################################################
 
 param(
@@ -78,13 +81,17 @@ if ($SkipFrontend) {
     $remoteScript = $remoteScript.Replace('__FRONTEND_BLOCK__', "echo '⏭️  Skipping frontend build'\n")
 } else {
     $remoteScript = $remoteScript.Replace('__FRONTEND_BLOCK__', @"
-echo '🎨 Building frontend (npm ci)...'
+echo '🎨 Building frontend (npm install + restore lock)...'
 cd ../frontend
 sudo chown -R www-data:www-data .
 
-# Важно: npm ci НЕ должен менять package-lock.json (и даёт воспроизводимый билд)
-sudo -u www-data npm ci --quiet
+# Важно: npm install может изменить tracked package-lock.json.
+# После сборки откатываем lock обратно в состояние git.
+sudo -u www-data npm install --quiet --no-audit --no-fund
 sudo -u www-data npm run build
+
+cd ..
+sudo -u www-data git checkout -- frontend/package-lock.json || true
 
 cd ../teaching_panel
 "@)
