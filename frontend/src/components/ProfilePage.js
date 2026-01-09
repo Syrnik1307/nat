@@ -74,8 +74,8 @@ const ProfilePage = () => {
     }
     const items = [
       { key: 'profile', label: 'Профиль' },
-      { key: 'telegram', label: '📱 Telegram' },
-      { key: 'security', label: '🔒 Безопасность' },
+      { key: 'telegram', label: 'Уведомления' },
+      { key: 'security', label: 'Безопасность' },
     ];
     if (user.role === 'teacher') {
       items.push({ key: 'subscription', label: 'Моя подписка' });
