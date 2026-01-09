@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth';
 import { apiClient } from '../apiService';
 import { Link } from 'react-router-dom';
-import NavBar from './NavBar';
 import './AnalyticsPage.css';
 
 const AnalyticsPage = () => {
@@ -33,16 +32,12 @@ const AnalyticsPage = () => {
 
     if (role !== 'teacher' && role !== 'admin') {
         return (
-            <div className="analytics-page">
-                <NavBar />
-                <div className="container" style={{padding: '20px'}}>Доступ запрещен</div>
-            </div>
+            <div className="analytics-page" style={{ padding: '20px' }}>Доступ запрещен</div>
         );
     }
 
     return (
         <div className="analytics-page-root">
-            <NavBar />
             <div className="analytics-container">
                 <div className="analytics-header">
                    <h1>Аналитика обучения</h1>
