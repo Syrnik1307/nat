@@ -184,8 +184,6 @@ def send_telegram_to_group_chat(chat_id: str, message: str, *, notification_sour
     Returns:
         bool: True если сообщение успешно отправлено
     """
-    from .models import NotificationLog
-    
     if not chat_id:
         logger.warning('send_telegram_to_group_chat: chat_id is empty')
         return False
@@ -207,36 +205,12 @@ def send_telegram_to_group_chat(chat_id: str, message: str, *, notification_sour
     try:
         response = requests.post(url, json=payload, timeout=10)
         if response.ok:
-            logger.info(f'Telegram group message sent to {chat_id}: {notification_source}')
-            # Логируем без user (group notification)
-            NotificationLog.objects.create(
-                user=None,
-                notification_type=notification_source,
-                channel='telegram_group',
-                status='sent',
-                message=message[:500],
-            )
+            logger.info('Telegram group message sent to %s (%s)', chat_id, notification_source)
             return True
         else:
             error_text = response.text[:500]
-            logger.warning(f'Telegram API error for group {chat_id}: {response.status_code} - {error_text}')
-            NotificationLog.objects.create(
-                user=None,
-                notification_type=notification_source,
-                channel='telegram_group',
-                status='failed',
-                message=message[:500],
-                error_message=f'chat_id={chat_id}: {error_text}',
-            )
+            logger.warning('Telegram API error for group %s: %s - %s', chat_id, response.status_code, error_text)
             return False
     except requests.RequestException as exc:
-        logger.exception(f'Failed to send Telegram group notification: {exc}')
-        NotificationLog.objects.create(
-            user=None,
-            notification_type=notification_source,
-            channel='telegram_group',
-            status='failed',
-            message=message[:500],
-            error_message=f'chat_id={chat_id}: {str(exc)}',
-        )
+        logger.exception('Failed to send Telegram group notification to %s (%s): %s', chat_id, notification_source, exc)
         return False
