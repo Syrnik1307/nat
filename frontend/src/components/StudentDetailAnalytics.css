@@ -498,3 +498,53 @@
     border-radius: 4px;
     text-transform: uppercase;
 }
+
+.sd-late-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: #f59e0b;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+/* Homework Stats Cells */
+.sd-cell-correct {
+    color: #16a34a;
+    font-weight: 500;
+    text-align: center;
+}
+
+.sd-cell-error {
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.sd-cell-error--bad {
+    color: #dc2626;
+}
+
+.sd-cell-time {
+    color: #64748b;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.sd-rate-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    margin-left: 4px;
+}
+
+.sd-summary-value--warning {
+    color: #f59e0b;
+}

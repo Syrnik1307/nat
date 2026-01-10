@@ -390,12 +390,24 @@ function StudentDetailAnalytics({ studentId, groupId, onBack }) {
                 <h3>Домашние задания</h3>
                 <div className="sd-summary-row">
                     <div className="sd-summary-item">
-                        <span className="sd-summary-value">{summary.homework?.completed || 0}</span>
+                        <span className="sd-summary-value">{homework?.stats?.completed || summary.homework?.completed || 0}</span>
                         <span className="sd-summary-label">выполнено</span>
                     </div>
                     <div className="sd-summary-item">
-                        <span className="sd-summary-value">{summary.homework?.pending || 0}</span>
-                        <span className="sd-summary-label">не сдано</span>
+                        <span className="sd-summary-value">{homework?.stats?.on_time || 0}</span>
+                        <span className="sd-summary-label">в срок</span>
+                    </div>
+                    <div className="sd-summary-item">
+                        <span className="sd-summary-value sd-summary-value--warning">{homework?.stats?.late || 0}</span>
+                        <span className="sd-summary-label">с опозданием</span>
+                    </div>
+                    <div className="sd-summary-item">
+                        <span className="sd-summary-value">{homework?.stats?.error_rate != null ? `${homework.stats.error_rate}%` : '—'}</span>
+                        <span className="sd-summary-label">ошибок</span>
+                    </div>
+                    <div className="sd-summary-item">
+                        <span className="sd-summary-value">{homework?.stats?.avg_time_minutes ? `${homework.stats.avg_time_minutes} мин` : '—'}</span>
+                        <span className="sd-summary-label">ср. время</span>
                     </div>
                 </div>
             </div>
@@ -409,6 +421,9 @@ function StudentDetailAnalytics({ studentId, groupId, onBack }) {
                                 <th>Группа</th>
                                 <th>Дедлайн</th>
                                 <th>Статус</th>
+                                <th>Правильно</th>
+                                <th>Ошибки</th>
+                                <th>Время</th>
                                 <th>Балл</th>
                             </tr>
                         </thead>
@@ -420,6 +435,9 @@ function StudentDetailAnalytics({ studentId, groupId, onBack }) {
                                         {hw.is_overdue && (
                                             <span className="sd-overdue-badge">Просрочено</span>
                                         )}
+                                        {hw.on_time === false && hw.status !== 'not_started' && (
+                                            <span className="sd-late-badge">Сдано поздно</span>
+                                        )}
                                     </td>
                                     <td className="sd-cell-group">{hw.group_name}</td>
                                     <td className="sd-cell-date">
@@ -427,6 +445,29 @@ function StudentDetailAnalytics({ studentId, groupId, onBack }) {
                                     </td>
                                     <td>
                                         <StatusBadge status={hw.status} label={hw.status_display} />
+                                    </td>
+                                    <td className="sd-cell-correct">
+                                        {hw.total_answers > 0 ? (
+                                            <span>{hw.correct_count}/{hw.total_answers}</span>
+                                        ) : '—'}
+                                    </td>
+                                    <td className={`sd-cell-error ${hw.incorrect_count > 0 ? 'sd-cell-error--bad' : ''}`}>
+                                        {hw.total_answers > 0 ? (
+                                            <>
+                                                <span>{hw.incorrect_count}</span>
+                                                {hw.correct_rate != null && (
+                                                    <span className="sd-rate-badge" style={{
+                                                        backgroundColor: hw.correct_rate >= 80 ? '#dcfce7' : hw.correct_rate >= 60 ? '#fef3c7' : '#fee2e2',
+                                                        color: hw.correct_rate >= 80 ? '#166534' : hw.correct_rate >= 60 ? '#92400e' : '#991b1b'
+                                                    }}>
+                                                        {hw.correct_rate}%
+                                                    </span>
+                                                )}
+                                            </>
+                                        ) : '—'}
+                                    </td>
+                                    <td className="sd-cell-time">
+                                        {hw.time_spent_minutes ? `${hw.time_spent_minutes} мин` : '—'}
                                     </td>
                                     <td className="sd-cell-score">
                                         {hw.total_score != null ? hw.total_score : '—'}

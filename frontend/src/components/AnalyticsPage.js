@@ -3,7 +3,7 @@ import { useAuth } from '../auth';
 import { apiClient } from '../apiService';
 import { Link, useSearchParams } from 'react-router-dom';
 import StudentDetailAnalytics from './StudentDetailAnalytics';
-import GroupSocialDynamics from './GroupSocialDynamics';
+import GroupDetailAnalytics from './GroupDetailAnalytics';
 import './AnalyticsPage.css';
 
 // SVG Icons - чистые иконки без эмодзи
@@ -396,7 +396,7 @@ const AnalyticsPage = () => {
                         <IconArrowLeft />
                         <span>К списку групп</span>
                     </button>
-                    <GroupSocialDynamics groupId={selectedGroup.id} />
+                    <GroupDetailAnalytics groupId={selectedGroup.id} />
                 </div>
             );
         }

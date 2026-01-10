@@ -1722,9 +1722,13 @@ class StudentDetailAnalyticsViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'], url_path='(?P<student_id>[^/.]+)/homework')
     def homework_detail(self, request, student_id=None):
         """
-        Статус ДЗ ученика
+        Статус ДЗ ученика с детальной аналитикой ошибок и времени
         
         GET /api/analytics/student-detail/{student_id}/homework/?group_id=123
+        
+        Возвращает:
+        - homeworks: список ДЗ с детальной информацией
+        - stats: сводная статистика (ошибки, время, дедлайны)
         """
         group_id = request.query_params.get('group_id')
         result, error = self._check_access(request, student_id, group_id)
@@ -1732,7 +1736,7 @@ class StudentDetailAnalyticsViewSet(viewsets.ViewSet):
             return error
         student, group = result
         
-        from homework.models import Homework, StudentSubmission
+        from homework.models import Homework, StudentSubmission, Answer
         
         # Определяем группы
         if group:
@@ -1744,7 +1748,19 @@ class StudentDetailAnalyticsViewSet(viewsets.ViewSet):
                 groups = list(Group.objects.filter(students=student))
         
         if not groups:
-            return Response({'homeworks': []})
+            return Response({
+                'homeworks': [],
+                'stats': {
+                    'total_hw': 0,
+                    'completed': 0,
+                    'on_time': 0,
+                    'late': 0,
+                    'total_correct': 0,
+                    'total_incorrect': 0,
+                    'error_rate': None,
+                    'avg_time_minutes': None,
+                }
+            })
         
         # Все опубликованные ДЗ
         homework_qs = Homework.objects.filter(
@@ -1752,19 +1768,62 @@ class StudentDetailAnalyticsViewSet(viewsets.ViewSet):
             lesson__group__in=groups
         ).select_related('lesson', 'lesson__group').order_by('-created_at')[:50]
         
-        # Сабмишены ученика
-        submission_map = {}
-        for sub in StudentSubmission.objects.filter(
+        # Сабмишены ученика с ответами
+        submissions = StudentSubmission.objects.filter(
             student=student,
             homework__in=homework_qs
-        ).select_related('homework'):
+        ).select_related('homework').prefetch_related('answers', 'answers__question')
+        
+        submission_map = {}
+        for sub in submissions:
+            # Считаем ошибки и время для этого сабмишена
+            answers = list(sub.answers.all())
+            correct_count = 0
+            incorrect_count = 0
+            total_time_seconds = 0
+            
+            for ans in answers:
+                # Определяем итоговый балл
+                score = ans.teacher_score if ans.teacher_score is not None else ans.auto_score
+                max_points = ans.question.points if ans.question else 1
+                
+                if score is not None:
+                    if score >= max_points:
+                        correct_count += 1
+                    else:
+                        incorrect_count += 1
+                
+                # Время
+                if ans.time_spent_seconds:
+                    total_time_seconds += ans.time_spent_seconds
+            
+            # Проверяем сдачу в срок
+            on_time = True
+            if sub.homework.deadline and sub.submitted_at:
+                on_time = sub.submitted_at <= sub.homework.deadline
+            
             submission_map[sub.homework_id] = {
+                'id': sub.id,
                 'status': sub.status,
                 'status_display': dict(StudentSubmission.STATUS_CHOICES).get(sub.status, sub.status),
                 'total_score': sub.total_score,
-                'submitted_at': sub.submitted_at.strftime('%d.%m.%Y %H:%M') if sub.submitted_at else None,
-                'graded_at': sub.graded_at.strftime('%d.%m.%Y %H:%M') if sub.graded_at else None,
+                'submitted_at': sub.submitted_at,
+                'graded_at': sub.graded_at,
+                'correct_count': correct_count,
+                'incorrect_count': incorrect_count,
+                'total_answers': len(answers),
+                'time_spent_seconds': total_time_seconds,
+                'on_time': on_time,
             }
+        
+        # Агрегируем статистику
+        total_correct = 0
+        total_incorrect = 0
+        total_time_seconds = 0
+        completed_count = 0
+        on_time_count = 0
+        late_count = 0
+        time_data_count = 0
         
         result = []
         for hw in homework_qs:
@@ -1774,6 +1833,20 @@ class StudentDetailAnalyticsViewSet(viewsets.ViewSet):
             if sub:
                 hw_status = sub['status']
                 hw_status_display = sub['status_display']
+                
+                if hw_status in ['submitted', 'graded']:
+                    completed_count += 1
+                    if sub['on_time']:
+                        on_time_count += 1
+                    else:
+                        late_count += 1
+                
+                total_correct += sub['correct_count']
+                total_incorrect += sub['incorrect_count']
+                
+                if sub['time_spent_seconds'] > 0:
+                    total_time_seconds += sub['time_spent_seconds']
+                    time_data_count += 1
             else:
                 hw_status = 'not_started'
                 hw_status_display = 'Не начато'
@@ -1782,6 +1855,11 @@ class StudentDetailAnalyticsViewSet(viewsets.ViewSet):
             is_overdue = False
             if hw.deadline and hw_status in ['not_started', 'in_progress']:
                 is_overdue = timezone.now() > hw.deadline
+            
+            # Процент правильных для этого ДЗ
+            hw_correct_rate = None
+            if sub and sub['total_answers'] > 0:
+                hw_correct_rate = round((sub['correct_count'] / sub['total_answers']) * 100, 1)
             
             result.append({
                 'homework_id': hw.id,
@@ -1796,12 +1874,313 @@ class StudentDetailAnalyticsViewSet(viewsets.ViewSet):
                 'status_display': hw_status_display,
                 'is_overdue': is_overdue,
                 'total_score': sub['total_score'] if sub else None,
-                'submitted_at': sub['submitted_at'] if sub else None,
-                'graded_at': sub['graded_at'] if sub else None,
+                'submitted_at': sub['submitted_at'].strftime('%d.%m.%Y %H:%M') if sub and sub['submitted_at'] else None,
+                'graded_at': sub['graded_at'].strftime('%d.%m.%Y %H:%M') if sub and sub['graded_at'] else None,
+                # Новые поля
+                'correct_count': sub['correct_count'] if sub else 0,
+                'incorrect_count': sub['incorrect_count'] if sub else 0,
+                'total_answers': sub['total_answers'] if sub else 0,
+                'correct_rate': hw_correct_rate,
+                'time_spent_seconds': sub['time_spent_seconds'] if sub else 0,
+                'time_spent_minutes': round(sub['time_spent_seconds'] / 60, 1) if sub and sub['time_spent_seconds'] else 0,
+                'on_time': sub['on_time'] if sub else None,
             })
+        
+        # Общая статистика
+        total_answers = total_correct + total_incorrect
+        error_rate = round((total_incorrect / total_answers) * 100, 1) if total_answers > 0 else None
+        avg_time_minutes = round((total_time_seconds / time_data_count) / 60, 1) if time_data_count > 0 else None
         
         return Response({
             'student_id': student.id,
             'student_name': student.get_full_name(),
             'homeworks': result,
+            'stats': {
+                'total_hw': len(homework_qs),
+                'completed': completed_count,
+                'on_time': on_time_count,
+                'late': late_count,
+                'total_correct': total_correct,
+                'total_incorrect': total_incorrect,
+                'error_rate': error_rate,
+                'avg_time_minutes': avg_time_minutes,
+            }
+        })
+
+
+class GroupDetailAnalyticsViewSet(viewsets.ViewSet):
+    """
+    Детальная аналитика группы для преподавателя.
+    
+    Включает:
+    - Общая посещаемость группы
+    - Общий процент выполнения ДЗ
+    - Общий процент ошибок в ДЗ
+    - Список учеников с их метриками
+    
+    Endpoints:
+    GET /api/analytics/group-detail/{group_id}/ - сводка группы
+    GET /api/analytics/group-detail/{group_id}/homework/ - детали по ДЗ
+    GET /api/analytics/group-detail/{group_id}/students/ - студенты с метриками
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def _check_access(self, request, group_id):
+        """Проверка доступа: только учитель группы или админ"""
+        user = request.user
+        if user.role not in ['teacher', 'admin']:
+            return None, Response({'detail': 'Только для преподавателей'}, status=403)
+        
+        group = get_object_or_404(Group, id=group_id)
+        
+        # Проверяем что учитель владеет группой
+        if user.role == 'teacher' and group.teacher != user:
+            return None, Response({'detail': 'Нет доступа к этой группе'}, status=403)
+        
+        return group, None
+    
+    @action(detail=False, methods=['get'], url_path='(?P<group_id>[^/.]+)')
+    def summary(self, request, group_id=None):
+        """
+        Сводная аналитика группы
+        
+        GET /api/analytics/group-detail/{group_id}/
+        """
+        group, error = self._check_access(request, group_id)
+        if error:
+            return error
+        
+        from homework.models import Homework, StudentSubmission, Answer
+        from schedule.models import Lesson
+        
+        students = list(group.students.all())
+        student_count = len(students)
+        
+        if student_count == 0:
+            return Response({
+                'group_id': group.id,
+                'group_name': group.name,
+                'students_count': 0,
+                'attendance': {'present': 0, 'total': 0, 'percent': None},
+                'homework': {'completed': 0, 'total': 0, 'percent': None},
+                'errors': {'total_correct': 0, 'total_incorrect': 0, 'error_rate': None},
+            })
+        
+        # === ПОСЕЩАЕМОСТЬ ===
+        attendance_qs = Attendance.objects.filter(lesson__group=group)
+        present = attendance_qs.filter(status='present').count()
+        total_marked = attendance_qs.exclude(status__isnull=True).count()
+        attendance_percent = round((present / total_marked) * 100, 1) if total_marked else None
+        
+        # === ДОМАШНИЕ ЗАДАНИЯ ===
+        homework_qs = Homework.objects.filter(
+            status='published',
+            lesson__group=group
+        )
+        total_hw = homework_qs.count()
+        
+        # Всего возможных сдач = ДЗ × студентов
+        total_possible = total_hw * student_count
+        
+        # Завершенные сабмишены
+        completed_submissions = StudentSubmission.objects.filter(
+            homework__in=homework_qs,
+            status__in=['submitted', 'graded']
+        ).count()
+        
+        hw_percent = round((completed_submissions / total_possible) * 100, 1) if total_possible else None
+        
+        # === ОШИБКИ ===
+        # Считаем по всем ответам в группе
+        answers_qs = Answer.objects.filter(
+            submission__homework__in=homework_qs
+        ).select_related('question')
+        
+        total_correct = 0
+        total_incorrect = 0
+        
+        for ans in answers_qs:
+            score = ans.teacher_score if ans.teacher_score is not None else ans.auto_score
+            if score is not None:
+                max_points = ans.question.points if ans.question else 1
+                if score >= max_points:
+                    total_correct += 1
+                else:
+                    total_incorrect += 1
+        
+        total_answers = total_correct + total_incorrect
+        error_rate = round((total_incorrect / total_answers) * 100, 1) if total_answers > 0 else None
+        
+        return Response({
+            'group_id': group.id,
+            'group_name': group.name,
+            'teacher_name': group.teacher.get_full_name() if group.teacher else '',
+            'students_count': student_count,
+            'attendance': {
+                'present': present,
+                'total': total_marked,
+                'percent': attendance_percent,
+            },
+            'homework': {
+                'completed': completed_submissions,
+                'total': total_possible,
+                'percent': hw_percent,
+                'hw_count': total_hw,
+            },
+            'errors': {
+                'total_correct': total_correct,
+                'total_incorrect': total_incorrect,
+                'total_answers': total_answers,
+                'error_rate': error_rate,
+            },
+        })
+    
+    @action(detail=False, methods=['get'], url_path='(?P<group_id>[^/.]+)/homework')
+    def homework_detail(self, request, group_id=None):
+        """
+        Детальная аналитика по ДЗ группы
+        
+        GET /api/analytics/group-detail/{group_id}/homework/
+        """
+        group, error = self._check_access(request, group_id)
+        if error:
+            return error
+        
+        from homework.models import Homework, StudentSubmission, Answer
+        
+        students = list(group.students.all())
+        student_count = len(students)
+        
+        homework_qs = Homework.objects.filter(
+            status='published',
+            lesson__group=group
+        ).select_related('lesson').order_by('-created_at')[:30]
+        
+        result = []
+        for hw in homework_qs:
+            # Сабмишены для этого ДЗ
+            submissions = StudentSubmission.objects.filter(homework=hw)
+            submitted_count = submissions.filter(status__in=['submitted', 'graded']).count()
+            
+            # Ответы для этого ДЗ
+            answers = Answer.objects.filter(submission__homework=hw).select_related('question')
+            
+            correct = 0
+            incorrect = 0
+            total_time = 0
+            time_count = 0
+            
+            for ans in answers:
+                score = ans.teacher_score if ans.teacher_score is not None else ans.auto_score
+                if score is not None:
+                    max_points = ans.question.points if ans.question else 1
+                    if score >= max_points:
+                        correct += 1
+                    else:
+                        incorrect += 1
+                
+                if ans.time_spent_seconds:
+                    total_time += ans.time_spent_seconds
+                    time_count += 1
+            
+            total_ans = correct + incorrect
+            error_rate = round((incorrect / total_ans) * 100, 1) if total_ans > 0 else None
+            avg_time = round((total_time / time_count) / 60, 1) if time_count > 0 else None
+            
+            result.append({
+                'homework_id': hw.id,
+                'title': hw.title,
+                'created_at': hw.created_at.strftime('%d.%m.%Y'),
+                'deadline': hw.deadline.strftime('%d.%m.%Y %H:%M') if hw.deadline else None,
+                'submitted_count': submitted_count,
+                'students_count': student_count,
+                'submission_rate': round((submitted_count / student_count) * 100, 1) if student_count else None,
+                'correct_count': correct,
+                'incorrect_count': incorrect,
+                'error_rate': error_rate,
+                'avg_time_minutes': avg_time,
+            })
+        
+        return Response({
+            'group_id': group.id,
+            'group_name': group.name,
+            'homeworks': result,
+        })
+    
+    @action(detail=False, methods=['get'], url_path='(?P<group_id>[^/.]+)/students')
+    def students_detail(self, request, group_id=None):
+        """
+        Список студентов группы с их метриками
+        
+        GET /api/analytics/group-detail/{group_id}/students/
+        """
+        group, error = self._check_access(request, group_id)
+        if error:
+            return error
+        
+        from homework.models import Homework, StudentSubmission, Answer
+        
+        students = list(group.students.all())
+        
+        homework_qs = Homework.objects.filter(
+            status='published',
+            lesson__group=group
+        )
+        total_hw = homework_qs.count()
+        
+        result = []
+        for student in students:
+            # Посещаемость
+            att_qs = Attendance.objects.filter(student=student, lesson__group=group)
+            present = att_qs.filter(status='present').count()
+            total_marked = att_qs.exclude(status__isnull=True).count()
+            att_percent = round((present / total_marked) * 100, 1) if total_marked else None
+            
+            # ДЗ
+            submissions = StudentSubmission.objects.filter(
+                student=student,
+                homework__in=homework_qs
+            )
+            completed = submissions.filter(status__in=['submitted', 'graded']).count()
+            hw_percent = round((completed / total_hw) * 100, 1) if total_hw else None
+            
+            # Ошибки
+            answers = Answer.objects.filter(
+                submission__student=student,
+                submission__homework__in=homework_qs
+            ).select_related('question')
+            
+            correct = 0
+            incorrect = 0
+            for ans in answers:
+                score = ans.teacher_score if ans.teacher_score is not None else ans.auto_score
+                if score is not None:
+                    max_points = ans.question.points if ans.question else 1
+                    if score >= max_points:
+                        correct += 1
+                    else:
+                        incorrect += 1
+            
+            total_ans = correct + incorrect
+            error_rate = round((incorrect / total_ans) * 100, 1) if total_ans > 0 else None
+            
+            result.append({
+                'student_id': student.id,
+                'student_name': student.get_full_name(),
+                'email': student.email,
+                'attendance_percent': att_percent,
+                'attendance_present': present,
+                'attendance_total': total_marked,
+                'homework_percent': hw_percent,
+                'homework_completed': completed,
+                'homework_total': total_hw,
+                'correct_count': correct,
+                'incorrect_count': incorrect,
+                'error_rate': error_rate,
+            })
+        
+        return Response({
+            'group_id': group.id,
+            'group_name': group.name,
+            'students': result,
         })

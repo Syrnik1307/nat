@@ -12,6 +12,7 @@ from .views import (
     ExtendedStudentAnalyticsViewSet,
     StudentQuestionViewSet,
     StudentDetailAnalyticsViewSet,
+    GroupDetailAnalyticsViewSet,
 )
 
 router = DefaultRouter()
@@ -26,6 +27,7 @@ router.register(r'behavior-reports', StudentBehaviorReportViewSet, basename='beh
 router.register(r'extended', ExtendedStudentAnalyticsViewSet, basename='extended-analytics')
 router.register(r'student-questions', StudentQuestionViewSet, basename='student-questions')
 router.register(r'student-detail', StudentDetailAnalyticsViewSet, basename='student-detail')
+router.register(r'group-detail', GroupDetailAnalyticsViewSet, basename='group-detail')
 
 urlpatterns = [
     path('', include(router.urls)),
