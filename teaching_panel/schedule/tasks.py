@@ -211,13 +211,13 @@ def send_recurring_lesson_reminders():
     5. Используем LessonNotificationLog для предотвращения дублей
     """
     from .models import RecurringLesson, LessonNotificationLog
+    from .calendar_helpers import get_week_number
     from accounts.notifications import send_telegram_notification, send_telegram_to_group_chat
     import datetime
     
     now = timezone.now()
     today = now.date()
     current_weekday = today.weekday()  # 0 = Monday
-    current_time = now.time()
     
     # Находим все регулярные уроки с включенными уведомлениями
     recurring_lessons = RecurringLesson.objects.filter(
@@ -232,6 +232,12 @@ def send_recurring_lesson_reminders():
     skipped = 0
     
     for rl in recurring_lessons:
+        # Учитываем верхнюю/нижнюю неделю (как в календаре)
+        if rl.week_type and rl.week_type != 'ALL':
+            today_week_type = get_week_number(today, rl.start_date)
+            if rl.week_type != today_week_type:
+                continue
+
         # Вычисляем время урока сегодня
         lesson_datetime = datetime.datetime.combine(today, rl.start_time)
         lesson_datetime = timezone.make_aware(lesson_datetime, timezone.get_current_timezone())
