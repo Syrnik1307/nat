@@ -27,15 +27,10 @@ import EyeIcon from './icons/EyeIcon';
 
 const AuthPage = () => {
   const navigate = useNavigate();
-  const { login, register, accessTokenValid, role: userRole } = useAuth();
+  const { login, register } = useAuth();
   // const { executeRecaptcha } = useRecaptcha(); // отключено
   
   useEffect(() => {
-    console.log('✅✅✅ AuthPage ЗАГРУЖЕНА ✅✅✅');
-    console.log('  - step:', step);
-    console.log('  - role:', role);
-    console.log('  - mode:', mode);
-
     // При заходе на страницу логина дополнительно очищаем токены/сессию в браузере
     try {
       clearTokens(true);

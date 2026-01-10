@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth';
 import { apiClient } from '../apiService';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -104,15 +104,7 @@ const AnalyticsPage = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    useEffect(() => {
-        setSearchParams({ tab: activeTab });
-    }, [activeTab, setSearchParams]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             setLoading(true);
             const [summaryRes, groupsRes] = await Promise.all([
@@ -122,7 +114,6 @@ const AnalyticsPage = () => {
             setSummary(summaryRes.data);
             const groupsList = groupsRes.data.results || groupsRes.data || [];
             setGroups(groupsList);
-            
             const allStudents = [];
             const seen = new Set();
             groupsList.forEach(g => {
@@ -140,7 +131,15 @@ const AnalyticsPage = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    useEffect(() => {
+        setSearchParams({ tab: activeTab });
+    }, [activeTab, setSearchParams]);
 
     const loadAlerts = async () => {
         try {

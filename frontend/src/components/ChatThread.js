@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { Button } from '../shared/components';
 import './ChatThread.css';
@@ -15,24 +15,8 @@ const ChatThread = ({ chat, currentUserId, onBack }) => {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  useEffect(() => {
-    if (chat) {
-      loadMessages();
-      markChatAsRead();
-      
-      // Обновляем сообщения каждые 3 секунды
-      const interval = setInterval(loadMessages, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [chat?.id]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     if (!chat?.id) return;
-    
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
@@ -46,11 +30,10 @@ const ChatThread = ({ chat, currentUserId, onBack }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [chat?.id]);
 
-  const markChatAsRead = async () => {
+  const markChatAsRead = useCallback(async () => {
     if (!chat?.id) return;
-    
     try {
       const token = localStorage.getItem('access_token');
       await axios.post(
@@ -61,7 +44,21 @@ const ChatThread = ({ chat, currentUserId, onBack }) => {
     } catch (error) {
       console.error('Ошибка отметки прочитанным:', error);
     }
-  };
+  }, [chat?.id]);
+
+  useEffect(() => {
+    if (chat) {
+      loadMessages();
+      markChatAsRead();
+      const interval = setInterval(loadMessages, 3000);
+      return () => clearInterval(interval);
+    }
+    return undefined;
+  }, [chat, loadMessages, markChatAsRead]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const sendMessage = async (e) => {
     e.preventDefault();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Modal, Button } from '../shared/components';
 import { useNotifications } from '../shared/context/NotificationContext';
@@ -21,24 +21,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    if (isOpen) {
-      loadGroups();
-      loadAllUsers();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (selectedGroup) {
-      loadGroupStudents();
-      // Автоматическое название группы
-      if (!chatName) {
-        setChatName(`Группа ${selectedGroup.name}`);
-      }
-    }
-  }, [selectedGroup]);
-
-  const loadGroups = async () => {
+  const loadGroups = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
@@ -51,16 +34,15 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadAllUsers = async () => {
+  const loadAllUsers = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
       const response = await axios.get('/api/users/', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Фильтруем текущего пользователя
       const currentUserId = JSON.parse(localStorage.getItem('user'))?.id;
       const users = response.data.filter(u => u.id !== currentUserId);
       setAllUsers(users);
@@ -69,11 +51,17 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadGroupStudents = async () => {
+  useEffect(() => {
+    if (isOpen) {
+      loadGroups();
+      loadAllUsers();
+    }
+  }, [isOpen, loadGroups, loadAllUsers]);
+
+  const loadGroupStudents = useCallback(async () => {
     if (!selectedGroup?.id) return;
-    
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
@@ -82,14 +70,22 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setGroupStudents(response.data);
-      // Автоматически выбираем всех студентов
       setSelectedStudents(response.data.map(s => s.id));
     } catch (error) {
       console.error('Ошибка загрузки студентов группы:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedGroup]);
+
+  useEffect(() => {
+    if (selectedGroup) {
+      loadGroupStudents();
+      if (!chatName) {
+        setChatName(`Группа ${selectedGroup.name}`);
+      }
+    }
+  }, [selectedGroup, chatName, loadGroupStudents]);
 
   const toggleStudent = (studentId) => {
     setSelectedStudents(prev => 

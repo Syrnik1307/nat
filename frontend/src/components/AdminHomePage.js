@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth';
-import apiService, { getAccessToken } from '../apiService';
+import { getAccessToken } from '../apiService';
 import TeachersManage from './TeachersManage';
 import StudentsManage from './StudentsManage';
 import StatusMessages from './StatusMessages';
@@ -141,29 +141,6 @@ const AdminHomePage = () => {
       setFormError(errorMsg);
     }
   };
-
-  const StatCard = ({ icon, label, value, subValue, color }) => (
-    <div className="admin-stat-card" style={{ borderLeft: `4px solid ${color}` }}>
-      <div className="stat-icon" style={{ color }}>{icon}</div>
-      <div className="stat-content">
-        <div className="stat-value">{value}</div>
-        <div className="stat-label">{label}</div>
-        {subValue !== undefined && (
-          <div className="stat-subvalue">
-            <span className="online-indicator"></span>
-            {subValue} онлайн
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const QuickAction = ({ icon, label, onClick, color }) => (
-    <button className="admin-quick-action" onClick={onClick}>
-      <div className="action-icon" style={{ backgroundColor: color }}>{icon}</div>
-      <div className="action-label">{label}</div>
-    </button>
-  );
 
   const growthPeriods = Array.isArray(stats?.growth_periods) ? stats.growth_periods : [];
 

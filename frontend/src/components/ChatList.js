@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Card } from '../shared/components';
 import './ChatList.css';
 
 /**
@@ -21,13 +20,28 @@ const ChatList = ({ onChatSelect, currentUserId, currentUserRole }) => {
     return () => clearInterval(interval);
   }, []);
 
+  const searchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await axios.get(`/api/users/search/?q=${searchQuery}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSearchResults(response.data);
+    } catch (error) {
+      console.error('Ошибка поиска пользователей:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery]);
+
   useEffect(() => {
     if (searchQuery.trim().length >= 2) {
       searchUsers();
     } else {
       setSearchResults([]);
     }
-  }, [searchQuery]);
+  }, [searchQuery, searchUsers]);
 
   const loadChats = async () => {
     try {
@@ -41,21 +55,6 @@ const ChatList = ({ onChatSelect, currentUserId, currentUserRole }) => {
       console.error('Ошибка загрузки чатов:', error);
       // При ошибке устанавливаем пустой массив
       setChats([]);
-    }
-  };
-
-  const searchUsers = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await axios.get(`/api/users/search/?q=${searchQuery}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setSearchResults(response.data);
-    } catch (error) {
-      console.error('Ошибка поиска пользователей:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -51,8 +51,6 @@ const ChatPage = () => {
     setShowGroupModal(false);
   };
 
-  const isTeacher = currentUser?.role === 'teacher';
-
   // Мобильная версия: показываем либо список, либо тред
   if (isMobile) {
     return (
