@@ -4,7 +4,7 @@
  * Матрица: Ученик x Занятие с возможностью быстрого редактирования
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getGroupAttendanceLog,
@@ -48,15 +48,7 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
   const [lastUpdated, setLastUpdated] = useState(null);
   const tableWrapperRef = useRef(null);
 
-  useEffect(() => {
-    loadAttendanceLog();
-  }, [groupId]);
-
-  useEffect(() => {
-    setSelectedCell(null);
-  }, [groupId]);
-
-  const loadAttendanceLog = async () => {
+  const loadAttendanceLog = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -71,11 +63,19 @@ const AttendanceLogTab = ({ groupId, onStudentClick }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [groupId]);
 
-  const lessons = log?.lessons || [];
-  const students = log?.students || [];
-  const records = log?.records || {};
+  useEffect(() => {
+    loadAttendanceLog();
+  }, [loadAttendanceLog]);
+
+  useEffect(() => {
+    setSelectedCell(null);
+  }, [groupId]);
+
+  const lessons = useMemo(() => log?.lessons || [], [log]);
+  const students = useMemo(() => log?.students || [], [log]);
+  const records = useMemo(() => log?.records || {}, [log]);
 
   // Обработка уроков: различаем реальные, виртуальные (recurring) и placeholder
   const processedLessons = useMemo(() => {

@@ -1142,39 +1142,61 @@ class ExtendedStudentAnalyticsViewSet(viewsets.ViewSet):
         if request.user.role == 'teacher' and group.teacher != request.user:
             return Response({'detail': 'Нет доступа к этой группе'}, status=403)
         
-        from accounts.models import ChatAnalyticsSummary
         from datetime import timedelta
         
         period_end = timezone.now().date()
         period_start = period_end - timedelta(days=30)
         
-        # Получаем агрегированную аналитику чатов
-        summaries = ChatAnalyticsSummary.objects.filter(
-            group=group,
-            period_end__gte=period_start
-        ).select_related('student').order_by('-influence_score')
-        
         students_data = []
-        for summary in summaries:
-            students_data.append({
-                'student_id': summary.student_id,
-                'student_name': summary.student.get_full_name(),
-                'total_messages': summary.total_messages,
-                'questions_asked': summary.questions_asked,
-                'answers_given': summary.answers_given,
-                'helpful_messages': summary.helpful_messages,
-                'times_mentioned': summary.times_mentioned,
-                'influence_score': summary.influence_score,
-                'avg_sentiment': summary.avg_sentiment,
-                'detected_role': summary.detected_role,
-                'role_display': dict(ChatAnalyticsSummary.ROLE_CHOICES).get(summary.detected_role, ''),
-            })
-        
-        # Считаем распределение ролей
         roles_count = {}
-        for s in students_data:
-            role = s['detected_role']
-            roles_count[role] = roles_count.get(role, 0) + 1
+        
+        # Пытаемся получить агрегированную аналитику чатов
+        try:
+            from accounts.models import ChatAnalyticsSummary
+            
+            summaries = ChatAnalyticsSummary.objects.filter(
+                group=group,
+                period_end__gte=period_start
+            ).select_related('student').order_by('-influence_score')
+            
+            for summary in summaries:
+                students_data.append({
+                    'student_id': summary.student_id,
+                    'student_name': summary.student.get_full_name(),
+                    'total_messages': summary.total_messages,
+                    'questions_asked': summary.questions_asked,
+                    'answers_given': summary.answers_given,
+                    'helpful_messages': summary.helpful_messages,
+                    'times_mentioned': summary.times_mentioned,
+                    'influence_score': summary.influence_score,
+                    'avg_sentiment': summary.avg_sentiment,
+                    'detected_role': summary.detected_role,
+                    'role_display': dict(ChatAnalyticsSummary.ROLE_CHOICES).get(summary.detected_role, ''),
+                })
+                
+                role = summary.detected_role
+                roles_count[role] = roles_count.get(role, 0) + 1
+        except Exception:
+            pass
+        
+        # Если нет данных ChatAnalytics, добавляем студентов с дефолтными значениями
+        if not students_data:
+            students = group.students.all()
+            for student in students:
+                students_data.append({
+                    'student_id': student.id,
+                    'student_name': student.get_full_name(),
+                    'total_messages': 0,
+                    'questions_asked': 0,
+                    'answers_given': 0,
+                    'helpful_messages': 0,
+                    'times_mentioned': 0,
+                    'influence_score': 0,
+                    'avg_sentiment': None,
+                    'detected_role': 'observer',
+                    'role_display': 'Наблюдатель',
+                })
+                roles_count['observer'] = roles_count.get('observer', 0) + 1
         
         return Response({
             'group_id': group_id,
@@ -1202,7 +1224,6 @@ class ExtendedStudentAnalyticsViewSet(viewsets.ViewSet):
         if request.user.role == 'teacher' and group.teacher != request.user:
             return Response({'detail': 'Нет доступа к этой группе'}, status=403)
         
-        from accounts.models import UserRating, AttendanceRecord
         from homework.models import StudentSubmission
         from datetime import timedelta
         
@@ -1218,27 +1239,24 @@ class ExtendedStudentAnalyticsViewSet(viewsets.ViewSet):
         rankings = []
         
         for student in students:
-            # Рейтинг
-            rating = UserRating.objects.filter(user=student, group=group).first()
-            total_points = rating.total_points if rating else 0
-            
-            # Посещаемость
-            attendance = AttendanceRecord.objects.filter(
-                student=student,
-                lesson__group=group,
-                lesson__start_time__date__gte=period_start
-            )
-            total_lessons = attendance.count()
-            attended = attendance.filter(status='attended').count()
-            attendance_rate = (attended / total_lessons * 100) if total_lessons else 0
-            
-            # Средний балл
+            # Баллы (используем среднюю оценку ДЗ * 10 как очки)
             avg_score = StudentSubmission.objects.filter(
                 student=student,
                 homework__lesson__group=group,
                 status='graded',
-                graded_at__date__gte=period_start
             ).aggregate(avg=Avg('total_score'))['avg']
+            
+            total_points = int(avg_score * 10) if avg_score else 0
+            
+            # Посещаемость из модели Attendance (schedule.models)
+            attendance_qs = Attendance.objects.filter(
+                student=student,
+                lesson__group=group,
+                lesson__start_time__date__gte=period_start
+            )
+            total_lessons = attendance_qs.count()
+            attended = attendance_qs.filter(status='present').count()
+            attendance_rate = (attended / total_lessons * 100) if total_lessons else 0
             
             rankings.append({
                 'student_id': student.id,
@@ -1378,3 +1396,412 @@ class StudentQuestionViewSet(viewsets.ModelViewSet):
             })
         
         return Response(result)
+
+
+# =============================================================================
+# ДЕТАЛЬНАЯ АНАЛИТИКА УЧЕНИКА (для страницы ученика в аналитике)
+# =============================================================================
+
+class StudentDetailAnalyticsViewSet(viewsets.ViewSet):
+    """
+    Детальная аналитика конкретного ученика для преподавателя.
+    
+    Включает:
+    - Посещаемость по занятиям (на каких был, на каких нет)
+    - Участие на уроках (упоминания из транскрипции, время речи)
+    - Статус ДЗ (какие сдал, какие нет)
+    - Сводную статистику
+    
+    Endpoints:
+    GET /api/analytics/student-detail/{student_id}/ - сводка
+    GET /api/analytics/student-detail/{student_id}/attendance/ - детали посещаемости
+    GET /api/analytics/student-detail/{student_id}/participation/ - участие на уроках
+    GET /api/analytics/student-detail/{student_id}/homework/ - статус ДЗ
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def _check_access(self, request, student_id, group_id=None):
+        """Проверка доступа: только учитель или админ"""
+        user = request.user
+        if user.role not in ['teacher', 'admin']:
+            return None, Response({'detail': 'Только для преподавателей'}, status=403)
+        
+        student = get_object_or_404(CustomUser, id=student_id, role='student')
+        
+        group = None
+        if group_id:
+            group = Group.objects.filter(id=group_id).first()
+            # Проверяем что учитель владеет группой
+            if group and user.role == 'teacher' and group.teacher != user:
+                return None, Response({'detail': 'Нет доступа к этой группе'}, status=403)
+        
+        return (student, group), None
+    
+    @action(detail=False, methods=['get'], url_path='(?P<student_id>[^/.]+)')
+    def summary(self, request, student_id=None):
+        """
+        Сводная информация по ученику
+        
+        GET /api/analytics/student-detail/{student_id}/?group_id=123
+        """
+        group_id = request.query_params.get('group_id')
+        result, error = self._check_access(request, student_id, group_id)
+        if error:
+            return error
+        student, group = result
+        
+        from schedule.models import Lesson
+        from datetime import timedelta
+        
+        # Определяем группы для анализа
+        if group:
+            groups = [group]
+        else:
+            # Все группы ученика, принадлежащие учителю
+            if request.user.role == 'teacher':
+                groups = list(Group.objects.filter(teacher=request.user, students=student))
+            else:
+                groups = list(Group.objects.filter(students=student))
+        
+        if not groups:
+            return Response({
+                'student_id': student.id,
+                'student_name': student.get_full_name(),
+                'email': student.email,
+                'groups': [],
+                'attendance': {'present': 0, 'absent': 0, 'excused': 0, 'percent': None},
+                'homework': {'completed': 0, 'pending': 0, 'percent': None},
+                'participation': {'mentions': 0, 'talk_time_seconds': 0},
+            })
+        
+        # === ПОСЕЩАЕМОСТЬ ===
+        attendance_qs = Attendance.objects.filter(
+            student=student,
+            lesson__group__in=groups
+        )
+        present = attendance_qs.filter(status='present').count()
+        absent = attendance_qs.filter(status='absent').count()
+        excused = attendance_qs.filter(status='excused').count()
+        total_marked = present + absent + excused
+        attendance_percent = round((present / total_marked) * 100, 1) if total_marked else None
+        
+        # === ДОМАШНИЕ ЗАДАНИЯ ===
+        from homework.models import Homework, StudentSubmission
+        
+        homework_qs = Homework.objects.filter(
+            status='published',
+            lesson__group__in=groups
+        )
+        total_hw = homework_qs.count()
+        
+        completed_submissions = StudentSubmission.objects.filter(
+            student=student,
+            homework__in=homework_qs,
+            status__in=['submitted', 'graded']
+        ).count()
+        
+        pending_hw = total_hw - completed_submissions
+        hw_percent = round((completed_submissions / total_hw) * 100, 1) if total_hw else None
+        
+        # === УЧАСТИЕ НА УРОКАХ (из транскрипции) ===
+        total_mentions = 0
+        total_talk_time = 0
+        
+        # Ищем упоминания студента в stats_json
+        stats_qs = LessonTranscriptStats.objects.filter(
+            lesson__group__in=groups
+        ).select_related('lesson')
+        
+        student_name = student.get_full_name().lower()
+        student_first_name = (student.first_name or '').lower()
+        
+        for stats in stats_qs:
+            data = stats.stats_json
+            
+            # Упоминания
+            mentions = data.get('mentions', [])
+            if isinstance(mentions, list):
+                for m in mentions:
+                    if m.get('student_id') == student.id:
+                        total_mentions += m.get('count', 0)
+            elif isinstance(mentions, dict):
+                # Старый формат: {'Name': count}
+                for name, count in mentions.items():
+                    if student_first_name and student_first_name in name.lower():
+                        total_mentions += count
+            
+            # Время речи
+            talk_times = data.get('clean_talk_time', {})
+            for name, seconds in talk_times.items():
+                if student_first_name and student_first_name in name.lower():
+                    total_talk_time += seconds
+        
+        return Response({
+            'student_id': student.id,
+            'student_name': student.get_full_name(),
+            'email': student.email,
+            'groups': [{'id': g.id, 'name': g.name} for g in groups],
+            'attendance': {
+                'present': present,
+                'absent': absent,
+                'excused': excused,
+                'total': total_marked,
+                'percent': attendance_percent,
+            },
+            'homework': {
+                'completed': completed_submissions,
+                'pending': pending_hw,
+                'total': total_hw,
+                'percent': hw_percent,
+            },
+            'participation': {
+                'mentions': total_mentions,
+                'talk_time_seconds': total_talk_time,
+                'talk_time_minutes': round(total_talk_time / 60, 1) if total_talk_time else 0,
+            },
+        })
+    
+    @action(detail=False, methods=['get'], url_path='(?P<student_id>[^/.]+)/attendance')
+    def attendance_detail(self, request, student_id=None):
+        """
+        Детальная посещаемость ученика по занятиям
+        
+        GET /api/analytics/student-detail/{student_id}/attendance/?group_id=123
+        """
+        group_id = request.query_params.get('group_id')
+        result, error = self._check_access(request, student_id, group_id)
+        if error:
+            return error
+        student, group = result
+        
+        from schedule.models import Lesson
+        
+        # Определяем группы
+        if group:
+            groups = [group]
+        else:
+            if request.user.role == 'teacher':
+                groups = list(Group.objects.filter(teacher=request.user, students=student))
+            else:
+                groups = list(Group.objects.filter(students=student))
+        
+        if not groups:
+            return Response({'lessons': []})
+        
+        # Получаем все уроки этих групп (прошедшие)
+        lessons = Lesson.objects.filter(
+            group__in=groups,
+            start_time__lt=timezone.now()
+        ).select_related('group').order_by('-start_time')[:50]
+        
+        # Получаем посещаемость ученика
+        attendance_map = {}
+        for att in Attendance.objects.filter(student=student, lesson__in=lessons):
+            attendance_map[att.lesson_id] = {
+                'status': att.status,
+                'status_display': att.get_status_display(),
+                'notes': att.notes,
+            }
+        
+        result = []
+        for lesson in lessons:
+            att = attendance_map.get(lesson.id, {})
+            result.append({
+                'lesson_id': lesson.id,
+                'title': lesson.title or 'Занятие',
+                'date': lesson.start_time.strftime('%d.%m.%Y'),
+                'time': lesson.start_time.strftime('%H:%M'),
+                'group_id': lesson.group_id,
+                'group_name': lesson.group.name if lesson.group else '',
+                'status': att.get('status', 'not_marked'),
+                'status_display': att.get('status_display', 'Не отмечено'),
+                'notes': att.get('notes', ''),
+            })
+        
+        return Response({
+            'student_id': student.id,
+            'student_name': student.get_full_name(),
+            'lessons': result,
+        })
+    
+    @action(detail=False, methods=['get'], url_path='(?P<student_id>[^/.]+)/participation')
+    def participation_detail(self, request, student_id=None):
+        """
+        Участие ученика на уроках (из транскрипции)
+        
+        GET /api/analytics/student-detail/{student_id}/participation/?group_id=123
+        """
+        group_id = request.query_params.get('group_id')
+        result, error = self._check_access(request, student_id, group_id)
+        if error:
+            return error
+        student, group = result
+        
+        from schedule.models import Lesson
+        
+        # Определяем группы
+        if group:
+            groups = [group]
+        else:
+            if request.user.role == 'teacher':
+                groups = list(Group.objects.filter(teacher=request.user, students=student))
+            else:
+                groups = list(Group.objects.filter(students=student))
+        
+        if not groups:
+            return Response({'lessons': []})
+        
+        # Получаем статистику транскриптов
+        stats_qs = LessonTranscriptStats.objects.filter(
+            lesson__group__in=groups
+        ).select_related('lesson', 'lesson__group').order_by('-lesson__start_time')[:50]
+        
+        student_first_name = (student.first_name or '').lower()
+        
+        result = []
+        total_mentions = 0
+        total_talk_time = 0
+        
+        for stats in stats_qs:
+            data = stats.stats_json
+            lesson = stats.lesson
+            
+            # Считаем упоминания для этого ученика
+            mentions_count = 0
+            mentions = data.get('mentions', [])
+            if isinstance(mentions, list):
+                for m in mentions:
+                    if m.get('student_id') == student.id:
+                        mentions_count = m.get('count', 0)
+                        break
+            elif isinstance(mentions, dict):
+                for name, count in mentions.items():
+                    if student_first_name and student_first_name in name.lower():
+                        mentions_count = count
+                        break
+            
+            # Время речи
+            talk_time = 0
+            talk_times = data.get('clean_talk_time', {})
+            for name, seconds in talk_times.items():
+                if student_first_name and student_first_name in name.lower():
+                    talk_time = seconds
+                    break
+            
+            # Speakers list (для отображения участия)
+            speakers = data.get('speakers', [])
+            student_talked = any(
+                student_first_name and student_first_name in (s.get('name', '').lower())
+                for s in speakers if isinstance(s, dict)
+            )
+            
+            total_mentions += mentions_count
+            total_talk_time += talk_time
+            
+            result.append({
+                'lesson_id': lesson.id,
+                'title': lesson.title or 'Занятие',
+                'date': lesson.start_time.strftime('%d.%m.%Y'),
+                'group_id': lesson.group_id,
+                'group_name': lesson.group.name if lesson.group else '',
+                'mentions_count': mentions_count,
+                'talk_time_seconds': talk_time,
+                'talk_time_minutes': round(talk_time / 60, 1) if talk_time else 0,
+                'participated': mentions_count > 0 or talk_time > 0 or student_talked,
+            })
+        
+        return Response({
+            'student_id': student.id,
+            'student_name': student.get_full_name(),
+            'total_mentions': total_mentions,
+            'total_talk_time_seconds': total_talk_time,
+            'total_talk_time_minutes': round(total_talk_time / 60, 1) if total_talk_time else 0,
+            'lessons': result,
+        })
+    
+    @action(detail=False, methods=['get'], url_path='(?P<student_id>[^/.]+)/homework')
+    def homework_detail(self, request, student_id=None):
+        """
+        Статус ДЗ ученика
+        
+        GET /api/analytics/student-detail/{student_id}/homework/?group_id=123
+        """
+        group_id = request.query_params.get('group_id')
+        result, error = self._check_access(request, student_id, group_id)
+        if error:
+            return error
+        student, group = result
+        
+        from homework.models import Homework, StudentSubmission
+        
+        # Определяем группы
+        if group:
+            groups = [group]
+        else:
+            if request.user.role == 'teacher':
+                groups = list(Group.objects.filter(teacher=request.user, students=student))
+            else:
+                groups = list(Group.objects.filter(students=student))
+        
+        if not groups:
+            return Response({'homeworks': []})
+        
+        # Все опубликованные ДЗ
+        homework_qs = Homework.objects.filter(
+            status='published',
+            lesson__group__in=groups
+        ).select_related('lesson', 'lesson__group').order_by('-created_at')[:50]
+        
+        # Сабмишены ученика
+        submission_map = {}
+        for sub in StudentSubmission.objects.filter(
+            student=student,
+            homework__in=homework_qs
+        ).select_related('homework'):
+            submission_map[sub.homework_id] = {
+                'status': sub.status,
+                'status_display': dict(StudentSubmission.STATUS_CHOICES).get(sub.status, sub.status),
+                'total_score': sub.total_score,
+                'submitted_at': sub.submitted_at.strftime('%d.%m.%Y %H:%M') if sub.submitted_at else None,
+                'graded_at': sub.graded_at.strftime('%d.%m.%Y %H:%M') if sub.graded_at else None,
+            }
+        
+        result = []
+        for hw in homework_qs:
+            sub = submission_map.get(hw.id)
+            
+            # Определяем статус
+            if sub:
+                hw_status = sub['status']
+                hw_status_display = sub['status_display']
+            else:
+                hw_status = 'not_started'
+                hw_status_display = 'Не начато'
+            
+            # Проверяем просрочку
+            is_overdue = False
+            if hw.deadline and hw_status in ['not_started', 'in_progress']:
+                is_overdue = timezone.now() > hw.deadline
+            
+            result.append({
+                'homework_id': hw.id,
+                'title': hw.title,
+                'lesson_id': hw.lesson_id,
+                'lesson_title': hw.lesson.title if hw.lesson else '',
+                'group_id': hw.lesson.group_id if hw.lesson else None,
+                'group_name': hw.lesson.group.name if hw.lesson and hw.lesson.group else '',
+                'created_at': hw.created_at.strftime('%d.%m.%Y'),
+                'deadline': hw.deadline.strftime('%d.%m.%Y %H:%M') if hw.deadline else None,
+                'status': hw_status,
+                'status_display': hw_status_display,
+                'is_overdue': is_overdue,
+                'total_score': sub['total_score'] if sub else None,
+                'submitted_at': sub['submitted_at'] if sub else None,
+                'graded_at': sub['graded_at'] if sub else None,
+            })
+        
+        return Response({
+            'student_id': student.id,
+            'student_name': student.get_full_name(),
+            'homeworks': result,
+        })

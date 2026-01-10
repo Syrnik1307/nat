@@ -1,0 +1,500 @@
+/* Student Detail Analytics - Clean Professional Design */
+
+.student-detail-analytics {
+    background: #ffffff;
+    border-radius: 12px;
+    min-height: 500px;
+}
+
+/* Header */
+.sd-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 28px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.sd-header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0;
+}
+
+.sd-subtitle {
+    font-size: 14px;
+    color: #64748b;
+    margin-top: 4px;
+}
+
+/* Tabs */
+.sd-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 16px 24px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.sd-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s ease;
+}
+
+.sd-tab:hover {
+    color: #334155;
+}
+
+.sd-tab--active {
+    color: #4f46e5;
+    border-bottom-color: #4f46e5;
+}
+
+.sd-tab svg {
+    flex-shrink: 0;
+}
+
+/* Content */
+.sd-content {
+    padding: 24px 28px;
+}
+
+/* Loading & Error States */
+.sd-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    gap: 16px;
+    color: #64748b;
+}
+
+.sd-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #4f46e5;
+    border-radius: 50%;
+    animation: sd-spin 0.8s linear infinite;
+}
+
+@keyframes sd-spin {
+    to { transform: rotate(360deg); }
+}
+
+.sd-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    gap: 16px;
+    color: #dc2626;
+}
+
+.sd-error button {
+    padding: 8px 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #334155;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.sd-error button:hover {
+    background: #f8fafc;
+}
+
+.sd-empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: #64748b;
+}
+
+.sd-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px dashed #e2e8f0;
+}
+
+/* Overview Section */
+.sd-overview {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.sd-student-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    background: #f8fafc;
+    border-radius: 12px;
+}
+
+.sd-avatar {
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.sd-info h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0 0 6px;
+}
+
+.sd-email {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #64748b;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.sd-email svg {
+    flex-shrink: 0;
+}
+
+.sd-groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sd-group-tag {
+    background: #e0e7ff;
+    color: #4338ca;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Stats Grid */
+.sd-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+@media (max-width: 1200px) {
+    .sd-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .sd-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.sd-stat-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left-width: 4px;
+    border-radius: 8px;
+    padding: 16px 20px;
+    transition: box-shadow 0.15s ease;
+}
+
+.sd-stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.sd-stat-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.sd-stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sd-stat-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748b;
+}
+
+.sd-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sd-stat-trend {
+    color: #16a34a;
+}
+
+.sd-stat-subtitle {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 4px;
+}
+
+/* Quick Section */
+.sd-quick-section {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 24px;
+}
+
+.sd-quick-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0 0 16px;
+}
+
+.sd-quick-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sd-quick-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.sd-quick-date {
+    font-size: 13px;
+    color: #64748b;
+    min-width: 80px;
+}
+
+.sd-quick-title {
+    flex: 1;
+    font-size: 14px;
+    color: #334155;
+}
+
+/* Status Badge */
+.sd-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Section Headers */
+.sd-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.sd-section-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0;
+}
+
+.sd-legend {
+    display: flex;
+    gap: 20px;
+}
+
+.sd-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #64748b;
+}
+
+.sd-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.sd-legend-present {
+    background: #16a34a;
+}
+
+.sd-legend-absent {
+    background: #dc2626;
+}
+
+.sd-legend-excused {
+    background: #ca8a04;
+}
+
+/* Summary Row */
+.sd-summary-row {
+    display: flex;
+    gap: 32px;
+}
+
+.sd-summary-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.sd-summary-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.sd-summary-label {
+    font-size: 14px;
+    color: #64748b;
+}
+
+/* Tables */
+.sd-table-wrapper {
+    overflow-x: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+.sd-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.sd-table thead {
+    background: #f8fafc;
+}
+
+.sd-table th {
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 500;
+    color: #64748b;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.sd-table td {
+    padding: 14px 16px;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.sd-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.sd-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.sd-cell-date {
+    white-space: nowrap;
+}
+
+.sd-cell-date .sd-date {
+    display: block;
+    font-weight: 500;
+}
+
+.sd-cell-date .sd-time {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.sd-cell-title {
+    font-weight: 500;
+    color: #0f172a;
+}
+
+.sd-cell-group {
+    color: #64748b;
+}
+
+.sd-cell-number {
+    text-align: center;
+    font-weight: 500;
+}
+
+.sd-cell-score {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+/* Participation Indicators */
+.sd-participated {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #16a34a;
+    font-weight: 500;
+}
+
+.sd-not-participated {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #94a3b8;
+}
+
+/* Overdue Styling */
+.sd-row-overdue {
+    background: #fef2f2;
+}
+
+.sd-row-overdue:hover {
+    background: #fee2e2 !important;
+}
+
+.sd-overdue-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: #dc2626;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 4px;
+    text-transform: uppercase;
+}

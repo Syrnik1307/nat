@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../apiService';
 import { Notification, ConfirmModal } from '../../shared/components';
 import useNotification from '../../shared/hooks/useNotification';
@@ -28,7 +28,7 @@ const StorageQuotaModal = ({ onClose }) => {
   const [filters, setFilters] = useState({ exceeded: 'all', warning: 'all', sort: '-used_bytes' });
   const [busy, setBusy] = useState(false);
 
-  const loadQuotas = async () => {
+  const loadQuotas = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -51,12 +51,11 @@ const StorageQuotaModal = ({ onClose }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, search, selectedQuota]);
 
   useEffect(() => {
     loadQuotas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, filters]);
+  }, [loadQuotas]);
 
   const handleSelectQuota = async (quota) => {
     setSelectedQuota(quota);
@@ -89,7 +88,7 @@ const StorageQuotaModal = ({ onClose }) => {
     }
   };
 
-  const handleResetWarnings = async (quotaId) => {
+  const handleResetWarnings = useCallback(async (quotaId) => {
     const confirmed = await showConfirm({
       title: 'Сброс предупреждений',
       message: 'Вы уверены, что хотите сбросить предупреждения?',
@@ -109,7 +108,7 @@ const StorageQuotaModal = ({ onClose }) => {
     } finally {
       setBusy(false);
     }
-  };
+  }, [loadQuotas, showConfirm, showNotification]);
 
   const statusTag = (quota) => {
     if (quota.quota_exceeded) return <span className="storage-tag exceeded">Превышена</span>;
@@ -182,7 +181,7 @@ const StorageQuotaModal = ({ onClose }) => {
         </td>
       </tr>
     ));
-  }, [quotas, selectedQuota, busy]);
+  }, [quotas, selectedQuota, busy, handleResetWarnings]);
 
   return (
     <div className="storage-modal-overlay" onClick={onClose}>

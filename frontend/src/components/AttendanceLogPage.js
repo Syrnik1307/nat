@@ -148,7 +148,10 @@ const AttendanceLogPage = () => {
   }, [loadData]);
 
   const MIN_COLUMNS = 6;
-  const actualLessons = lessonColumns.length ? lessonColumns : log?.lessons || [];
+  const actualLessons = useMemo(
+    () => (lessonColumns.length ? lessonColumns : log?.lessons || []),
+    [lessonColumns, log]
+  );
   const displayLessons = useMemo(() => {
     const normalized = (actualLessons || []).map((lesson) => {
       const lessonId = lesson?.id;
@@ -183,8 +186,8 @@ const AttendanceLogPage = () => {
   const lessons = displayLessons;
   const realLessons = useMemo(() => lessons.filter((lesson) => !lesson.isPlaceholder), [lessons]);
   const realLessonsCount = realLessons.length;
-  const students = log?.students || [];
-  const records = log?.records || {};
+  const students = useMemo(() => log?.students || [], [log]);
+  const records = useMemo(() => log?.records || {}, [log]);
   const actualLessonCount = actualLessons.length;
   const displayedLessonCount = actualLessonCount || lessons.length;
   const gridTemplateColumns = useMemo(() => {

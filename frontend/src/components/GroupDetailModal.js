@@ -17,7 +17,6 @@ import GroupAnalyticsSummaryTab from './tabs/GroupAnalyticsSummaryTab';
 
 const GroupDetailModal = ({ group, isOpen, onClose, onStudentClick }) => {
   const [activeTab, setActiveTab] = useState('attendance');
-  const [error, setError] = useState(null);
 
   if (!isOpen || !group) {
     return null;
@@ -138,11 +137,6 @@ const GroupDetailModal = ({ group, isOpen, onClose, onStudentClick }) => {
 
         {/* Содержимое активного таба */}
         <div className="modal-body">
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
           {renderTabContent()}
         </div>
       </div>

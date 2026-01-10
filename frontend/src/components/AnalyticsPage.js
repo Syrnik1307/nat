@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth';
 import { apiClient } from '../apiService';
 import { Link, useSearchParams } from 'react-router-dom';
-import StudentAnalyticsDashboard from './StudentAnalyticsDashboard';
+import StudentDetailAnalytics from './StudentDetailAnalytics';
 import GroupSocialDynamics from './GroupSocialDynamics';
 import './AnalyticsPage.css';
 
@@ -316,7 +316,7 @@ const AnalyticsPage = () => {
                         <IconArrowLeft />
                         <span>К списку учеников</span>
                     </button>
-                    <StudentAnalyticsDashboard 
+                    <StudentDetailAnalytics 
                         studentId={selectedStudent.id} 
                         groupId={selectedStudent.groupId}
                     />
