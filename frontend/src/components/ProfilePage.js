@@ -902,8 +902,8 @@ const ProfilePage = () => {
                       {isTeacher && (
                         <div className="notification-category">
                           <div className="category-header">
-                            <span className="category-icon">👥</span>
-                            <iv>
+                            <h4>Ученики</h4>
+                          </div>
                           <div className="category-items">
                             <label className="notification-item-compact">
                               <input
@@ -993,8 +993,8 @@ const ProfilePage = () => {
                       {isStudent && (
                         <div className="notification-category">
                           <div className="category-header">
-                            <span className="category-icon">📈</span>
-                            <iv>
+                            <h4>Мой прогресс</h4>
+                          </div>
                           <div className="category-items">
                             <label className="notification-item-compact">
                               <input
@@ -1028,8 +1028,8 @@ const ProfilePage = () => {
                       {isTeacher && (
                         <div className="notification-category">
                           <div className="category-header">
-                            <span className="category-icon">💳</span>
-                            <iv>
+                            <h4>Оплаты и подписка</h4>
+                          </div>
                           <div className="category-items">
                             <label className="notification-item-compact">
                               <input
