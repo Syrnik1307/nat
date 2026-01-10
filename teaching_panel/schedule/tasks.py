@@ -199,6 +199,117 @@ def send_lesson_reminders():
 
 
 @shared_task
+def send_recurring_lesson_reminders():
+    """
+    Отправляет напоминания о регулярных уроках на основе настроек RecurringLesson.
+    
+    Логика:
+    1. Находит все RecurringLesson с telegram_notify_enabled=True
+    2. Проверяет, совпадает ли сегодня с днём недели урока
+    3. Если урок начинается через telegram_notify_minutes минут - отправляем
+    4. Отправляем в группу (telegram_notify_to_group) и/или лично (telegram_notify_to_students)
+    5. Используем LessonNotificationLog для предотвращения дублей
+    """
+    from .models import RecurringLesson, LessonNotificationLog
+    from accounts.notifications import send_telegram_notification, send_telegram_to_group_chat
+    import datetime
+    
+    now = timezone.now()
+    today = now.date()
+    current_weekday = today.weekday()  # 0 = Monday
+    current_time = now.time()
+    
+    # Находим все регулярные уроки с включенными уведомлениями
+    recurring_lessons = RecurringLesson.objects.filter(
+        telegram_notify_enabled=True,
+        day_of_week=current_weekday,
+        start_date__lte=today,
+        end_date__gte=today,
+    ).select_related('group__teacher').prefetch_related('group__students')
+    
+    sent_group = 0
+    sent_students = 0
+    skipped = 0
+    
+    for rl in recurring_lessons:
+        # Вычисляем время урока сегодня
+        lesson_datetime = datetime.datetime.combine(today, rl.start_time)
+        lesson_datetime = timezone.make_aware(lesson_datetime, timezone.get_current_timezone())
+        
+        minutes_before = rl.telegram_notify_minutes or 10
+        notify_time = lesson_datetime - timedelta(minutes=minutes_before)
+        
+        # Окно для отправки: от notify_time до notify_time + 2 минуты
+        notify_window_end = notify_time + timedelta(minutes=2)
+        
+        if not (notify_time <= now <= notify_window_end):
+            continue
+        
+        # Проверяем, не отправляли ли уже сегодня
+        already_sent = LessonNotificationLog.objects.filter(
+            recurring_lesson=rl,
+            notification_type='reminder',
+            lesson_date=today
+        ).exists()
+        
+        if already_sent:
+            skipped += 1
+            continue
+        
+        # Формируем сообщение
+        teacher = rl.group.teacher if rl.group else rl.teacher
+        zoom_link = getattr(teacher, 'zoom_pmi_link', '') if teacher else ''
+        time_str = rl.start_time.strftime('%H:%M')
+        
+        message = (
+            f"Напоминание об уроке\n\n"
+            f"Урок: {rl.title or rl.group.name}\n"
+            f"Группа: {rl.group.name}\n"
+            f"Начало через ~{minutes_before} мин ({time_str})"
+        )
+        if zoom_link:
+            message += f"\n\nСсылка: {zoom_link}"
+        
+        recipients_count = 0
+        
+        # Отправка в группу
+        if rl.telegram_notify_to_group and rl.telegram_group_chat_id:
+            if send_telegram_to_group_chat(
+                rl.telegram_group_chat_id,
+                message,
+                notification_source='recurring_lesson_reminder'
+            ):
+                sent_group += 1
+                recipients_count += 1
+        
+        # Отправка в личные сообщения студентам
+        if rl.telegram_notify_to_students and rl.group:
+            students = rl.group.students.filter(is_active=True)
+            for student in students:
+                if send_telegram_notification(student, 'lesson_reminder', message):
+                    sent_students += 1
+                    recipients_count += 1
+        
+        # Логируем отправку
+        LessonNotificationLog.objects.create(
+            recurring_lesson=rl,
+            notification_type='reminder',
+            lesson_date=today,
+            recipients_count=recipients_count
+        )
+    
+    if sent_group or sent_students:
+        print(f"[Celery] Recurring lesson reminders: groups={sent_group}, students={sent_students}, skipped={skipped}")
+    
+    return {
+        'sent_to_groups': sent_group,
+        'sent_to_students': sent_students,
+        'skipped': skipped,
+        'timestamp': now.isoformat()
+    }
+
+
+@shared_task
 def archive_zoom_recordings():
     """
     Архивирование Zoom записей в постоянное хранилище (S3/Azure Blob)

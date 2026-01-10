@@ -370,6 +370,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'schedule.tasks.schedule_upcoming_lesson_reminders',
         'schedule': 300.0,  # каждые 5 минут
     },
+    'send-recurring-lesson-reminders': {
+        'task': 'schedule.tasks.send_recurring_lesson_reminders',
+        'schedule': 60.0,  # каждую минуту (для точного времени напоминаний)
+    },
     'check-expiring-subscriptions': {
         'task': 'accounts.tasks.check_expiring_subscriptions',
         'schedule': 21600.0,  # каждые 6 часов

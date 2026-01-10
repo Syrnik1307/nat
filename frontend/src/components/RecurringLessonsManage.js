@@ -353,11 +353,11 @@ const RecurringLessonsManage = () => {
 
             {/* Telegram-уведомления */}
             <div className="rl-form-section">
-              <h3 className="rl-form-section-title">📱 Telegram-уведомления</h3>
+              <h3 className="rl-form-section-title">Telegram-уведомления</h3>
               
               {!hasZoomPmi && (
                 <div className="rl-warning-banner">
-                  ⚠️ Для включения Telegram-уведомлений добавьте постоянную Zoom-ссылку (PMI) в{' '}
+                  Для включения Telegram-уведомлений добавьте постоянную Zoom-ссылку (PMI) в{' '}
                   <a href="/profile" target="_blank" rel="noopener noreferrer">настройках профиля</a>
                 </div>
               )}
@@ -369,13 +369,13 @@ const RecurringLessonsManage = () => {
                   disabled={!hasZoomPmi}
                   onChange={(e) => setForm({ ...form, telegram_notify_enabled: e.target.checked })}
                 />
-                <span>Включить уведомления о начале урока</span>
+                <span>Напоминать о начале урока</span>
               </label>
 
               {form.telegram_notify_enabled && (
                 <div className="rl-notify-settings">
                   <Select
-                    label="За сколько минут до начала"
+                    label="За сколько минут"
                     value={String(form.telegram_notify_minutes)}
                     onChange={(e) => setForm({ ...form, telegram_notify_minutes: parseInt(e.target.value, 10) })}
                     options={[
@@ -387,7 +387,7 @@ const RecurringLessonsManage = () => {
                   />
 
                   <div className="rl-notify-targets">
-                    <span className="rl-notify-label">Куда отправлять:</span>
+                    <span className="rl-notify-label">Отправлять в:</span>
                     
                     <label className="rl-checkbox-row">
                       <input
@@ -395,7 +395,7 @@ const RecurringLessonsManage = () => {
                         checked={form.telegram_notify_to_group}
                         onChange={(e) => setForm({ ...form, telegram_notify_to_group: e.target.checked })}
                       />
-                      <span>В Telegram-группу</span>
+                      <span>Групповой чат</span>
                     </label>
 
                     {form.telegram_notify_to_group && (
@@ -428,6 +428,12 @@ const RecurringLessonsManage = () => {
                       <span>Личные сообщения ученикам</span>
                     </label>
                   </div>
+
+                  {!form.telegram_notify_to_group && !form.telegram_notify_to_students && (
+                    <div className="rl-warning-banner" style={{ marginTop: '12px' }}>
+                      Выберите хотя бы один способ доставки
+                    </div>
+                  )}
                 </div>
               )}
             </div>

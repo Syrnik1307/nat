@@ -169,3 +169,74 @@ def send_telegram_notification(user, notification_type: str, message: str, *, di
         )
         logger.exception('Failed to send Telegram notification: %s', exc)
         return False
+
+
+def send_telegram_to_group_chat(chat_id: str, message: str, *, notification_source: str = 'lesson_reminder', disable_web_page_preview: bool = True, silent: bool = False) -> bool:
+    """Отправляет сообщение в Telegram-группу по chat_id.
+    
+    Args:
+        chat_id: ID группового чата в Telegram (может начинаться с '-')
+        message: Текст сообщения
+        notification_source: Источник уведомления для логирования
+        disable_web_page_preview: Отключить превью ссылок
+        silent: Отправить без звука
+        
+    Returns:
+        bool: True если сообщение успешно отправлено
+    """
+    from .models import NotificationLog
+    
+    if not chat_id:
+        logger.warning('send_telegram_to_group_chat: chat_id is empty')
+        return False
+    
+    token = _get_bot_token()
+    if not token:
+        logger.warning('Telegram bot token is not configured. Skipping group notification.')
+        return False
+    
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        'chat_id': chat_id,
+        'text': message,
+        'parse_mode': 'Markdown',
+        'disable_web_page_preview': disable_web_page_preview,
+        'disable_notification': silent,
+    }
+    
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        if response.ok:
+            logger.info(f'Telegram group message sent to {chat_id}: {notification_source}')
+            # Логируем без user (group notification)
+            NotificationLog.objects.create(
+                user=None,
+                notification_type=notification_source,
+                channel='telegram_group',
+                status='sent',
+                message=message[:500],
+            )
+            return True
+        else:
+            error_text = response.text[:500]
+            logger.warning(f'Telegram API error for group {chat_id}: {response.status_code} - {error_text}')
+            NotificationLog.objects.create(
+                user=None,
+                notification_type=notification_source,
+                channel='telegram_group',
+                status='failed',
+                message=message[:500],
+                error_message=f'chat_id={chat_id}: {error_text}',
+            )
+            return False
+    except requests.RequestException as exc:
+        logger.exception(f'Failed to send Telegram group notification: {exc}')
+        NotificationLog.objects.create(
+            user=None,
+            notification_type=notification_source,
+            channel='telegram_group',
+            status='failed',
+            message=message[:500],
+            error_message=f'chat_id={chat_id}: {str(exc)}',
+        )
+        return False
