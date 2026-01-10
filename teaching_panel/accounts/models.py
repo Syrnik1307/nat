@@ -870,16 +870,90 @@ class NotificationSettings(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='notification_settings')
     telegram_enabled = models.BooleanField(default=True)
 
-    # Учителям
+    # Учителям — базовые
     notify_homework_submitted = models.BooleanField(default=True)
     notify_subscription_expiring = models.BooleanField(default=True)
     notify_payment_success = models.BooleanField(default=True)
 
-    # Ученикам
+    # Учителям — аналитика: пропуски
+    notify_absence_alert = models.BooleanField(
+        default=True,
+        help_text='Уведомления о сериях пропусков учеников'
+    )
+    absence_alert_threshold = models.PositiveSmallIntegerField(
+        default=3,
+        help_text='Минимальное количество пропусков подряд для уведомления (0 = отключено)'
+    )
+
+    # Учителям — аналитика: успеваемость
+    notify_performance_drop = models.BooleanField(
+        default=True,
+        help_text='Уведомления о падении успеваемости ученика'
+    )
+    performance_drop_percent = models.PositiveSmallIntegerField(
+        default=20,
+        help_text='Процент падения среднего балла для уведомления'
+    )
+
+    # Учителям — аналитика: группа
+    notify_group_health = models.BooleanField(
+        default=True,
+        help_text='Уведомления об аномалиях по группе (посещаемость/успеваемость)'
+    )
+
+    # Учителям — backlog проверки ДЗ
+    notify_grading_backlog = models.BooleanField(
+        default=True,
+        help_text='Уведомления о накопившихся непроверенных ДЗ'
+    )
+    grading_backlog_threshold = models.PositiveSmallIntegerField(
+        default=5,
+        help_text='Минимальное количество непроверенных работ для уведомления'
+    )
+    grading_backlog_hours = models.PositiveSmallIntegerField(
+        default=48,
+        help_text='Сколько часов работа может висеть без проверки'
+    )
+
+    # Учителям — неактивные ученики
+    notify_inactive_student = models.BooleanField(
+        default=True,
+        help_text='Уведомления о неактивных учениках'
+    )
+    inactive_student_days = models.PositiveSmallIntegerField(
+        default=7,
+        help_text='Количество дней без активности для уведомления'
+    )
+
+    # Ученикам — базовые
     notify_homework_graded = models.BooleanField(default=True)
     notify_homework_deadline = models.BooleanField(default=True)
     notify_lesson_reminders = models.BooleanField(default=True)
     notify_new_homework = models.BooleanField(default=True)
+
+    # Ученикам — аналитика: пропуски
+    notify_student_absence_warning = models.BooleanField(
+        default=True,
+        help_text='Предупреждения ученику о его пропусках'
+    )
+
+    # Ученикам — контрольные точки/дедлайны
+    notify_control_point_deadline = models.BooleanField(
+        default=True,
+        help_text='Напоминания о контрольных точках'
+    )
+
+    # Ученикам — достижения
+    notify_achievement = models.BooleanField(
+        default=False,
+        help_text='Уведомления о достижениях и прогрессе'
+    )
+
+    # Ученикам — напоминание об активности
+    notify_inactivity_nudge = models.BooleanField(
+        default=True,
+        help_text='Мягкие напоминания при длительном отсутствии активности'
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -908,6 +982,21 @@ class NotificationLog(models.Model):
         ('payment_success', 'Оплата прошла успешно'),
         ('lesson_reminder', 'Напоминание об уроке'),
         ('new_homework', 'Новое домашнее задание'),
+        # Аналитика — для учителя
+        ('absence_alert', 'Серия пропусков ученика'),
+        ('performance_drop_alert', 'Падение успеваемости ученика'),
+        ('group_health_alert', 'Аномалии по группе'),
+        ('grading_backlog', 'Непроверенные ДЗ накопились'),
+        ('inactive_student_alert', 'Неактивный ученик'),
+        # Аналитика — для ученика
+        ('student_absence_warning', 'Предупреждение о пропусках'),
+        ('control_point_deadline', 'Напоминание о контрольной точке'),
+        ('achievement', 'Достижение/прогресс'),
+        ('student_inactivity_nudge', 'Напоминание об активности'),
+        # Хранилище (сохраняем для совместимости)
+        ('storage_warning', 'Хранилище почти заполнено'),
+        ('storage_limit_exceeded', 'Хранилище заполнено'),
+        ('recording_available', 'Запись урока доступна'),
     )
 
     STATUS_CHOICES = (

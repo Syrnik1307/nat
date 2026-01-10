@@ -634,6 +634,46 @@
   font-size: 13px;
 }
 
+/* Подстройки для числовых настроек */
+.notification-sub-setting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 8px 32px;
+  font-size: 13px;
+  color: #5174c2;
+  flex-wrap: wrap;
+}
+
+.notification-sub-setting label {
+  font-weight: 500;
+  color: #0d2f81;
+}
+
+.notification-number-input {
+  width: 60px;
+  padding: 6px 10px;
+  border: 1px solid rgba(25, 59, 140, 0.2);
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
+  color: #0d2f81;
+  background: #f8faff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.notification-number-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(33, 84, 187, 0.15);
+}
+
+.notification-hint {
+  color: #8aa3d4;
+  font-size: 12px;
+  font-style: italic;
+}
+
 .notifications-actions {
   display: flex;
   justify-content: flex-end;

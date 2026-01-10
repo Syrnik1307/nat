@@ -4,7 +4,7 @@ from datetime import timedelta
 from celery import shared_task
 from django.utils import timezone
 
-from .models import Subscription, NotificationLog
+from .models import Subscription, NotificationLog, NotificationSettings
 from .notifications import send_telegram_notification
 
 REMINDER_DAYS = 3
@@ -362,4 +362,575 @@ def notify_recording_available(recording_id):
         'recording_id': recording_id,
         'sent': sent,
         'total_students': students.count(),
+    }
+
+
+# =============================================================================
+# АНАЛИТИЧЕСКИЕ УВЕДОМЛЕНИЯ
+# =============================================================================
+
+PERFORMANCE_DROP_COOLDOWN_HOURS = 72
+GROUP_HEALTH_COOLDOWN_HOURS = 48
+GRADING_BACKLOG_COOLDOWN_HOURS = 24
+INACTIVE_STUDENT_COOLDOWN_HOURS = 72
+STUDENT_ABSENCE_COOLDOWN_HOURS = 48
+STUDENT_INACTIVITY_COOLDOWN_HOURS = 168  # 1 неделя
+
+
+@shared_task
+def check_performance_drops():
+    """
+    Проверяет падение успеваемости учеников и уведомляет учителей.
+    
+    Сравнивает средний балл за последние N работ с предыдущим окном.
+    Запускается ежедневно.
+    """
+    import logging
+    from django.contrib.auth import get_user_model
+    from django.db.models import Avg
+    from homework.models import StudentSubmission
+    from schedule.models import Group
+    
+    logger = logging.getLogger(__name__)
+    now = timezone.now()
+    
+    User = get_user_model()
+    teachers = User.objects.filter(role='teacher', is_active=True)
+    
+    total_alerts = 0
+    sent_notifications = 0
+    
+    for teacher in teachers:
+        try:
+            settings_obj, _ = NotificationSettings.objects.get_or_create(user=teacher)
+            if not settings_obj.notify_performance_drop:
+                continue
+            
+            drop_percent = settings_obj.performance_drop_percent or 20
+            
+            groups = Group.objects.filter(teacher=teacher)
+            teacher_alerts = []
+            
+            for group in groups:
+                students = group.students.filter(is_active=True)
+                
+                for student in students:
+                    # Последние 5 работ vs предыдущие 5
+                    recent_subs = StudentSubmission.objects.filter(
+                        student=student,
+                        homework__teacher=teacher,
+                        status='graded',
+                        total_score__isnull=False
+                    ).order_by('-graded_at')[:10]
+                    
+                    if recent_subs.count() < 6:
+                        continue
+                    
+                    recent_5 = list(recent_subs[:5])
+                    prev_5 = list(recent_subs[5:10])
+                    
+                    if not prev_5:
+                        continue
+                    
+                    recent_avg = sum(s.total_score for s in recent_5) / len(recent_5)
+                    prev_avg = sum(s.total_score for s in prev_5) / len(prev_5)
+                    
+                    if prev_avg == 0:
+                        continue
+                    
+                    drop = ((prev_avg - recent_avg) / prev_avg) * 100
+                    
+                    if drop >= drop_percent:
+                        teacher_alerts.append({
+                            'student_name': student.get_full_name() or student.email,
+                            'group_name': group.name,
+                            'prev_avg': round(prev_avg, 1),
+                            'recent_avg': round(recent_avg, 1),
+                            'drop_percent': round(drop, 0),
+                        })
+            
+            if not teacher_alerts:
+                continue
+            
+            total_alerts += len(teacher_alerts)
+            
+            # Проверяем cooldown
+            recently_notified = NotificationLog.objects.filter(
+                user=teacher,
+                notification_type='performance_drop_alert',
+                created_at__gte=now - timedelta(hours=PERFORMANCE_DROP_COOLDOWN_HOURS),
+            ).exists()
+            
+            if recently_notified:
+                continue
+            
+            # Формируем сообщение
+            message_parts = ["📉 Внимание! Падение успеваемости\n"]
+            for a in teacher_alerts[:5]:
+                message_parts.append(
+                    f"• {a['student_name']} ({a['group_name']}): "
+                    f"{a['prev_avg']}→{a['recent_avg']} (−{a['drop_percent']:.0f}%)"
+                )
+            if len(teacher_alerts) > 5:
+                message_parts.append(f"... и ещё {len(teacher_alerts) - 5}")
+            
+            message_parts.append("\nОткройте раздел Аналитика для подробностей.")
+            message = "\n".join(message_parts)
+            
+            if send_telegram_notification(teacher, 'performance_drop_alert', message):
+                sent_notifications += 1
+                
+        except Exception as e:
+            logger.exception(f"Error checking performance for teacher {teacher.id}: {e}")
+    
+    return {
+        'total_alerts': total_alerts,
+        'sent_notifications': sent_notifications,
+        'timestamp': now.isoformat(),
+    }
+
+
+@shared_task
+def check_group_health():
+    """
+    Проверяет 'здоровье' групп: посещаемость и успеваемость за неделю.
+    
+    Сравнивает текущую неделю с предыдущими 2-мя.
+    Запускается раз в неделю (понедельник).
+    """
+    import logging
+    from django.contrib.auth import get_user_model
+    from django.db.models import Avg, Count
+    from schedule.models import Group, Lesson
+    from homework.models import StudentSubmission
+    
+    logger = logging.getLogger(__name__)
+    now = timezone.now()
+    
+    User = get_user_model()
+    teachers = User.objects.filter(role='teacher', is_active=True)
+    
+    total_alerts = 0
+    sent_notifications = 0
+    
+    # Диапазоны недель
+    this_week_start = now - timedelta(days=7)
+    prev_weeks_start = now - timedelta(days=21)
+    
+    for teacher in teachers:
+        try:
+            settings_obj, _ = NotificationSettings.objects.get_or_create(user=teacher)
+            if not settings_obj.notify_group_health:
+                continue
+            
+            groups = Group.objects.filter(teacher=teacher)
+            teacher_alerts = []
+            
+            for group in groups:
+                # Посещаемость за эту неделю
+                this_week_lessons = Lesson.objects.filter(
+                    group=group,
+                    start_time__gte=this_week_start,
+                    start_time__lt=now
+                )
+                
+                if not this_week_lessons.exists():
+                    continue
+                
+                # Считаем посещаемость
+                from accounts.models import AttendanceRecord
+                
+                this_week_attendance = AttendanceRecord.objects.filter(
+                    lesson__in=this_week_lessons,
+                    status='attended'
+                ).count()
+                
+                total_possible = this_week_lessons.count() * group.students.count()
+                if total_possible == 0:
+                    continue
+                
+                this_week_rate = (this_week_attendance / total_possible) * 100
+                
+                # Сравниваем с предыдущими неделями
+                prev_lessons = Lesson.objects.filter(
+                    group=group,
+                    start_time__gte=prev_weeks_start,
+                    start_time__lt=this_week_start
+                )
+                
+                if prev_lessons.exists():
+                    prev_attendance = AttendanceRecord.objects.filter(
+                        lesson__in=prev_lessons,
+                        status='attended'
+                    ).count()
+                    prev_total = prev_lessons.count() * group.students.count()
+                    prev_rate = (prev_attendance / prev_total) * 100 if prev_total > 0 else 0
+                    
+                    # Если падение более 15%
+                    if prev_rate > 0 and (prev_rate - this_week_rate) > 15:
+                        teacher_alerts.append({
+                            'group_name': group.name,
+                            'metric': 'посещаемость',
+                            'prev_value': round(prev_rate, 0),
+                            'current_value': round(this_week_rate, 0),
+                        })
+            
+            if not teacher_alerts:
+                continue
+            
+            total_alerts += len(teacher_alerts)
+            
+            # Проверяем cooldown
+            recently_notified = NotificationLog.objects.filter(
+                user=teacher,
+                notification_type='group_health_alert',
+                created_at__gte=now - timedelta(hours=GROUP_HEALTH_COOLDOWN_HOURS),
+            ).exists()
+            
+            if recently_notified:
+                continue
+            
+            # Формируем сообщение
+            message_parts = ["📊 Внимание! Аномалии по группам\n"]
+            for a in teacher_alerts[:3]:
+                message_parts.append(
+                    f"• {a['group_name']}: {a['metric']} {a['prev_value']}%→{a['current_value']}%"
+                )
+            if len(teacher_alerts) > 3:
+                message_parts.append(f"... и ещё {len(teacher_alerts) - 3}")
+            
+            message_parts.append("\nОткройте раздел Аналитика для подробностей.")
+            message = "\n".join(message_parts)
+            
+            if send_telegram_notification(teacher, 'group_health_alert', message):
+                sent_notifications += 1
+                
+        except Exception as e:
+            logger.exception(f"Error checking group health for teacher {teacher.id}: {e}")
+    
+    return {
+        'total_alerts': total_alerts,
+        'sent_notifications': sent_notifications,
+        'timestamp': now.isoformat(),
+    }
+
+
+@shared_task
+def check_grading_backlog():
+    """
+    Проверяет накопившиеся непроверенные ДЗ у учителей.
+    
+    Уведомляет, если N+ работ висят >48ч без проверки.
+    Запускается ежедневно в 10:00.
+    """
+    import logging
+    from django.contrib.auth import get_user_model
+    from homework.models import StudentSubmission
+    
+    logger = logging.getLogger(__name__)
+    now = timezone.now()
+    
+    User = get_user_model()
+    teachers = User.objects.filter(role='teacher', is_active=True)
+    
+    total_backlog = 0
+    sent_notifications = 0
+    
+    for teacher in teachers:
+        try:
+            settings_obj, _ = NotificationSettings.objects.get_or_create(user=teacher)
+            if not settings_obj.notify_grading_backlog:
+                continue
+            
+            threshold = settings_obj.grading_backlog_threshold or 5
+            hours = settings_obj.grading_backlog_hours or 48
+            cutoff = now - timedelta(hours=hours)
+            
+            # Работы, сданные более N часов назад и не проверенные
+            pending = StudentSubmission.objects.filter(
+                homework__teacher=teacher,
+                status='submitted',
+                submitted_at__lt=cutoff
+            ).select_related('homework', 'student')
+            
+            count = pending.count()
+            if count < threshold:
+                continue
+            
+            total_backlog += count
+            
+            # Проверяем cooldown
+            recently_notified = NotificationLog.objects.filter(
+                user=teacher,
+                notification_type='grading_backlog',
+                created_at__gte=now - timedelta(hours=GRADING_BACKLOG_COOLDOWN_HOURS),
+            ).exists()
+            
+            if recently_notified:
+                continue
+            
+            # Формируем сообщение
+            oldest = pending.order_by('submitted_at').first()
+            oldest_days = (now - oldest.submitted_at).days if oldest else 0
+            
+            message = (
+                f"📝 Непроверенные работы: {count} шт.\n\n"
+                f"Самая старая ждёт {oldest_days} дн.\n"
+                f"Порог: >{threshold} работ, >{hours}ч без проверки.\n\n"
+                "Откройте раздел ДЗ для проверки."
+            )
+            
+            if send_telegram_notification(teacher, 'grading_backlog', message):
+                sent_notifications += 1
+                
+        except Exception as e:
+            logger.exception(f"Error checking grading backlog for teacher {teacher.id}: {e}")
+    
+    return {
+        'total_backlog': total_backlog,
+        'sent_notifications': sent_notifications,
+        'timestamp': now.isoformat(),
+    }
+
+
+@shared_task
+def check_inactive_students():
+    """
+    Проверяет неактивных учеников и уведомляет учителей.
+    
+    Ученик считается неактивным, если N дней нет сдач ДЗ и посещений.
+    Запускается ежедневно.
+    """
+    import logging
+    from django.contrib.auth import get_user_model
+    from django.db.models import Max
+    from homework.models import StudentSubmission
+    from schedule.models import Group
+    
+    logger = logging.getLogger(__name__)
+    now = timezone.now()
+    
+    User = get_user_model()
+    teachers = User.objects.filter(role='teacher', is_active=True)
+    
+    total_inactive = 0
+    sent_notifications = 0
+    
+    for teacher in teachers:
+        try:
+            settings_obj, _ = NotificationSettings.objects.get_or_create(user=teacher)
+            if not settings_obj.notify_inactive_student:
+                continue
+            
+            days = settings_obj.inactive_student_days or 7
+            cutoff = now - timedelta(days=days)
+            
+            groups = Group.objects.filter(teacher=teacher)
+            teacher_alerts = []
+            
+            for group in groups:
+                students = group.students.filter(is_active=True)
+                
+                for student in students:
+                    # Последняя сдача ДЗ
+                    last_sub = StudentSubmission.objects.filter(
+                        student=student,
+                        homework__teacher=teacher
+                    ).aggregate(last=Max('submitted_at'))['last']
+                    
+                    # Последнее посещение
+                    from accounts.models import AttendanceRecord
+                    last_attend = AttendanceRecord.objects.filter(
+                        student=student,
+                        status='attended',
+                        lesson__group=group
+                    ).aggregate(last=Max('lesson__start_time'))['last']
+                    
+                    # Берём максимум из двух дат
+                    last_activity = max(filter(None, [last_sub, last_attend]), default=None)
+                    
+                    if last_activity and last_activity < cutoff:
+                        inactive_days = (now - last_activity).days
+                        teacher_alerts.append({
+                            'student_name': student.get_full_name() or student.email,
+                            'group_name': group.name,
+                            'inactive_days': inactive_days,
+                        })
+            
+            if not teacher_alerts:
+                continue
+            
+            total_inactive += len(teacher_alerts)
+            
+            # Проверяем cooldown
+            recently_notified = NotificationLog.objects.filter(
+                user=teacher,
+                notification_type='inactive_student_alert',
+                created_at__gte=now - timedelta(hours=INACTIVE_STUDENT_COOLDOWN_HOURS),
+            ).exists()
+            
+            if recently_notified:
+                continue
+            
+            # Формируем сообщение
+            message_parts = ["😴 Неактивные ученики\n"]
+            for a in sorted(teacher_alerts, key=lambda x: -x['inactive_days'])[:5]:
+                message_parts.append(
+                    f"• {a['student_name']} ({a['group_name']}): {a['inactive_days']} дн."
+                )
+            if len(teacher_alerts) > 5:
+                message_parts.append(f"... и ещё {len(teacher_alerts) - 5}")
+            
+            message_parts.append("\nСвяжитесь с ними или проверьте в Аналитике.")
+            message = "\n".join(message_parts)
+            
+            if send_telegram_notification(teacher, 'inactive_student_alert', message):
+                sent_notifications += 1
+                
+        except Exception as e:
+            logger.exception(f"Error checking inactive students for teacher {teacher.id}: {e}")
+    
+    return {
+        'total_inactive': total_inactive,
+        'sent_notifications': sent_notifications,
+        'timestamp': now.isoformat(),
+    }
+
+
+@shared_task
+def send_student_absence_warnings():
+    """
+    Отправляет ученикам предупреждения о их пропусках.
+    
+    Мягкое напоминание при 2-3 пропусках подряд.
+    Запускается ежедневно.
+    """
+    import logging
+    from django.contrib.auth import get_user_model
+    from schedule.models import Group
+    
+    logger = logging.getLogger(__name__)
+    now = timezone.now()
+    
+    User = get_user_model()
+    students = User.objects.filter(role='student', is_active=True)
+    
+    sent = 0
+    
+    for student in students:
+        try:
+            settings_obj, _ = NotificationSettings.objects.get_or_create(user=student)
+            if not settings_obj.notify_student_absence_warning:
+                continue
+            
+            # Проверяем cooldown
+            recently_notified = NotificationLog.objects.filter(
+                user=student,
+                notification_type='student_absence_warning',
+                created_at__gte=now - timedelta(hours=STUDENT_ABSENCE_COOLDOWN_HOURS),
+            ).exists()
+            
+            if recently_notified:
+                continue
+            
+            # Считаем пропуски подряд
+            from accounts.models import AttendanceRecord
+            
+            recent_records = AttendanceRecord.objects.filter(
+                student=student
+            ).order_by('-lesson__start_time')[:5]
+            
+            consecutive_absences = 0
+            for record in recent_records:
+                if record.status == 'absent':
+                    consecutive_absences += 1
+                else:
+                    break
+            
+            if consecutive_absences >= 2:
+                message = (
+                    f"📚 У вас {consecutive_absences} пропуска подряд.\n\n"
+                    "Если возникли трудности — обратитесь к преподавателю.\n"
+                    "Вы можете посмотреть записи уроков в разделе Записи."
+                )
+                
+                if send_telegram_notification(student, 'student_absence_warning', message):
+                    sent += 1
+                    
+        except Exception as e:
+            logger.exception(f"Error sending absence warning to student {student.id}: {e}")
+    
+    return {
+        'sent': sent,
+        'timestamp': now.isoformat(),
+    }
+
+
+@shared_task
+def send_student_inactivity_nudges():
+    """
+    Отправляет ученикам мягкие напоминания при длительной неактивности.
+    
+    Запускается раз в неделю.
+    """
+    import logging
+    from django.contrib.auth import get_user_model
+    from django.db.models import Max
+    from homework.models import StudentSubmission
+    
+    logger = logging.getLogger(__name__)
+    now = timezone.now()
+    cutoff = now - timedelta(days=7)
+    
+    User = get_user_model()
+    students = User.objects.filter(role='student', is_active=True)
+    
+    sent = 0
+    
+    for student in students:
+        try:
+            settings_obj, _ = NotificationSettings.objects.get_or_create(user=student)
+            if not settings_obj.notify_inactivity_nudge:
+                continue
+            
+            # Проверяем cooldown (1 неделя)
+            recently_notified = NotificationLog.objects.filter(
+                user=student,
+                notification_type='student_inactivity_nudge',
+                created_at__gte=now - timedelta(hours=STUDENT_INACTIVITY_COOLDOWN_HOURS),
+            ).exists()
+            
+            if recently_notified:
+                continue
+            
+            # Последняя активность
+            last_sub = StudentSubmission.objects.filter(
+                student=student
+            ).aggregate(last=Max('submitted_at'))['last']
+            
+            from accounts.models import AttendanceRecord
+            last_attend = AttendanceRecord.objects.filter(
+                student=student,
+                status='attended'
+            ).aggregate(last=Max('lesson__start_time'))['last']
+            
+            last_activity = max(filter(None, [last_sub, last_attend]), default=None)
+            
+            if last_activity and last_activity < cutoff:
+                days_inactive = (now - last_activity).days
+                message = (
+                    f"👋 Давно вас не видели!\n\n"
+                    f"Последняя активность: {days_inactive} дн. назад.\n"
+                    "Загляните в Teaching Panel — возможно, есть новые задания или записи уроков."
+                )
+                
+                if send_telegram_notification(student, 'student_inactivity_nudge', message):
+                    sent += 1
+                    
+        except Exception as e:
+            logger.exception(f"Error sending inactivity nudge to student {student.id}: {e}")
+    
+    return {
+        'sent': sent,
+        'timestamp': now.isoformat(),
     }

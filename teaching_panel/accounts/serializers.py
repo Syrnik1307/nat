@@ -150,13 +150,31 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
         model = NotificationSettings
         fields = [
             'telegram_enabled',
+            # Базовые — учитель
             'notify_homework_submitted',
+            'notify_subscription_expiring',
+            'notify_payment_success',
+            # Аналитика — учитель
+            'notify_absence_alert',
+            'absence_alert_threshold',
+            'notify_performance_drop',
+            'performance_drop_percent',
+            'notify_group_health',
+            'notify_grading_backlog',
+            'grading_backlog_threshold',
+            'grading_backlog_hours',
+            'notify_inactive_student',
+            'inactive_student_days',
+            # Базовые — ученик
             'notify_homework_graded',
             'notify_homework_deadline',
             'notify_lesson_reminders',
             'notify_new_homework',
-            'notify_subscription_expiring',
-            'notify_payment_success',
+            # Аналитика — ученик
+            'notify_student_absence_warning',
+            'notify_control_point_deadline',
+            'notify_achievement',
+            'notify_inactivity_nudge',
             'updated_at',
         ]
         read_only_fields = ['updated_at']

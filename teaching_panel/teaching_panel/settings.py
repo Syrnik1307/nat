@@ -390,6 +390,32 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'accounts.tasks.check_consecutive_absences',
         'schedule': 86400.0,  # ежедневно (проверка пропусков)
     },
+    # --- Analytics Notifications (Teacher) ---
+    'check-performance-drops': {
+        'task': 'accounts.tasks.check_performance_drops',
+        'schedule': 86400.0,  # ежедневно
+    },
+    'check-group-health': {
+        'task': 'accounts.tasks.check_group_health',
+        'schedule': 604800.0,  # раз в неделю (7 дней)
+    },
+    'check-grading-backlog': {
+        'task': 'accounts.tasks.check_grading_backlog',
+        'schedule': 21600.0,  # каждые 6 часов
+    },
+    'check-inactive-students': {
+        'task': 'accounts.tasks.check_inactive_students',
+        'schedule': 86400.0,  # ежедневно
+    },
+    # --- Analytics Notifications (Student) ---
+    'send-student-absence-warnings': {
+        'task': 'accounts.tasks.send_student_absence_warnings',
+        'schedule': 86400.0,  # ежедневно
+    },
+    'send-student-inactivity-nudges': {
+        'task': 'accounts.tasks.send_student_inactivity_nudges',
+        'schedule': 604800.0,  # раз в неделю
+    },
 }
 
 # Azure Cosmos DB integration (feature-flagged)

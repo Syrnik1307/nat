@@ -11,19 +11,36 @@ logger = logging.getLogger(__name__)
 
 
 NOTIFICATION_FIELD_MAP: Dict[str, str] = {
+    # Базовые — учителю
     'homework_submitted': 'notify_homework_submitted',
-    'homework_graded': 'notify_homework_graded',
-    'homework_deadline': 'notify_homework_deadline',
     'subscription_expiring': 'notify_subscription_expiring',
     'payment_success': 'notify_payment_success',
+
+    # Базовые — ученику
+    'homework_graded': 'notify_homework_graded',
+    'homework_deadline': 'notify_homework_deadline',
     'lesson_reminder': 'notify_lesson_reminders',
     'new_homework': 'notify_new_homework',
-    'storage_quota_warning': 'notify_lesson_reminders',  # Используем существующее поле
-    'storage_quota_exceeded': 'notify_lesson_reminders',  # Используем существующее поле
 
-    # Исторические/альтернативные имена типов (используются в некоторых задачах)
+    # Аналитика — учителю
+    'absence_alert': 'notify_absence_alert',
+    'performance_drop_alert': 'notify_performance_drop',
+    'group_health_alert': 'notify_group_health',
+    'grading_backlog': 'notify_grading_backlog',
+    'inactive_student_alert': 'notify_inactive_student',
+
+    # Аналитика — ученику
+    'student_absence_warning': 'notify_student_absence_warning',
+    'control_point_deadline': 'notify_control_point_deadline',
+    'achievement': 'notify_achievement',
+    'student_inactivity_nudge': 'notify_inactivity_nudge',
+
+    # Хранилище (совместимость)
+    'storage_quota_warning': 'notify_lesson_reminders',
+    'storage_quota_exceeded': 'notify_lesson_reminders',
     'storage_warning': 'notify_lesson_reminders',
     'storage_limit_exceeded': 'notify_lesson_reminders',
+    'recording_available': 'notify_lesson_reminders',
 }
 
 
