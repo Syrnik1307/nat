@@ -9,7 +9,9 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('schedule', '0013_add_telegram_fields'),
+        # Only depends on schedule models (Group/Lesson) existing.
+        # The previously referenced migration ('schedule', '0013_add_telegram_fields') does not exist.
+        ('schedule', '0001_initial'),
         ('homework', '0009_add_deadline_field'),
     ]
 

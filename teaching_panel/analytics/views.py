@@ -1991,23 +1991,24 @@ class GroupDetailAnalyticsViewSet(viewsets.ViewSet):
         hw_percent = round((completed_submissions / total_possible) * 100, 1) if total_possible else None
         
         # === ОШИБКИ ===
-        # Считаем по всем ответам в группе
-        answers_qs = Answer.objects.filter(
-            submission__homework__in=homework_qs
-        ).select_related('question')
-        
+        # Если в группе нет опубликованных ДЗ, не трогаем таблицу Answer.
         total_correct = 0
         total_incorrect = 0
-        
-        for ans in answers_qs:
-            score = ans.teacher_score if ans.teacher_score is not None else ans.auto_score
-            if score is not None:
-                max_points = ans.question.points if ans.question else 1
-                if score >= max_points:
-                    total_correct += 1
-                else:
-                    total_incorrect += 1
-        
+        if total_hw:
+            # Считаем по всем ответам в группе
+            answers_qs = Answer.objects.filter(
+                submission__homework__in=homework_qs
+            ).select_related('question')
+
+            for ans in answers_qs:
+                score = ans.teacher_score if ans.teacher_score is not None else ans.auto_score
+                if score is not None:
+                    max_points = ans.question.points if ans.question else 1
+                    if score >= max_points:
+                        total_correct += 1
+                    else:
+                        total_incorrect += 1
+
         total_answers = total_correct + total_incorrect
         error_rate = round((total_incorrect / total_answers) * 100, 1) if total_answers > 0 else None
         
@@ -2144,22 +2145,23 @@ class GroupDetailAnalyticsViewSet(viewsets.ViewSet):
             completed = submissions.filter(status__in=['submitted', 'graded']).count()
             hw_percent = round((completed / total_hw) * 100, 1) if total_hw else None
             
-            # Ошибки
-            answers = Answer.objects.filter(
-                submission__student=student,
-                submission__homework__in=homework_qs
-            ).select_related('question')
-            
             correct = 0
             incorrect = 0
-            for ans in answers:
-                score = ans.teacher_score if ans.teacher_score is not None else ans.auto_score
-                if score is not None:
-                    max_points = ans.question.points if ans.question else 1
-                    if score >= max_points:
-                        correct += 1
-                    else:
-                        incorrect += 1
+            if total_hw:
+                # Ошибки
+                answers = Answer.objects.filter(
+                    submission__student=student,
+                    submission__homework__in=homework_qs
+                ).select_related('question')
+
+                for ans in answers:
+                    score = ans.teacher_score if ans.teacher_score is not None else ans.auto_score
+                    if score is not None:
+                        max_points = ans.question.points if ans.question else 1
+                        if score >= max_points:
+                            correct += 1
+                        else:
+                            incorrect += 1
             
             total_ans = correct + incorrect
             error_rate = round((incorrect / total_ans) * 100, 1) if total_ans > 0 else None
