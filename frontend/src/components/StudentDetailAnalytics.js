@@ -121,7 +121,7 @@ function StudentDetailAnalytics({ studentId, groupId, onBack }) {
     const loadSummary = useCallback(async () => {
         try {
             const params = groupId ? `?group_id=${groupId}` : '';
-            const res = await apiClient.get(`/analytics/student-detail/${studentId}/${params}`);
+            const res = await apiClient.get(`/student-detail/${studentId}/${params}`);
             setSummary(res.data);
         } catch (err) {
             console.error('Failed to load summary:', err);
@@ -132,7 +132,7 @@ function StudentDetailAnalytics({ studentId, groupId, onBack }) {
     const loadAttendance = useCallback(async () => {
         try {
             const params = groupId ? `?group_id=${groupId}` : '';
-            const res = await apiClient.get(`/analytics/student-detail/${studentId}/attendance/${params}`);
+            const res = await apiClient.get(`/student-detail/${studentId}/attendance/${params}`);
             setAttendance(res.data);
         } catch (err) {
             console.error('Failed to load attendance:', err);
@@ -142,7 +142,7 @@ function StudentDetailAnalytics({ studentId, groupId, onBack }) {
     const loadParticipation = useCallback(async () => {
         try {
             const params = groupId ? `?group_id=${groupId}` : '';
-            const res = await apiClient.get(`/analytics/student-detail/${studentId}/participation/${params}`);
+            const res = await apiClient.get(`/student-detail/${studentId}/participation/${params}`);
             setParticipation(res.data);
         } catch (err) {
             console.error('Failed to load participation:', err);
@@ -152,7 +152,7 @@ function StudentDetailAnalytics({ studentId, groupId, onBack }) {
     const loadHomework = useCallback(async () => {
         try {
             const params = groupId ? `?group_id=${groupId}` : '';
-            const res = await apiClient.get(`/analytics/student-detail/${studentId}/homework/${params}`);
+            const res = await apiClient.get(`/student-detail/${studentId}/homework/${params}`);
             setHomework(res.data);
         } catch (err) {
             console.error('Failed to load homework:', err);

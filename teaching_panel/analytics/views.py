@@ -41,7 +41,7 @@ class AnalyticsDashboardViewSet(viewsets.ViewSet):
         groups_count = groups.count()
         
         # Students count
-        students_count = CustomUser.objects.filter(role='student', group_students__in=groups).distinct().count()
+        students_count = CustomUser.objects.filter(role='student', enrolled_groups__in=groups).distinct().count()
 
         return Response({
             'groups_count': groups_count,
