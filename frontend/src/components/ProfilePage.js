@@ -765,296 +765,289 @@ const ProfilePage = () => {
                   <p>Загружаем настройки...</p>
                 </div>
               ) : notificationSettings ? (
-                <div className="telegram-grid">
-                  <div className="telegram-card">
-                    <h4>Общие</h4>
-
-                    <label className="notification-item">
+                <div className="notifications-unified">
+                  {/* Главный переключатель */}
+                  <div className="notifications-master-toggle">
+                    <label className="notification-toggle-switch">
                       <input
                         type="checkbox"
                         checked={Boolean(notificationSettings.telegram_enabled)}
                         onChange={() => handleToggleNotificationSetting('telegram_enabled')}
                       />
-                      <span className="notification-text">
-                        <span className="notification-title">Включить уведомления</span>
-                        <span className="notification-desc">Главный переключатель Telegram-уведомлений</span>
-                      </span>
+                      <span className="toggle-slider"></span>
                     </label>
-
-                    <label className="notification-item">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(notificationSettings.notify_lesson_reminders)}
-                        onChange={() => handleToggleNotificationSetting('notify_lesson_reminders')}
-                      />
-                      <span className="notification-text">
-                        <span className="notification-title">Напоминания о занятиях</span>
-                        <span className="notification-desc">Напоминания перед началом урока</span>
+                    <div className="toggle-label">
+                      <span className="toggle-title">Telegram-уведомления</span>
+                      <span className="toggle-desc">
+                        {notificationSettings.telegram_enabled 
+                          ? 'Уведомления включены' 
+                          : 'Все уведомления отключены'}
                       </span>
-                    </label>
+                    </div>
                   </div>
 
-                  {isStudent && (
-                    <div className="telegram-card">
-                      <h4>Для ученика</h4>
+                  {notificationSettings.telegram_enabled && (
+                    <div className="notifications-categories">
+                      {/* Занятия */}
+                      <div className="notification-category">
+                        <div className="category-header">
+                          <h4>Занятия</h4>
+                        </div>
+                        <div className="category-items">
+                          <label className="notification-item-compact">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(notificationSettings.notify_lesson_reminders)}
+                              onChange={() => handleToggleNotificationSetting('notify_lesson_reminders')}
+                            />
+                            <span>Напоминания перед уроком</span>
+                          </label>
+                          {isStudent && (
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_control_point_deadline)}
+                                onChange={() => handleToggleNotificationSetting('notify_control_point_deadline')}
+                              />
+                              <span>Контрольные точки</span>
+                            </label>
+                          )}
+                        </div>
+                      </div>
 
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_new_homework)}
-                          onChange={() => handleToggleNotificationSetting('notify_new_homework')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Новые домашние задания</span>
-                          <span className="notification-desc">Когда преподаватель публикует ДЗ</span>
-                        </span>
-                      </label>
+                      {/* Домашние задания */}
+                      <div className="notification-category">
+                        <div className="category-header">
+                          <h4>Домашние задания</h4>
+                        </div>
+                        <div className="category-items">
+                          {isTeacher && (
+                            <>
+                              <label className="notification-item-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(notificationSettings.notify_homework_submitted)}
+                                  onChange={() => handleToggleNotificationSetting('notify_homework_submitted')}
+                                />
+                                <span>Ученик сдал ДЗ</span>
+                              </label>
+                              <label className="notification-item-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(notificationSettings.notify_grading_backlog)}
+                                  onChange={() => handleToggleNotificationSetting('notify_grading_backlog')}
+                                />
+                                <span>Накопились непроверенные работы</span>
+                              </label>
+                              {notificationSettings.notify_grading_backlog && (
+                                <div className="notification-inline-settings">
+                                  <div className="inline-setting">
+                                    <span>После</span>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="50"
+                                      value={notificationSettings.grading_backlog_threshold || 5}
+                                      onChange={(e) => handleChangeNotificationNumber('grading_backlog_threshold', e.target.value)}
+                                    />
+                                    <span>работ</span>
+                                  </div>
+                                  <div className="inline-setting">
+                                    <span>ожидающих</span>
+                                    <input
+                                      type="number"
+                                      min="12"
+                                      max="168"
+                                      value={notificationSettings.grading_backlog_hours || 48}
+                                      onChange={(e) => handleChangeNotificationNumber('grading_backlog_hours', e.target.value)}
+                                    />
+                                    <span>ч</span>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {isStudent && (
+                            <>
+                              <label className="notification-item-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(notificationSettings.notify_new_homework)}
+                                  onChange={() => handleToggleNotificationSetting('notify_new_homework')}
+                                />
+                                <span>Новое домашнее задание</span>
+                              </label>
+                              <label className="notification-item-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(notificationSettings.notify_homework_deadline)}
+                                  onChange={() => handleToggleNotificationSetting('notify_homework_deadline')}
+                                />
+                                <span>Приближается дедлайн</span>
+                              </label>
+                              <label className="notification-item-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(notificationSettings.notify_homework_graded)}
+                                  onChange={() => handleToggleNotificationSetting('notify_homework_graded')}
+                                />
+                                <span>ДЗ проверено</span>
+                              </label>
+                            </>
+                          )}
+                        </div>
+                      </div>
 
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_homework_deadline)}
-                          onChange={() => handleToggleNotificationSetting('notify_homework_deadline')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Дедлайны по ДЗ</span>
-                          <span className="notification-desc">Напоминания о приближении срока сдачи</span>
-                        </span>
-                      </label>
+                      {/* Ученики — только для учителя */}
+                      {isTeacher && (
+                        <div className="notification-category">
+                          <div className="category-header">
+                            <span className="category-icon">👥</span>
+                            <iv>
+                          <div className="category-items">
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_absence_alert)}
+                                onChange={() => handleToggleNotificationSetting('notify_absence_alert')}
+                              />
+                              <span>Серия пропусков</span>
+                            </label>
+                            {notificationSettings.notify_absence_alert && (
+                              <div className="notification-inline-settings">
+                                <div className="inline-setting">
+                                  <span>После</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="10"
+                                    value={notificationSettings.absence_alert_threshold || 3}
+                                    onChange={(e) => handleChangeNotificationNumber('absence_alert_threshold', e.target.value)}
+                                  />
+                                  <span>пропусков подряд</span>
+                                </div>
+                              </div>
+                            )}
 
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_homework_graded)}
-                          onChange={() => handleToggleNotificationSetting('notify_homework_graded')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Проверка ДЗ</span>
-                          <span className="notification-desc">Когда ДЗ проверено и выставлена оценка</span>
-                        </span>
-                      </label>
-                    </div>
-                  )}
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_performance_drop)}
+                                onChange={() => handleToggleNotificationSetting('notify_performance_drop')}
+                              />
+                              <span>Падение успеваемости</span>
+                            </label>
+                            {notificationSettings.notify_performance_drop && (
+                              <div className="notification-inline-settings">
+                                <div className="inline-setting">
+                                  <span>Снижение на</span>
+                                  <input
+                                    type="number"
+                                    min="5"
+                                    max="50"
+                                    value={notificationSettings.performance_drop_percent || 20}
+                                    onChange={(e) => handleChangeNotificationNumber('performance_drop_percent', e.target.value)}
+                                  />
+                                  <span>%</span>
+                                </div>
+                              </div>
+                            )}
 
-                  {isStudent && (
-                    <div className="telegram-card">
-                      <h4>Аналитика (для ученика)</h4>
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_inactive_student)}
+                                onChange={() => handleToggleNotificationSetting('notify_inactive_student')}
+                              />
+                              <span>Неактивные ученики</span>
+                            </label>
+                            {notificationSettings.notify_inactive_student && (
+                              <div className="notification-inline-settings">
+                                <div className="inline-setting">
+                                  <span>Без активности</span>
+                                  <input
+                                    type="number"
+                                    min="3"
+                                    max="30"
+                                    value={notificationSettings.inactive_student_days || 7}
+                                    onChange={(e) => handleChangeNotificationNumber('inactive_student_days', e.target.value)}
+                                  />
+                                  <span>дней</span>
+                                </div>
+                              </div>
+                            )}
 
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_student_absence_warning)}
-                          onChange={() => handleToggleNotificationSetting('notify_student_absence_warning')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Мои пропуски</span>
-                          <span className="notification-desc">Предупреждения о серии пропусков</span>
-                        </span>
-                      </label>
-
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_control_point_deadline)}
-                          onChange={() => handleToggleNotificationSetting('notify_control_point_deadline')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Контрольные точки</span>
-                          <span className="notification-desc">Напоминания о контрольных работах</span>
-                        </span>
-                      </label>
-
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_achievement)}
-                          onChange={() => handleToggleNotificationSetting('notify_achievement')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Достижения</span>
-                          <span className="notification-desc">Уведомления о прогрессе и успехах</span>
-                        </span>
-                      </label>
-
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_inactivity_nudge)}
-                          onChange={() => handleToggleNotificationSetting('notify_inactivity_nudge')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Напоминания об активности</span>
-                          <span className="notification-desc">Мягкие напоминания при длительном отсутствии</span>
-                        </span>
-                      </label>
-                    </div>
-                  )}
-
-                  {isTeacher && (
-                    <div className="telegram-card">
-                      <h4>Для преподавателя</h4>
-
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_homework_submitted)}
-                          onChange={() => handleToggleNotificationSetting('notify_homework_submitted')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Сдача ДЗ</span>
-                          <span className="notification-desc">Когда ученик отправил решение</span>
-                        </span>
-                      </label>
-
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_payment_success)}
-                          onChange={() => handleToggleNotificationSetting('notify_payment_success')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Оплаты</span>
-                          <span className="notification-desc">Уведомления об успешной оплате</span>
-                        </span>
-                      </label>
-
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_subscription_expiring)}
-                          onChange={() => handleToggleNotificationSetting('notify_subscription_expiring')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Подписка истекает</span>
-                          <span className="notification-desc">Предупреждения перед окончанием подписки</span>
-                        </span>
-                      </label>
-                    </div>
-                  )}
-
-                  {isTeacher && (
-                    <div className="telegram-card">
-                      <h4>Аналитика (для преподавателя)</h4>
-
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_absence_alert)}
-                          onChange={() => handleToggleNotificationSetting('notify_absence_alert')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Пропуски учеников</span>
-                          <span className="notification-desc">Уведомления о серии пропусков</span>
-                        </span>
-                      </label>
-                      {notificationSettings.notify_absence_alert && (
-                        <div className="notification-sub-setting">
-                          <label>Порог пропусков подряд:</label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="10"
-                            value={notificationSettings.absence_alert_threshold || 3}
-                            onChange={(e) => handleChangeNotificationNumber('absence_alert_threshold', e.target.value)}
-                            className="notification-number-input"
-                          />
-                          <span className="notification-hint">0 = отключено</span>
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_group_health)}
+                                onChange={() => handleToggleNotificationSetting('notify_group_health')}
+                              />
+                              <span>Аномалии в группе</span>
+                            </label>
+                          </div>
                         </div>
                       )}
 
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_performance_drop)}
-                          onChange={() => handleToggleNotificationSetting('notify_performance_drop')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Падение успеваемости</span>
-                          <span className="notification-desc">Когда средний балл ученика снижается</span>
-                        </span>
-                      </label>
-                      {notificationSettings.notify_performance_drop && (
-                        <div className="notification-sub-setting">
-                          <label>Порог падения (%):</label>
-                          <input
-                            type="number"
-                            min="5"
-                            max="50"
-                            value={notificationSettings.performance_drop_percent || 20}
-                            onChange={(e) => handleChangeNotificationNumber('performance_drop_percent', e.target.value)}
-                            className="notification-number-input"
-                          />
+                      {/* Прогресс — только для ученика */}
+                      {isStudent && (
+                        <div className="notification-category">
+                          <div className="category-header">
+                            <span className="category-icon">📈</span>
+                            <iv>
+                          <div className="category-items">
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_student_absence_warning)}
+                                onChange={() => handleToggleNotificationSetting('notify_student_absence_warning')}
+                              />
+                              <span>Предупреждения о пропусках</span>
+                            </label>
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_achievement)}
+                                onChange={() => handleToggleNotificationSetting('notify_achievement')}
+                              />
+                              <span>Достижения</span>
+                            </label>
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_inactivity_nudge)}
+                                onChange={() => handleToggleNotificationSetting('notify_inactivity_nudge')}
+                              />
+                              <span>Напоминания об активности</span>
+                            </label>
+                          </div>
                         </div>
                       )}
 
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_group_health)}
-                          onChange={() => handleToggleNotificationSetting('notify_group_health')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Здоровье группы</span>
-                          <span className="notification-desc">Аномалии посещаемости/успеваемости группы</span>
-                        </span>
-                      </label>
-
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_grading_backlog)}
-                          onChange={() => handleToggleNotificationSetting('notify_grading_backlog')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Непроверенные ДЗ</span>
-                          <span className="notification-desc">Напоминание о накопившихся работах</span>
-                        </span>
-                      </label>
-                      {notificationSettings.notify_grading_backlog && (
-                        <div className="notification-sub-setting">
-                          <label>Мин. работ:</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="50"
-                            value={notificationSettings.grading_backlog_threshold || 5}
-                            onChange={(e) => handleChangeNotificationNumber('grading_backlog_threshold', e.target.value)}
-                            className="notification-number-input"
-                          />
-                          <label style={{ marginLeft: '12px' }}>Часов ожидания:</label>
-                          <input
-                            type="number"
-                            min="12"
-                            max="168"
-                            value={notificationSettings.grading_backlog_hours || 48}
-                            onChange={(e) => handleChangeNotificationNumber('grading_backlog_hours', e.target.value)}
-                            className="notification-number-input"
-                          />
-                        </div>
-                      )}
-
-                      <label className="notification-item">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(notificationSettings.notify_inactive_student)}
-                          onChange={() => handleToggleNotificationSetting('notify_inactive_student')}
-                        />
-                        <span className="notification-text">
-                          <span className="notification-title">Неактивные ученики</span>
-                          <span className="notification-desc">Ученики без активности N дней</span>
-                        </span>
-                      </label>
-                      {notificationSettings.notify_inactive_student && (
-                        <div className="notification-sub-setting">
-                          <label>Дней без активности:</label>
-                          <input
-                            type="number"
-                            min="3"
-                            max="30"
-                            value={notificationSettings.inactive_student_days || 7}
-                            onChange={(e) => handleChangeNotificationNumber('inactive_student_days', e.target.value)}
-                            className="notification-number-input"
-                          />
+                      {/* Оплаты — только для учителя */}
+                      {isTeacher && (
+                        <div className="notification-category">
+                          <div className="category-header">
+                            <span className="category-icon">💳</span>
+                            <iv>
+                          <div className="category-items">
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_payment_success)}
+                                onChange={() => handleToggleNotificationSetting('notify_payment_success')}
+                              />
+                              <span>Успешная оплата</span>
+                            </label>
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_subscription_expiring)}
+                                onChange={() => handleToggleNotificationSetting('notify_subscription_expiring')}
+                              />
+                              <span>Подписка истекает</span>
+                            </label>
+                          </div>
                         </div>
                       )}
                     </div>
