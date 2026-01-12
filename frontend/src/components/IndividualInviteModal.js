@@ -89,7 +89,7 @@ const IndividualInviteModal = ({ code, onClose }) => {
                 onClick={() => handleCopy(inviteCode, 'code')}
                 title="Скопировать код"
               >
-                {copiedCode ? '✓ Скопировано' : '📋 Скопировать'}
+                {copiedCode ? 'Скопировано' : 'Скопировать'}
               </button>
             </div>
             <p className="invite-hint">Ученик вводит этот код в поле приглашения</p>
@@ -109,7 +109,7 @@ const IndividualInviteModal = ({ code, onClose }) => {
                 onClick={() => handleCopy(inviteLink, 'link')}
                 title="Скопировать ссылку"
               >
-                {copiedLink ? '✓ Скопировано' : '📋 Скопировать'}
+                {copiedLink ? 'Скопировано' : 'Скопировать'}
               </button>
             </div>
             <p className="invite-hint">Ученик переходит по ссылке и автоматически присоединяется</p>

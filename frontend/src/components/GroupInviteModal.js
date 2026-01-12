@@ -108,7 +108,7 @@ const GroupInviteModal = ({ group, onClose }) => {
               className="invite-copy-btn"
               onClick={() => handleCopy(inviteCode, 'code')}
             >
-              {copiedCode ? '✓ Скопировано' : '📋 Копировать'}
+              {copiedCode ? 'Скопировано' : 'Копировать'}
             </button>
           </div>
           <p className="invite-hint">Ученики могут ввести этот код на странице "Мои курсы"</p>
@@ -127,7 +127,7 @@ const GroupInviteModal = ({ group, onClose }) => {
               className="invite-copy-btn"
               onClick={() => handleCopy(inviteLink, 'link')}
             >
-              {copiedLink ? '✓ Скопировано' : '📋 Копировать'}
+              {copiedLink ? 'Скопировано' : 'Копировать'}
             </button>
           </div>
         </div>

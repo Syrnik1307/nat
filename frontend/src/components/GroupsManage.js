@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   getGroups,
   createGroup,
@@ -37,6 +38,7 @@ const getCurrentUserId = () => {
 };
 
 const GroupsManage = () => {
+  const navigate = useNavigate();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -335,7 +337,7 @@ const GroupsManage = () => {
                       onClick={resetGroupForm}
                       disabled={creating}
                     >
-                      ✕ Отмена
+                      Отмена
                     </button>
                   )}
                 </div>
@@ -389,9 +391,9 @@ const GroupsManage = () => {
                         <button
                           type="button"
                           className="gm-btn-primary"
-                          onClick={() => setDetailModal({ isOpen: true, group })}
+                          onClick={() => navigate(`/attendance/${group.id}`)}
                         >
-                          📊 Открыть
+                          Открыть
                         </button>
                         <button
                           type="button"
@@ -405,7 +407,7 @@ const GroupsManage = () => {
                           className="gm-btn-surface"
                           onClick={() => setInviteModalGroup(group)}
                         >
-                          📨 Пригласить
+                          Пригласить
                         </button>
                         <button
                           type="button"
