@@ -1,4 +1,5 @@
 from django.db import models
+from django.db import IntegrityError, transaction
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -79,27 +80,78 @@ class Group(models.Model):
         return self.students.count()
     
     def generate_invite_code(self):
-        """Генерирует уникальный код приглашения"""
-        import random
+        """Генерирует уникальный код приглашения.
+
+        Гарантия уникальности внутри таблицы обеспечивается `unique=True`.
+        Для кросс-табличной уникальности (Group vs IndividualInviteCode)
+        используем префикс `G` и дополнительно проверяем старые/наследованные коды.
+        """
+        import secrets
         import string
-        while True:
-            code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-            if not Group.objects.filter(invite_code=code).exists():
-                self.invite_code = code
-                self.save(update_fields=['invite_code'])
-                return code
+
+        old_code = (self.invite_code or '').strip().upper() if self.invite_code else ''
+        alphabet = string.ascii_uppercase + string.digits
+
+        # Дизайн-уникальность: группы начинаются с G
+        prefix = 'G'
+        max_attempts = 64
+
+        update_fields = ['invite_code']
+        for _ in range(max_attempts):
+            candidate = prefix + ''.join(secrets.choice(alphabet) for _ in range(7))
+            if candidate == old_code:
+                continue
+
+            # Защита от редкого конфликта с legacy-кодами из другой таблицы
+            if IndividualInviteCode.objects.filter(invite_code=candidate).exists():
+                continue
+
+            self.invite_code = candidate
+            try:
+                with transaction.atomic():
+                    self.save(update_fields=update_fields)
+                return candidate
+            except IntegrityError:
+                # Коллизия в таблице Group (гонка/редкий случай) — пробуем снова
+                continue
+
+        raise IntegrityError('Не удалось сгенерировать уникальный invite_code для группы')
     
     def save(self, *args, **kwargs):
         # Генерация invite_code если он отсутствует (как для новых, так и для старых записей)
-        if not self.invite_code:
-            import random
-            import string
-            while True:
-                code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-                if not Group.objects.filter(invite_code=code).exists():
-                    self.invite_code = code
-                    break
-        super().save(*args, **kwargs)
+        if self.invite_code:
+            return super().save(*args, **kwargs)
+
+        import secrets
+        import string
+
+        alphabet = string.ascii_uppercase + string.digits
+        prefix = 'G'
+        max_attempts = 64
+
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            update_fields.add('invite_code')
+            kwargs['update_fields'] = list(update_fields)
+
+        for _ in range(max_attempts):
+            candidate = prefix + ''.join(secrets.choice(alphabet) for _ in range(7))
+
+            # Защита от редкого конфликта с legacy-кодами из другой таблицы
+            if IndividualInviteCode.objects.filter(invite_code=candidate).exists():
+                continue
+
+            self.invite_code = candidate
+            try:
+                with transaction.atomic():
+                    return super().save(*args, **kwargs)
+            except IntegrityError:
+                # Коллизия по unique внутри Group — повторяем
+                self.invite_code = None
+                continue
+
+        raise IntegrityError('Не удалось сгенерировать уникальный invite_code для группы')
 
 
 class Lesson(models.Model):
@@ -1023,29 +1075,69 @@ class IndividualInviteCode(models.Model):
     
     def generate_invite_code(self):
         """Генерирует уникальный 8-символьный код приглашения"""
-        import random
+        import secrets
         import string
-        while True:
-            code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-            # Проверяем уникальность среди обоих типов кодов
-            if not IndividualInviteCode.objects.filter(invite_code=code).exists() and \
-               not Group.objects.filter(invite_code=code).exists():
-                self.invite_code = code
-                self.save(update_fields=['invite_code'])
-                return code
+
+        old_code = (self.invite_code or '').strip().upper() if self.invite_code else ''
+        alphabet = string.ascii_uppercase + string.digits
+
+        # Дизайн-уникальность: индивидуальные коды начинаются с I
+        prefix = 'I'
+        max_attempts = 64
+
+        for _ in range(max_attempts):
+            candidate = prefix + ''.join(secrets.choice(alphabet) for _ in range(7))
+            if candidate == old_code:
+                continue
+
+            # Защита от конфликтов с Group (особенно legacy-значения)
+            if Group.objects.filter(invite_code=candidate).exists():
+                continue
+
+            self.invite_code = candidate
+            try:
+                with transaction.atomic():
+                    self.save(update_fields=['invite_code'])
+                return candidate
+            except IntegrityError:
+                continue
+
+        raise IntegrityError('Не удалось сгенерировать уникальный invite_code для индивидуального приглашения')
     
     def save(self, *args, **kwargs):
         # Генерируем код если его нет
-        if not self.invite_code:
-            import random
-            import string
-            while True:
-                code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-                if not IndividualInviteCode.objects.filter(invite_code=code).exists() and \
-                   not Group.objects.filter(invite_code=code).exists():
-                    self.invite_code = code
-                    break
-        super().save(*args, **kwargs)
+        if self.invite_code:
+            return super().save(*args, **kwargs)
+
+        import secrets
+        import string
+
+        alphabet = string.ascii_uppercase + string.digits
+        prefix = 'I'
+        max_attempts = 64
+
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            update_fields.add('invite_code')
+            kwargs['update_fields'] = list(update_fields)
+
+        for _ in range(max_attempts):
+            candidate = prefix + ''.join(secrets.choice(alphabet) for _ in range(7))
+
+            # Защита от конфликтов с Group (особенно legacy-значения)
+            if Group.objects.filter(invite_code=candidate).exists():
+                continue
+
+            self.invite_code = candidate
+            try:
+                with transaction.atomic():
+                    return super().save(*args, **kwargs)
+            except IntegrityError:
+                self.invite_code = ''
+                continue
+
+        raise IntegrityError('Не удалось сгенерировать уникальный invite_code для индивидуального приглашения')
 
 
 class LessonNotificationLog(models.Model):

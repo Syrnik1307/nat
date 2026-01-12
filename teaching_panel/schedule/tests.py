@@ -5,7 +5,7 @@ from rest_framework.test import APIClient
 from django.urls import reverse
 from datetime import timedelta
 from unittest.mock import patch
-from .models import Group, Lesson, RecurringLesson
+from .models import Group, Lesson, RecurringLesson, IndividualInviteCode
 from zoom_pool.models import ZoomAccount
 
 User = get_user_model()
@@ -218,6 +218,50 @@ class ZoomAccountsApiTests(TestCase):
 		self.client.force_authenticate(user=self.teacher)
 		resp = self.client.get('/schedule/api/zoom-accounts/?page_size=1')
 		self.assertEqual(resp.status_code, 403)
+
+
+class InviteCodeUniquenessTests(TestCase):
+	def setUp(self):
+		self.teacher = User.objects.create_user(email='invite_teacher@example.com', password='pass', role='teacher')
+		self.student = User.objects.create_user(email='invite_student@example.com', password='pass', role='student')
+		self.client = APIClient()
+
+	def test_group_invite_code_generated_and_prefixed(self):
+		group = Group.objects.create(name='Invite Group', teacher=self.teacher)
+		self.assertTrue(group.invite_code)
+		self.assertEqual(len(group.invite_code), 8)
+		self.assertEqual(group.invite_code, group.invite_code.upper())
+		self.assertTrue(group.invite_code.startswith('G'))
+
+	def test_individual_invite_code_generated_and_prefixed(self):
+		code_obj = IndividualInviteCode.objects.create(teacher=self.teacher, subject='Математика')
+		self.assertTrue(code_obj.invite_code)
+		self.assertEqual(len(code_obj.invite_code), 8)
+		self.assertEqual(code_obj.invite_code, code_obj.invite_code.upper())
+		self.assertTrue(code_obj.invite_code.startswith('I'))
+		self.assertFalse(Group.objects.filter(invite_code=code_obj.invite_code).exists())
+
+	def test_group_regenerate_code_invalidates_old(self):
+		group = Group.objects.create(name='Regenerate Group', teacher=self.teacher)
+		old_code = group.invite_code
+
+		self.client.force_authenticate(user=self.teacher)
+		resp = self.client.post(f'/api/groups/{group.id}/regenerate_code/', {}, format='json')
+		self.assertEqual(resp.status_code, 200)
+		new_code = resp.json().get('invite_code')
+		self.assertTrue(new_code)
+		self.assertNotEqual(new_code, old_code)
+		self.assertTrue(new_code.startswith('G'))
+		self.assertFalse(Group.objects.filter(invite_code=old_code).exists())
+
+		self.client.force_authenticate(user=self.student)
+		bad = self.client.post('/api/groups/join_by_code/', {'invite_code': old_code}, format='json')
+		self.assertEqual(bad.status_code, 404)
+
+		ok = self.client.post('/api/groups/join_by_code/', {'invite_code': new_code}, format='json')
+		self.assertEqual(ok.status_code, 200)
+		group.refresh_from_db()
+		self.assertTrue(group.students.filter(id=self.student.id).exists())
 
 		resp2 = self.client.get('/schedule/api/zoom-accounts/status_summary/')
 		self.assertEqual(resp2.status_code, 403)
