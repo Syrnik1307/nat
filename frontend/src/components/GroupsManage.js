@@ -5,12 +5,12 @@ import {
   createGroup,
   updateGroup,
   deleteGroup,
-  removeStudentsFromGroup,
   getAccessToken,
 } from '../apiService';
 import GroupInviteModal from './GroupInviteModal';
 import GroupDetailModal from './GroupDetailModal';
 import StudentCardModal from './StudentCardModal';
+import GroupStudentsModal from './GroupStudentsModal';
 import {
   useIndividualInvitesData,
   IndividualInviteForm,
@@ -46,9 +46,8 @@ const GroupsManage = () => {
   const [activePanel, setActivePanel] = useState('group');
   const [groupForm, setGroupForm] = useState(initialGroupForm);
   const [editingId, setEditingId] = useState(null);
-  const [studentOpsGroup, setStudentOpsGroup] = useState(null);
+  const [studentsModalGroup, setStudentsModalGroup] = useState(null);
   const [inviteModalGroup, setInviteModalGroup] = useState(null);
-  const [removeIds, setRemoveIds] = useState('');
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: '',
@@ -77,20 +76,13 @@ const GroupsManage = () => {
     setEditingId(null);
   };
 
-  const parseIds = (value) =>
-    value
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .map((item) => Number(item))
-      .filter((item) => Number.isFinite(item));
-
   const load = async () => {
     try {
       const res = await getGroups();
       const data = Array.isArray(res.data) ? res.data : res.data.results || [];
       setGroups(data);
-      setStudentOpsGroup((current) => {
+      // Обновляем модалку учеников если открыта
+      setStudentsModalGroup((current) => {
         if (!current) return null;
         return data.find((item) => item.id === current.id) || null;
       });
@@ -200,32 +192,6 @@ const GroupsManage = () => {
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
       }
     });
-  };
-
-  const openStudentOps = (group) => {
-    setStudentOpsGroup(group);
-    setRemoveIds('');
-  };
-
-  const closeStudentOps = () => setStudentOpsGroup(null);
-
-  const commitRemoveStudents = async () => {
-    if (!studentOpsGroup) return;
-    const ids = parseIds(removeIds);
-    if (!ids.length) return;
-
-    try {
-      await removeStudentsFromGroup(studentOpsGroup.id, ids);
-      await load();
-      setRemoveIds('');
-    } catch (e) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Ошибка',
-        message: e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка удаления',
-        variant: 'danger'
-      });
-    }
   };
 
   if (loading) {
@@ -412,7 +378,7 @@ const GroupsManage = () => {
                         <button
                           type="button"
                           className="gm-btn-surface"
-                          onClick={() => openStudentOps(group)}
+                          onClick={() => setStudentsModalGroup(group)}
                         >
                           Ученики
                         </button>
@@ -471,58 +437,13 @@ const GroupsManage = () => {
         />
       )}
 
-      {studentOpsGroup && (
-        <div className="gm-modal-backdrop" onClick={closeStudentOps}>
-          <div className="gm-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="gm-modal-header">
-              <h3 className="gm-modal-title">Ученики группы: {studentOpsGroup.name}</h3>
-              <button type="button" className="gm-modal-close" onClick={closeStudentOps}>
-                ✕
-              </button>
-            </div>
-            <div className="gm-modal-body">
-              <div className="gm-modal-section">
-                <span className="gm-modal-label">Текущие ученики</span>
-                <div className="gm-modal-student-list">
-                  {Array.isArray(studentOpsGroup.students) && studentOpsGroup.students.length ? (
-                    studentOpsGroup.students.map((student) => (
-                      <div key={student.id} className="gm-modal-student">
-                        <span>
-                          {student.first_name || ''} {student.last_name || ''}
-                        </span>
-                        <span className="gm-badge gm-badge-muted">#{student.id}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="gm-modal-empty">Нет учеников</div>
-                  )}
-                </div>
-              </div>
-
-              <div className="gm-modal-section">
-                <p style={{padding: '1rem', background: '#f0f9ff', borderRadius: '8px', color: '#0369a1', fontSize: '0.9rem'}}>
-                  <strong>Как добавить учеников:</strong> Нажмите кнопку "Пригласить" в карточке группы и поделитесь кодом приглашения с учениками.
-                </p>
-              </div>
-
-              <div className="gm-modal-controls">
-                <div className="gm-modal-column" style={{width: '100%'}}>
-                  <label className="gm-modal-label">Удалить учеников (ID через запятую)</label>
-                  <input
-                    className="gm-modal-input"
-                    value={removeIds}
-                    onChange={(event) => setRemoveIds(event.target.value)}
-                    placeholder="1, 2, 3"
-                  />
-                  <button type="button" className="gm-btn-danger gm-btn-block" onClick={commitRemoveStudents}>
-                    Удалить из группы
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Модальное окно управления учениками */}
+      <GroupStudentsModal
+        group={studentsModalGroup}
+        isOpen={!!studentsModalGroup}
+        onClose={() => setStudentsModalGroup(null)}
+        onStudentsRemoved={load}
+      />
 
       {/* Модальное окно карточки группы */}
       <GroupDetailModal
