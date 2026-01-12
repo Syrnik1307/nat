@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { regenerateGroupInviteCode } from '../apiService';
 import { useNotifications } from '../shared/context/NotificationContext';
+import Modal from '../shared/components/Modal';
 import ConfirmModal from '../shared/components/ConfirmModal';
 import '../styles/InviteModal.css';
 
@@ -73,19 +74,37 @@ const GroupInviteModal = ({ group, onClose }) => {
     }
   };
 
+  const footer = (
+    <div className="invite-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+      <button
+        className="invite-regenerate-btn"
+        onClick={handleRegenerateClick}
+        disabled={regenerating}
+      >
+        {regenerating ? 'Генерация...' : 'Создать новый код'}
+      </button>
+      <button className="invite-done-btn" onClick={onClose}>
+        Готово
+      </button>
+    </div>
+  );
+
   return (
-    <div className="invite-modal-overlay" onClick={onClose}>
-      <div className="invite-modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="invite-modal-close" onClick={onClose}>×</button>
-        
-        <h2>Пригласить учеников</h2>
+    <>
+      <Modal
+        isOpen={true}
+        onClose={onClose}
+        title="Пригласить учеников"
+        size="medium"
+        footer={footer}
+      >
         <p className="invite-modal-subtitle">Группа: {group?.name}</p>
 
         <div className="invite-section">
           <h3>Код приглашения</h3>
           <div className="invite-code-display">
             <span className="invite-code-text">{inviteCode}</span>
-            <button 
+            <button
               className="invite-copy-btn"
               onClick={() => handleCopy(inviteCode, 'code')}
             >
@@ -98,13 +117,13 @@ const GroupInviteModal = ({ group, onClose }) => {
         <div className="invite-section">
           <h3>Ссылка-приглашение</h3>
           <div className="invite-link-display">
-            <input 
-              type="text" 
-              value={inviteLink} 
-              readOnly 
+            <input
+              type="text"
+              value={inviteLink}
+              readOnly
               className="invite-link-input"
             />
-            <button 
+            <button
               className="invite-copy-btn"
               onClick={() => handleCopy(inviteLink, 'link')}
             >
@@ -113,10 +132,10 @@ const GroupInviteModal = ({ group, onClose }) => {
           </div>
         </div>
 
-        <div className="invite-section">
+        <div className="invite-section" style={{ marginBottom: 0 }}>
           <h3>QR-код</h3>
           <div className="invite-qr-placeholder">
-            <img 
+            <img
               src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(inviteLink)}`}
               alt="QR Code"
               className="invite-qr-image"
@@ -124,20 +143,7 @@ const GroupInviteModal = ({ group, onClose }) => {
           </div>
           <p className="invite-hint">Покажите QR-код на экране, ученики отсканируют его</p>
         </div>
-
-        <div className="invite-actions">
-          <button 
-            className="invite-regenerate-btn"
-            onClick={handleRegenerateClick}
-            disabled={regenerating}
-          >
-            {regenerating ? 'Генерация...' : 'Создать новый код'}
-          </button>
-          <button className="invite-done-btn" onClick={onClose}>
-            Готово
-          </button>
-        </div>
-      </div>
+      </Modal>
 
       <ConfirmModal
         isOpen={showConfirm}
@@ -149,7 +155,7 @@ const GroupInviteModal = ({ group, onClose }) => {
         cancelText="Отмена"
         variant="warning"
       />
-    </div>
+    </>
   );
 };
 

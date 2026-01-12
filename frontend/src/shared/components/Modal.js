@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * Переиспользуемый компонент модального окна
@@ -124,34 +125,33 @@ const Modal = ({
     gap: 'var(--space-md)',
   };
 
-  return (
-    <>
-      <div style={backdropStyles} onClick={handleBackdropClick}>
-        <div style={modalStyles}>
-          {title && (
-            <div style={headerStyles}>
-              <h3 style={titleStyles}>{title}</h3>
-              <button
-                style={closeButtonStyles}
-                onClick={onClose}
-                onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
-                onMouseLeave={(e) => e.target.style.color = 'var(--text-secondary)'}
-              >
-                ×
-              </button>
-            </div>
-          )}
-          <div style={bodyStyles}>
-            {children}
+  return createPortal(
+    <div style={backdropStyles} onClick={handleBackdropClick}>
+      <div style={modalStyles}>
+        {title && (
+          <div style={headerStyles}>
+            <h3 style={titleStyles}>{title}</h3>
+            <button
+              style={closeButtonStyles}
+              onClick={onClose}
+              onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
+              onMouseLeave={(e) => e.target.style.color = 'var(--text-secondary)'}
+            >
+              ×
+            </button>
           </div>
-          {footer && (
-            <div style={footerStyles}>
-              {footer}
-            </div>
-          )}
+        )}
+        <div style={bodyStyles}>
+          {children}
         </div>
+        {footer && (
+          <div style={footerStyles}>
+            {footer}
+          </div>
+        )}
       </div>
-    </>
+    </div>,
+    document.body
   );
 };
 
