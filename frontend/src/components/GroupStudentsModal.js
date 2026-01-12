@@ -7,12 +7,15 @@
 import React, { useState } from 'react';
 import Modal from '../shared/components/Modal';
 import { ConfirmModal } from '../shared/components';
-import { removeStudentsFromGroup } from '../apiService';
+import { removeStudentsFromGroup, addStudentsToGroup } from '../apiService';
 import './GroupStudentsModal.css';
 
-const GroupStudentsModal = ({ group, isOpen, onClose, onStudentsRemoved }) => {
+const GroupStudentsModal = ({ group, allGroups = [], isOpen, onClose, onStudentsRemoved }) => {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [removing, setRemoving] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+  const [showTransferSelect, setShowTransferSelect] = useState(false);
+  const [targetGroupId, setTargetGroupId] = useState('');
   const [confirmModal, setConfirmModal] = useState({ isOpen: false });
 
   if (!isOpen || !group) return null;
@@ -43,8 +46,47 @@ const GroupStudentsModal = ({ group, isOpen, onClose, onStudentsRemoved }) => {
     if (selectedIds.size === 0) return;
     setConfirmModal({
       isOpen: true,
-      count: selectedIds.size
+      count: selectedIds.size,
+      type: 'remove'
     });
+  };
+
+  const handleTransferClick = () => {
+    if (selectedIds.size === 0) return;
+    setShowTransferSelect(true);
+    setTargetGroupId('');
+  };
+
+  const handleTransferConfirm = () => {
+    if (!targetGroupId) return;
+    setShowTransferSelect(false);
+    setConfirmModal({
+      isOpen: true,
+      count: selectedIds.size,
+      type: 'transfer',
+      targetGroupId: targetGroupId,
+      targetGroupName: availableGroups.find(g => g.id === parseInt(targetGroupId))?.name || ''
+    });
+  };
+
+  const handleConfirmTransfer = async () => {
+    setTransferring(true);
+    try {
+      const ids = Array.from(selectedIds);
+      // Сначала удаляем из текущей группы
+      await removeStudentsFromGroup(group.id, ids);
+      // Затем добавляем в новую группу
+      await addStudentsToGroup(parseInt(confirmModal.targetGroupId), ids);
+      setSelectedIds(new Set());
+      setConfirmModal({ isOpen: false });
+      if (onStudentsRemoved) {
+        onStudentsRemoved();
+      }
+    } catch (error) {
+      console.error('Error transferring students:', error);
+    } finally {
+      setTransferring(false);
+    }
   };
 
   const handleConfirmRemove = async () => {
@@ -62,6 +104,9 @@ const GroupStudentsModal = ({ group, isOpen, onClose, onStudentsRemoved }) => {
       setRemoving(false);
     }
   };
+
+  // Фильтруем группы для переноса (исключаем текущую)
+  const availableGroups = allGroups.filter(g => g.id !== group.id);
 
   const getInitials = (student) => {
     const first = student.first_name?.[0] || '';
@@ -90,12 +135,21 @@ const GroupStudentsModal = ({ group, isOpen, onClose, onStudentsRemoved }) => {
         >
           Закрыть
         </button>
+        {availableGroups.length > 0 && (
+          <button
+            className="gsm-btn gsm-btn-primary"
+            onClick={handleTransferClick}
+            disabled={selectedIds.size === 0 || transferring}
+          >
+            Перенести
+          </button>
+        )}
         <button
           className="gsm-btn gsm-btn-danger"
           onClick={handleRemoveClick}
           disabled={selectedIds.size === 0 || removing}
         >
-          {removing ? 'Удаление...' : 'Удалить выбранных'}
+          {removing ? 'Удаление...' : 'Удалить'}
         </button>
       </div>
     </div>
@@ -182,11 +236,44 @@ const GroupStudentsModal = ({ group, isOpen, onClose, onStudentsRemoved }) => {
               </div>
             </>
           )}
+
+          {/* Панель выбора группы для переноса */}
+          {showTransferSelect && (
+            <div className="gsm-transfer-panel">
+              <div className="gsm-transfer-header">
+                <span>Перенести в группу:</span>
+                <button 
+                  className="gsm-transfer-close"
+                  onClick={() => setShowTransferSelect(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <select
+                className="gsm-transfer-select"
+                value={targetGroupId}
+                onChange={(e) => setTargetGroupId(e.target.value)}
+              >
+                <option value="">Выберите группу...</option>
+                {availableGroups.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+              <button
+                className="gsm-btn gsm-btn-primary gsm-transfer-confirm"
+                onClick={handleTransferConfirm}
+                disabled={!targetGroupId}
+              >
+                Перенести
+              </button>
+            </div>
+          )}
         </div>
       </Modal>
 
+      {/* Модалка подтверждения удаления */}
       <ConfirmModal
-        isOpen={confirmModal.isOpen}
+        isOpen={confirmModal.isOpen && confirmModal.type === 'remove'}
         onClose={() => setConfirmModal({ isOpen: false })}
         onConfirm={handleConfirmRemove}
         title="Удалить учеников?"
@@ -194,6 +281,18 @@ const GroupStudentsModal = ({ group, isOpen, onClose, onStudentsRemoved }) => {
         confirmText={removing ? 'Удаление...' : 'Удалить'}
         cancelText="Отмена"
         variant="danger"
+      />
+
+      {/* Модалка подтверждения переноса */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen && confirmModal.type === 'transfer'}
+        onClose={() => setConfirmModal({ isOpen: false })}
+        onConfirm={handleConfirmTransfer}
+        title="Перенести учеников?"
+        message={`Вы собираетесь перенести ${confirmModal.count} ${confirmModal.count === 1 ? 'ученика' : 'учеников'} в группу «${confirmModal.targetGroupName}». Они будут удалены из текущей группы.`}
+        confirmText={transferring ? 'Перенос...' : 'Перенести'}
+        cancelText="Отмена"
+        variant="primary"
       />
     </>
   );

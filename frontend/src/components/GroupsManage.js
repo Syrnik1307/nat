@@ -440,6 +440,7 @@ const GroupsManage = () => {
       {/* Модальное окно управления учениками */}
       <GroupStudentsModal
         group={studentsModalGroup}
+        allGroups={groups}
         isOpen={!!studentsModalGroup}
         onClose={() => setStudentsModalGroup(null)}
         onStudentsRemoved={load}
