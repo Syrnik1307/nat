@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import Modal from '../shared/components/Modal';
 import { ConfirmModal } from '../shared/components';
+import Select from '../shared/components/Select';
 import { removeStudentsFromGroup, addStudentsToGroup } from '../apiService';
 import './GroupStudentsModal.css';
 
@@ -60,12 +61,13 @@ const GroupStudentsModal = ({ group, allGroups = [], isOpen, onClose, onStudents
   const handleTransferConfirm = () => {
     if (!targetGroupId) return;
     setShowTransferSelect(false);
+    const targetIdNum = Number(targetGroupId);
     setConfirmModal({
       isOpen: true,
       count: selectedIds.size,
       type: 'transfer',
-      targetGroupId: targetGroupId,
-      targetGroupName: availableGroups.find(g => g.id === parseInt(targetGroupId))?.name || ''
+      targetGroupId: targetIdNum,
+      targetGroupName: availableGroups.find(g => g.id === targetIdNum)?.name || ''
     });
   };
 
@@ -76,7 +78,7 @@ const GroupStudentsModal = ({ group, allGroups = [], isOpen, onClose, onStudents
       // Сначала удаляем из текущей группы
       await removeStudentsFromGroup(group.id, ids);
       // Затем добавляем в новую группу
-      await addStudentsToGroup(parseInt(confirmModal.targetGroupId), ids);
+      await addStudentsToGroup(Number(confirmModal.targetGroupId), ids);
       setSelectedIds(new Set());
       setConfirmModal({ isOpen: false });
       if (onStudentsRemoved) {
@@ -245,20 +247,22 @@ const GroupStudentsModal = ({ group, allGroups = [], isOpen, onClose, onStudents
                 <button 
                   className="gsm-transfer-close"
                   onClick={() => setShowTransferSelect(false)}
+                  type="button"
+                  aria-label="Закрыть"
                 >
-                  ✕
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
                 </button>
               </div>
-              <select
-                className="gsm-transfer-select"
+              <Select
                 value={targetGroupId}
                 onChange={(e) => setTargetGroupId(e.target.value)}
-              >
-                <option value="">Выберите группу...</option>
-                {availableGroups.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
+                options={availableGroups.map((g) => ({ value: String(g.id), label: g.name }))}
+                placeholder="Выберите группу..."
+                className="gsm-transfer-select"
+              />
               <button
                 className="gsm-btn gsm-btn-primary gsm-transfer-confirm"
                 onClick={handleTransferConfirm}
