@@ -123,6 +123,8 @@ const GroupInviteModal = ({ group, onClose }) => {
             />
           </div>
           <p className="invite-hint">Покажите QR-код на экране, ученики отсканируют его</p>
+        </div>
+
         <div className="invite-actions">
           <button 
             className="invite-regenerate-btn"
@@ -148,8 +150,6 @@ const GroupInviteModal = ({ group, onClose }) => {
         variant="warning"
       />
     </div>
-  );
-};  </div>
   );
 };
 
