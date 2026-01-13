@@ -72,6 +72,7 @@ function TeacherMaterialsPage() {
   
   // Miro status
   const [miroStatus, setMiroStatus] = useState(null);
+  const [miroBoards, setMiroBoards] = useState([]);
 
   const addToast = useCallback((toast) => {
     const id = Date.now() + Math.random();
@@ -161,12 +162,101 @@ function TeacherMaterialsPage() {
 
   const loadMiroStatus = async () => {
     try {
-      const response = await api.get('miro/status/', withScheduleApiBase());
+      // Используем OAuth endpoint для более полной информации
+      const response = await api.get('miro/oauth/status/', withScheduleApiBase());
       setMiroStatus(response.data);
+      
+      // Если пользователь подключил Miro - загружаем его доски
+      if (response.data?.user_connected) {
+        loadMiroBoards();
+      }
     } catch (err) {
       console.error('Error loading Miro status:', err);
+      // Fallback к старому endpoint
+      try {
+        const fallback = await api.get('miro/status/', withScheduleApiBase());
+        setMiroStatus(fallback.data);
+      } catch (err2) {
+        console.error('Error loading Miro status fallback:', err2);
+      }
     }
   };
+
+  const loadMiroBoards = async () => {
+    try {
+      const response = await api.get('miro/oauth/boards/', withScheduleApiBase());
+      setMiroBoards(response.data?.boards || []);
+    } catch (err) {
+      console.error('Error loading Miro boards:', err);
+    }
+  };
+
+  const handleConnectMiro = async () => {
+    try {
+      const response = await api.get('miro/oauth/start/', withScheduleApiBase());
+      if (response.data?.auth_url) {
+        window.location.href = response.data.auth_url;
+      } else if (miroStatus?.auth_url) {
+        window.location.href = miroStatus.auth_url;
+      } else {
+        addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось получить ссылку для авторизации Miro' });
+      }
+    } catch (err) {
+      console.error('Error starting Miro OAuth:', err);
+      addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось начать авторизацию в Miro' });
+    }
+  };
+
+  const handleDisconnectMiro = async () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Отключение Miro',
+      message: 'Вы уверены, что хотите отключить интеграцию с Miro?',
+      variant: 'warning',
+      confirmText: 'Отключить',
+      onConfirm: async () => {
+        try {
+          await api.post('miro/oauth/disconnect/', {}, withScheduleApiBase());
+          addToast({ type: 'success', title: 'Успех', message: 'Miro отключен' });
+          setMiroStatus(prev => ({ ...prev, user_connected: false }));
+          setMiroBoards([]);
+        } catch (err) {
+          addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось отключить Miro' });
+        }
+        setConfirmModal({ isOpen: false });
+      }
+    });
+  };
+
+  const handleImportMiroBoard = async (board) => {
+    try {
+      await api.post('miro/oauth/import-board/', {
+        board_id: board.id,
+        title: board.name,
+        description: board.description || '',
+        visibility: 'all_teacher_groups'
+      }, withScheduleApiBase());
+      
+      addToast({ type: 'success', title: 'Успех', message: `Доска "${board.name}" добавлена в материалы!` });
+      loadMaterials();
+    } catch (err) {
+      addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось импортировать доску' });
+    }
+  };
+
+  // Проверяем callback от Miro OAuth при загрузке страницы
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('miro_connected') === 'true') {
+      window.history.replaceState({}, '', window.location.pathname);
+      addToast({ type: 'success', title: 'Miro подключен!', message: 'Теперь вы можете добавлять доски из своего аккаунта' });
+      loadMiroStatus();
+    } else if (params.get('miro_error')) {
+      const error = params.get('miro_error');
+      window.history.replaceState({}, '', window.location.pathname);
+      addToast({ type: 'error', title: 'Ошибка подключения Miro', message: error });
+    }
+  }, []);
 
   // Обработчики добавления материалов
   const handleAddMiroBoard = async (e) => {
@@ -432,32 +522,107 @@ function TeacherMaterialsPage() {
         )}
 
         {activeTab === 'miro' && (
-          <div className="miro-grid">
-            {filterBySearch(materials.miro || []).length === 0 ? (
-              <div className="empty-state">
-                <span className="empty-icon">🎨</span>
-                <h3>Нет досок Miro</h3>
-                <p>Добавьте доску Miro по ссылке или создайте новую</p>
+          <div className="miro-tab-content">
+            {/* Miro Connection Status */}
+            <div className="miro-connection-status">
+              {miroStatus?.user_connected ? (
+                <div className="connection-info connected">
+                  <span className="status-icon">✅</span>
+                  <span className="status-text">Miro подключен</span>
+                  <button className="link-btn" onClick={handleDisconnectMiro}>Отключить</button>
+                </div>
+              ) : miroStatus?.oauth_configured ? (
+                <div className="connection-info not-connected">
+                  <span className="status-icon">🔗</span>
+                  <span className="status-text">Подключите Miro для доступа к своим доскам</span>
+                  <button className="connect-btn" onClick={handleConnectMiro}>
+                    Подключить Miro
+                  </button>
+                </div>
+              ) : (
+                <div className="connection-info info">
+                  <span className="status-icon">ℹ️</span>
+                  <span className="status-text">Вы можете добавлять доски Miro по ссылке</span>
+                </div>
+              )}
+            </div>
+
+            {/* Miro Boards from User's Account */}
+            {miroStatus?.user_connected && miroBoards.length > 0 && (
+              <div className="miro-user-boards">
+                <div className="section-header">
+                  <h3>🎨 Мои доски в Miro</h3>
+                  <button className="refresh-btn" onClick={loadMiroBoards}>🔄</button>
+                </div>
+                <div className="boards-scroll-container">
+                  {miroBoards.map(board => (
+                    <div key={board.id} className="miro-board-item">
+                      <div className="board-thumb">
+                        {board.picture ? (
+                          <img src={board.picture} alt={board.name} />
+                        ) : (
+                          <span className="thumb-placeholder">🎨</span>
+                        )}
+                      </div>
+                      <div className="board-info">
+                        <h4>{board.name}</h4>
+                        <span className="board-date">
+                          Изменено: {new Date(board.modified_at).toLocaleDateString('ru-RU')}
+                        </span>
+                      </div>
+                      <div className="board-actions">
+                        <a 
+                          href={board.view_link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="action-btn small"
+                        >
+                          Открыть
+                        </a>
+                        <button 
+                          className="action-btn small primary"
+                          onClick={() => handleImportMiroBoard(board)}
+                        >
+                          + Добавить
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Added Miro Boards */}
+            <div className="miro-added-boards">
+              <div className="section-header">
+                <h3>📌 Добавленные доски</h3>
                 <button className="add-btn" onClick={() => setShowAddMiroModal(true)}>
-                  + Добавить доску
+                  + Добавить по ссылке
                 </button>
               </div>
-            ) : (
-              filterBySearch(materials.miro || []).map(board => (
-                <div key={board.id} className="material-card miro-card">
-                  <div className="card-preview miro-preview">
-                    {board.miro_embed_url ? (
-                      <iframe
-                        src={board.miro_embed_url}
-                        frameBorder="0"
-                        scrolling="no"
-                        allow="fullscreen; clipboard-read; clipboard-write"
-                        title={board.title}
-                      />
-                    ) : (
-                      <div className="preview-placeholder">🎨</div>
-                    )}
+
+              <div className="miro-grid">
+                {filterBySearch(materials.miro || []).length === 0 ? (
+                  <div className="empty-state small">
+                    <span className="empty-icon">🎨</span>
+                    <p>Нет добавленных досок</p>
                   </div>
+                ) : (
+                  filterBySearch(materials.miro || []).map(board => (
+                    <div key={board.id} className="material-card miro-card">
+                      <div className="card-preview miro-preview">
+                        {board.miro_embed_url ? (
+                          <iframe
+                            src={board.miro_embed_url}
+                            frameBorder="0"
+                            scrolling="no"
+                            allow="fullscreen; clipboard-read; clipboard-write"
+                            title={board.title}
+                          />
+                        ) : (
+                          <div className="preview-placeholder">🎨</div>
+                        )}
+                      </div>
                   <div className="card-info">
                     <h3>{board.title}</h3>
                     {board.description && <p>{board.description}</p>}
@@ -487,6 +652,8 @@ function TeacherMaterialsPage() {
                 </div>
               ))
             )}
+              </div>
+            </div>
           </div>
         )}
 

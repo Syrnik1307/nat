@@ -688,3 +688,253 @@
     margin: 1rem;
   }
 }
+
+/* ===== Miro OAuth Integration Styles ===== */
+
+.miro-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.miro-connection-status {
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.95));
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(8px);
+}
+
+.connection-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.connection-info .status-icon {
+  font-size: 1.25rem;
+}
+
+.connection-info .status-text {
+  flex: 1;
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+.connection-info.connected {
+  color: #059669;
+}
+
+.connection-info.connected .status-text {
+  color: #059669;
+  font-weight: 500;
+}
+
+.connection-info .link-btn {
+  background: none;
+  border: none;
+  color: #6366f1;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.25rem 0.5rem;
+}
+
+.connection-info .link-btn:hover {
+  color: #4f46e5;
+}
+
+.connection-info .connect-btn {
+  padding: 0.625rem 1.25rem;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.connection-info .connect-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+/* Miro User Boards Section */
+.miro-user-boards {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.98));
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+}
+
+.miro-user-boards .section-header,
+.miro-added-boards .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.miro-user-boards .section-header h3,
+.miro-added-boards .section-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.refresh-btn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+}
+
+.refresh-btn:hover {
+  opacity: 1;
+  transform: rotate(180deg);
+}
+
+.boards-scroll-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.boards-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.boards-scroll-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.boards-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.boards-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.miro-board-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-lg);
+  transition: all 0.2s ease;
+}
+
+.miro-board-item:hover {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.miro-board-item .board-thumb {
+  width: 56px;
+  height: 40px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.miro-board-item .board-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.miro-board-item .board-thumb .thumb-placeholder {
+  font-size: 1.25rem;
+  color: white;
+}
+
+.miro-board-item .board-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.miro-board-item .board-info h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.miro-board-item .board-date {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.miro-board-item .board-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.action-btn.small {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8rem;
+  border-radius: var(--radius-md);
+}
+
+/* Miro Added Boards Section */
+.miro-added-boards {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.98));
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+}
+
+.empty-state.small {
+  padding: 2rem;
+}
+
+.empty-state.small .empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state.small p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+  .miro-board-item {
+    flex-wrap: wrap;
+  }
+  
+  .miro-board-item .board-actions {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  
+  .miro-board-item .board-actions .action-btn {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+  }
+}

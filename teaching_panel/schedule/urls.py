@@ -6,6 +6,7 @@ from . import webhooks
 from . import storage_views
 from . import material_views
 from . import calendar_views
+from . import miro_oauth
 
 app_name = 'schedule'
 
@@ -70,6 +71,16 @@ urlpatterns = [
     path('api/miro/add-board/', views.miro_add_board, name='miro_add_board'),
     path('api/miro/create-board/', views.miro_create_board, name='miro_create_board'),
     path('api/miro/status/', views.miro_status, name='miro_status'),
+    
+    # Miro OAuth API (для личных аккаунтов учителей)
+    path('api/miro/oauth/status/', miro_oauth.miro_auth_status, name='miro_auth_status'),
+    path('api/miro/oauth/start/', miro_oauth.miro_oauth_start, name='miro_oauth_start'),
+    path('api/miro/oauth/callback/', miro_oauth.miro_oauth_callback, name='miro_oauth_callback'),
+    path('api/miro/oauth/disconnect/', miro_oauth.miro_disconnect, name='miro_disconnect'),
+    path('api/miro/oauth/refresh/', miro_oauth.miro_refresh_token, name='miro_refresh_token'),
+    path('api/miro/oauth/boards/', miro_oauth.miro_list_boards, name='miro_list_boards'),
+    path('api/miro/oauth/create-board/', miro_oauth.miro_create_board_oauth, name='miro_create_board_oauth'),
+    path('api/miro/oauth/import-board/', miro_oauth.miro_import_board, name='miro_import_board'),
     
     # Notes & Documents API
     path('api/materials/add-notes/', views.add_notes, name='add_notes'),

@@ -1331,6 +1331,91 @@ class RecurringLessonTelegramBindCode(models.Model):
         return f"{self.code} → {self.recurring_lesson_id}"
 
 
+class MiroUserToken(models.Model):
+    """OAuth токены Miro для учителей.
+    
+    Позволяет учителю авторизоваться в Miro через OAuth
+    и получать доступ к своим доскам.
+    """
+    
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='miro_token',
+        verbose_name=_('пользователь')
+    )
+    
+    access_token = models.CharField(
+        _('access token'),
+        max_length=500,
+        help_text=_('Токен доступа Miro API')
+    )
+    
+    refresh_token = models.CharField(
+        _('refresh token'),
+        max_length=500,
+        blank=True,
+        help_text=_('Токен для обновления access token')
+    )
+    
+    token_type = models.CharField(
+        _('тип токена'),
+        max_length=50,
+        default='Bearer'
+    )
+    
+    expires_at = models.DateTimeField(
+        _('истекает'),
+        null=True,
+        blank=True,
+        help_text=_('Когда истекает access token')
+    )
+    
+    miro_user_id = models.CharField(
+        _('Miro User ID'),
+        max_length=100,
+        blank=True,
+        help_text=_('ID пользователя в Miro')
+    )
+    
+    miro_team_id = models.CharField(
+        _('Miro Team ID'),
+        max_length=100,
+        blank=True,
+        help_text=_('ID команды в Miro')
+    )
+    
+    scopes = models.TextField(
+        _('scopes'),
+        blank=True,
+        help_text=_('Разрешения токена через пробел')
+    )
+    
+    created_at = models.DateTimeField(_('создан'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('обновлён'), auto_now=True)
+    
+    class Meta:
+        verbose_name = _('Miro токен пользователя')
+        verbose_name_plural = _('Miro токены пользователей')
+    
+    def __str__(self):
+        return f"Miro token for {self.user.email}"
+    
+    @property
+    def is_expired(self):
+        """Проверить, истёк ли токен"""
+        if not self.expires_at:
+            return False
+        return timezone.now() >= self.expires_at
+    
+    def needs_refresh(self):
+        """Проверить, нужно ли обновить токен (за 5 минут до истечения)"""
+        if not self.expires_at:
+            return False
+        buffer = timezone.timedelta(minutes=5)
+        return timezone.now() >= (self.expires_at - buffer)
+
+
 class LessonTranscriptStats(models.Model):
     """Статистика по транскрипту урока (участие, упоминания)"""
     lesson = models.OneToOneField(
