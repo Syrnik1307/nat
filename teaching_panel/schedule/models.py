@@ -296,6 +296,15 @@ class LessonRecording(models.Model):
         blank=True,
         help_text=_('Урок, к которому привязана запись (может быть пустым для standalone записей)')
     )
+
+    # Standalone-записи не имеют урока, поэтому сохраняем их название отдельно
+    title = models.CharField(
+        _('название'),
+        max_length=255,
+        blank=True,
+        default='',
+        help_text=_('Название standalone видео (если запись не привязана к уроку)')
+    )
     
     zoom_recording_id = models.CharField(_('ID записи Zoom'), max_length=100, blank=True, default='')
     download_url = models.URLField(_('ссылка для скачивания'), blank=True)
@@ -419,7 +428,11 @@ class LessonRecording(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"Recording for {self.lesson.title} ({self.created_at.strftime('%d.%m.%Y %H:%M')})"
+        if self.lesson_id and self.lesson:
+            name = self.lesson.title or 'Урок'
+        else:
+            name = self.title or 'Standalone видео'
+        return f"Recording: {name} ({self.created_at.strftime('%d.%m.%Y %H:%M')})"
 
     def ensure_base_group_access(self):
         """Убеждаемся, что базовая группа урока всегда имеет доступ."""

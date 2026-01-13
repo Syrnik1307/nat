@@ -483,7 +483,7 @@ class RecurringLessonSerializer(serializers.ModelSerializer):
 
 
 class LessonRecordingSerializer(serializers.ModelSerializer):
-    """Сериализатор для записей уроков (без несуществующих полей)"""
+    """Сериализатор для записей уроков"""
     lesson_info = serializers.SerializerMethodField()
     file_size_mb = serializers.SerializerMethodField()
     duration_display = serializers.SerializerMethodField()
@@ -573,6 +573,7 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
         model = LessonRecording
         fields = [
             'id', 'lesson', 'lesson_info',
+            'title',
             'zoom_recording_id',
             'file_size', 'file_size_mb',
             'duration_display',
@@ -584,7 +585,7 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'id', 'zoom_recording_id', 'file_size',
+            'id', 'title', 'zoom_recording_id', 'file_size',
             'play_url', 'download_url', 'thumbnail_url',
             'storage_provider', 'gdrive_file_id',
             'status', 'views_count', 'visibility',

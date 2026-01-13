@@ -4,7 +4,9 @@ import './RecordingCard.css';
 function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
 
   const formatDate = (dateString) => {
+    if (!dateString) return '';
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '';
     return date.toLocaleDateString('ru-RU', {
       day: 'numeric',
       month: 'long',
@@ -13,7 +15,9 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
   };
 
   const formatTime = (dateString) => {
+    if (!dateString) return '';
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '';
     return date.toLocaleTimeString('ru-RU', {
       hour: '2-digit',
       minute: '2-digit'
@@ -71,7 +75,7 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
       {/* Информация */}
       <div className="recording-info">
         <div className="recording-title">
-          {recording.lesson_info?.subject || 'Урок'}
+          {recording.title || recording.lesson_info?.subject || 'Урок'}
         </div>
 
         <div className="recording-subtitle">
@@ -94,14 +98,27 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
         )}
 
         <div className="recording-meta">
-          <div className="meta-row">
-            <span className="meta-icon"></span>
-            <span>{formatDate(recording.lesson_info?.start_time)}</span>
-          </div>
-          <div className="meta-row">
-            <span className="meta-icon">🕐</span>
-            <span>{formatTime(recording.lesson_info?.start_time)}</span>
-          </div>
+          {(() => {
+            const baseDate = recording.lesson_info?.start_time || recording.created_at;
+            const dateLabel = formatDate(baseDate);
+            const timeLabel = formatTime(baseDate);
+            return (
+              <>
+                {dateLabel && (
+                  <div className="meta-row">
+                    <span className="meta-icon"></span>
+                    <span>{dateLabel}</span>
+                  </div>
+                )}
+                {timeLabel && (
+                  <div className="meta-row">
+                    <span className="meta-icon">🕐</span>
+                    <span>{timeLabel}</span>
+                  </div>
+                )}
+              </>
+            );
+          })()}
           {recording.lesson_info?.teacher && (
             <div className="meta-row">
               <span className="meta-icon">👨‍🏫</span>

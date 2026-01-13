@@ -940,9 +940,9 @@
 
 .teacher-checkbox-item {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.75rem;
+  align-items: flex-start;
+  gap: 1.1rem;
+  padding: 0.875rem 1rem;
   background: white;
   border: 1px solid var(--border-light);
   border-radius: 6px;
@@ -956,15 +956,44 @@
 }
 
 .teacher-checkbox-item input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 0.15rem;
+  flex: 0 0 20px;
+  border-radius: 6px;
+  border: 2px solid var(--border-light);
+  background: white;
+  display: grid;
+  place-content: center;
   cursor: pointer;
-  accent-color: var(--color-primary);
+  transition: all 0.15s ease;
+}
+
+.teacher-checkbox-item input[type="checkbox"]:hover {
+  border-color: var(--primary-400);
+}
+
+.teacher-checkbox-item input[type="checkbox"]:checked {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.teacher-checkbox-item input[type="checkbox"]:checked::after {
+  content: '';
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid white;
+  border-bottom: 2px solid white;
+  transform: rotate(-45deg);
+  margin-top: -1px;
 }
 
 .teacher-checkbox-item span {
   font-size: 0.95rem;
   color: var(--text-main);
+  line-height: 1.35;
 }
 
 /* Upload progress */

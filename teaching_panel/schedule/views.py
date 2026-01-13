@@ -648,6 +648,7 @@ class LessonViewSet(viewsets.ModelViewSet):
             'status': 'success',
             'recording': {
                 'id': recording.id,
+                'title': recording.title,
                 'play_url': recording.play_url,
                 'file_size': recording.file_size,
                 'storage_provider': storage_provider,
