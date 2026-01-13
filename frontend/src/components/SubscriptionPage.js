@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiClient } from '../apiService';
+import { useAuth } from '../auth';
 import Modal from '../shared/components/Modal';
 import Button from '../shared/components/Button';
 import './SubscriptionPage.css';
 
 const SubscriptionPage = ({ embedded = false }) => {
-  const [loading, setLoading] = useState(true);
-  const [subData, setSubData] = useState(null);
+  const { subscription: cachedSubscription } = useAuth();
+  
+  // Используем кешированные данные из AuthContext как начальные
+  const [loading, setLoading] = useState(!cachedSubscription);
+  const [subData, setSubData] = useState(cachedSubscription);
   const [storageStats, setStorageStats] = useState(null);
   const [storageLoading, setStorageLoading] = useState(false);
   const [storageGb, setStorageGb] = useState(10);
@@ -17,8 +21,10 @@ const SubscriptionPage = ({ embedded = false }) => {
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: null, message: '' });
 
-  const loadSubscription = useCallback(async () => {
-    setLoading(true);
+  const loadSubscription = useCallback(async (skipMainLoading = false) => {
+    if (!skipMainLoading) {
+      setLoading(true);
+    }
     try {
       const subResponse = await apiClient.get('subscription/');
       setSubData(subResponse.data);
@@ -68,8 +74,10 @@ const SubscriptionPage = ({ embedded = false }) => {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     } else {
-      loadSubscription();
+      // Если есть кеш — не показываем loading, просто обновляем данные в фоне
+      loadSubscription(!!cachedSubscription);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadSubscription]);
 
   useEffect(() => {
