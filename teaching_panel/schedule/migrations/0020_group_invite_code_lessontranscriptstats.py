@@ -11,11 +11,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='group',
-            name='invite_code',
-            field=models.CharField(blank=True, help_text='Уникальный код для присоединения учеников к группе', max_length=8, null=True, unique=True, verbose_name='код приглашения'),
-        ),
         migrations.CreateModel(
             name='LessonTranscriptStats',
             fields=[
