@@ -186,13 +186,13 @@ const HomeworkConstructor = () => {
           setUploadingImageFor(questionIndex);
           try {
             const response = await uploadHomeworkFile(file, 'image');
-            if (response.url) {
+            if (response.data?.url) {
               setQuestions((prev) => {
                 const updated = [...prev];
                 const q = updated[questionIndex];
                 updated[questionIndex] = {
                   ...q,
-                  config: { ...q.config, imageUrl: response.url }
+                  config: { ...q.config, imageUrl: response.data.url }
                 };
                 return updated;
               });
@@ -703,12 +703,12 @@ const HomeworkConstructor = () => {
                                     setUploadingImageFor(index);
                                     try {
                                       const response = await uploadHomeworkFile(file, 'image');
-                                      if (response.url) {
+                                      if (response.data?.url) {
                                         setQuestions((prev) => {
                                           const updated = [...prev];
                                           updated[index] = {
                                             ...updated[index],
-                                            config: { ...updated[index].config, imageUrl: response.url }
+                                            config: { ...updated[index].config, imageUrl: response.data.url }
                                           };
                                           return updated;
                                         });
