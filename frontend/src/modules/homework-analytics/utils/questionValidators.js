@@ -1,7 +1,9 @@
 export const validateQuestion = (question) => {
   const issues = [];
-  if (!question.question_text?.trim()) {
-    issues.push('Введите текст вопроса');
+  // Текст вопроса не обязателен если прикреплено изображение
+  const hasImage = question.config?.imageUrl?.trim();
+  if (!question.question_text?.trim() && !hasImage) {
+    issues.push('Введите текст вопроса или прикрепите изображение');
   }
   if (!Number.isFinite(question.points) || question.points <= 0) {
     issues.push('Баллы за вопрос должны быть больше нуля');

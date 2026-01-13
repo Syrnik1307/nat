@@ -181,7 +181,19 @@ const HomeworkTake = () => {
                   <span className="ht-question-points">Баллы: {currentQuestion.points}</span>
                 )}
               </div>
-              <h2 className="ht-question-text">{currentQuestion.question_text}</h2>
+              {/* Изображение вопроса (если есть) */}
+              {currentQuestion.config?.imageUrl && (
+                <div className="ht-question-image">
+                  <img 
+                    src={currentQuestion.config.imageUrl} 
+                    alt="Изображение к вопросу" 
+                  />
+                </div>
+              )}
+
+              {currentQuestion.question_text && (
+                <h2 className="ht-question-text">{currentQuestion.question_text}</h2>
+              )}
 
               <QuestionRenderer
                 question={currentQuestion}
