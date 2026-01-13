@@ -49,10 +49,6 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
         ? [{ id: recording.lesson_info.group_id, name: recording.lesson_info.group }]
         : []);
 
-  const primaryGroupLabel = accessGroups.length > 1
-    ? `${accessGroups.length} групп`
-    : accessGroups[0]?.name;
-
   return (
     <div className="recording-card">
       {/* Превью */}
@@ -78,21 +74,16 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
           {recording.title || recording.lesson_info?.subject || 'Урок'}
         </div>
 
-        <div className="recording-subtitle">
-          {primaryGroupLabel && (
-            <span className="group-pill primary">{primaryGroupLabel}</span>
-          )}
-        </div>
-
+        {/* Группы - показываем в одну строку */}
         {accessGroups.length > 0 && (
           <div className="recording-groups-list">
-            {accessGroups.slice(0, 4).map((group) => (
+            {accessGroups.slice(0, 3).map((group) => (
               <span key={group.id} className="group-pill">
                 {group.name}
               </span>
             ))}
-            {accessGroups.length > 4 && (
-              <span className="group-pill more">+{accessGroups.length - 4}</span>
+            {accessGroups.length > 3 && (
+              <span className="group-pill more">+{accessGroups.length - 3}</span>
             )}
           </div>
         )}
