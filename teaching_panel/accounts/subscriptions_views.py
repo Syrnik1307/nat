@@ -343,3 +343,102 @@ class AdminSubscriptionActivateView(APIView):
             sub.expires_at = now + timezone.timedelta(days=30)
         sub.save(update_fields=['status', 'expires_at', 'updated_at'])
         return Response(SubscriptionSerializer(sub).data)
+
+
+class SyncPendingPaymentsView(APIView):
+    """
+    Sync pending T-Bank payments by checking their status via API.
+    Can be called by frontend when user returns from payment page,
+    or periodically by admin/cron.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # Only sync payments for current user (unless admin)
+        user = request.user
+        
+        if getattr(user, 'role', None) == 'admin' or user.is_staff:
+            # Admin can sync all
+            result = TBankService.sync_pending_payments()
+        else:
+            # Regular user - sync only their pending payments
+            result = self._sync_user_payments(user)
+        
+        return Response(result)
+    
+    def _sync_user_payments(self, user):
+        """Sync only pending payments for a specific user."""
+        from .models import Payment
+        
+        try:
+            sub = user.subscription
+        except Subscription.DoesNotExist:
+            return {'processed': 0, 'failed': 0, 'errors': []}
+        
+        pending = Payment.objects.filter(
+            subscription=sub,
+            status=Payment.STATUS_PENDING,
+            payment_system='tbank'
+        ).order_by('-id')[:10]
+        
+        processed = 0
+        failed = 0
+        
+        for payment in pending:
+            try:
+                status_result = TBankService.check_payment_status(payment.payment_id)
+                
+                if not status_result.get('success'):
+                    continue
+                
+                tbank_status = status_result.get('status')
+                
+                if tbank_status == 'CONFIRMED':
+                    metadata = payment.metadata or {}
+                    
+                    payment.status = Payment.STATUS_SUCCEEDED
+                    payment.paid_at = timezone.now()
+                    payment.save()
+                    
+                    # Activate subscription
+                    if 'plan' in metadata:
+                        plan = metadata['plan']
+                        if plan == 'monthly':
+                            sub.expires_at = timezone.now() + timezone.timedelta(days=28)
+                            sub.plan = Subscription.PLAN_MONTHLY
+                            sub.base_storage_gb = 10
+                        
+                        sub.status = Subscription.STATUS_ACTIVE
+                        sub.total_paid += payment.amount
+                        sub.last_payment_date = timezone.now()
+                        sub.payment_method = 'tbank'
+                        sub.save()
+                        
+                        # Create GDrive folder on first payment
+                        if not sub.gdrive_folder_id:
+                            try:
+                                from .gdrive_folder_service import create_teacher_folder_on_subscription
+                                create_teacher_folder_on_subscription(sub)
+                            except Exception:
+                                pass
+                    
+                    # Add storage
+                    elif 'storage_gb' in metadata:
+                        gb = int(metadata['storage_gb'])
+                        sub.extra_storage_gb += gb
+                        sub.total_paid += payment.amount
+                        sub.last_payment_date = timezone.now()
+                        sub.save()
+                    
+                    processed += 1
+                    
+                elif tbank_status in ('REJECTED', 'CANCELED', 'REFUNDED', 'DEADLINE_EXPIRED'):
+                    payment.status = Payment.STATUS_FAILED
+                    payment.save()
+                    failed += 1
+                    
+            except Exception:
+                pass
+        
+        return {'processed': processed, 'failed': failed, 'errors': []}
+

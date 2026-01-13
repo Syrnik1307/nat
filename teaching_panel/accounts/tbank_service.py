@@ -429,7 +429,7 @@ class TBankService:
                     if plan == 'monthly':
                         sub.expires_at = timezone.now() + timedelta(days=28)
                         sub.plan = Subscription.PLAN_MONTHLY
-                        sub.base_storage_gb = 5
+                        sub.base_storage_gb = 10
                     elif plan == 'yearly':
                         sub.expires_at = timezone.now() + timedelta(days=365)
                         sub.plan = Subscription.PLAN_YEARLY
@@ -594,6 +594,155 @@ class TBankService:
             'payment_url': f'{settings.FRONTEND_URL}/mock-payment?payment_id={mock_id}',
             'payment_id': mock_id
         }
+
+    @staticmethod
+    def check_payment_status(payment_id: str) -> dict:
+        """
+        Check payment status via T-Bank API (GetState)
+        
+        Args:
+            payment_id: T-Bank PaymentId
+            
+        Returns:
+            dict: {'status': str, 'success': bool, ...}
+        """
+        if not TBankService.is_available():
+            return {'success': False, 'error': 'T-Bank not configured'}
+        
+        request_data = {
+            'PaymentId': payment_id,
+        }
+        
+        result = TBankService._make_request('GetState', request_data)
+        
+        if result.get('Success'):
+            return {
+                'success': True,
+                'status': result.get('Status'),
+                'amount': result.get('Amount', 0),
+                'order_id': result.get('OrderId'),
+            }
+        else:
+            return {
+                'success': False,
+                'error': result.get('Message', 'Unknown error'),
+            }
+
+    @staticmethod
+    def sync_pending_payments():
+        """
+        Check status of all pending T-Bank payments and process confirmed ones.
+        Should be called periodically (e.g., every 5 minutes via cron/celery).
+        
+        Returns:
+            dict: {'processed': int, 'failed': int, 'errors': list}
+        """
+        from .models import Payment, Subscription
+        
+        if not TBankService.is_available():
+            logger.warning("T-Bank not configured, skipping sync")
+            return {'processed': 0, 'failed': 0, 'errors': ['T-Bank not configured']}
+        
+        pending = Payment.objects.filter(
+            status=Payment.STATUS_PENDING,
+            payment_system='tbank'
+        ).select_related('subscription', 'subscription__user').order_by('-id')[:50]
+        
+        processed = 0
+        failed = 0
+        errors = []
+        
+        for payment in pending:
+            try:
+                status_result = TBankService.check_payment_status(payment.payment_id)
+                
+                if not status_result.get('success'):
+                    continue
+                
+                tbank_status = status_result.get('status')
+                
+                if tbank_status == 'CONFIRMED':
+                    # Simulate webhook processing
+                    fake_notification = {
+                        'PaymentId': payment.payment_id,
+                        'Status': 'CONFIRMED',
+                    }
+                    
+                    # Process the payment
+                    sub = payment.subscription
+                    metadata = payment.metadata or {}
+                    
+                    payment.status = Payment.STATUS_SUCCEEDED
+                    payment.paid_at = timezone.now()
+                    payment.save()
+                    
+                    message = None
+                    
+                    # Activate subscription
+                    if 'plan' in metadata:
+                        plan = metadata['plan']
+                        if plan == 'monthly':
+                            sub.expires_at = timezone.now() + timedelta(days=28)
+                            sub.plan = Subscription.PLAN_MONTHLY
+                            sub.base_storage_gb = 10
+                        elif plan == 'yearly':
+                            sub.expires_at = timezone.now() + timedelta(days=365)
+                            sub.plan = Subscription.PLAN_YEARLY
+                            sub.base_storage_gb = 10
+                        
+                        sub.status = Subscription.STATUS_ACTIVE
+                        sub.total_paid += payment.amount
+                        sub.last_payment_date = timezone.now()
+                        sub.payment_method = 'tbank'
+                        sub.save()
+                        
+                        # Create GDrive folder on first payment
+                        if not sub.gdrive_folder_id:
+                            try:
+                                from .gdrive_folder_service import create_teacher_folder_on_subscription
+                                create_teacher_folder_on_subscription(sub)
+                            except Exception as e:
+                                logger.error(f"Failed to create GDrive folder: {e}")
+                        
+                        logger.info(f"Sync: Subscription {sub.id} activated, plan={plan}")
+                        message = f"Подписка активирована до {sub.expires_at.strftime('%d.%m.%Y')}"
+                    
+                    # Add storage
+                    elif 'storage_gb' in metadata:
+                        gb = int(metadata['storage_gb'])
+                        sub.extra_storage_gb += gb
+                        sub.total_paid += payment.amount
+                        sub.last_payment_date = timezone.now()
+                        sub.save()
+                        
+                        logger.info(f"Sync: Added {gb} GB to subscription {sub.id}")
+                        message = f"Добавлено {gb} ГБ хранилища"
+                    
+                    if message:
+                        try:
+                            from .telegram_utils import send_telegram_notification
+                            send_telegram_notification(
+                                sub.user,
+                                'payment_success',
+                                f"💳 Оплата подтверждена!\n{message}\nСумма: {payment.amount} RUB"
+                            )
+                        except Exception as e:
+                            logger.error(f"Failed to send telegram notification: {e}")
+                    
+                    processed += 1
+                    
+                elif tbank_status in ('REJECTED', 'CANCELED', 'REFUNDED', 'DEADLINE_EXPIRED'):
+                    payment.status = Payment.STATUS_FAILED
+                    payment.save()
+                    logger.info(f"Sync: Payment {payment.payment_id} marked as failed: {tbank_status}")
+                    failed += 1
+                    
+            except Exception as e:
+                logger.exception(f"Error syncing payment {payment.payment_id}: {e}")
+                errors.append(str(e))
+        
+        logger.info(f"T-Bank sync complete: processed={processed}, failed={failed}")
+        return {'processed': processed, 'failed': failed, 'errors': errors}
 
 
 # Convenience alias

@@ -33,14 +33,32 @@ const SubscriptionPage = ({ embedded = false }) => {
     }
   }, []);
 
+  // Sync pending payments with T-Bank API
+  const syncPendingPayments = async () => {
+    try {
+      await apiClient.post('subscription/sync-payments/');
+      // Reload subscription data after sync
+      loadSubscription();
+    } catch (error) {
+      console.error('Failed to sync payments:', error);
+      // Still reload subscription even if sync fails
+      loadSubscription();
+    }
+  };
+
   useEffect(() => {
-    loadSubscription();
-    
-    // Убираем query параметры после показа уведомления
+    // Check if returning from payment
     const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.has('payment')) {
+    const hasPaymentStatus = searchParams.has('status') || searchParams.has('payment');
+    
+    if (hasPaymentStatus) {
+      // Sync payments first, then load subscription
+      syncPendingPayments();
+      // Clean up URL
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
+    } else {
+      loadSubscription();
     }
   }, [loadSubscription]);
 
@@ -53,12 +71,15 @@ const SubscriptionPage = ({ embedded = false }) => {
 
       if (event.persisted || cameFromHistory) {
         setProcessing(false);
-        loadSubscription();
+        // Sync pending payments when returning from payment page
+        syncPendingPayments();
       }
     };
 
     const handleFocus = () => {
       setProcessing(false);
+      // Also sync on window focus (user returned from payment tab)
+      syncPendingPayments();
     };
 
     window.addEventListener('pageshow', handlePageShow);

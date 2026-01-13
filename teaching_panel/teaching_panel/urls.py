@@ -50,6 +50,7 @@ from accounts.subscriptions_views import (
     AdminSubscriptionConfirmStoragePaymentView,
     SubscriptionEnableAutoRenewView,
     SubscriptionPaymentStatusView,
+    SyncPendingPaymentsView,
 )
 from accounts.payments_views import yookassa_webhook, tbank_webhook
 from schedule.views import zoom_webhook_receiver
@@ -186,6 +187,7 @@ urlpatterns = [
     path('api/subscription/payment-status/<str:payment_id>/', SubscriptionPaymentStatusView.as_view(), name='subscription_payment_status'),
     path('api/subscription/create-payment/', SubscriptionCreatePaymentView.as_view(), name='subscription_create_payment'),
     path('api/subscription/add-storage/', SubscriptionAddStorageView.as_view(), name='subscription_add_storage'),
+    path('api/subscription/sync-payments/', SyncPendingPaymentsView.as_view(), name='subscription_sync_payments'),
 
     # Admin Subscriptions API
     path('api/admin/subscriptions/', AdminSubscriptionsListView.as_view(), name='admin_subscriptions_list'),
