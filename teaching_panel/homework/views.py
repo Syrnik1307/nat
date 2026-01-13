@@ -305,25 +305,45 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             answer_obj, _ = Answer.objects.get_or_create(submission=submission, question=question)
 
             qtype = question.question_type
+            config = question.config or {}
+            
+            # Helper function to resolve choice ID (handles both numeric and legacy 'opt-X' format)
+            def resolve_choice_id(val, question_obj):
+                """Convert frontend choice value to database Choice ID."""
+                # Try direct integer conversion first
+                try:
+                    return int(val)
+                except (TypeError, ValueError):
+                    pass
+                
+                # Fallback: handle legacy 'opt-X' format by matching position in options
+                if isinstance(val, str) and val.startswith('opt-'):
+                    options = config.get('options', [])
+                    for idx, opt in enumerate(options):
+                        if opt.get('id') == val:
+                            # Find the corresponding Choice by position
+                            db_choices = list(question_obj.choices.all().order_by('id'))
+                            if idx < len(db_choices):
+                                return db_choices[idx].id
+                return None
+            
             # Нормализуем фронтовые значения
             if qtype == 'SINGLE_CHOICE':
                 answer_obj.text_answer = ''
                 choices = []
                 if raw_value:
-                    try:
-                        choices = [int(raw_value)]
-                    except (TypeError, ValueError):
-                        choices = []
+                    resolved = resolve_choice_id(raw_value, question)
+                    if resolved:
+                        choices = [resolved]
                 answer_obj.selected_choices.set(choices)
             elif qtype == 'MULTI_CHOICE':
                 answer_obj.text_answer = ''
                 base_list = raw_value if isinstance(raw_value, (list, tuple)) else []
                 choices = []
                 for val in base_list:
-                    try:
-                        choices.append(int(val))
-                    except (TypeError, ValueError):
-                        continue
+                    resolved = resolve_choice_id(val, question)
+                    if resolved:
+                        choices.append(resolved)
                 answer_obj.selected_choices.set(choices)
             elif qtype in {'TEXT'}:
                 answer_obj.selected_choices.clear()

@@ -34,8 +34,12 @@ def sanitize_question_config(question: Question):
         config.pop('correctAnswer', None)
     elif q_type == 'SINGLE_CHOICE':
         config.pop('correctOptionId', None)
+        # Remove options from config - they're provided in choices field with real DB IDs
+        config.pop('options', None)
     elif q_type == 'MULTI_CHOICE':
         config.pop('correctOptionIds', None)
+        # Remove options from config - they're provided in choices field with real DB IDs
+        config.pop('options', None)
     elif q_type == 'LISTENING':
         sub_questions = config.get('subQuestions') or []
         if isinstance(sub_questions, list):
