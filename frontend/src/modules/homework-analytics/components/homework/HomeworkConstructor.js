@@ -589,15 +589,6 @@ const HomeworkConstructor = () => {
               </button>
             </form>
           </div>
-
-          <div className="hc-card hc-preview-card">
-            <div className="hc-section-title">Превью</div>
-            <HomeworkPreviewSection
-              questions={questions}
-              previewQuestion={previewQuestion}
-              onChangePreviewQuestion={setPreviewQuestion}
-            />
-          </div>
         </div>
 
         {/* Правая колонка — вопросы */}
@@ -611,16 +602,15 @@ const HomeworkConstructor = () => {
             className="hc-add-button"
             onClick={() => setShowTypeMenu((value) => !value)}
           >
-            {showTypeMenu ? 'Закрыть меню типов' : '+ Добавить вопрос'}
+            {showTypeMenu ? 'Скрыть' : '+ Добавить'}
           </button>
         </div>
 
         {showTypeMenu && (
           <div className="hc-type-menu">
             {QUESTION_TYPES.map((type) => (
-              <button key={type.value} type="button" onClick={() => handleAddQuestion(type.value)}>
-                <span>{type.label}</span>
-                <span>{type.description}</span>
+              <button key={type.value} type="button" onClick={() => handleAddQuestion(type.value)} className="hc-type-btn">
+                {type.label}
               </button>
             ))}
           </div>
@@ -628,8 +618,7 @@ const HomeworkConstructor = () => {
 
         {questionCount === 0 ? (
           <div className="hc-empty-state">
-            <strong>Пока вопросов нет.</strong>
-            <span>Добавьте первый вопрос, чтобы начать собирать задание.</span>
+            Нажмите «+ Добавить» чтобы создать первый вопрос
           </div>
         ) : (
           <DragDropContext onDragEnd={handleDragEnd}>
@@ -683,58 +672,59 @@ const HomeworkConstructor = () => {
                           <div className="hc-question-toolbar">
                             <div className="hc-question-toolbar-left">
                               <span className="hc-question-index">{index + 1}</span>
-                              <span className={`hc-question-type-badge ${question.question_type}`}>
-                                {getQuestionIcon(question.question_type)} {getQuestionLabel(question.question_type).replace(/^[^\s]+\s/, '')}
+                              <span className="hc-question-type-badge">
+                                {getQuestionLabel(question.question_type)}
                               </span>
                             </div>
                             <div className="hc-question-actions">
                               <button
                                 type="button"
-                                className="gm-btn-icon"
+                                className="hc-btn-sm"
                                 {...draggableProvided.dragHandleProps}
-                                aria-label="Переместить вопрос"
+                                title="Перетащить"
                               >
-                                ⋮⋮
+                                ≡
                               </button>
                               <button
                                 type="button"
-                                className="gm-btn-surface"
+                                className="hc-btn-sm"
                                 onClick={() => handleDuplicateQuestion(index)}
+                                title="Дублировать"
                               >
-                                Дублировать
+                                ⎘
                               </button>
                               <button
                                 type="button"
-                                className="gm-btn-danger"
+                                className="hc-btn-sm hc-btn-danger"
                                 onClick={() => handleRemoveQuestion(index)}
+                                title="Удалить"
                               >
-                                Удалить
+                                ×
                               </button>
                             </div>
                           </div>
 
-                          <div className="hc-paste-hint">Ctrl+V для вставки изображения</div>
-
                           <div className="form-group">
-                            <label className="form-label">Формулировка вопроса</label>
                             <textarea
                               className="form-textarea"
                               rows={2}
                               value={question.question_text}
                               onChange={(event) => handleQuestionTextChange(index, event.target.value)}
-                              placeholder="Опишите задание для ученика"
+                              placeholder="Текст вопроса (или вставьте изображение Ctrl+V)"
                             />
                           </div>
 
-                          <div className="form-group" style={{ maxWidth: '160px' }}>
-                            <label className="form-label">Баллы</label>
-                            <input
-                              className="form-input"
-                              type="number"
-                              min={1}
-                              value={question.points}
-                              onChange={(event) => handleQuestionPointsChange(index, event.target.value)}
-                            />
+                          <div className="hc-question-meta">
+                            <div className="form-group hc-points-field">
+                              <label className="form-label">Баллы</label>
+                              <input
+                                className="form-input"
+                                type="number"
+                                min={1}
+                                value={question.points}
+                                onChange={(event) => handleQuestionPointsChange(index, event.target.value)}
+                              />
+                            </div>
                           </div>
 
                           <HomeworkQuestionEditor
