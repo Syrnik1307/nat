@@ -32,7 +32,7 @@ class PaymentService:
     """Service for handling subscription payments via YooKassa"""
     
     PLAN_PRICES = {
-        'monthly': '990.00',
+        'monthly': '1590.00',
         'yearly': '9900.00',
     }
     
@@ -241,7 +241,7 @@ class PaymentService:
                 if 'plan' in metadata:
                     plan = metadata['plan']
                     if plan == 'monthly':
-                        sub.expires_at = timezone.now() + timedelta(days=30)
+                        sub.expires_at = timezone.now() + timedelta(days=28)
                         sub.plan = Subscription.PLAN_MONTHLY
                     elif plan == 'yearly':
                         sub.expires_at = timezone.now() + timedelta(days=365)

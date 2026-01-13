@@ -32,7 +32,7 @@ class TBankService:
     """
     
     PLAN_PRICES = {
-        'monthly': Decimal('990.00'),
+        'monthly': Decimal('1590.00'),
         'yearly': Decimal('9900.00'),
     }
     
@@ -427,7 +427,7 @@ class TBankService:
                 if 'plan' in metadata:
                     plan = metadata['plan']
                     if plan == 'monthly':
-                        sub.expires_at = timezone.now() + timedelta(days=30)
+                        sub.expires_at = timezone.now() + timedelta(days=28)
                         sub.plan = Subscription.PLAN_MONTHLY
                     elif plan == 'yearly':
                         sub.expires_at = timezone.now() + timedelta(days=365)
