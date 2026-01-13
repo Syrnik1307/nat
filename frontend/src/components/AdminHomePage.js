@@ -12,6 +12,7 @@ import StorageQuotaModal from '../modules/Admin/StorageQuotaModal';
 import SubscriptionsModal from '../modules/Admin/SubscriptionsModal';
 import StorageStats from './StorageStats';
 import AdminReferrals from '../modules/Admin/AdminReferrals';
+import { Modal, Button } from '../shared/components';
 
 const AdminHomePage = () => {
   const { user } = useAuth();
@@ -276,13 +277,12 @@ const AdminHomePage = () => {
         </div>
 
         {/* Create Teacher Modal */}
-        {showCreateTeacher && (
-        <div className="admin-modal-overlay" onClick={() => setShowCreateTeacher(false)}>
-          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>➕ Создать пользователя</h2>
-              <button className="modal-close" onClick={() => setShowCreateTeacher(false)}>✕</button>
-            </div>
+        <Modal
+          isOpen={showCreateTeacher}
+          onClose={() => setShowCreateTeacher(false)}
+          title="Создать пользователя"
+          size="medium"
+        >
             <form onSubmit={handleCreateTeacher} className="teacher-form">
               {formError && <div className="form-error">{formError}</div>}
               {formSuccess && <div className="form-success">{formSuccess}</div>}
@@ -369,18 +369,16 @@ const AdminHomePage = () => {
                 />
               </div>
 
-              <div className="form-actions">
-                <button type="button" onClick={() => setShowCreateTeacher(false)} className="btn-cancel">
+              <div className="form-actions" style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                <Button type="button" variant="secondary" onClick={() => setShowCreateTeacher(false)}>
                   Отмена
-                </button>
-                <button type="submit" className="btn-submit">
+                </Button>
+                <Button type="submit">
                   {userRole === 'teacher' ? 'Создать учителя' : 'Создать ученика'}
-                </button>
+                </Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+        </Modal>
 
       {/* Teachers Management Modal */}
       {showTeachersManage && (
@@ -393,22 +391,22 @@ const AdminHomePage = () => {
       )}
 
       {/* Zoom Pool Manager */}
-      {showZoomManager && (
-        <div className="admin-modal-overlay" onClick={() => setShowZoomManager(false)}>
-          <div className="zoom-manager-modal" onClick={(e) => e.stopPropagation()}>
-            <ZoomPoolManager onClose={() => setShowZoomManager(false)} />
-          </div>
-        </div>
-      )}
+      <Modal
+        isOpen={showZoomManager}
+        onClose={() => setShowZoomManager(false)}
+        title="Zoom Pool Manager"
+        size="large"
+      >
+        <ZoomPoolManager onClose={() => setShowZoomManager(false)} />
+      </Modal>
 
       {/* Growth Stats Modal */}
-      {showGrowthStats && (
-        <div className="admin-modal-overlay" onClick={() => setShowGrowthStats(false)}>
-          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>📈 Динамика роста</h2>
-              <button className="modal-close" onClick={() => setShowGrowthStats(false)}>✕</button>
-            </div>
+      <Modal
+        isOpen={showGrowthStats}
+        onClose={() => setShowGrowthStats(false)}
+        title="Динамика роста"
+        size="large"
+      >
             <div className="growth-modal-body">
               {growthPeriods.length === 0 ? (
                 <div className="growth-empty">Недостаточно данных для построения динамики</div>
@@ -443,9 +441,7 @@ const AdminHomePage = () => {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* System Status */}
       <div className="admin-section">
@@ -493,19 +489,14 @@ const AdminHomePage = () => {
         <SystemSettings onClose={() => setShowSystemSettings(false)} />
       )}
       
-      {showZoomStats && (
-        <div className="admin-modal-overlay" onClick={() => setShowZoomStats(false)}>
-          <div className="admin-modal zoom-stats-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>📊 Аналитика Zoom Pool</h2>
-              <button className="modal-close" onClick={() => setShowZoomStats(false)}>✕</button>
-            </div>
-            <div className="modal-body">
-              <ZoomPoolStats />
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        isOpen={showZoomStats}
+        onClose={() => setShowZoomStats(false)}
+        title="Аналитика Zoom Pool"
+        size="large"
+      >
+        <ZoomPoolStats />
+      </Modal>
 
       {showStorageModal && (
         <StorageQuotaModal onClose={() => setShowStorageModal(false)} />
