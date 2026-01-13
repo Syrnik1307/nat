@@ -600,6 +600,7 @@
 
 /* Базовый стиль кнопок навигации - минималистичный дизайн */
 .nav-link,
+a.nav-link,
 .nav-dropdown-trigger {
   background: transparent;
   color: var(--gray-800);
@@ -629,6 +630,7 @@
 }
 
 .nav-link:hover,
+a.nav-link:hover,
 .nav-dropdown-trigger:hover { 
   background: rgba(59, 130, 246, 0.08);
   color: var(--primary-600);
@@ -638,7 +640,8 @@
 }
 
 /* Активная кнопка */
-.nav-link.active { 
+.nav-link.active,
+a.nav-link.active { 
   background: var(--color-primary);
   color: #fff;
   box-shadow: 0 3px 10px rgba(30, 58, 138, 0.3);
