@@ -435,91 +435,100 @@ const HomeworkConstructor = () => {
 
       {renderValidationDetails()}
 
-      <div className="hc-grid">
-        <div className="hc-card">
-          <div className="hc-section-title">
-            <span>Параметры задания</span>
-            <div className="hc-inline-fields" style={{ maxWidth: '240px' }}>
-              <label className="form-label" style={{ fontSize: '0.75rem' }}>Вопросов: {questionCount}</label>
-            </div>
-          </div>
+      {/* Sticky панель с действиями */}
+      <div className="hc-sticky-actions">
+        <div className="hc-sticky-actions-left">
+          <span className="hc-stats-badge">📝 {questionCount} вопрос{questionCount === 1 ? '' : questionCount >= 2 && questionCount <= 4 ? 'а' : 'ов'}</span>
+          {assignmentMeta.title && <span className="hc-stats-badge">📋 {assignmentMeta.title.slice(0, 25)}{assignmentMeta.title.length > 25 ? '...' : ''}</span>}
+        </div>
+        <div className="hc-sticky-actions-right">
+          <button
+            type="button"
+            className="gm-btn-surface hc-action-btn"
+            onClick={handleSaveDraft}
+            disabled={saving}
+          >
+            💾 {saving ? 'Сохранение...' : 'Черновик'}
+          </button>
+          <button
+            type="button"
+            className="gm-btn-primary hc-action-btn"
+            onClick={() => setShowPublishModal(true)}
+            disabled={saving || questions.length === 0}
+          >
+            🚀 Опубликовать
+          </button>
+        </div>
+      </div>
 
-          <form className="gm-form" onSubmit={(event) => event.preventDefault()}>
-            <div className="form-group">
-              <label className="form-label">Название</label>
-              <input
-                className="form-input"
-                value={assignmentMeta.title}
-                onChange={(event) => handleMetaChange('title', event.target.value)}
-                placeholder="Например: Past Simple revision"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Описание</label>
-              <textarea
-                className="form-textarea"
-                rows={3}
-                value={assignmentMeta.description}
-                onChange={(event) => handleMetaChange('description', event.target.value)}
-                placeholder="Дайте ученикам контекст и пояснение к заданию"
-              />
-            </div>
-
-            <div className="hc-inline-fields">
-              <GroupSelect
-                value={assignmentMeta.groupId}
-                options={groupOptions}
-                onChange={(nextValue) => handleMetaChange('groupId', nextValue)}
-                disabled={loadingGroups}
-                loading={loadingGroups}
-                error={groupError}
-                onRetry={reloadGroups}
-                placeholder="Выберите группу"
-              />
-
+      <div className="hc-main-layout">
+        {/* Левая колонка — параметры */}
+        <div className="hc-sidebar">
+          <div className="hc-card hc-params-card">
+            <div className="hc-section-title">⚙️ Параметры</div>
+            
+            <form className="gm-form hc-compact-form" onSubmit={(event) => event.preventDefault()}>
               <div className="form-group">
-                <DateTimePicker
-                  value={assignmentMeta.deadline}
-                  onChange={(nextValue) => handleMetaChange('deadline', nextValue)}
+                <label className="form-label">Название задания</label>
+                <input
+                  className="form-input hc-input-large"
+                  value={assignmentMeta.title}
+                  onChange={(event) => handleMetaChange('title', event.target.value)}
+                  placeholder="Например: Past Simple revision"
                 />
               </div>
-            </div>
 
-            <div className="form-group">
-              <label className="form-label">Максимальный балл</label>
-              <input
-                className="form-input"
-                type="number"
-                min={1}
-                value={assignmentMeta.maxScore}
-                onChange={(event) => handleMaxScoreChange(event.target.value)}
-              />
-              <button type="button" className="gm-btn-surface" onClick={handleAutoMaxScore}>
-                Рассчитать по сумме вопросов
-              </button>
-            </div>
+              <div className="form-group">
+                <label className="form-label">Описание (опционально)</label>
+                <textarea
+                  className="form-textarea"
+                  rows={2}
+                  value={assignmentMeta.description}
+                  onChange={(event) => handleMetaChange('description', event.target.value)}
+                  placeholder="Инструкции для учеников"
+                />
+              </div>
 
-            <div className="gm-actions hc-action-buttons">
+              <div className="hc-params-row">
+                <GroupSelect
+                  value={assignmentMeta.groupId}
+                  options={groupOptions}
+                  onChange={(nextValue) => handleMetaChange('groupId', nextValue)}
+                  disabled={loadingGroups}
+                  loading={loadingGroups}
+                  error={groupError}
+                  onRetry={reloadGroups}
+                  placeholder="Выберите группу"
+                />
+              </div>
+
+              <div className="hc-params-row">
+                <div className="form-group" style={{ flex: 1 }}>
+                  <DateTimePicker
+                    value={assignmentMeta.deadline}
+                    onChange={(nextValue) => handleMetaChange('deadline', nextValue)}
+                  />
+                </div>
+                <div className="form-group hc-score-field">
+                  <label className="form-label">Макс. балл</label>
+                  <div className="hc-score-input-wrap">
+                    <input
+                      className="form-input"
+                      type="number"
+                      min={1}
+                      value={assignmentMeta.maxScore}
+                      onChange={(event) => handleMaxScoreChange(event.target.value)}
+                    />
+                    <button type="button" className="hc-auto-score-btn" onClick={handleAutoMaxScore} title="Рассчитать по сумме вопросов">
+                      🔄
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <button
                 type="button"
-                className="gm-btn-primary"
-                onClick={() => setShowPublishModal(true)}
-                disabled={saving || questions.length === 0}
-              >
-                Опубликовать
-              </button>
-              <button
-                type="button"
-                className="gm-btn-surface"
-                onClick={handleSaveDraft}
-                disabled={saving}
-              >
-                {saving ? 'Сохранение...' : 'Сохранить черновик'}
-              </button>
-              <button
-                type="button"
-                className="gm-btn-surface"
+                className="hc-reset-btn"
                 onClick={() => {
                   openConfirmDialog({
                     title: 'Сбросить задание?',
@@ -534,21 +543,23 @@ const HomeworkConstructor = () => {
                 }}
                 disabled={saving}
               >
-                Очистить форму
+                🗑️ Очистить форму
               </button>
-            </div>
-          </form>
+            </form>
+          </div>
+
+          <div className="hc-card hc-preview-card">
+            <div className="hc-section-title">👁️ Превью</div>
+            <HomeworkPreviewSection
+              questions={questions}
+              previewQuestion={previewQuestion}
+              onChangePreviewQuestion={setPreviewQuestion}
+            />
+          </div>
         </div>
 
-        <div className="hc-card hc-preview-card">
-          <div className="hc-section-title">Превью для студентов</div>
-          <HomeworkPreviewSection
-            questions={questions}
-            previewQuestion={previewQuestion}
-            onChangePreviewQuestion={setPreviewQuestion}
-          />
-        </div>
-      </div>
+        {/* Правая колонка — вопросы */}
+        <div className="hc-questions-area">
 
       <div className="hc-card">
         <div className="hc-section-title">
@@ -665,6 +676,8 @@ const HomeworkConstructor = () => {
             </Droppable>
           </DragDropContext>
         )}
+        </div>
+        </div>
       </div>
 
       {/* Модальное окно подтверждения публикации */}
