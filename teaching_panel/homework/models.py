@@ -52,7 +52,7 @@ class Question(models.Model):
         ('HOTSPOT', 'Хотспот на изображении'),
     )
     homework = models.ForeignKey(Homework, on_delete=models.CASCADE, related_name='questions')
-    prompt = models.TextField()
+    prompt = models.TextField(blank=True, default='')  # blank allowed for image-only questions
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES)
     points = models.IntegerField(default=1)
     order = models.IntegerField(default=0)

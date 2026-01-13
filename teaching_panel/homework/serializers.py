@@ -67,6 +67,7 @@ class QuestionSerializer(serializers.ModelSerializer):
         fields = ['id', 'prompt', 'question_type', 'points', 'order', 'choices', 'config']
         extra_kwargs = {
             'config': {'default': dict},
+            'prompt': {'required': False, 'allow_blank': True, 'default': ''},
         }
 
     def create(self, validated_data):
