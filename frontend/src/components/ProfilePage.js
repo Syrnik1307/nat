@@ -633,7 +633,7 @@ const ProfilePage = () => {
                 </span>
               </div>
 
-              {telegramLoading ? (
+              {telegramLoading && !telegramInfo ? (
                 <div className="telegram-loading">
                   <div className="spinner" />
                   <p>Проверяем статус...</p>
@@ -762,7 +762,7 @@ const ProfilePage = () => {
                 </p>
               )}
 
-              {notificationLoading ? (
+              {notificationLoading && !notificationSettings ? (
                 <div className="telegram-loading">
                   <div className="spinner" />
                   <p>Загружаем настройки...</p>
