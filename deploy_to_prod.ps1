@@ -85,10 +85,23 @@ echo '🎨 Building frontend (npm install + restore lock)...'
 cd ../frontend
 sudo chown -R www-data:www-data .
 
+build_tmp="build_tmp_$(date +%s)"
+build_prev="build_prev_$(date +%s)"
+
 # Важно: npm install может изменить tracked package-lock.json.
 # После сборки откатываем lock обратно в состояние git.
 sudo -u www-data npm install --quiet --no-audit --no-fund
-sudo -u www-data npm run build
+sudo -u www-data env BUILD_PATH="$build_tmp" npm run build
+
+# Минимизируем окна, когда /frontend/build может быть пустым.
+# Собираем в build_tmp_* и делаем быстрый swap директорий.
+if [ -d build ]; then
+    mv build "$build_prev"
+fi
+mv "$build_tmp" build
+if [ -d "$build_prev" ]; then
+    rm -rf "$build_prev" || true
+fi
 
 cd ..
 sudo -u www-data git checkout -- frontend/package-lock.json || true
