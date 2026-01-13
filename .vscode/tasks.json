@@ -340,6 +340,20 @@
 			"isBackground": false
 		},
 		{
+			"label": "prod: homework smoke (pwsh)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"prod_homework_smoke.ps1"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
 			"label": "prod: students smoke (pwsh)",
 			"type": "shell",
 			"command": "pwsh",
