@@ -127,11 +127,28 @@ function RecordingPlayer({ recording, onClose }) {
     ? `Запись от ${formattedFullDate}`
     : 'Плеер Lectio Space';
 
-  // Проверяем, является ли URL ссылкой на Google Drive (не поддерживает iframe)
+  // Проверяем тип URL для выбора способа воспроизведения
   const isGoogleDriveUrl = recording.play_url && (
     recording.play_url.includes('drive.google.com') ||
     recording.play_url.includes('docs.google.com')
   );
+  
+  // Для Google Drive конвертируем URL в embed формат
+  const getEmbedUrl = (url) => {
+    if (!url) return null;
+    
+    // Если это Google Drive preview URL, конвертируем в embed
+    const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+    if (driveMatch) {
+      const fileId = driveMatch[1];
+      // Используем embed формат который работает в iframe
+      return `https://drive.google.com/file/d/${fileId}/preview`;
+    }
+    
+    return url;
+  };
+  
+  const embedUrl = getEmbedUrl(recording.play_url);
 
   const mediaStats = [
     {
@@ -182,33 +199,15 @@ function RecordingPlayer({ recording, onClose }) {
           <div className="player-media-column">
             <div className="player-video-wrapper">
               {recording.play_url ? (
-                isGoogleDriveUrl ? (
-                  // Google Drive не поддерживает inline воспроизведение - показываем placeholder с кнопкой
-                  <div className="player-video-placeholder gdrive-placeholder">
-                    <div className="gdrive-icon">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polygon points="5 3 19 12 5 21 5 3"/>
-                      </svg>
-                    </div>
-                    <p className="gdrive-title">Готово к просмотру</p>
-                    <p className="gdrive-hint">Видео откроется в новой вкладке</p>
-                    <button 
-                      type="button" 
-                      className="gdrive-open-btn"
-                      onClick={handleOpenInNewTab}
-                    >
-                      ▶ Смотреть видео
-                    </button>
-                  </div>
-                ) : (
-                  <iframe
-                    src={recording.play_url}
-                    title={subject}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                )
+                <iframe
+                  src={embedUrl}
+                  title={subject}
+                  frameBorder="0"
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                  referrerPolicy="no-referrer"
+                />
               ) : (
                 <div className="player-video-placeholder">
                   <span className="placeholder-icon"></span>
