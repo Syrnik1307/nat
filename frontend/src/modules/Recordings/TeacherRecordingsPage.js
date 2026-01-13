@@ -440,6 +440,9 @@ function TeacherRecordingsPage() {
     { value: 'archived', label: 'Архивировано' }
   ];
 
+  // Количество активных загрузок (toasts с типом progress)
+  const activeUploadsCount = toasts.filter(t => t.type === 'progress').length;
+
   const lessonSelectOptions = (() => {
     const now = new Date();
     const pastLessons = lessons.filter(l => new Date(l.start_time) < now);
@@ -500,7 +503,7 @@ function TeacherRecordingsPage() {
         <div className="teacher-stat-card">
           <div className="teacher-stat-icon"></div>
           <div className="teacher-stat-info">
-            <div className="teacher-stat-value">{stats.total}</div>
+            <div className="teacher-stat-value">{stats.total + activeUploadsCount}</div>
             <div className="teacher-stat-label">Всего записей</div>
           </div>
         </div>
@@ -514,7 +517,7 @@ function TeacherRecordingsPage() {
         <div className="teacher-stat-card teacher-stat-warning">
           <div className="teacher-stat-icon"></div>
           <div className="teacher-stat-info">
-            <div className="teacher-stat-value">{stats.processing}</div>
+            <div className="teacher-stat-value">{stats.processing + activeUploadsCount}</div>
             <div className="teacher-stat-label">Обрабатывается</div>
           </div>
         </div>

@@ -626,6 +626,7 @@ class LessonViewSet(viewsets.ModelViewSet):
         # Создаём запись БЕЗ урока (standalone recording)
         recording = LessonRecording.objects.create(
             lesson=None,
+            teacher=request.user,  # Владелец standalone записи
             title=title,
             play_url=play_url,
             download_url=download_url,
@@ -2171,13 +2172,17 @@ def teacher_recordings_list(request):
             # Ошибка уже залогирована внутри
             pass
 
-        # Все записи уроков преподавателя
+        # Все записи уроков преподавателя:
+        # 1. Записи привязанные к урокам учителя
+        # 2. Standalone записи (lesson=None), где teacher=user
         recordings = LessonRecording.objects.filter(
-            lesson__teacher=user
+            Q(lesson__teacher=user) |
+            Q(lesson__isnull=True, teacher=user)
         ).select_related(
             'lesson',
-            'lesson__group'
-        ).prefetch_related('allowed_groups', 'allowed_students').order_by('-lesson__start_time').distinct()
+            'lesson__group',
+            'teacher'
+        ).prefetch_related('allowed_groups', 'allowed_students').order_by('-created_at').distinct()
         
         # Фильтры
         group_id = request.query_params.get('group_id')
@@ -2237,11 +2242,19 @@ def recording_detail(request, recording_id):
         
         try:
             recording = LessonRecording.objects.select_related(
-                'lesson__group__teacher'
+                'lesson', 'lesson__group', 'teacher'
             ).get(id=recording_id)
             
             # Проверка что запись принадлежит преподавателю
-            if recording.lesson.teacher_id != user.id:
+            # Для обычных записей: lesson.teacher_id == user.id
+            # Для standalone записей: teacher_id == user.id
+            is_owner = False
+            if recording.lesson_id and recording.lesson:
+                is_owner = recording.lesson.teacher_id == user.id
+            elif recording.teacher_id:
+                is_owner = recording.teacher_id == user.id
+            
+            if not is_owner:
                 return Response({
                     'error': 'У вас нет прав на удаление этой записи'
                 }, status=status.HTTP_403_FORBIDDEN)
@@ -2268,10 +2281,10 @@ def recording_detail(request, recording_id):
             
             # Удаляем запись из БД
             recording_id_str = str(recording.id)
-            lesson_title = recording.lesson.title
+            recording_title = recording.lesson.title if recording.lesson_id and recording.lesson else recording.title
             recording.delete()
             
-            logger.info(f"Teacher {user.id} deleted recording {recording_id_str} ({lesson_title})")
+            logger.info(f"Teacher {user.id} deleted recording {recording_id_str} ({recording_title})")
             
             return Response({
                 'message': 'Запись успешно удалена',

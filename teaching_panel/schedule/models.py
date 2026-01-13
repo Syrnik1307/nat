@@ -297,6 +297,18 @@ class LessonRecording(models.Model):
         help_text=_('Урок, к которому привязана запись (может быть пустым для standalone записей)')
     )
 
+    # Владелец записи (для standalone записей, у которых lesson=None)
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='owned_recordings',
+        verbose_name=_('преподаватель'),
+        null=True,
+        blank=True,
+        limit_choices_to={'role': 'teacher'},
+        help_text=_('Преподаватель-владелец записи (для standalone записей)')
+    )
+
     # Standalone-записи не имеют урока, поэтому сохраняем их название отдельно
     title = models.CharField(
         _('название'),
