@@ -368,12 +368,26 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         if answers_payload:
             self._upsert_answers(submission, answers_payload)
 
-        submission.status = 'submitted'
         submission.submitted_at = timezone.now()
-        submission.save(update_fields=['status', 'submitted_at', 'total_score'])
-
-        # Уведомляем преподавателя о сдаче
-        self._notify_teacher_submission(submission)
+        
+        # Проверяем, есть ли ответы требующие ручной проверки
+        needs_manual = submission.answers.filter(needs_manual_review=True).exists()
+        
+        if needs_manual:
+            # Есть ответы для ручной проверки — статус submitted
+            submission.status = 'submitted'
+            submission.save(update_fields=['status', 'submitted_at', 'total_score'])
+            # Уведомляем учителя о необходимости проверки
+            self._notify_teacher_submission(submission)
+        else:
+            # Все ответы проверены автоматически — сразу graded
+            submission.status = 'graded'
+            submission.graded_at = timezone.now()
+            submission.save(update_fields=['status', 'submitted_at', 'graded_at', 'total_score'])
+            # Уведомляем ученика о результате
+            self._notify_student_graded(submission)
+            # Уведомляем учителя что работа автоматически проверена
+            self._notify_teacher_auto_graded(submission)
 
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
@@ -402,6 +416,24 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             f"📘 Новая сдача ДЗ\n"
             f"{student_name} отправил(а) '{hw_title}'.\n"
             f"Откройте Teaching Panel, чтобы проверить работу."
+        )
+        send_telegram_notification(teacher, 'homework_submitted', message)
+
+    def _notify_teacher_auto_graded(self, submission: StudentSubmission):
+        """Уведомить учителя что работа автоматически проверена."""
+        teacher = getattr(submission.homework, 'teacher', None)
+        if not teacher:
+            return
+        student_name = self._format_display_name(submission.student)
+        hw_title = submission.homework.title
+        score = submission.total_score or 0
+        max_score = submission.homework.max_score or 100
+        percent = round((score / max_score) * 100) if max_score > 0 else 0
+        message = (
+            f"✅ Авто-проверка ДЗ\n"
+            f"{student_name} сдал(а) '{hw_title}'.\n"
+            f"Результат: {score}/{max_score} ({percent}%).\n"
+            f"Работа проверена автоматически."
         )
         send_telegram_notification(teacher, 'homework_submitted', message)
     
