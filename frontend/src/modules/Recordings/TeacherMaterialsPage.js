@@ -3,14 +3,13 @@ import './TeacherMaterialsPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
 import RecordingCard from './RecordingCard';
 import RecordingPlayer from './RecordingPlayer';
-import { ConfirmModal, Select, ToastContainer, Button, Input, Modal } from '../../shared/components';
+import { ConfirmModal, Select, ToastContainer, Modal } from '../../shared/components';
 
 /**
  * TeacherMaterialsPage - Страница материалов урока
- * Объединяет записи, доски Miro, конспекты и другие материалы в одном месте
+ * Записи, доски Miro, конспекты и документы
  */
 function TeacherMaterialsPage() {
-  // Активная вкладка
   const [activeTab, setActiveTab] = useState('recordings');
   
   // Данные
@@ -30,7 +29,6 @@ function TeacherMaterialsPage() {
   const [showAddMiroModal, setShowAddMiroModal] = useState(false);
   const [showAddNotesModal, setShowAddNotesModal] = useState(false);
   const [showAddDocModal, setShowAddDocModal] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
   
   // Формы
   const [miroForm, setMiroForm] = useState({
@@ -57,16 +55,8 @@ function TeacherMaterialsPage() {
     material_type: 'document',
     visibility: 'all_teacher_groups'
   });
-  
-  // Stats
-  const [stats, setStats] = useState({
-    recordings: 0,
-    miro: 0,
-    notes: 0,
-    documents: 0
-  });
-  
-  // Toasts
+
+  // Toasts & Confirm
   const [toasts, setToasts] = useState([]);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false });
   
@@ -88,7 +78,20 @@ function TeacherMaterialsPage() {
   useEffect(() => {
     loadAllData();
     loadMiroStatus();
+    checkMiroCallback();
   }, []);
+
+  const checkMiroCallback = () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('miro_connected') === 'true') {
+      window.history.replaceState({}, '', window.location.pathname);
+      addToast({ type: 'success', title: 'Miro подключен', message: 'Теперь вы можете добавлять доски из аккаунта' });
+      loadMiroStatus();
+    } else if (params.get('miro_error')) {
+      window.history.replaceState({}, '', window.location.pathname);
+      addToast({ type: 'error', title: 'Ошибка Miro', message: params.get('miro_error') });
+    }
+  };
 
   const loadAllData = async () => {
     setLoading(true);
@@ -122,12 +125,6 @@ function TeacherMaterialsPage() {
       const response = await api.get('lesson-materials/teacher_materials/', withScheduleApiBase());
       if (response.data.materials) {
         setMaterials(response.data.materials);
-        setStats({
-          ...stats,
-          miro: response.data.stats?.miro_count || 0,
-          notes: response.data.stats?.notes_count || 0,
-          documents: response.data.stats?.documents_count || 0
-        });
       }
     } catch (err) {
       console.error('Error loading materials:', err);
@@ -139,7 +136,7 @@ function TeacherMaterialsPage() {
       const response = await api.get('lessons', withScheduleApiBase());
       const data = response.data.results || response.data;
       const now = new Date();
-      const pastWindow = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000); // 60 дней
+      const pastWindow = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
       const filtered = (Array.isArray(data) ? data : []).filter(l => {
         const dt = l.start_time ? new Date(l.start_time) : null;
         return dt && dt >= pastWindow;
@@ -162,22 +159,18 @@ function TeacherMaterialsPage() {
 
   const loadMiroStatus = async () => {
     try {
-      // Используем OAuth endpoint для более полной информации
       const response = await api.get('miro/oauth/status/', withScheduleApiBase());
       setMiroStatus(response.data);
-      
-      // Если пользователь подключил Miro - загружаем его доски
       if (response.data?.user_connected) {
         loadMiroBoards();
       }
     } catch (err) {
       console.error('Error loading Miro status:', err);
-      // Fallback к старому endpoint
       try {
         const fallback = await api.get('miro/status/', withScheduleApiBase());
         setMiroStatus(fallback.data);
       } catch (err2) {
-        console.error('Error loading Miro status fallback:', err2);
+        console.error('Error loading Miro fallback:', err2);
       }
     }
   };
@@ -196,14 +189,11 @@ function TeacherMaterialsPage() {
       const response = await api.get('miro/oauth/start/', withScheduleApiBase());
       if (response.data?.auth_url) {
         window.location.href = response.data.auth_url;
-      } else if (miroStatus?.auth_url) {
-        window.location.href = miroStatus.auth_url;
       } else {
-        addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось получить ссылку для авторизации Miro' });
+        addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось получить ссылку авторизации' });
       }
     } catch (err) {
-      console.error('Error starting Miro OAuth:', err);
-      addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось начать авторизацию в Miro' });
+      addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось начать авторизацию' });
     }
   };
 
@@ -211,17 +201,17 @@ function TeacherMaterialsPage() {
     setConfirmModal({
       isOpen: true,
       title: 'Отключение Miro',
-      message: 'Вы уверены, что хотите отключить интеграцию с Miro?',
+      message: 'Отключить интеграцию с Miro?',
       variant: 'warning',
       confirmText: 'Отключить',
       onConfirm: async () => {
         try {
           await api.post('miro/oauth/disconnect/', {}, withScheduleApiBase());
-          addToast({ type: 'success', title: 'Успех', message: 'Miro отключен' });
+          addToast({ type: 'success', title: 'Готово', message: 'Miro отключен' });
           setMiroStatus(prev => ({ ...prev, user_connected: false }));
           setMiroBoards([]);
         } catch (err) {
-          addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось отключить Miro' });
+          addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось отключить' });
         }
         setConfirmModal({ isOpen: false });
       }
@@ -236,119 +226,84 @@ function TeacherMaterialsPage() {
         description: board.description || '',
         visibility: 'all_teacher_groups'
       }, withScheduleApiBase());
-      
-      addToast({ type: 'success', title: 'Успех', message: `Доска "${board.name}" добавлена в материалы!` });
+      addToast({ type: 'success', title: 'Готово', message: `Доска "${board.name}" добавлена` });
       loadMaterials();
     } catch (err) {
       addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось импортировать доску' });
     }
   };
 
-  // Проверяем callback от Miro OAuth при загрузке страницы
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('miro_connected') === 'true') {
-      window.history.replaceState({}, '', window.location.pathname);
-      addToast({ type: 'success', title: 'Miro подключен!', message: 'Теперь вы можете добавлять доски из своего аккаунта' });
-      loadMiroStatus();
-    } else if (params.get('miro_error')) {
-      const error = params.get('miro_error');
-      window.history.replaceState({}, '', window.location.pathname);
-      addToast({ type: 'error', title: 'Ошибка подключения Miro', message: error });
-    }
-  }, []);
-
-  // Обработчики добавления материалов
   const handleAddMiroBoard = async (e) => {
     e.preventDefault();
-    
     if (!miroForm.board_url) {
-      addToast({ type: 'warning', title: 'Внимание', message: 'Введите URL доски Miro' });
+      addToast({ type: 'warning', title: 'Внимание', message: 'Введите URL доски' });
       return;
     }
-
     try {
-      const response = await api.post('miro/add-board/', miroForm, withScheduleApiBase());
-      addToast({ type: 'success', title: 'Успех', message: 'Доска Miro добавлена!' });
+      await api.post('miro/add-board/', miroForm, withScheduleApiBase());
+      addToast({ type: 'success', title: 'Готово', message: 'Доска добавлена' });
       setShowAddMiroModal(false);
       setMiroForm({ board_url: '', title: '', description: '', lesson_id: '', visibility: 'all_teacher_groups' });
       loadMaterials();
     } catch (err) {
-      addToast({ 
-        type: 'error', 
-        title: 'Ошибка', 
-        message: err.response?.data?.error || 'Не удалось добавить доску' 
-      });
+      addToast({ type: 'error', title: 'Ошибка', message: err.response?.data?.error || 'Не удалось добавить' });
     }
   };
 
   const handleAddNotes = async (e) => {
     e.preventDefault();
-    
     if (!notesForm.title) {
-      addToast({ type: 'warning', title: 'Внимание', message: 'Введите название конспекта' });
+      addToast({ type: 'warning', title: 'Внимание', message: 'Введите название' });
       return;
     }
-
     try {
-      const response = await api.post('materials/add-notes/', notesForm, withScheduleApiBase());
-      addToast({ type: 'success', title: 'Успех', message: 'Конспект добавлен!' });
+      await api.post('materials/add-notes/', notesForm, withScheduleApiBase());
+      addToast({ type: 'success', title: 'Готово', message: 'Конспект добавлен' });
       setShowAddNotesModal(false);
       setNotesForm({ title: '', content: '', description: '', lesson_id: '', visibility: 'all_teacher_groups' });
       loadMaterials();
     } catch (err) {
-      addToast({ 
-        type: 'error', 
-        title: 'Ошибка', 
-        message: err.response?.data?.error || 'Не удалось добавить конспект' 
-      });
+      addToast({ type: 'error', title: 'Ошибка', message: err.response?.data?.error || 'Не удалось добавить' });
     }
   };
 
   const handleAddDocument = async (e) => {
     e.preventDefault();
-    
     if (!docForm.title || !docForm.file_url) {
       addToast({ type: 'warning', title: 'Внимание', message: 'Заполните название и ссылку' });
       return;
     }
-
     try {
-      const response = await api.post('materials/add-document/', docForm, withScheduleApiBase());
-      addToast({ type: 'success', title: 'Успех', message: 'Документ добавлен!' });
+      await api.post('materials/add-document/', docForm, withScheduleApiBase());
+      addToast({ type: 'success', title: 'Готово', message: 'Документ добавлен' });
       setShowAddDocModal(false);
       setDocForm({ title: '', file_url: '', description: '', lesson_id: '', material_type: 'document', visibility: 'all_teacher_groups' });
       loadMaterials();
     } catch (err) {
-      addToast({ 
-        type: 'error', 
-        title: 'Ошибка', 
-        message: err.response?.data?.error || 'Не удалось добавить документ' 
-      });
+      addToast({ type: 'error', title: 'Ошибка', message: err.response?.data?.error || 'Не удалось добавить' });
     }
   };
 
   const handleDeleteMaterial = async (materialId) => {
     setConfirmModal({
       isOpen: true,
-      title: 'Удаление материала',
-      message: 'Вы уверены, что хотите удалить этот материал?',
+      title: 'Удаление',
+      message: 'Удалить этот материал?',
       variant: 'danger',
       confirmText: 'Удалить',
       onConfirm: async () => {
         try {
           await api.delete(`lesson-materials/${materialId}/`, withScheduleApiBase());
-          addToast({ type: 'success', title: 'Успех', message: 'Материал удален' });
+          addToast({ type: 'success', title: 'Готово', message: 'Материал удален' });
           loadMaterials();
         } catch (err) {
-          addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось удалить материал' });
+          addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось удалить' });
         }
         setConfirmModal({ isOpen: false });
       }
     });
   };
 
-  // Форматирование даты
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     return new Date(dateStr).toLocaleDateString('ru-RU', {
@@ -358,22 +313,20 @@ function TeacherMaterialsPage() {
     });
   };
 
-  // Опции для селектов
   const lessonOptions = [
-    { value: '', label: '📚 Без привязки к уроку' },
+    { value: '', label: 'Без привязки к уроку' },
     ...lessons.map(l => ({
       value: String(l.id),
-      label: `${l.title || l.subject || 'Урок'} • ${l.group_name} (${formatDate(l.start_time)})`
+      label: `${l.title || l.subject || 'Урок'} — ${l.group_name} (${formatDate(l.start_time)})`
     }))
   ];
 
   const visibilityOptions = [
-    { value: 'all_teacher_groups', label: '👥 Все мои группы' },
-    { value: 'lesson_group', label: '📖 Только группа урока' },
-    { value: 'custom_groups', label: '✏️ Выбранные группы' }
+    { value: 'all_teacher_groups', label: 'Все мои группы' },
+    { value: 'lesson_group', label: 'Только группа урока' },
+    { value: 'custom_groups', label: 'Выбранные группы' }
   ];
 
-  // Фильтрация
   const filterBySearch = (items, field = 'title') => {
     if (!searchTerm) return items;
     const term = searchTerm.toLowerCase();
@@ -383,20 +336,19 @@ function TeacherMaterialsPage() {
     );
   };
 
-  // Табы
   const tabs = [
-    { id: 'recordings', label: '🎥 Записи', count: recordings.length },
-    { id: 'miro', label: '🎨 Miro', count: materials.miro?.length || 0 },
-    { id: 'notes', label: '📝 Конспекты', count: materials.notes?.length || 0 },
-    { id: 'documents', label: '📄 Документы', count: (materials.document?.length || 0) + (materials.link?.length || 0) }
+    { id: 'recordings', label: 'Записи', count: recordings.length },
+    { id: 'miro', label: 'Miro', count: materials.miro?.length || 0 },
+    { id: 'notes', label: 'Конспекты', count: materials.notes?.length || 0 },
+    { id: 'documents', label: 'Документы', count: (materials.document?.length || 0) + (materials.link?.length || 0) }
   ];
 
   if (loading) {
     return (
       <div className="materials-page">
         <div className="materials-loading">
-          <div className="materials-spinner"></div>
-          <p>Загрузка материалов...</p>
+          <div className="spinner"></div>
+          <p>Загрузка...</p>
         </div>
       </div>
     );
@@ -408,66 +360,33 @@ function TeacherMaterialsPage() {
       
       {/* Header */}
       <header className="materials-header">
-        <div className="materials-header-info">
-          <h1>📚 Материалы уроков</h1>
-          <p className="materials-subtitle">Записи, доски Miro, конспекты и документы</p>
+        <div className="header-left">
+          <h1>Материалы</h1>
+          <p className="subtitle">Записи, доски Miro, конспекты и документы</p>
         </div>
         
-        <div className="materials-header-actions">
-          <button className="materials-action-btn primary" onClick={() => setShowUploadModal(true)}>
-            📤 Загрузить видео
+        <div className="header-actions">
+          <button className="btn btn-secondary" onClick={() => setShowAddMiroModal(true)}>
+            Добавить Miro
           </button>
-          <button className="materials-action-btn miro" onClick={() => setShowAddMiroModal(true)}>
-            🎨 Добавить Miro
+          <button className="btn btn-secondary" onClick={() => setShowAddNotesModal(true)}>
+            Добавить конспект
           </button>
-          <button className="materials-action-btn notes" onClick={() => setShowAddNotesModal(true)}>
-            📝 Добавить конспект
-          </button>
-          <button className="materials-action-btn doc" onClick={() => setShowAddDocModal(true)}>
-            📎 Добавить документ
+          <button className="btn btn-secondary" onClick={() => setShowAddDocModal(true)}>
+            Добавить документ
           </button>
         </div>
       </header>
 
-      {/* Stats */}
-      <div className="materials-stats">
-        <div className="stat-card recordings">
-          <span className="stat-icon">🎥</span>
-          <div className="stat-info">
-            <span className="stat-value">{recordings.length}</span>
-            <span className="stat-label">Записей</span>
-          </div>
-        </div>
-        <div className="stat-card miro">
-          <span className="stat-icon">🎨</span>
-          <div className="stat-info">
-            <span className="stat-value">{materials.miro?.length || 0}</span>
-            <span className="stat-label">Досок Miro</span>
-          </div>
-        </div>
-        <div className="stat-card notes">
-          <span className="stat-icon">📝</span>
-          <div className="stat-info">
-            <span className="stat-value">{materials.notes?.length || 0}</span>
-            <span className="stat-label">Конспектов</span>
-          </div>
-        </div>
-        <div className="stat-card documents">
-          <span className="stat-icon">📄</span>
-          <div className="stat-info">
-            <span className="stat-value">{(materials.document?.length || 0) + (materials.link?.length || 0)}</span>
-            <span className="stat-label">Документов</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Search & Filters */}
+      {/* Filters */}
       <div className="materials-filters">
-        <div className="search-box">
-          <span className="search-icon">🔍</span>
+        <div className="search-input">
+          <svg className="search-icon" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+          </svg>
           <input
             type="text"
-            placeholder="Поиск по названию..."
+            placeholder="Поиск..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -492,20 +411,21 @@ function TeacherMaterialsPage() {
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}
-            <span className="tab-count">{tab.count}</span>
+            {tab.count > 0 && <span className="tab-count">{tab.count}</span>}
           </button>
         ))}
       </div>
 
       {/* Content */}
       <div className="materials-content">
+        
+        {/* Recordings Tab */}
         {activeTab === 'recordings' && (
           <div className="recordings-grid">
             {filterBySearch(recordings, 'title').length === 0 ? (
               <div className="empty-state">
-                <span className="empty-icon">🎥</span>
                 <h3>Нет записей</h3>
-                <p>Записи появятся автоматически после проведения уроков с включенной записью</p>
+                <p>Записи появятся автоматически после проведения уроков</p>
               </div>
             ) : (
               filterBySearch(recordings, 'title').map(recording => (
@@ -521,69 +441,57 @@ function TeacherMaterialsPage() {
           </div>
         )}
 
+        {/* Miro Tab */}
         {activeTab === 'miro' && (
-          <div className="miro-tab-content">
-            {/* Miro Connection Status */}
-            <div className="miro-connection-status">
+          <div className="miro-content">
+            {/* Connection Status */}
+            <div className="miro-status-bar">
               {miroStatus?.user_connected ? (
-                <div className="connection-info connected">
-                  <span className="status-icon">✅</span>
-                  <span className="status-text">Miro подключен</span>
+                <>
+                  <span className="status-badge connected">Miro подключен</span>
                   <button className="link-btn" onClick={handleDisconnectMiro}>Отключить</button>
-                </div>
+                </>
               ) : miroStatus?.oauth_configured ? (
-                <div className="connection-info not-connected">
-                  <span className="status-icon">🔗</span>
-                  <span className="status-text">Подключите Miro для доступа к своим доскам</span>
-                  <button className="connect-btn" onClick={handleConnectMiro}>
+                <>
+                  <span className="status-text">Подключите Miro для доступа к доскам</span>
+                  <button className="btn btn-primary btn-sm" onClick={handleConnectMiro}>
                     Подключить Miro
                   </button>
-                </div>
+                </>
               ) : (
-                <div className="connection-info info">
-                  <span className="status-icon">ℹ️</span>
-                  <span className="status-text">Вы можете добавлять доски Miro по ссылке</span>
-                </div>
+                <span className="status-text">Добавляйте доски по ссылке</span>
               )}
             </div>
 
-            {/* Miro Boards from User's Account */}
+            {/* User's Miro Boards */}
             {miroStatus?.user_connected && miroBoards.length > 0 && (
-              <div className="miro-user-boards">
+              <div className="miro-section">
                 <div className="section-header">
-                  <h3>🎨 Мои доски в Miro</h3>
-                  <button className="refresh-btn" onClick={loadMiroBoards}>🔄</button>
+                  <h3>Мои доски в Miro</h3>
+                  <button className="link-btn" onClick={loadMiroBoards}>Обновить</button>
                 </div>
-                <div className="boards-scroll-container">
+                <div className="boards-list">
                   {miroBoards.map(board => (
-                    <div key={board.id} className="miro-board-item">
+                    <div key={board.id} className="board-item">
                       <div className="board-thumb">
                         {board.picture ? (
-                          <img src={board.picture} alt={board.name} />
+                          <img src={board.picture} alt="" />
                         ) : (
-                          <span className="thumb-placeholder">🎨</span>
+                          <div className="thumb-placeholder" />
                         )}
                       </div>
                       <div className="board-info">
                         <h4>{board.name}</h4>
                         <span className="board-date">
-                          Изменено: {new Date(board.modified_at).toLocaleDateString('ru-RU')}
+                          {new Date(board.modified_at).toLocaleDateString('ru-RU')}
                         </span>
                       </div>
                       <div className="board-actions">
-                        <a 
-                          href={board.view_link} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="action-btn small"
-                        >
+                        <a href={board.view_link} target="_blank" rel="noopener noreferrer" className="link-btn">
                           Открыть
                         </a>
-                        <button 
-                          className="action-btn small primary"
-                          onClick={() => handleImportMiroBoard(board)}
-                        >
-                          + Добавить
+                        <button className="btn btn-sm btn-primary" onClick={() => handleImportMiroBoard(board)}>
+                          Добавить
                         </button>
                       </div>
                     </div>
@@ -592,25 +500,24 @@ function TeacherMaterialsPage() {
               </div>
             )}
 
-            {/* Added Miro Boards */}
-            <div className="miro-added-boards">
+            {/* Added Boards */}
+            <div className="miro-section">
               <div className="section-header">
-                <h3>📌 Добавленные доски</h3>
-                <button className="add-btn" onClick={() => setShowAddMiroModal(true)}>
-                  + Добавить по ссылке
+                <h3>Добавленные доски</h3>
+                <button className="btn btn-sm btn-secondary" onClick={() => setShowAddMiroModal(true)}>
+                  Добавить по ссылке
                 </button>
               </div>
-
-              <div className="miro-grid">
+              
+              <div className="materials-grid">
                 {filterBySearch(materials.miro || []).length === 0 ? (
                   <div className="empty-state small">
-                    <span className="empty-icon">🎨</span>
                     <p>Нет добавленных досок</p>
                   </div>
                 ) : (
                   filterBySearch(materials.miro || []).map(board => (
-                    <div key={board.id} className="material-card miro-card">
-                      <div className="card-preview miro-preview">
+                    <div key={board.id} className="material-card">
+                      <div className="card-preview miro">
                         {board.miro_embed_url ? (
                           <iframe
                             src={board.miro_embed_url}
@@ -620,80 +527,64 @@ function TeacherMaterialsPage() {
                             title={board.title}
                           />
                         ) : (
-                          <div className="preview-placeholder">🎨</div>
+                          <div className="preview-placeholder" />
                         )}
                       </div>
-                  <div className="card-info">
-                    <h3>{board.title}</h3>
-                    {board.description && <p>{board.description}</p>}
-                    <div className="card-meta">
-                      {board.lesson_info && (
-                        <span className="meta-item">📚 {board.lesson_info.title}</span>
-                      )}
-                      <span className="meta-item">👁 {board.views_count} просмотров</span>
+                      <div className="card-body">
+                        <h4>{board.title}</h4>
+                        {board.description && <p className="card-desc">{board.description}</p>}
+                        <div className="card-meta">
+                          {board.lesson_info && <span>{board.lesson_info.title}</span>}
+                          <span>{board.views_count || 0} просмотров</span>
+                        </div>
+                      </div>
+                      <div className="card-actions">
+                        <a href={board.miro_board_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-secondary">
+                          Открыть
+                        </a>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDeleteMaterial(board.id)}>
+                          Удалить
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="card-actions">
-                    <a 
-                      href={board.miro_board_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="action-btn primary"
-                    >
-                      Открыть в Miro
-                    </a>
-                    <button 
-                      className="action-btn danger"
-                      onClick={() => handleDeleteMaterial(board.id)}
-                    >
-                      Удалить
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+                  ))
+                )}
               </div>
             </div>
           </div>
         )}
 
+        {/* Notes Tab */}
         {activeTab === 'notes' && (
-          <div className="notes-grid">
+          <div className="materials-grid">
             {filterBySearch(materials.notes || []).length === 0 ? (
               <div className="empty-state">
-                <span className="empty-icon">📝</span>
                 <h3>Нет конспектов</h3>
                 <p>Создайте конспект урока для учеников</p>
-                <button className="add-btn" onClick={() => setShowAddNotesModal(true)}>
-                  + Создать конспект
+                <button className="btn btn-primary" onClick={() => setShowAddNotesModal(true)}>
+                  Создать конспект
                 </button>
               </div>
             ) : (
               filterBySearch(materials.notes || []).map(note => (
-                <div key={note.id} className="material-card notes-card">
-                  <div className="card-icon">📝</div>
-                  <div className="card-info">
-                    <h3>{note.title}</h3>
-                    {note.description && <p>{note.description}</p>}
+                <div key={note.id} className="material-card">
+                  <div className="card-body">
+                    <h4>{note.title}</h4>
+                    {note.description && <p className="card-desc">{note.description}</p>}
                     {note.content && (
                       <div className="note-preview">
-                        {note.content.substring(0, 200)}...
+                        {note.content.substring(0, 150)}...
                       </div>
                     )}
                     <div className="card-meta">
-                      {note.lesson_info && (
-                        <span className="meta-item">📚 {note.lesson_info.title}</span>
-                      )}
-                      <span className="meta-item">👁 {note.views_count} просмотров</span>
-                      <span className="meta-item">📅 {formatDate(note.created_at)}</span>
+                      {note.lesson_info && <span>{note.lesson_info.title}</span>}
+                      <span>{note.views_count || 0} просмотров</span>
+                      <span>{formatDate(note.created_at)}</span>
                     </div>
                   </div>
                   <div className="card-actions">
-                    <button className="action-btn primary">Редактировать</button>
-                    <button 
-                      className="action-btn danger"
-                      onClick={() => handleDeleteMaterial(note.id)}
-                    >
+                    <button className="btn btn-sm btn-secondary">Редактировать</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteMaterial(note.id)}>
                       Удалить
                     </button>
                   </div>
@@ -703,49 +594,35 @@ function TeacherMaterialsPage() {
           </div>
         )}
 
+        {/* Documents Tab */}
         {activeTab === 'documents' && (
-          <div className="documents-grid">
+          <div className="materials-grid">
             {filterBySearch([...(materials.document || []), ...(materials.link || [])]).length === 0 ? (
               <div className="empty-state">
-                <span className="empty-icon">📄</span>
                 <h3>Нет документов</h3>
-                <p>Добавьте ссылки на документы, презентации или другие материалы</p>
-                <button className="add-btn" onClick={() => setShowAddDocModal(true)}>
-                  + Добавить документ
+                <p>Добавьте ссылки на документы или презентации</p>
+                <button className="btn btn-primary" onClick={() => setShowAddDocModal(true)}>
+                  Добавить документ
                 </button>
               </div>
             ) : (
               filterBySearch([...(materials.document || []), ...(materials.link || [])]).map(doc => (
-                <div key={doc.id} className="material-card doc-card">
-                  <div className="card-icon">
-                    {doc.material_type === 'link' ? '🔗' : '📄'}
-                  </div>
-                  <div className="card-info">
-                    <h3>{doc.title}</h3>
-                    {doc.description && <p>{doc.description}</p>}
+                <div key={doc.id} className="material-card">
+                  <div className="card-body">
+                    <div className="card-type">{doc.material_type === 'link' ? 'Ссылка' : 'Документ'}</div>
+                    <h4>{doc.title}</h4>
+                    {doc.description && <p className="card-desc">{doc.description}</p>}
                     <div className="card-meta">
-                      {doc.file_size_mb && (
-                        <span className="meta-item">💾 {doc.file_size_mb} MB</span>
-                      )}
-                      {doc.lesson_info && (
-                        <span className="meta-item">📚 {doc.lesson_info.title}</span>
-                      )}
-                      <span className="meta-item">👁 {doc.views_count} просмотров</span>
+                      {doc.file_size_mb && <span>{doc.file_size_mb} MB</span>}
+                      {doc.lesson_info && <span>{doc.lesson_info.title}</span>}
+                      <span>{doc.views_count || 0} просмотров</span>
                     </div>
                   </div>
                   <div className="card-actions">
-                    <a 
-                      href={doc.file_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="action-btn primary"
-                    >
+                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-secondary">
                       Открыть
                     </a>
-                    <button 
-                      className="action-btn danger"
-                      onClick={() => handleDeleteMaterial(doc.id)}
-                    >
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteMaterial(doc.id)}>
                       Удалить
                     </button>
                   </div>
@@ -756,7 +633,7 @@ function TeacherMaterialsPage() {
         )}
       </div>
 
-      {/* Recording Player Modal */}
+      {/* Recording Player */}
       {selectedRecording && (
         <RecordingPlayer
           recording={selectedRecording}
@@ -764,239 +641,217 @@ function TeacherMaterialsPage() {
         />
       )}
 
-      {/* Add Miro Board Modal */}
+      {/* Add Miro Modal */}
       {showAddMiroModal && (
-        <div className="modal-overlay" onClick={() => setShowAddMiroModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>🎨 Добавить доску Miro</h2>
-              <button className="modal-close" onClick={() => setShowAddMiroModal(false)}>✕</button>
+        <Modal isOpen={true} onClose={() => setShowAddMiroModal(false)} title="Добавить доску Miro">
+          <form onSubmit={handleAddMiroBoard} className="modal-form">
+            <div className="form-group">
+              <label>Ссылка на доску *</label>
+              <input
+                type="url"
+                value={miroForm.board_url}
+                onChange={(e) => setMiroForm({...miroForm, board_url: e.target.value})}
+                placeholder="https://miro.com/app/board/..."
+                required
+              />
+              <small>Скопируйте ссылку из адресной строки Miro</small>
             </div>
-            <form onSubmit={handleAddMiroBoard} className="modal-form">
-              <div className="form-field">
-                <label>Ссылка на доску Miro *</label>
-                <input
-                  type="url"
-                  value={miroForm.board_url}
-                  onChange={(e) => setMiroForm({...miroForm, board_url: e.target.value})}
-                  placeholder="https://miro.com/app/board/..."
-                  required
-                />
-                <small>Скопируйте ссылку из адресной строки Miro</small>
-              </div>
-              
-              <div className="form-field">
-                <label>Название</label>
-                <input
-                  type="text"
-                  value={miroForm.title}
-                  onChange={(e) => setMiroForm({...miroForm, title: e.target.value})}
-                  placeholder="Например: Разбор темы алгебры"
-                />
-              </div>
-              
-              <div className="form-field">
-                <label>Описание</label>
-                <textarea
-                  value={miroForm.description}
-                  onChange={(e) => setMiroForm({...miroForm, description: e.target.value})}
-                  placeholder="Краткое описание содержимого доски"
-                  rows={3}
-                />
-              </div>
-              
-              <div className="form-field">
-                <label>Привязать к уроку</label>
-                <Select
-                  value={miroForm.lesson_id}
-                  onChange={(e) => setMiroForm({...miroForm, lesson_id: e.target.value})}
-                  options={lessonOptions}
-                />
-              </div>
-              
-              <div className="form-field">
-                <label>Видимость</label>
-                <Select
-                  value={miroForm.visibility}
-                  onChange={(e) => setMiroForm({...miroForm, visibility: e.target.value})}
-                  options={visibilityOptions}
-                />
-              </div>
-              
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowAddMiroModal(false)} className="btn-cancel">
-                  Отмена
-                </button>
-                <button type="submit" className="btn-submit">
-                  Добавить доску
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+            
+            <div className="form-group">
+              <label>Название</label>
+              <input
+                type="text"
+                value={miroForm.title}
+                onChange={(e) => setMiroForm({...miroForm, title: e.target.value})}
+                placeholder="Название доски"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Описание</label>
+              <textarea
+                value={miroForm.description}
+                onChange={(e) => setMiroForm({...miroForm, description: e.target.value})}
+                placeholder="Краткое описание"
+                rows={2}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Привязать к уроку</label>
+              <Select
+                value={miroForm.lesson_id}
+                onChange={(e) => setMiroForm({...miroForm, lesson_id: e.target.value})}
+                options={lessonOptions}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Видимость</label>
+              <Select
+                value={miroForm.visibility}
+                onChange={(e) => setMiroForm({...miroForm, visibility: e.target.value})}
+                options={visibilityOptions}
+              />
+            </div>
+            
+            <div className="modal-footer">
+              <button type="button" onClick={() => setShowAddMiroModal(false)} className="btn btn-secondary">
+                Отмена
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Добавить
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Add Notes Modal */}
       {showAddNotesModal && (
-        <div className="modal-overlay" onClick={() => setShowAddNotesModal(false)}>
-          <div className="modal-content large" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>📝 Создать конспект</h2>
-              <button className="modal-close" onClick={() => setShowAddNotesModal(false)}>✕</button>
+        <Modal isOpen={true} onClose={() => setShowAddNotesModal(false)} title="Создать конспект" size="large">
+          <form onSubmit={handleAddNotes} className="modal-form">
+            <div className="form-group">
+              <label>Название *</label>
+              <input
+                type="text"
+                value={notesForm.title}
+                onChange={(e) => setNotesForm({...notesForm, title: e.target.value})}
+                placeholder="Название конспекта"
+                required
+              />
             </div>
-            <form onSubmit={handleAddNotes} className="modal-form">
-              <div className="form-field">
-                <label>Название конспекта *</label>
-                <input
-                  type="text"
-                  value={notesForm.title}
-                  onChange={(e) => setNotesForm({...notesForm, title: e.target.value})}
-                  placeholder="Например: Конспект урока по геометрии"
-                  required
+            
+            <div className="form-group">
+              <label>Краткое описание</label>
+              <input
+                type="text"
+                value={notesForm.description}
+                onChange={(e) => setNotesForm({...notesForm, description: e.target.value})}
+                placeholder="О чем этот конспект"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Содержание</label>
+              <textarea
+                value={notesForm.content}
+                onChange={(e) => setNotesForm({...notesForm, content: e.target.value})}
+                placeholder="Текст конспекта (поддерживается Markdown)"
+                rows={10}
+              />
+            </div>
+            
+            <div className="form-row">
+              <div className="form-group">
+                <label>Привязать к уроку</label>
+                <Select
+                  value={notesForm.lesson_id}
+                  onChange={(e) => setNotesForm({...notesForm, lesson_id: e.target.value})}
+                  options={lessonOptions}
                 />
               </div>
-              
-              <div className="form-field">
-                <label>Краткое описание</label>
-                <input
-                  type="text"
-                  value={notesForm.description}
-                  onChange={(e) => setNotesForm({...notesForm, description: e.target.value})}
-                  placeholder="О чем этот конспект"
+              <div className="form-group">
+                <label>Видимость</label>
+                <Select
+                  value={notesForm.visibility}
+                  onChange={(e) => setNotesForm({...notesForm, visibility: e.target.value})}
+                  options={visibilityOptions}
                 />
               </div>
-              
-              <div className="form-field">
-                <label>Содержание конспекта</label>
-                <textarea
-                  value={notesForm.content}
-                  onChange={(e) => setNotesForm({...notesForm, content: e.target.value})}
-                  placeholder="Введите текст конспекта. Поддерживается Markdown."
-                  rows={12}
-                  className="notes-editor"
-                />
-                <small>Поддерживается Markdown разметка</small>
-              </div>
-              
-              <div className="form-row">
-                <div className="form-field">
-                  <label>Привязать к уроку</label>
-                  <Select
-                    value={notesForm.lesson_id}
-                    onChange={(e) => setNotesForm({...notesForm, lesson_id: e.target.value})}
-                    options={lessonOptions}
-                  />
-                </div>
-                
-                <div className="form-field">
-                  <label>Видимость</label>
-                  <Select
-                    value={notesForm.visibility}
-                    onChange={(e) => setNotesForm({...notesForm, visibility: e.target.value})}
-                    options={visibilityOptions}
-                  />
-                </div>
-              </div>
-              
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowAddNotesModal(false)} className="btn-cancel">
-                  Отмена
-                </button>
-                <button type="submit" className="btn-submit">
-                  Сохранить конспект
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+            </div>
+            
+            <div className="modal-footer">
+              <button type="button" onClick={() => setShowAddNotesModal(false)} className="btn btn-secondary">
+                Отмена
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Сохранить
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Add Document Modal */}
       {showAddDocModal && (
-        <div className="modal-overlay" onClick={() => setShowAddDocModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>📎 Добавить документ</h2>
-              <button className="modal-close" onClick={() => setShowAddDocModal(false)}>✕</button>
+        <Modal isOpen={true} onClose={() => setShowAddDocModal(false)} title="Добавить документ">
+          <form onSubmit={handleAddDocument} className="modal-form">
+            <div className="form-group">
+              <label>Название *</label>
+              <input
+                type="text"
+                value={docForm.title}
+                onChange={(e) => setDocForm({...docForm, title: e.target.value})}
+                placeholder="Название документа"
+                required
+              />
             </div>
-            <form onSubmit={handleAddDocument} className="modal-form">
-              <div className="form-field">
-                <label>Название документа *</label>
-                <input
-                  type="text"
-                  value={docForm.title}
-                  onChange={(e) => setDocForm({...docForm, title: e.target.value})}
-                  placeholder="Например: Презентация к уроку"
-                  required
-                />
-              </div>
-              
-              <div className="form-field">
-                <label>Ссылка на документ *</label>
-                <input
-                  type="url"
-                  value={docForm.file_url}
-                  onChange={(e) => setDocForm({...docForm, file_url: e.target.value})}
-                  placeholder="https://drive.google.com/... или https://..."
-                  required
-                />
-                <small>Google Drive, Dropbox, или любая другая ссылка</small>
-              </div>
-              
-              <div className="form-field">
-                <label>Описание</label>
-                <textarea
-                  value={docForm.description}
-                  onChange={(e) => setDocForm({...docForm, description: e.target.value})}
-                  placeholder="Краткое описание документа"
-                  rows={2}
-                />
-              </div>
-              
-              <div className="form-field">
-                <label>Тип материала</label>
+            
+            <div className="form-group">
+              <label>Ссылка *</label>
+              <input
+                type="url"
+                value={docForm.file_url}
+                onChange={(e) => setDocForm({...docForm, file_url: e.target.value})}
+                placeholder="https://..."
+                required
+              />
+              <small>Google Drive, Dropbox или любая другая ссылка</small>
+            </div>
+            
+            <div className="form-group">
+              <label>Описание</label>
+              <textarea
+                value={docForm.description}
+                onChange={(e) => setDocForm({...docForm, description: e.target.value})}
+                placeholder="Краткое описание"
+                rows={2}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Тип</label>
+              <Select
+                value={docForm.material_type}
+                onChange={(e) => setDocForm({...docForm, material_type: e.target.value})}
+                options={[
+                  { value: 'document', label: 'Документ' },
+                  { value: 'link', label: 'Ссылка' },
+                  { value: 'image', label: 'Изображение' }
+                ]}
+              />
+            </div>
+            
+            <div className="form-row">
+              <div className="form-group">
+                <label>Привязать к уроку</label>
                 <Select
-                  value={docForm.material_type}
-                  onChange={(e) => setDocForm({...docForm, material_type: e.target.value})}
-                  options={[
-                    { value: 'document', label: '📄 Документ' },
-                    { value: 'link', label: '🔗 Ссылка' },
-                    { value: 'image', label: '🖼 Изображение' }
-                  ]}
+                  value={docForm.lesson_id}
+                  onChange={(e) => setDocForm({...docForm, lesson_id: e.target.value})}
+                  options={lessonOptions}
                 />
               </div>
-              
-              <div className="form-row">
-                <div className="form-field">
-                  <label>Привязать к уроку</label>
-                  <Select
-                    value={docForm.lesson_id}
-                    onChange={(e) => setDocForm({...docForm, lesson_id: e.target.value})}
-                    options={lessonOptions}
-                  />
-                </div>
-                
-                <div className="form-field">
-                  <label>Видимость</label>
-                  <Select
-                    value={docForm.visibility}
-                    onChange={(e) => setDocForm({...docForm, visibility: e.target.value})}
-                    options={visibilityOptions}
-                  />
-                </div>
+              <div className="form-group">
+                <label>Видимость</label>
+                <Select
+                  value={docForm.visibility}
+                  onChange={(e) => setDocForm({...docForm, visibility: e.target.value})}
+                  options={visibilityOptions}
+                />
               </div>
-              
-              <div className="modal-actions">
-                <button type="button" onClick={() => setShowAddDocModal(false)} className="btn-cancel">
-                  Отмена
-                </button>
-                <button type="submit" className="btn-submit">
-                  Добавить документ
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+            </div>
+            
+            <div className="modal-footer">
+              <button type="button" onClick={() => setShowAddDocModal(false)} className="btn btn-secondary">
+                Отмена
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Добавить
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Confirm Modal */}
