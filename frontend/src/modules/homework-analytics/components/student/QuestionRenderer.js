@@ -86,7 +86,8 @@ const QuestionRenderer = ({ question, answer, onChange, disabled = false }) => {
   }
 
   if (type === 'SINGLE_CHOICE') {
-    const options = config.options || [];
+    // Use question.choices (from backend with numeric IDs) instead of config.options
+    const options = question.choices || config.options || [];
     return (
       <div className="ht-options ht-options-radio">
         {options.map((option) => (
@@ -106,7 +107,8 @@ const QuestionRenderer = ({ question, answer, onChange, disabled = false }) => {
   }
 
   if (type === 'MULTIPLE_CHOICE' || type === 'MULTI_CHOICE') {
-    const options = config.options || [];
+    // Use question.choices (from backend with numeric IDs) instead of config.options
+    const options = question.choices || config.options || [];
     const selected = Array.isArray(answer) ? answer : [];
     return (
       <div className="ht-options ht-options-checkbox">
