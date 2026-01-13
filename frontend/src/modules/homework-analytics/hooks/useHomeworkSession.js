@@ -42,6 +42,65 @@ const buildInitialAnswers = (homework) => {
   }, {});
 };
 
+/**
+ * Convert backend Answer array to {questionId: value} map for frontend state.
+ * Backend returns: [{question: 87, text_answer: "...", selected_choices: [1,2], ...}, ...]
+ * Frontend expects: {87: "..." or [1,2] or {...}}
+ */
+const convertAnswersArrayToMap = (answersArray, questions) => {
+  if (!Array.isArray(answersArray) || answersArray.length === 0) return {};
+  
+  const questionTypesById = {};
+  if (questions) {
+    questions.forEach((q) => { questionTypesById[q.id] = q.question_type; });
+  }
+  
+  return answersArray.reduce((acc, answer) => {
+    const qId = answer.question;
+    const qType = questionTypesById[qId];
+    
+    // Determine value based on question type
+    if (qType === 'TEXT' || qType === 'ESSAY') {
+      acc[qId] = answer.text_answer || '';
+    } else if (qType === 'SINGLE_CHOICE') {
+      // Single choice: first selected choice or null
+      acc[qId] = answer.selected_choices?.[0] ?? null;
+    } else if (qType === 'MULTI_CHOICE') {
+      acc[qId] = answer.selected_choices || [];
+    } else if (qType === 'MATCHING' || qType === 'LISTENING') {
+      // These store structured data in text_answer as JSON
+      try {
+        acc[qId] = answer.text_answer ? JSON.parse(answer.text_answer) : {};
+      } catch {
+        acc[qId] = {};
+      }
+    } else if (qType === 'DRAG_DROP' || qType === 'FILL_BLANKS') {
+      // These also store array in text_answer as JSON
+      try {
+        acc[qId] = answer.text_answer ? JSON.parse(answer.text_answer) : [];
+      } catch {
+        acc[qId] = [];
+      }
+    } else if (qType === 'HOTSPOT') {
+      try {
+        acc[qId] = answer.text_answer ? JSON.parse(answer.text_answer) : [];
+      } catch {
+        acc[qId] = [];
+      }
+    } else {
+      // Fallback: prefer text_answer, then selected_choices
+      if (answer.text_answer) {
+        acc[qId] = answer.text_answer;
+      } else if (answer.selected_choices?.length) {
+        acc[qId] = answer.selected_choices;
+      } else {
+        acc[qId] = null;
+      }
+    }
+    return acc;
+  }, {});
+};
+
 const useHomeworkSession = (homeworkId, injectedService) => {
   const localDraftKey = homeworkId ? `hw_draft_${homeworkId}` : null;
   const svc = injectedService || getHomeworkService();
@@ -105,9 +164,13 @@ const useHomeworkSession = (homeworkId, injectedService) => {
           submissionData = matchingSubmissions[0];
           // eslint-disable-next-line no-console
           console.log('[useHomeworkSession] found existing submission:', submissionData.status);
-          // Если submission завершена (submitted/graded), восстановим answers из неё
-          if (submissionData.answers && typeof submissionData.answers === 'object') {
-            initialAnswers = { ...initialAnswers, ...submissionData.answers };
+          // Восстановим answers из submission (для любого статуса)
+          // Backend возвращает answers как массив объектов [{question: id, text_answer, selected_choices, ...}]
+          if (Array.isArray(submissionData.answers) && submissionData.answers.length > 0) {
+            const restoredAnswers = convertAnswersArrayToMap(submissionData.answers, homeworkData?.questions);
+            // eslint-disable-next-line no-console
+            console.log('[useHomeworkSession] restored answers from submission:', restoredAnswers);
+            initialAnswers = { ...initialAnswers, ...restoredAnswers };
           }
         }
       } catch (e) {
