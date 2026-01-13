@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Confetti from '../gamification/Confetti';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Notification, ConfirmModal } from '../../../../shared/components';
-import '../../../../shared/components/ConfirmModal.css';
+import { Button, Modal, Notification, ConfirmModal } from '../../../../shared/components';
 import useNotification from '../../../../shared/hooks/useNotification';
 import useHomeworkSession from '../../hooks/useHomeworkSession';
 import QuestionRenderer from '../student/QuestionRenderer';
@@ -99,9 +98,7 @@ const HomeworkTake = () => {
       <div className="ht-container">
         <div className="ht-state ht-error">
           <p>{error}</p>
-          <button type="button" className="gm-btn-primary" onClick={reload}>
-            Повторить загрузку
-          </button>
+          <Button onClick={reload}>Повторить загрузку</Button>
         </div>
       </div>
     );
@@ -117,30 +114,37 @@ const HomeworkTake = () => {
 
   return (
     <div className="ht-container">
-      {showResult && (
-        <div className="confirm-modal-overlay" onClick={() => setShowResult(false)}>
-          {resultData?.score >= 90 && <Confetti />}
-          <div className="confirm-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="confirm-modal-indicator confirm-modal-indicator-info" aria-hidden="true">
-              <span />
-            </div>
-            <h2 className="confirm-modal-title">Результаты</h2>
-            <p className="confirm-modal-message">
-              Ваш результат: <strong>{resultData?.score ?? '—'} баллов</strong>
-              {resultData?.percent != null && (
-                <><br />{resultData.percent}% правильных ответов</>
-              )}
-            </p>
-            <div className="confirm-modal-actions" style={{ flexWrap: 'wrap' }}>
-              <button className="confirm-modal-btn confirm-modal-btn-cancel" onClick={() => setShowResult(false)}>Закрыть</button>
-              <button className="confirm-modal-btn confirm-modal-btn-confirm confirm-modal-btn-info" onClick={() => navigate('/homework')}>К списку заданий</button>
-              {resultData?.showAnswers && (
-                <button className="confirm-modal-btn confirm-modal-btn-cancel" onClick={() => navigate(`/homework/${id}/answers`)}>Посмотреть ответы</button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {showResult && resultData?.score >= 90 && <Confetti />}
+      <Modal
+        isOpen={showResult}
+        onClose={() => setShowResult(false)}
+        title="Результаты"
+        size="small"
+        closeOnBackdrop
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setShowResult(false)}>
+              Закрыть
+            </Button>
+            {resultData?.showAnswers ? (
+              <Button variant="secondary" onClick={() => navigate(`/homework/${id}/answers`)}>
+                Посмотреть ответы
+              </Button>
+            ) : null}
+            <Button onClick={() => navigate('/homework')}>К списку заданий</Button>
+          </>
+        )}
+      >
+        <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--leading-relaxed)' }}>
+          Ваш результат: <strong>{resultData?.score ?? '—'} баллов</strong>
+          {resultData?.percent != null ? (
+            <>
+              <br />
+              {resultData.percent}% правильных ответов
+            </>
+          ) : null}
+        </p>
+      </Modal>
       <header className="ht-header">
         <div className="ht-header-primary">
           <h1 className="ht-title">{homework.title}</h1>

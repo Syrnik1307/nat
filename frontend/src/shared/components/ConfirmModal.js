@@ -1,6 +1,6 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
-import './ConfirmModal.css';
+import Modal from './Modal';
+import Button from './Button';
 
 const ConfirmModal = ({ 
   isOpen, 
@@ -12,40 +12,37 @@ const ConfirmModal = ({
   cancelText = 'Отмена',
   variant = 'warning'
 }) => {
-  if (!isOpen) return null;
-
   const handleConfirm = () => {
     onConfirm();
     onClose();
   };
 
-  return createPortal(
-    <div className="confirm-modal-overlay" onClick={onClose}>
-      <div className="confirm-modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className={`confirm-modal-indicator confirm-modal-indicator-${variant}`} aria-hidden="true">
-          <span />
-        </div>
+  const confirmVariant = variant === 'danger' ? 'danger' : 'primary';
 
-        <h2 className="confirm-modal-title">{title}</h2>
-        <p className="confirm-modal-message">{message}</p>
-
-        <div className="confirm-modal-actions">
-          <button
-            className="confirm-modal-btn confirm-modal-btn-cancel"
-            onClick={onClose}
-          >
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      size="small"
+      closeOnBackdrop
+      footer={(
+        <>
+          <Button variant="secondary" onClick={onClose}>
             {cancelText}
-          </button>
-          <button
-            className={`confirm-modal-btn confirm-modal-btn-confirm confirm-modal-btn-${variant}`}
-            onClick={handleConfirm}
-          >
+          </Button>
+          <Button variant={confirmVariant} onClick={handleConfirm}>
             {confirmText}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
+          </Button>
+        </>
+      )}
+    >
+      {message ? (
+        <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--leading-relaxed)' }}>
+          {message}
+        </p>
+      ) : null}
+    </Modal>
   );
 };
 
