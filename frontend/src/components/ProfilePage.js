@@ -116,7 +116,7 @@ const ProfilePage = () => {
       avatar: user.avatar || '',
     });
     setAvatarPreview(user.avatar || '');
-  }, [user, activeTab]);
+  }, [user]);
 
   const fetchTelegramStatus = useCallback(async () => {
     setTelegramLoading(true);
@@ -147,11 +147,14 @@ const ProfilePage = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'telegram') {
+    if (activeTab === 'telegram' && !telegramInfo && !telegramLoading) {
       fetchTelegramStatus();
+    }
+    if (activeTab === 'telegram' && !notificationSettings && !notificationLoading) {
       fetchNotificationSettings();
     }
-  }, [activeTab, fetchTelegramStatus, fetchNotificationSettings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const handleToggleNotificationSetting = (key) => {
     setNotificationSuccess('');
