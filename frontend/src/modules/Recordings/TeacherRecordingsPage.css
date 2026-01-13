@@ -146,6 +146,8 @@
   gap: 1rem;
   align-items: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 100;
 }
 
 .teacher-search-box {
