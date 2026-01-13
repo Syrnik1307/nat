@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './TeacherMaterialsPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
-import RecordingCard from './RecordingCard';
-import RecordingPlayer from './RecordingPlayer';
 import { ConfirmModal, Select, ToastContainer, Modal } from '../../shared/components';
 
 /**
@@ -10,10 +8,9 @@ import { ConfirmModal, Select, ToastContainer, Modal } from '../../shared/compon
  * Записи, доски Miro, конспекты и документы
  */
 function TeacherMaterialsPage() {
-  const [activeTab, setActiveTab] = useState('recordings');
+  const [activeTab, setActiveTab] = useState('miro');
   
   // Данные
-  const [recordings, setRecordings] = useState([]);
   const [materials, setMaterials] = useState({ miro: [], notes: [], document: [], link: [] });
   const [lessons, setLessons] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -23,7 +20,6 @@ function TeacherMaterialsPage() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
-  const [selectedRecording, setSelectedRecording] = useState(null);
   
   // Модальные окна
   const [showAddMiroModal, setShowAddMiroModal] = useState(false);
@@ -97,7 +93,6 @@ function TeacherMaterialsPage() {
     setLoading(true);
     try {
       await Promise.all([
-        loadRecordings(),
         loadMaterials(),
         loadLessons(),
         loadGroups()
@@ -107,16 +102,6 @@ function TeacherMaterialsPage() {
       setError('Не удалось загрузить данные');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadRecordings = async () => {
-    try {
-      const response = await api.get('recordings/teacher/', withScheduleApiBase());
-      const data = response.data.results || response.data;
-      setRecordings(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Error loading recordings:', err);
     }
   };
 
@@ -337,7 +322,6 @@ function TeacherMaterialsPage() {
   };
 
   const tabs = [
-    { id: 'recordings', label: 'Записи', count: recordings.length },
     { id: 'miro', label: 'Miro', count: materials.miro?.length || 0 },
     { id: 'notes', label: 'Конспекты', count: materials.notes?.length || 0 },
     { id: 'documents', label: 'Документы', count: (materials.document?.length || 0) + (materials.link?.length || 0) }
@@ -362,7 +346,7 @@ function TeacherMaterialsPage() {
       <header className="materials-header">
         <div className="header-left">
           <h1>Материалы</h1>
-          <p className="subtitle">Записи, доски Miro, конспекты и документы</p>
+          <p className="subtitle">Доски Miro, конспекты и документы</p>
         </div>
         
         <div className="header-actions">
@@ -418,28 +402,6 @@ function TeacherMaterialsPage() {
 
       {/* Content */}
       <div className="materials-content">
-        
-        {/* Recordings Tab */}
-        {activeTab === 'recordings' && (
-          <div className="recordings-grid">
-            {filterBySearch(recordings, 'title').length === 0 ? (
-              <div className="empty-state">
-                <h3>Нет записей</h3>
-                <p>Записи появятся автоматически после проведения уроков</p>
-              </div>
-            ) : (
-              filterBySearch(recordings, 'title').map(recording => (
-                <RecordingCard
-                  key={recording.id}
-                  recording={recording}
-                  onPlay={() => setSelectedRecording(recording)}
-                  onDelete={() => {}}
-                  isTeacher={true}
-                />
-              ))
-            )}
-          </div>
-        )}
 
         {/* Miro Tab */}
         {activeTab === 'miro' && (
@@ -632,14 +594,6 @@ function TeacherMaterialsPage() {
           </div>
         )}
       </div>
-
-      {/* Recording Player */}
-      {selectedRecording && (
-        <RecordingPlayer
-          recording={selectedRecording}
-          onClose={() => setSelectedRecording(null)}
-        />
-      )}
 
       {/* Add Miro Modal */}
       {showAddMiroModal && (
