@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Group, Lesson, Attendance, RecurringLesson, LessonRecording, TeacherStorageQuota, IndividualInviteCode
+from .models import Group, Lesson, Attendance, RecurringLesson, LessonRecording, TeacherStorageQuota, IndividualInviteCode, LessonMaterial
 from zoom_pool.models import ZoomAccount
 from accounts.models import CustomUser
 
@@ -678,3 +678,61 @@ class IndividualInviteCodeSerializer(serializers.ModelSerializer):
         if obj.used_by:
             return obj.used_by.get_full_name()
         return None
+
+class LessonMaterialSerializer(serializers.ModelSerializer):
+    """Сериализатор для учебных материалов (Miro, конспекты, файлы)"""
+    
+    lesson_info = serializers.SerializerMethodField()
+    uploaded_by_info = serializers.SerializerMethodField()
+    file_size_mb = serializers.SerializerMethodField()
+    material_type_display = serializers.CharField(source='get_material_type_display', read_only=True)
+    access_groups = serializers.SerializerMethodField()
+    
+    def get_lesson_info(self, obj):
+        if not obj.lesson:
+            return None
+        lesson = obj.lesson
+        return {
+            'id': lesson.id,
+            'title': lesson.title,
+            'group_name': lesson.group.name if lesson.group else None,
+            'group_id': lesson.group.id if lesson.group else None,
+            'start_time': lesson.start_time,
+        }
+    
+    def get_uploaded_by_info(self, obj):
+        if not obj.uploaded_by:
+            return None
+        return {
+            'id': obj.uploaded_by.id,
+            'name': obj.uploaded_by.get_full_name() or obj.uploaded_by.email,
+            'email': obj.uploaded_by.email
+        }
+    
+    def get_file_size_mb(self, obj):
+        if obj.file_size_bytes:
+            return round(obj.file_size_bytes / (1024 * 1024), 2)
+        return None
+    
+    def get_access_groups(self, obj):
+        return [
+            {'id': g.id, 'name': g.name}
+            for g in obj.allowed_groups.all()
+        ]
+    
+    class Meta:
+        model = LessonMaterial
+        fields = [
+            'id', 'lesson', 'lesson_info', 'uploaded_by', 'uploaded_by_info',
+            'material_type', 'material_type_display', 'title', 'description',
+            'miro_board_id', 'miro_board_url', 'miro_embed_url', 'miro_thumbnail_url',
+            'file_url', 'file_name', 'file_size_bytes', 'file_size_mb', 'gdrive_file_id',
+            'content',
+            'visibility', 'allowed_groups', 'access_groups',
+            'views_count', 'order',
+            'uploaded_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'id', 'uploaded_by', 'views_count',
+            'uploaded_at', 'updated_at'
+        ]

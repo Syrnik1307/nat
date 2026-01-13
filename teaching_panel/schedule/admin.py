@@ -278,26 +278,41 @@ class TeacherStorageQuotaAdmin(admin.ModelAdmin):
 
 @admin.register(LessonMaterial)
 class LessonMaterialAdmin(admin.ModelAdmin):
-    list_display = ('title', 'lesson', 'material_type', 'uploaded_by', 'views_count', 'file_size_display', 'uploaded_at')
-    list_filter = ('material_type', 'uploaded_at')
-    search_fields = ('title', 'lesson__title', 'uploaded_by__email')
-    readonly_fields = ('uploaded_at', 'views_count', 'file_size_mb')
+    list_display = ('title', 'lesson', 'material_type', 'uploaded_by', 'visibility', 'views_count', 'file_size_display', 'uploaded_at')
+    list_filter = ('material_type', 'visibility', 'uploaded_at')
+    search_fields = ('title', 'lesson__title', 'uploaded_by__email', 'miro_board_id')
+    readonly_fields = ('uploaded_at', 'updated_at', 'views_count', 'file_size_mb')
+    filter_horizontal = ('allowed_groups',)
     
     fieldsets = (
         ('Основная информация', {
-            'fields': ('lesson', 'material_type', 'title', 'description')
+            'fields': ('lesson', 'material_type', 'title', 'description', 'order')
         }),
-        ('Файл', {
-            'fields': ('file_url', 'file_name', 'file_size_bytes', 'file_size_mb')
+        ('Miro доска', {
+            'fields': ('miro_board_id', 'miro_board_url', 'miro_embed_url', 'miro_thumbnail_url'),
+            'classes': ('collapse',)
+        }),
+        ('Файл / Ссылка', {
+            'fields': ('file_url', 'file_name', 'file_size_bytes', 'file_size_mb', 'gdrive_file_id'),
+            'classes': ('collapse',)
+        }),
+        ('Текстовый контент', {
+            'fields': ('content',),
+            'classes': ('collapse',)
+        }),
+        ('Доступ и видимость', {
+            'fields': ('visibility', 'allowed_groups')
         }),
         ('Метаданные', {
-            'fields': ('uploaded_by', 'uploaded_at', 'views_count')
+            'fields': ('uploaded_by', 'uploaded_at', 'updated_at', 'views_count')
         }),
     )
     
     def file_size_display(self, obj):
         """Отображение размера файла в MB"""
-        return f"{obj.file_size_mb:.2f} MB"
+        if obj.file_size_mb:
+            return f"{obj.file_size_mb:.2f} MB"
+        return "-"
     file_size_display.short_description = 'Размер'
 
 

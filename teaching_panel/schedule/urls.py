@@ -16,6 +16,7 @@ router.register(r'api/lessons', views.LessonViewSet, basename='api-lesson')
 router.register(r'api/attendance', views.AttendanceViewSet, basename='api-attendance')
 router.register(r'api/zoom-accounts', views.ZoomAccountViewSet, basename='api-zoom-account')
 router.register(r'api/recurring-lessons', views.RecurringLessonViewSet, basename='api-recurring-lesson')
+router.register(r'api/lesson-materials', views.LessonMaterialViewSet, basename='api-lesson-material')
 
 urlpatterns = [
     # Web UI для преподавателей и студентов
@@ -65,6 +66,14 @@ urlpatterns = [
     path('api/materials/<int:material_id>/views/', material_views.get_material_views, name='material_views'),
     path('api/materials/<int:material_id>/delete/', material_views.delete_material, name='delete_material'),
     
+    # Miro Integration API
+    path('api/miro/add-board/', views.miro_add_board, name='miro_add_board'),
+    path('api/miro/create-board/', views.miro_create_board, name='miro_create_board'),
+    path('api/miro/status/', views.miro_status, name='miro_status'),
+    
+    # Notes & Documents API
+    path('api/materials/add-notes/', views.add_notes, name='add_notes'),
+    path('api/materials/add-document/', views.add_document, name='add_document'),    
     # Calendar export / subscription (iCal) для Google, Яндекс, Apple Calendar
     path('api/calendar/export/ics/', calendar_views.export_calendar_ics, name='calendar_export_ics'),
     path('api/calendar/feed/<int:user_id>/<str:token>/', calendar_views.calendar_feed, name='calendar_feed'),
@@ -75,4 +84,3 @@ urlpatterns = [
     # API endpoints
     path('', include(router.urls)),
 ]
-

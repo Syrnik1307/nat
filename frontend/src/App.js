@@ -44,6 +44,7 @@ const MockPaymentPage = lazy(() => import('./components/MockPaymentPage'));
 const TeacherHomePage = lazy(() => import('./components/TeacherHomePage'));
 const AttendanceLogPage = lazy(() => import('./components/AttendanceLogPage'));
 const TeacherRecordingsPage = lazy(() => import('./modules/Recordings/TeacherRecordingsPage'));
+const TeacherMaterialsPage = lazy(() => import('./modules/Recordings/TeacherMaterialsPage'));
 const AnalyticsPage = lazy(() => import('./components/AnalyticsPage'));
 const HomeworkManage = lazy(() => import('./components/HomeworkManage'));
 const HomeworkPage = lazy(() => import('./modules/homework-analytics/components/HomeworkPage'));
@@ -116,6 +117,7 @@ const AppRoutes = () => {
           <Route path="/teacher" element={<Navigate to="/home-new" replace />} />
           <Route path="/attendance/:groupId" element={<Protected allowRoles={['teacher', 'admin']}><AttendanceLogPage /></Protected>} />
           <Route path="/teacher/recordings" element={<Protected allowRoles={['teacher']}><TeacherRecordingsPage /></Protected>} />
+          <Route path="/teacher/materials" element={<Protected allowRoles={['teacher']}><TeacherMaterialsPage /></Protected>} />
           <Route path="/homework/manage" element={<Protected allowRoles={['teacher']}><HomeworkManage /></Protected>} />
           <Route
             path="/homework/constructor"

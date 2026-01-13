@@ -2749,3 +2749,459 @@ class IndividualInviteCodeViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
 
+# ============================================
+# LessonMaterial ViewSet (Miro, конспекты, файлы)
+# ============================================
+
+from .models import LessonMaterial
+from .serializers import LessonMaterialSerializer
+
+
+class LessonMaterialViewSet(viewsets.ModelViewSet):
+    """ViewSet для управления учебными материалами (Miro, конспекты, файлы)"""
+    queryset = LessonMaterial.objects.all()
+    serializer_class = LessonMaterialSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Фильтруем материалы по пользователю и параметрам"""
+        user = self.request.user
+        qs = LessonMaterial.objects.select_related('lesson', 'uploaded_by', 'lesson__group')
+        
+        if user.role == 'teacher':
+            qs = qs.filter(uploaded_by=user)
+        elif user.role == 'student':
+            # Студент видит материалы доступных ему уроков
+            from django.db.models import Q
+            student_groups = user.enrolled_groups.all()
+            qs = qs.filter(
+                Q(lesson__group__in=student_groups) |
+                Q(visibility='all_teacher_groups', lesson__group__in=student_groups) |
+                Q(visibility='custom_groups', allowed_groups__in=student_groups)
+            ).distinct()
+        
+        # Фильтр по типу материала
+        material_type = self.request.query_params.get('type')
+        if material_type:
+            qs = qs.filter(material_type=material_type)
+        
+        # Фильтр по уроку
+        lesson_id = self.request.query_params.get('lesson_id')
+        if lesson_id:
+            qs = qs.filter(lesson_id=lesson_id)
+        
+        return qs.order_by('order', '-uploaded_at')
+    
+    def create(self, request, *args, **kwargs):
+        """Создать новый материал"""
+        if request.user.role != 'teacher':
+            return Response(
+                {'error': 'Только учителя могут создавать материалы'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        data = request.data.copy()
+        
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(uploaded_by=request.user)
+        
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    def update(self, request, *args, **kwargs):
+        """Обновить материал"""
+        obj = self.get_object()
+        
+        if request.user.role != 'teacher' or obj.uploaded_by != request.user:
+            return Response(
+                {'error': 'Нельзя редактировать чужие материалы'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return super().update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """Удалить материал"""
+        obj = self.get_object()
+        
+        if request.user.role != 'admin' and obj.uploaded_by != request.user:
+            return Response(
+                {'error': 'Нельзя удалить чужой материал'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return super().destroy(request, *args, **kwargs)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def view(self, request, pk=None):
+        """Трекинг просмотра материала"""
+        material = self.get_object()
+        material.views_count += 1
+        material.save(update_fields=['views_count'])
+        return Response({'views_count': material.views_count})
+    
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def teacher_materials(self, request):
+        """Получить все материалы учителя с группировкой по типу"""
+        if request.user.role != 'teacher':
+            return Response(
+                {'error': 'Только для учителей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        materials = LessonMaterial.objects.filter(uploaded_by=request.user).order_by('order', '-uploaded_at')
+        
+        # Группируем по типу
+        grouped = {
+            'miro': [],
+            'notes': [],
+            'document': [],
+            'link': [],
+            'image': [],
+        }
+        
+        for material in materials:
+            serialized = LessonMaterialSerializer(material).data
+            if material.material_type in grouped:
+                grouped[material.material_type].append(serialized)
+        
+        # Статистика
+        stats = {
+            'total': materials.count(),
+            'miro_count': len(grouped['miro']),
+            'notes_count': len(grouped['notes']),
+            'documents_count': len(grouped['document']),
+            'links_count': len(grouped['link']),
+        }
+        
+        return Response({
+            'materials': grouped,
+            'stats': stats
+        })
+
+
+# ============================================
+# Miro Integration API
+# ============================================
+
+import requests
+import re
+from django.conf import settings as django_settings
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def miro_add_board(request):
+    """
+    Добавить доску Miro как материал урока.
+    Принимает URL доски Miro и извлекает информацию.
+    """
+    if request.user.role != 'teacher':
+        return Response(
+            {'error': 'Только учителя могут добавлять доски Miro'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    board_url = request.data.get('board_url', '').strip()
+    title = request.data.get('title', '').strip()
+    description = request.data.get('description', '').strip()
+    lesson_id = request.data.get('lesson_id')
+    visibility = request.data.get('visibility', 'lesson_group')
+    
+    if not board_url:
+        return Response(
+            {'error': 'URL доски Miro обязателен'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Извлекаем board_id из URL
+    # Форматы: https://miro.com/app/board/uXjVK...=/ или https://miro.com/welcomeonboard/...
+    board_id = None
+    
+    # Паттерн 1: /app/board/{board_id}/
+    match = re.search(r'/app/board/([a-zA-Z0-9_=-]+)', board_url)
+    if match:
+        board_id = match.group(1)
+    
+    # Паттерн 2: /welcomeonboard/{board_id}
+    if not board_id:
+        match = re.search(r'/welcomeonboard/([a-zA-Z0-9_=-]+)', board_url)
+        if match:
+            board_id = match.group(1)
+    
+    if not board_id:
+        return Response(
+            {'error': 'Не удалось извлечь ID доски из URL. Убедитесь, что это корректная ссылка на Miro доску.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Формируем embed URL для iframe
+    embed_url = f"https://miro.com/app/live-embed/{board_id}/?autoplay=yep"
+    
+    # Проверяем, существует ли урок (если указан)
+    lesson = None
+    if lesson_id:
+        try:
+            lesson = Lesson.objects.get(id=lesson_id, teacher=request.user)
+        except Lesson.DoesNotExist:
+            return Response(
+                {'error': 'Урок не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    # Создаем материал
+    material = LessonMaterial.objects.create(
+        uploaded_by=request.user,
+        lesson=lesson,
+        material_type=LessonMaterial.MaterialType.MIRO_BOARD,
+        title=title or f"Доска Miro",
+        description=description,
+        miro_board_id=board_id,
+        miro_board_url=board_url,
+        miro_embed_url=embed_url,
+        visibility=visibility
+    )
+    
+    # Добавляем группы если нужно
+    if visibility == 'custom_groups':
+        group_ids = request.data.get('allowed_groups', [])
+        if group_ids:
+            groups = Group.objects.filter(id__in=group_ids, teacher=request.user)
+            material.allowed_groups.set(groups)
+    
+    serializer = LessonMaterialSerializer(material)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def miro_create_board(request):
+    """
+    Создать новую доску Miro через API (требует OAuth токен).
+    Если токен не настроен, возвращает инструкции.
+    """
+    if request.user.role != 'teacher':
+        return Response(
+            {'error': 'Только учителя могут создавать доски Miro'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Проверяем наличие Miro credentials
+    miro_access_token = getattr(django_settings, 'MIRO_ACCESS_TOKEN', None) or os.environ.get('MIRO_ACCESS_TOKEN')
+    
+    if not miro_access_token:
+        return Response({
+            'error': 'Miro API не настроен',
+            'instructions': {
+                'step1': 'Создайте приложение на https://miro.com/app/settings/user-profile/apps',
+                'step2': 'Получите access token с scope: boards:read, boards:write',
+                'step3': 'Добавьте MIRO_ACCESS_TOKEN в переменные окружения',
+                'alternative': 'Или используйте miro_add_board для добавления существующей доски по URL'
+            }
+        }, status=status.HTTP_501_NOT_IMPLEMENTED)
+    
+    board_name = request.data.get('name', '').strip() or 'Новая доска'
+    description = request.data.get('description', '').strip()
+    lesson_id = request.data.get('lesson_id')
+    
+    # Создаем доску через Miro API
+    try:
+        response = requests.post(
+            'https://api.miro.com/v2/boards',
+            headers={
+                'Authorization': f'Bearer {miro_access_token}',
+                'Content-Type': 'application/json'
+            },
+            json={
+                'name': board_name,
+                'description': description,
+                'sharingPolicy': {
+                    'access': 'view',
+                    'inviteToAccountAndBoardLinkAccess': 'viewer'
+                }
+            },
+            timeout=15
+        )
+        
+        if response.status_code not in (200, 201):
+            return Response({
+                'error': 'Ошибка создания доски в Miro',
+                'details': response.json() if response.text else response.status_code
+            }, status=status.HTTP_502_BAD_GATEWAY)
+        
+        board_data = response.json()
+        board_id = board_data.get('id')
+        board_url = board_data.get('viewLink')
+        embed_url = f"https://miro.com/app/live-embed/{board_id}/?autoplay=yep"
+        
+    except requests.RequestException as e:
+        return Response({
+            'error': 'Не удалось подключиться к Miro API',
+            'details': str(e)
+        }, status=status.HTTP_502_BAD_GATEWAY)
+    
+    # Проверяем урок
+    lesson = None
+    if lesson_id:
+        try:
+            lesson = Lesson.objects.get(id=lesson_id, teacher=request.user)
+        except Lesson.DoesNotExist:
+            pass
+    
+    # Создаем материал
+    material = LessonMaterial.objects.create(
+        uploaded_by=request.user,
+        lesson=lesson,
+        material_type=LessonMaterial.MaterialType.MIRO_BOARD,
+        title=board_name,
+        description=description,
+        miro_board_id=board_id,
+        miro_board_url=board_url,
+        miro_embed_url=embed_url,
+        visibility=LessonMaterial.Visibility.LESSON_GROUP
+    )
+    
+    serializer = LessonMaterialSerializer(material)
+    return Response({
+        'material': serializer.data,
+        'miro_board': board_data
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_notes(request):
+    """
+    Добавить конспект (текстовый материал) к уроку.
+    """
+    if request.user.role != 'teacher':
+        return Response(
+            {'error': 'Только учителя могут добавлять конспекты'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    title = request.data.get('title', '').strip()
+    content = request.data.get('content', '').strip()
+    description = request.data.get('description', '').strip()
+    lesson_id = request.data.get('lesson_id')
+    visibility = request.data.get('visibility', 'lesson_group')
+    
+    if not title:
+        return Response(
+            {'error': 'Название конспекта обязательно'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Проверяем урок
+    lesson = None
+    if lesson_id:
+        try:
+            lesson = Lesson.objects.get(id=lesson_id, teacher=request.user)
+        except Lesson.DoesNotExist:
+            return Response(
+                {'error': 'Урок не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    # Создаем материал
+    material = LessonMaterial.objects.create(
+        uploaded_by=request.user,
+        lesson=lesson,
+        material_type=LessonMaterial.MaterialType.NOTES,
+        title=title,
+        description=description,
+        content=content,
+        visibility=visibility
+    )
+    
+    # Добавляем группы если нужно
+    if visibility == 'custom_groups':
+        group_ids = request.data.get('allowed_groups', [])
+        if group_ids:
+            groups = Group.objects.filter(id__in=group_ids, teacher=request.user)
+            material.allowed_groups.set(groups)
+    
+    serializer = LessonMaterialSerializer(material)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_document(request):
+    """
+    Добавить документ/ссылку как материал урока.
+    """
+    if request.user.role != 'teacher':
+        return Response(
+            {'error': 'Только учителя могут добавлять документы'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    title = request.data.get('title', '').strip()
+    file_url = request.data.get('file_url', '').strip()
+    description = request.data.get('description', '').strip()
+    lesson_id = request.data.get('lesson_id')
+    material_type = request.data.get('material_type', 'document')
+    visibility = request.data.get('visibility', 'lesson_group')
+    
+    if not title:
+        return Response(
+            {'error': 'Название документа обязательно'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if not file_url:
+        return Response(
+            {'error': 'Ссылка на файл обязательна'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Определяем тип материала
+    if material_type not in ('document', 'link', 'image'):
+        material_type = 'document'
+    
+    # Проверяем урок
+    lesson = None
+    if lesson_id:
+        try:
+            lesson = Lesson.objects.get(id=lesson_id, teacher=request.user)
+        except Lesson.DoesNotExist:
+            return Response(
+                {'error': 'Урок не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    # Создаем материал
+    material = LessonMaterial.objects.create(
+        uploaded_by=request.user,
+        lesson=lesson,
+        material_type=material_type,
+        title=title,
+        description=description,
+        file_url=file_url,
+        file_name=request.data.get('file_name', ''),
+        file_size_bytes=request.data.get('file_size_bytes', 0) or 0,
+        visibility=visibility
+    )
+    
+    serializer = LessonMaterialSerializer(material)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def miro_status(request):
+    """
+    Проверить статус интеграции с Miro.
+    """
+    miro_access_token = getattr(django_settings, 'MIRO_ACCESS_TOKEN', None) or os.environ.get('MIRO_ACCESS_TOKEN')
+    
+    return Response({
+        'miro_api_configured': bool(miro_access_token),
+        'can_add_boards': True,  # Всегда можно добавить по URL
+        'can_create_boards': bool(miro_access_token),  # Только с API
+        'instructions': {
+            'add_existing': 'Скопируйте URL доски Miro и добавьте её через API',
+            'create_new': 'Для создания новых досок через API настройте MIRO_ACCESS_TOKEN'
+        }
+    })

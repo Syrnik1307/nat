@@ -861,30 +861,42 @@ class TeacherStorageQuota(models.Model):
 
 
 class LessonMaterial(models.Model):
-    """Учебные материалы к уроку (теория, конспект)"""
+    """Учебные материалы к уроку (теория, конспект, Miro, документы)"""
     
-    MATERIAL_TYPE_CHOICES = [
-        ('theory', _('Теория (перед уроком)')),
-        ('notes', _('Конспект (после урока)')),
-    ]
+    class MaterialType(models.TextChoices):
+        THEORY = 'theory', _('Теория (перед уроком)')
+        NOTES = 'notes', _('Конспект (после урока)')
+        MIRO_BOARD = 'miro', _('Доска Miro')
+        DOCUMENT = 'document', _('Документ')
+        LINK = 'link', _('Ссылка')
+        IMAGE = 'image', _('Изображение')
+
+    class Visibility(models.TextChoices):
+        LESSON_GROUP = 'lesson_group', _('Только группа урока')
+        ALL_TEACHER_GROUPS = 'all_teacher_groups', _('Все группы преподавателя')
+        CUSTOM_GROUPS = 'custom_groups', _('Выбранные группы')
     
     lesson = models.ForeignKey(
         'Lesson',
         on_delete=models.CASCADE,
         related_name='materials',
-        verbose_name=_('урок')
+        verbose_name=_('урок'),
+        null=True,
+        blank=True,
+        help_text=_('Урок, к которому привязан материал (опционально)')
     )
     
     material_type = models.CharField(
         _('тип материала'),
-        max_length=10,
-        choices=MATERIAL_TYPE_CHOICES,
-        help_text=_('Теория (для чтения перед уроком) или конспект (после урока)')
+        max_length=20,
+        choices=MaterialType.choices,
+        default=MaterialType.NOTES,
+        help_text=_('Тип материала: теория, конспект, Miro доска, документ и т.д.')
     )
     
     title = models.CharField(
         _('название'),
-        max_length=200,
+        max_length=255,
         help_text=_('Название материала')
     )
     
@@ -894,9 +906,11 @@ class LessonMaterial(models.Model):
         help_text=_('Краткое описание содержания')
     )
     
+    # Файлы и ссылки
     file_url = models.URLField(
         _('ссылка на файл'),
         max_length=500,
+        blank=True,
         help_text=_('URL файла в Google Drive или другом хранилище')
     )
     
@@ -911,6 +925,47 @@ class LessonMaterial(models.Model):
         default=0
     )
     
+    gdrive_file_id = models.CharField(
+        _('Google Drive File ID'),
+        max_length=100,
+        blank=True,
+        help_text=_('ID файла в Google Drive')
+    )
+    
+    # Поля для Miro досок
+    miro_board_id = models.CharField(
+        _('ID доски Miro'),
+        max_length=100,
+        blank=True,
+        help_text=_('Уникальный идентификатор доски в Miro')
+    )
+    miro_board_url = models.URLField(
+        _('ссылка на доску Miro'),
+        max_length=500,
+        blank=True,
+        help_text=_('Прямая ссылка на доску Miro')
+    )
+    miro_embed_url = models.URLField(
+        _('embed ссылка Miro'),
+        max_length=500,
+        blank=True,
+        help_text=_('Ссылка для встраивания доски (iframe)')
+    )
+    miro_thumbnail_url = models.URLField(
+        _('превью доски Miro'),
+        max_length=500,
+        blank=True,
+        help_text=_('Ссылка на миниатюру доски')
+    )
+    
+    # Для текстового контента (конспекты)
+    content = models.TextField(
+        _('содержимое'),
+        blank=True,
+        help_text=_('Текстовый контент конспекта (Markdown или HTML)')
+    )
+    
+    # Владелец и видимость
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -919,31 +974,58 @@ class LessonMaterial(models.Model):
         verbose_name=_('загрузил')
     )
     
-    uploaded_at = models.DateTimeField(_('дата загрузки'), auto_now_add=True)
+    visibility = models.CharField(
+        _('видимость'),
+        max_length=32,
+        choices=Visibility.choices,
+        default=Visibility.LESSON_GROUP,
+        help_text=_('Кому доступен материал')
+    )
     
-    # Счетчик просмотров
+    allowed_groups = models.ManyToManyField(
+        Group,
+        related_name='material_access',
+        blank=True,
+        verbose_name=_('доступные группы')
+    )
+    
+    uploaded_at = models.DateTimeField(_('дата загрузки'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
+    
+    # Статистика и порядок
     views_count = models.IntegerField(
         _('количество просмотров'),
         default=0
     )
     
+    order = models.PositiveIntegerField(_('порядок'), default=0)
+    
     class Meta:
         verbose_name = _('учебный материал')
         verbose_name_plural = _('учебные материалы')
-        ordering = ['material_type', '-uploaded_at']
+        ordering = ['order', 'material_type', '-uploaded_at']
         indexes = [
             models.Index(fields=['lesson', 'material_type']),
-            models.Index(fields=['uploaded_by', 'uploaded_at'])
+            models.Index(fields=['uploaded_by', 'uploaded_at']),
+            models.Index(fields=['material_type', 'uploaded_at']),
         ]
     
     def __str__(self):
-        type_label = dict(self.MATERIAL_TYPE_CHOICES)[self.material_type]
-        return f"{self.lesson.title} - {type_label}: {self.title}"
+        type_label = self.get_material_type_display()
+        lesson_title = self.lesson.title if self.lesson else 'Без урока'
+        return f"{lesson_title} - {type_label}: {self.title}"
     
     @property
     def file_size_mb(self):
         """Размер файла в MB"""
-        return self.file_size_bytes / (1024 ** 2)
+        if self.file_size_bytes:
+            return round(self.file_size_bytes / (1024 ** 2), 2)
+        return None
+    
+    @property 
+    def is_miro(self):
+        """Является ли материал доской Miro"""
+        return self.material_type == self.MaterialType.MIRO_BOARD
 
 
 class MaterialView(models.Model):

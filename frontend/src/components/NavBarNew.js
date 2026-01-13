@@ -333,6 +333,15 @@ const NavBar = () => {
           </Link>
           
           <Link 
+            to="/teacher/materials" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>Материалы</span>
+          </Link>
+          
+          <Link 
             to="/teacher/recordings" 
             className="nav-link"
             onClick={() => setShowMobileMenu(false)}
