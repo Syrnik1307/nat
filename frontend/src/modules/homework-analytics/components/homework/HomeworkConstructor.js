@@ -637,6 +637,7 @@ const HomeworkConstructor = () => {
                           ref={draggableProvided.innerRef}
                           {...draggableProvided.draggableProps}
                           onPaste={(e) => handleCardPaste(e, index)}
+                          tabIndex={0}
                         >
                           {uploadingImageFor === index && (
                             <div className="hc-upload-overlay">
@@ -690,11 +691,12 @@ const HomeworkConstructor = () => {
                           {/* Кнопка добавления изображения */}
                           <div className="hc-image-section">
                             {!question.config?.imageUrl ? (
-                              <label className="hc-image-upload-btn">
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  style={{ display: 'none' }}
+                              <div className="hc-image-actions">
+                                <label className="hc-image-upload-btn">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
                                   onChange={async (e) => {
                                     const file = e.target.files?.[0];
                                     if (!file) return;
@@ -719,8 +721,10 @@ const HomeworkConstructor = () => {
                                     }
                                   }}
                                 />
-                                {uploadingImageFor === index ? 'Загрузка...' : '+ Добавить изображение'}
+                                {uploadingImageFor === index ? 'Загрузка...' : '+ Выбрать файл'}
                               </label>
+                                <span className="hc-paste-hint">или Ctrl+V</span>
+                              </div>
                             ) : (
                               <div className="hc-image-preview-inline">
                                 <img src={question.config.imageUrl} alt="" />

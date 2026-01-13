@@ -424,6 +424,12 @@
   border-color: var(--color-primary);
 }
 
+.hc-question-card:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
 .hc-question-card.is-dragging {
   background: var(--bg-app);
   border-color: var(--color-primary);
@@ -547,6 +553,17 @@
   border-color: var(--color-primary);
   color: var(--color-primary);
   background: #f0f4ff;
+}
+
+.hc-image-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hc-paste-hint {
+  font-size: 0.75rem;
+  color: var(--text-light);
 }
 
 .hc-image-preview-inline {
