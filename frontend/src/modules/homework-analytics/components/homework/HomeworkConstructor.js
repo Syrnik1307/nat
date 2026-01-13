@@ -641,31 +641,7 @@ const HomeworkConstructor = () => {
                           {uploadingImageFor === index && (
                             <div className="hc-upload-overlay">
                               <div className="hc-upload-spinner" />
-                              <span>Загрузка изображения...</span>
-                            </div>
-                          )}
-                          
-                          {/* Превью прикреплённого изображения */}
-                          {question.config?.imageUrl && (
-                            <div className="hc-card-image-preview">
-                              <img src={question.config.imageUrl} alt="Прикреплённое изображение" />
-                              <button 
-                                type="button" 
-                                className="hc-card-image-remove"
-                                onClick={() => {
-                                  setQuestions((prev) => {
-                                    const updated = [...prev];
-                                    updated[index] = {
-                                      ...updated[index],
-                                      config: { ...updated[index].config, imageUrl: null }
-                                    };
-                                    return updated;
-                                  });
-                                }}
-                                title="Удалить изображение"
-                              >
-                                ×
-                              </button>
+                              <span>Загрузка...</span>
                             </div>
                           )}
                           
@@ -679,27 +655,24 @@ const HomeworkConstructor = () => {
                             <div className="hc-question-actions">
                               <button
                                 type="button"
-                                className="hc-btn-sm"
+                                className="hc-btn-text"
                                 {...draggableProvided.dragHandleProps}
-                                title="Перетащить"
                               >
-                                ≡
+                                ⋮⋮
                               </button>
                               <button
                                 type="button"
-                                className="hc-btn-sm"
+                                className="hc-btn-text"
                                 onClick={() => handleDuplicateQuestion(index)}
-                                title="Дублировать"
                               >
-                                ⎘
+                                Копия
                               </button>
                               <button
                                 type="button"
-                                className="hc-btn-sm hc-btn-danger"
+                                className="hc-btn-text hc-btn-text-danger"
                                 onClick={() => handleRemoveQuestion(index)}
-                                title="Удалить"
                               >
-                                ×
+                                Удалить
                               </button>
                             </div>
                           </div>
@@ -710,8 +683,65 @@ const HomeworkConstructor = () => {
                               rows={2}
                               value={question.question_text}
                               onChange={(event) => handleQuestionTextChange(index, event.target.value)}
-                              placeholder="Текст вопроса (или вставьте изображение Ctrl+V)"
+                              placeholder="Текст вопроса"
                             />
+                          </div>
+
+                          {/* Кнопка добавления изображения */}
+                          <div className="hc-image-section">
+                            {!question.config?.imageUrl ? (
+                              <label className="hc-image-upload-btn">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  style={{ display: 'none' }}
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    setUploadingImageFor(index);
+                                    try {
+                                      const response = await uploadHomeworkFile(file, 'image');
+                                      if (response.url) {
+                                        setQuestions((prev) => {
+                                          const updated = [...prev];
+                                          updated[index] = {
+                                            ...updated[index],
+                                            config: { ...updated[index].config, imageUrl: response.url }
+                                          };
+                                          return updated;
+                                        });
+                                      }
+                                    } catch (err) {
+                                      setFeedback({ type: 'error', message: 'Ошибка загрузки: ' + (err.message || '') });
+                                    } finally {
+                                      setUploadingImageFor(null);
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                />
+                                {uploadingImageFor === index ? 'Загрузка...' : '+ Добавить изображение'}
+                              </label>
+                            ) : (
+                              <div className="hc-image-preview-inline">
+                                <img src={question.config.imageUrl} alt="" />
+                                <button
+                                  type="button"
+                                  className="hc-image-remove-btn"
+                                  onClick={() => {
+                                    setQuestions((prev) => {
+                                      const updated = [...prev];
+                                      updated[index] = {
+                                        ...updated[index],
+                                        config: { ...updated[index].config, imageUrl: null }
+                                      };
+                                      return updated;
+                                    });
+                                  }}
+                                >
+                                  Удалить фото
+                                </button>
+                              </div>
+                            )}
                           </div>
 
                           <div className="hc-question-meta">
