@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { apiClient } from '../../../../apiService';
+import { apiClient, uploadHomeworkFile } from '../../../../apiService';
 import useHomeworkConstructor from '../../hooks/useHomeworkConstructor';
 import {
   QUESTION_TYPES,
@@ -167,6 +167,48 @@ const HomeworkConstructor = () => {
   const [homeworkId, setHomeworkId] = useState(null);
   const [previewQuestion, setPreviewQuestion] = useState(0);
   const [confirmDialog, setConfirmDialog] = useState({ open: false });
+  const [uploadingImageFor, setUploadingImageFor] = useState(null); // index вопроса
+
+  // Обработка вставки изображения прямо в карточку вопроса
+  const handleCardPaste = useCallback(async (event, questionIndex) => {
+    const clipboardData = event.clipboardData || window.clipboardData;
+    if (!clipboardData) return;
+
+    const items = clipboardData.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        event.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          setUploadingImageFor(questionIndex);
+          try {
+            const response = await uploadHomeworkFile(file, 'image');
+            if (response.url) {
+              setQuestions((prev) => {
+                const updated = [...prev];
+                const q = updated[questionIndex];
+                updated[questionIndex] = {
+                  ...q,
+                  config: { ...q.config, imageUrl: response.url }
+                };
+                return updated;
+              });
+              setFeedback({ type: 'success', message: 'Изображение загружено' });
+              setTimeout(() => setFeedback(null), 2000);
+            }
+          } catch (err) {
+            setFeedback({ type: 'error', message: 'Ошибка загрузки: ' + (err.message || 'Попробуйте ещё раз') });
+          } finally {
+            setUploadingImageFor(null);
+          }
+        }
+        break;
+      }
+    }
+  }, []);
 
   const openConfirmDialog = (config) => {
     setConfirmDialog({
@@ -438,8 +480,8 @@ const HomeworkConstructor = () => {
       {/* Sticky панель с действиями */}
       <div className="hc-sticky-actions">
         <div className="hc-sticky-actions-left">
-          <span className="hc-stats-badge">📝 {questionCount} вопрос{questionCount === 1 ? '' : questionCount >= 2 && questionCount <= 4 ? 'а' : 'ов'}</span>
-          {assignmentMeta.title && <span className="hc-stats-badge">📋 {assignmentMeta.title.slice(0, 25)}{assignmentMeta.title.length > 25 ? '...' : ''}</span>}
+          <span className="hc-stats-badge">{questionCount} вопрос{questionCount === 1 ? '' : questionCount >= 2 && questionCount <= 4 ? 'а' : 'ов'}</span>
+          {assignmentMeta.title && <span className="hc-stats-badge hc-stats-title">{assignmentMeta.title.slice(0, 30)}{assignmentMeta.title.length > 30 ? '...' : ''}</span>}
         </div>
         <div className="hc-sticky-actions-right">
           <button
@@ -448,7 +490,7 @@ const HomeworkConstructor = () => {
             onClick={handleSaveDraft}
             disabled={saving}
           >
-            💾 {saving ? 'Сохранение...' : 'Черновик'}
+            {saving ? 'Сохранение...' : 'Черновик'}
           </button>
           <button
             type="button"
@@ -456,7 +498,7 @@ const HomeworkConstructor = () => {
             onClick={() => setShowPublishModal(true)}
             disabled={saving || questions.length === 0}
           >
-            🚀 Опубликовать
+            Опубликовать
           </button>
         </div>
       </div>
@@ -465,7 +507,7 @@ const HomeworkConstructor = () => {
         {/* Левая колонка — параметры */}
         <div className="hc-sidebar">
           <div className="hc-card hc-params-card">
-            <div className="hc-section-title">⚙️ Параметры</div>
+            <div className="hc-section-title">Параметры</div>
             
             <form className="gm-form hc-compact-form" onSubmit={(event) => event.preventDefault()}>
               <div className="form-group">
@@ -520,7 +562,7 @@ const HomeworkConstructor = () => {
                       onChange={(event) => handleMaxScoreChange(event.target.value)}
                     />
                     <button type="button" className="hc-auto-score-btn" onClick={handleAutoMaxScore} title="Рассчитать по сумме вопросов">
-                      🔄
+                      ↻
                     </button>
                   </div>
                 </div>
@@ -543,13 +585,13 @@ const HomeworkConstructor = () => {
                 }}
                 disabled={saving}
               >
-                🗑️ Очистить форму
+                Очистить
               </button>
             </form>
           </div>
 
           <div className="hc-card hc-preview-card">
-            <div className="hc-section-title">👁️ Превью</div>
+            <div className="hc-section-title">Превью</div>
             <HomeworkPreviewSection
               questions={questions}
               previewQuestion={previewQuestion}
@@ -602,10 +644,42 @@ const HomeworkConstructor = () => {
                     <Draggable key={question.id} draggableId={question.id} index={index}>
                       {(draggableProvided, snapshot) => (
                         <div
-                          className={`hc-question-card ${snapshot.isDragging ? 'is-dragging' : ''}`}
+                          className={`hc-question-card ${snapshot.isDragging ? 'is-dragging' : ''} ${uploadingImageFor === index ? 'is-uploading' : ''}`}
                           ref={draggableProvided.innerRef}
                           {...draggableProvided.draggableProps}
+                          onPaste={(e) => handleCardPaste(e, index)}
                         >
+                          {uploadingImageFor === index && (
+                            <div className="hc-upload-overlay">
+                              <div className="hc-upload-spinner" />
+                              <span>Загрузка изображения...</span>
+                            </div>
+                          )}
+                          
+                          {/* Превью прикреплённого изображения */}
+                          {question.config?.imageUrl && (
+                            <div className="hc-card-image-preview">
+                              <img src={question.config.imageUrl} alt="Прикреплённое изображение" />
+                              <button 
+                                type="button" 
+                                className="hc-card-image-remove"
+                                onClick={() => {
+                                  setQuestions((prev) => {
+                                    const updated = [...prev];
+                                    updated[index] = {
+                                      ...updated[index],
+                                      config: { ...updated[index].config, imageUrl: null }
+                                    };
+                                    return updated;
+                                  });
+                                }}
+                                title="Удалить изображение"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          )}
+                          
                           <div className="hc-question-toolbar">
                             <div className="hc-question-toolbar-left">
                               <span className="hc-question-index">{index + 1}</span>
@@ -639,11 +713,13 @@ const HomeworkConstructor = () => {
                             </div>
                           </div>
 
+                          <div className="hc-paste-hint">Ctrl+V для вставки изображения</div>
+
                           <div className="form-group">
                             <label className="form-label">Формулировка вопроса</label>
                             <textarea
                               className="form-textarea"
-                              rows={3}
+                              rows={2}
                               value={question.question_text}
                               onChange={(event) => handleQuestionTextChange(index, event.target.value)}
                               placeholder="Опишите задание для ученика"
