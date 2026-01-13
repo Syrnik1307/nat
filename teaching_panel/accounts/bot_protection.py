@@ -117,7 +117,8 @@ def get_client_fingerprint(request) -> Tuple[str, dict]:
         try:
             body = json.loads(request.body.decode('utf-8'))
             raw_data = body.get('deviceFingerprint', body.get('fingerprint', {}))
-        except (json.JSONDecodeError, AttributeError):
+        except (json.JSONDecodeError, AttributeError, UnicodeDecodeError):
+            # UnicodeDecodeError возникает при multipart/form-data (file upload)
             pass
     
     if not raw_data:
