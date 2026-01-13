@@ -243,9 +243,11 @@ class PaymentService:
                     if plan == 'monthly':
                         sub.expires_at = timezone.now() + timedelta(days=28)
                         sub.plan = Subscription.PLAN_MONTHLY
+                        sub.base_storage_gb = 5
                     elif plan == 'yearly':
                         sub.expires_at = timezone.now() + timedelta(days=365)
                         sub.plan = Subscription.PLAN_YEARLY
+                        sub.base_storage_gb = 10
                     
                     sub.status = Subscription.STATUS_ACTIVE
                     sub.total_paid += payment.amount
