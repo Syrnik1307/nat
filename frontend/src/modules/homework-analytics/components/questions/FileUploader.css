@@ -25,6 +25,16 @@
   border-style: solid;
 }
 
+.file-uploader-dropzone.focused {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+  outline: none;
+}
+
+.file-uploader-dropzone:focus {
+  outline: none;
+}
+
 .file-uploader-icon {
   font-size: 3rem;
   margin-bottom: 0.75rem;
@@ -45,6 +55,17 @@
 .file-uploader-text span {
   font-size: 0.875rem;
   color: var(--text-muted);
+}
+
+.file-uploader-paste-hint {
+  font-size: 0.8rem;
+  color: var(--color-primary);
+  font-weight: 500;
+  margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--color-primary-subtle);
+  border-radius: 4px;
+  display: inline-block;
 }
 
 .file-uploader-hint {

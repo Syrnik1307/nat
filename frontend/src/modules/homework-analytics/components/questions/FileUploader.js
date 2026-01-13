@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { uploadHomeworkFile } from '../../../../apiService';
 import './FileUploader.css';
 
 /**
- * Универсальный компонент для загрузки файлов с drag-and-drop
+ * Универсальный компонент для загрузки файлов с drag-and-drop и вставкой из буфера обмена
  * Загружает в Google Drive в папку учителя
  * 
  * @param {string} fileType - 'image' или 'audio'
@@ -16,10 +16,72 @@ const FileUploader = ({ fileType = 'image', onUploadSuccess, currentUrl, accept 
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
   const fileInputRef = useRef(null);
+  const dropzoneRef = useRef(null);
 
   const acceptTypes = accept || (fileType === 'image' ? 'image/*' : 'audio/*');
   const maxSizeMB = 50;
+
+  // Обработка вставки из буфера обмена (Ctrl+V)
+  const handlePaste = useCallback((event) => {
+    // Работаем только если dropzone в фокусе или компонент активен
+    const clipboardData = event.clipboardData || window.clipboardData;
+    if (!clipboardData) return;
+
+    const items = clipboardData.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      
+      // Проверяем тип файла в зависимости от fileType
+      if (fileType === 'image' && item.type.startsWith('image/')) {
+        event.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          handleUpload(file);
+        }
+        break;
+      } else if (fileType === 'audio' && item.type.startsWith('audio/')) {
+        event.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          handleUpload(file);
+        }
+        break;
+      }
+    }
+  }, [fileType]);
+
+  // Подписка на событие paste когда dropzone в фокусе
+  useEffect(() => {
+    const dropzone = dropzoneRef.current;
+    if (!dropzone || currentUrl || uploading) return;
+
+    const handleFocus = () => setIsFocused(true);
+    const handleBlur = () => setIsFocused(false);
+
+    dropzone.addEventListener('focus', handleFocus);
+    dropzone.addEventListener('blur', handleBlur);
+
+    return () => {
+      dropzone.removeEventListener('focus', handleFocus);
+      dropzone.removeEventListener('blur', handleBlur);
+    };
+  }, [currentUrl, uploading]);
+
+  // Глобальный обработчик paste когда dropzone в фокусе
+  useEffect(() => {
+    if (!isFocused || currentUrl || uploading) return;
+
+    const pasteHandler = (e) => handlePaste(e);
+    document.addEventListener('paste', pasteHandler);
+
+    return () => {
+      document.removeEventListener('paste', pasteHandler);
+    };
+  }, [isFocused, currentUrl, uploading, handlePaste]);
 
   const validateFile = (file) => {
     // Проверка типа
@@ -128,12 +190,15 @@ const FileUploader = ({ fileType = 'image', onUploadSuccess, currentUrl, accept 
     <div className="file-uploader">
       {!currentUrl && !uploading && (
         <div
-          className={`file-uploader-dropzone ${dragging ? 'dragging' : ''}`}
+          ref={dropzoneRef}
+          className={`file-uploader-dropzone ${dragging ? 'dragging' : ''} ${isFocused ? 'focused' : ''}`}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onClick={handleClick}
+          tabIndex={0}
+          onPaste={handlePaste}
         >
           <input
             ref={fileInputRef}
@@ -148,6 +213,9 @@ const FileUploader = ({ fileType = 'image', onUploadSuccess, currentUrl, accept 
           <div className="file-uploader-text">
             <strong>Перетащите {fileType === 'image' ? 'изображение' : 'аудио'} сюда</strong>
             <span>или нажмите для выбора</span>
+            {fileType === 'image' && (
+              <span className="file-uploader-paste-hint">или вставьте Ctrl+V</span>
+            )}
           </div>
           <div className="file-uploader-hint">
             {fileType === 'image' ? 'JPG, PNG, GIF, WebP' : 'MP3, WAV, OGG, M4A'} • До {maxSizeMB} MB
