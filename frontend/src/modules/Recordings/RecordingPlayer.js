@@ -181,40 +181,23 @@ function RecordingPlayer({ recording, onClose }) {
         <div className="recording-player-body">
           <div className="player-media-column">
             <div className="player-video-wrapper">
-              {recording.streaming_url ? (
-                // Используем HTML5 video player для Google Drive
-                <video
-                  src={recording.streaming_url}
-                  controls
-                  autoPlay
-                  playsInline
-                  className="player-video"
-                  onError={(e) => {
-                    console.error('Video playback error:', e);
-                    // Если не удалось загрузить, показываем fallback
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
-                  }}
-                >
-                  Ваш браузер не поддерживает воспроизведение видео.
-                </video>
-              ) : recording.play_url ? (
+              {recording.play_url ? (
                 isGoogleDriveUrl ? (
-                  // Fallback: Google Drive без streaming_url - показываем placeholder с кнопкой
+                  // Google Drive не поддерживает inline воспроизведение - показываем placeholder с кнопкой
                   <div className="player-video-placeholder gdrive-placeholder">
                     <div className="gdrive-icon">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M7.71 3.5L1.15 15l4.58 7.5h13.54l4.58-7.5L17.29 3.5H7.71zm-.29 2h1.24l5.78 9.44-2.47 4.06H6.82l-2.47-4.06 5.07-8.3V5.5zm2.86 0h3.44l5.78 9.44H8.5L5.57 5.5h4.71zm4.72 0h1.24L21.02 14.56l-2.47 4.06h-5.15l-2.47-4.06L16.71 5.5h-1.71z"/>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
                       </svg>
                     </div>
-                    <p className="gdrive-title">Видео в Google Drive</p>
-                    <p className="gdrive-hint">Нажмите кнопку ниже для просмотра</p>
+                    <p className="gdrive-title">Готово к просмотру</p>
+                    <p className="gdrive-hint">Видео откроется в новой вкладке</p>
                     <button 
                       type="button" 
                       className="gdrive-open-btn"
                       onClick={handleOpenInNewTab}
                     >
-                      ▶ Открыть видео
+                      ▶ Смотреть видео
                     </button>
                   </div>
                 ) : (
@@ -232,23 +215,6 @@ function RecordingPlayer({ recording, onClose }) {
                   <p>Видео недоступно</p>
                 </div>
               )}
-              {/* Fallback для ошибки загрузки видео */}
-              <div className="player-video-placeholder gdrive-placeholder" style={{ display: 'none' }}>
-                <div className="gdrive-icon">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                  </svg>
-                </div>
-                <p className="gdrive-title">Не удалось загрузить видео</p>
-                <p className="gdrive-hint">Попробуйте открыть в новой вкладке</p>
-                <button 
-                  type="button" 
-                  className="gdrive-open-btn"
-                  onClick={handleOpenInNewTab}
-                >
-                  ▶ Открыть видео
-                </button>
-              </div>
             </div>
 
             <div className="player-media-footer">
