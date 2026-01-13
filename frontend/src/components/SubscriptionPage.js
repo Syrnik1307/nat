@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiClient } from '../apiService';
 import Modal from '../shared/components/Modal';
 import Button from '../shared/components/Button';
@@ -8,28 +8,34 @@ const SubscriptionPage = ({ embedded = false }) => {
   const [loading, setLoading] = useState(true);
   const [subData, setSubData] = useState(null);
   const [storageStats, setStorageStats] = useState(null);
+  const [storageLoading, setStorageLoading] = useState(false);
   const [storageGb, setStorageGb] = useState(10);
   const [processing, setProcessing] = useState(false);
+  const processingRef = useRef(false);
   
   // Состояния для модальных окон
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: null, message: '' });
 
   const loadSubscription = useCallback(async () => {
+    setLoading(true);
     try {
-      // Загружаем подписку и статистику хранилища параллельно
-      const [subResponse, storageResponse] = await Promise.all([
-        apiClient.get('subscription/'),
-        apiClient.get('subscription/storage/').catch(() => null)
-      ]);
+      const subResponse = await apiClient.get('subscription/');
       setSubData(subResponse.data);
-      if (storageResponse?.data) {
-        setStorageStats(storageResponse.data);
-      }
     } catch (error) {
       console.error('Failed to load subscription:', error);
     } finally {
       setLoading(false);
+    }
+
+    setStorageLoading(true);
+    try {
+      const storageResponse = await apiClient.get('subscription/storage/');
+      setStorageStats(storageResponse.data);
+    } catch (error) {
+      console.error('Failed to load storage stats:', error);
+    } finally {
+      setStorageLoading(false);
     }
   }, []);
 
@@ -38,13 +44,17 @@ const SubscriptionPage = ({ embedded = false }) => {
     try {
       await apiClient.post('subscription/sync-payments/');
       // Reload subscription data after sync
-      loadSubscription();
+      await loadSubscription();
     } catch (error) {
       console.error('Failed to sync payments:', error);
       // Still reload subscription even if sync fails
-      loadSubscription();
+      await loadSubscription();
     }
   };
+
+  useEffect(() => {
+    processingRef.current = processing;
+  }, [processing]);
 
   useEffect(() => {
     // Check if returning from payment
@@ -69,7 +79,7 @@ const SubscriptionPage = ({ embedded = false }) => {
         : [];
       const cameFromHistory = Array.isArray(navEntries) && navEntries.some((entry) => entry.type === 'back_forward');
 
-      if (event.persisted || cameFromHistory) {
+      if ((event.persisted || cameFromHistory) && processingRef.current) {
         setProcessing(false);
         // Sync pending payments when returning from payment page
         syncPendingPayments();
@@ -77,6 +87,7 @@ const SubscriptionPage = ({ embedded = false }) => {
     };
 
     const handleFocus = () => {
+      if (!processingRef.current) return;
       setProcessing(false);
       // Also sync on window focus (user returned from payment tab)
       syncPendingPayments();
@@ -277,15 +288,17 @@ const SubscriptionPage = ({ embedded = false }) => {
                 />
               </div>
               <div className="storage-bar-label">
-                {storageStats ? (
-                  <>
-                    Использовано: {formatGb(storageStats.used_gb)} из {storageStats.limit_gb} GB
-                    ({storageStats.usage_percent}%)
-                    {storageStats.file_count > 0 && ` • ${storageStats.file_count} файлов`}
-                  </>
-                ) : (
-                  `Использовано: ${formatGb(subData?.used_storage_gb)} из ${subData?.total_storage_gb} GB`
-                )}
+                {storageLoading
+                  ? 'Обновляем статистику хранилища...'
+                  : storageStats ? (
+                    <>
+                      Использовано: {formatGb(storageStats.used_gb)} из {storageStats.limit_gb} GB
+                      ({storageStats.usage_percent}%)
+                      {storageStats.file_count > 0 && ` • ${storageStats.file_count} файлов`}
+                    </>
+                  ) : (
+                    `Использовано: ${formatGb(subData?.used_storage_gb)} из ${subData?.total_storage_gb} GB`
+                  )}
               </div>
             </div>
           )}
