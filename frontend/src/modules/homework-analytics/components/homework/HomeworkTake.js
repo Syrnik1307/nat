@@ -211,22 +211,20 @@ const HomeworkTake = () => {
               />
 
               <div className="ht-controls">
-                <button
-                  type="button"
-                  className="gm-btn-surface"
+                <Button
+                  variant="secondary"
                   onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
                   disabled={currentIndex === 0 || isLocked}
                 >
                   ← Назад
-                </button>
-                <button
-                  type="button"
-                  className="gm-btn-surface"
+                </Button>
+                <Button
+                  variant="secondary"
                   onClick={() => setCurrentIndex((index) => Math.min(questions.length - 1, index + 1))}
                   disabled={currentIndex === questions.length - 1 || isLocked}
                 >
                   Далее →
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
@@ -238,22 +236,19 @@ const HomeworkTake = () => {
               {submitMessage && <span className="ht-submit-message">{submitMessage}</span>}
             </div>
             <div className="ht-footer-actions">
-              <button
-                type="button"
-                className="gm-btn-surface"
+              <Button
+                variant="secondary"
                 onClick={() => navigate('/homework')}
                 disabled={submitting}
               >
                 Назад к списку
-              </button>
-              <button
-                type="button"
-                className="gm-btn-primary"
+              </Button>
+              <Button
                 onClick={handleSubmit}
                 disabled={submitting || isLocked}
               >
                 {submitting ? 'Отправка...' : 'Завершить и отправить'}
-              </button>
+              </Button>
             </div>
           </footer>
         </main>

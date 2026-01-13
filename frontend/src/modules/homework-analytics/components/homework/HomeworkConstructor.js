@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { apiClient, uploadHomeworkFile } from '../../../../apiService';
+import { Modal, Button } from '../../../../shared/components';
 import useHomeworkConstructor from '../../hooks/useHomeworkConstructor';
 import {
   QUESTION_TYPES,
@@ -781,45 +782,51 @@ const HomeworkConstructor = () => {
       </div>
 
       {/* Модальное окно подтверждения публикации */}
-      {showPublishModal && (
-        <div className="hc-modal-overlay" onClick={() => setShowPublishModal(false)}>
-          <div className="hc-modal-content" onClick={e => e.stopPropagation()}>
-            <h3>Опубликовать домашнее задание?</h3>
-            <p>После публикации:</p>
-            <ul>
-              <li>✉️ Все студенты группы получат уведомление</li>
-              <li>📱 Уведомления придут в Telegram (если привязан)</li>
-              <li>⏰ Начнется отсчет до дедлайна</li>
-              <li>🔒 Редактирование будет ограничено</li>
-            </ul>
-            <div className="hc-modal-buttons">
-              <button className="gm-btn-primary" onClick={handlePublish} disabled={saving}>
-                {saving ? 'Публикация...' : 'Да, опубликовать'}
-              </button>
-              <button className="gm-btn-surface" onClick={() => setShowPublishModal(false)} disabled={saving}>
-                Отмена
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        isOpen={showPublishModal}
+        onClose={() => setShowPublishModal(false)}
+        title="Опубликовать домашнее задание?"
+        size="small"
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setShowPublishModal(false)} disabled={saving}>
+              Отмена
+            </Button>
+            <Button onClick={handlePublish} disabled={saving}>
+              {saving ? 'Публикация...' : 'Да, опубликовать'}
+            </Button>
+          </>
+        )}
+      >
+        <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-secondary)' }}>После публикации:</p>
+        <ul style={{ margin: 0, paddingLeft: '1.25rem', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+          <li>✉️ Все студенты группы получат уведомление</li>
+          <li>📱 Уведомления придут в Telegram (если привязан)</li>
+          <li>⏰ Начнется отсчет до дедлайна</li>
+          <li>🔒 Редактирование будет ограничено</li>
+        </ul>
+      </Modal>
 
-      {confirmDialog.open && (
-        <div className="hc-modal-overlay" onClick={closeConfirmDialog}>
-          <div className="hc-modal-content" onClick={(event) => event.stopPropagation()}>
-            <h3>{confirmDialog.title}</h3>
-            {confirmDialog.message && <p>{confirmDialog.message}</p>}
-            <div className="hc-modal-buttons">
-              <button type="button" className="gm-btn-surface" onClick={closeConfirmDialog}>
-                {confirmDialog.cancelLabel}
-              </button>
-              <button type="button" className="gm-btn-primary" onClick={handleConfirmDialog}>
-                {confirmDialog.confirmLabel}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        isOpen={confirmDialog.open}
+        onClose={closeConfirmDialog}
+        title={confirmDialog.title}
+        size="small"
+        footer={(
+          <>
+            <Button variant="secondary" onClick={closeConfirmDialog}>
+              {confirmDialog.cancelLabel}
+            </Button>
+            <Button onClick={handleConfirmDialog}>
+              {confirmDialog.confirmLabel}
+            </Button>
+          </>
+        )}
+      >
+        {confirmDialog.message && (
+          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{confirmDialog.message}</p>
+        )}
+      </Modal>
     </div>
   );
 };
