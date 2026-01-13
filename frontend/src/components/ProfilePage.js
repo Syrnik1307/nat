@@ -442,8 +442,11 @@ const ProfilePage = () => {
         </div>
 
         {/* Profile Tab */}
-        {activeTab === 'profile' && (
-          <form className="profile-content" onSubmit={handleSubmit}>
+        <form 
+          className="profile-content" 
+          onSubmit={handleSubmit}
+          style={{ display: activeTab === 'profile' ? 'block' : 'none' }}
+        >
           <section className="profile-avatar">
             <div className={`avatar-preview ${avatarPreview ? 'with-image' : ''}`}>
               {avatarPreview ? (
@@ -527,11 +530,12 @@ const ProfilePage = () => {
             {errorMessage && <p className="form-message error">{errorMessage}</p>}
           </section>
         </form>
-        )}
 
         {/* Security Tab */}
-        {activeTab === 'security' && user && (
-          <div className="profile-content">
+        <div 
+          className="profile-content"
+          style={{ display: activeTab === 'security' ? 'block' : 'none' }}
+        >
             <section className="profile-password">
               <div className="password-header">
                 <div>
@@ -615,11 +619,12 @@ const ProfilePage = () => {
               )}
             </section>
           </div>
-        )}
 
         {/* Telegram Tab */}
-        {activeTab === 'telegram' && user && (
-          <div className="profile-content telegram-tab">
+        <div 
+          className="profile-content telegram-tab"
+          style={{ display: activeTab === 'telegram' ? 'block' : 'none' }}
+        >
             <section className="telegram-section">
               <div className="telegram-header">
                 <div>
@@ -1081,7 +1086,6 @@ const ProfilePage = () => {
               )}
             </section>
           </div>
-        )}
 
         {/* Subscription Tab */}
         {activeTab === 'subscription' && user.role === 'teacher' && (
