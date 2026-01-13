@@ -127,6 +127,12 @@ function RecordingPlayer({ recording, onClose }) {
     ? `Запись от ${formattedFullDate}`
     : 'Плеер Lectio Space';
 
+  // Проверяем, является ли URL ссылкой на Google Drive (не поддерживает iframe)
+  const isGoogleDriveUrl = recording.play_url && (
+    recording.play_url.includes('drive.google.com') ||
+    recording.play_url.includes('docs.google.com')
+  );
+
   const mediaStats = [
     {
       label: 'Просмотров',
@@ -176,13 +182,33 @@ function RecordingPlayer({ recording, onClose }) {
           <div className="player-media-column">
             <div className="player-video-wrapper">
               {recording.play_url ? (
-                <iframe
-                  src={recording.play_url}
-                  title={subject}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+                isGoogleDriveUrl ? (
+                  // Google Drive не поддерживает iframe - показываем placeholder с кнопкой
+                  <div className="player-video-placeholder gdrive-placeholder">
+                    <div className="gdrive-icon">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7.71 3.5L1.15 15l4.58 7.5h13.54l4.58-7.5L17.29 3.5H7.71zm-.29 2h1.24l5.78 9.44-2.47 4.06H6.82l-2.47-4.06 5.07-8.3V5.5zm2.86 0h3.44l5.78 9.44H8.5L5.57 5.5h4.71zm4.72 0h1.24L21.02 14.56l-2.47 4.06h-5.15l-2.47-4.06L16.71 5.5h-1.71z"/>
+                      </svg>
+                    </div>
+                    <p className="gdrive-title">Видео в Google Drive</p>
+                    <p className="gdrive-hint">Нажмите кнопку ниже для просмотра</p>
+                    <button 
+                      type="button" 
+                      className="gdrive-open-btn"
+                      onClick={handleOpenInNewTab}
+                    >
+                      ▶ Открыть видео
+                    </button>
+                  </div>
+                ) : (
+                  <iframe
+                    src={recording.play_url}
+                    title={subject}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                )
               ) : (
                 <div className="player-video-placeholder">
                   <span className="placeholder-icon"></span>

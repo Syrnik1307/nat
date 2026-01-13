@@ -64,12 +64,21 @@ def _user_has_recording_access(user, recording):
     if role == 'admin':
         return True
     if role == 'teacher':
-        return recording.lesson.teacher_id == user.id
+        # Для записей с уроком: проверяем teacher урока
+        # Для standalone записей: проверяем поле teacher записи
+        if recording.lesson_id and recording.lesson:
+            return recording.lesson.teacher_id == user.id
+        return recording.teacher_id == user.id
     if role != 'student':
         return False
 
+    # Для студентов: проверяем видимость
     if recording.visibility == LessonRecording.Visibility.ALL_TEACHER_GROUPS:
-        return Group.objects.filter(teacher=recording.lesson.teacher, students=user).exists()
+        # Для standalone записей teacher может быть в поле teacher
+        teacher = recording.lesson.teacher if recording.lesson_id and recording.lesson else recording.teacher
+        if teacher:
+            return Group.objects.filter(teacher=teacher, students=user).exists()
+        return False
 
     if recording.allowed_students.filter(id=user.id).exists():
         return True
