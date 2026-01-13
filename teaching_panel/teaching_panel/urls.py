@@ -51,7 +51,7 @@ from accounts.subscriptions_views import (
     SubscriptionEnableAutoRenewView,
     SubscriptionPaymentStatusView,
 )
-from accounts.payments_views import yookassa_webhook
+from accounts.payments_views import yookassa_webhook, tbank_webhook
 from schedule.views import zoom_webhook_receiver
 from accounts.debug_views import debug_env  # Debug endpoint
 from django.conf import settings
@@ -196,6 +196,7 @@ urlpatterns = [
     
     # Payment webhooks
     path('api/payments/yookassa/webhook/', yookassa_webhook, name='yookassa_webhook'),
+    path('api/payments/tbank/webhook/', tbank_webhook, name='tbank_webhook'),
     # Zoom webhooks
     path('schedule/webhook/zoom/', zoom_webhook_receiver, name='zoom_webhook'),
 ]

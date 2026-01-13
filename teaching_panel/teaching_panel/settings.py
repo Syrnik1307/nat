@@ -628,8 +628,21 @@ YOOKASSA_ACCOUNT_ID = os.environ.get('YOOKASSA_ACCOUNT_ID', '')
 YOOKASSA_SECRET_KEY = os.environ.get('YOOKASSA_SECRET_KEY', '')
 YOOKASSA_WEBHOOK_SECRET = os.environ.get('YOOKASSA_WEBHOOK_SECRET', '')
 
+# =============================================================================
+# T-BANK (ex-TINKOFF) PAYMENT SETTINGS
+# =============================================================================
+# TerminalKey (идентификатор терминала) - выдается при подключении эквайринга
+# Docs: https://developer.tbank.ru/eacq/intro
+TBANK_TERMINAL_KEY = os.environ.get('TBANK_TERMINAL_KEY', '')
+# Password для подписи запросов (Token) - из личного кабинета
+TBANK_PASSWORD = os.environ.get('TBANK_PASSWORD', '')
+# Какой провайдер использовать по умолчанию: 'yookassa' или 'tbank'
+DEFAULT_PAYMENT_PROVIDER = os.environ.get('DEFAULT_PAYMENT_PROVIDER', 'yookassa')
+
 # Frontend URL для return_url после оплаты
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+# Site URL для webhook callbacks (может отличаться от FRONTEND_URL)
+SITE_URL = os.environ.get('SITE_URL', os.environ.get('FRONTEND_URL', 'http://localhost:8000'))
 
 # =============================================================================
 # AI GRADING SETTINGS

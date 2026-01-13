@@ -732,6 +732,14 @@ class Subscription(models.Model):
     
     # ID папки на Google Drive (создаётся при активации подписки)
     gdrive_folder_id = models.CharField(max_length=255, blank=True, default='')
+    
+    # T-Bank RebillId для рекуррентных платежей (автопродление)
+    tbank_rebill_id = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        help_text='RebillId для автоматического продления подписки через T-Bank'
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

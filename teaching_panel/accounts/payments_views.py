@@ -1,15 +1,16 @@
 """
-Payment webhook views for YooKassa integration
+Payment webhook views for YooKassa and T-Bank integration
 """
 import json
 import hmac
 import hashlib
 import logging
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.conf import settings
 from .payments_service import PaymentService
+from .tbank_service import TBankService
 
 logger = logging.getLogger(__name__)
 
@@ -74,3 +75,57 @@ def yookassa_webhook(request):
     except Exception as e:
         logger.exception(f"Webhook error: {e}")
         return JsonResponse({'error': 'Internal error'}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def tbank_webhook(request):
+    """
+    Webhook endpoint для получения уведомлений от T-Bank (Тинькофф)
+    
+    POST /api/payments/tbank/webhook/
+    
+    T-Bank отправляет уведомления о статусах:
+    - CONFIRMED - платёж подтверждён (успех)
+    - AUTHORIZED - платёж авторизован (для двухстадийных)
+    - REJECTED - платёж отклонён
+    - REFUNDED - возврат выполнен
+    - CANCELED - платёж отменён
+    
+    Ответ: HTTP 200 с телом "OK" (без кавычек)
+    Docs: https://developer.tbank.ru/eacq/intro/developer/notification
+    """
+    try:
+        body = request.body.decode('utf-8')
+        
+        # T-Bank sends form-urlencoded or JSON
+        content_type = request.content_type or ''
+        
+        if 'application/json' in content_type:
+            notification_data = json.loads(body)
+        else:
+            # Form-urlencoded - parse manually
+            from urllib.parse import parse_qs
+            parsed = parse_qs(body)
+            notification_data = {k: v[0] if len(v) == 1 else v for k, v in parsed.items()}
+        
+        logger.info(f"Received T-Bank webhook: {notification_data.get('Status', 'unknown')}")
+        
+        # Process notification (includes token verification)
+        success = TBankService.process_notification(notification_data)
+        
+        if success:
+            # T-Bank требует ответ "OK" (plain text)
+            return HttpResponse("OK", content_type="text/plain", status=200)
+        else:
+            logger.warning("T-Bank notification processing returned False")
+            return HttpResponse("OK", content_type="text/plain", status=200)
+        
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON in T-Bank webhook")
+        return HttpResponse("INVALID_JSON", content_type="text/plain", status=400)
+    
+    except Exception as e:
+        logger.exception(f"T-Bank webhook error: {e}")
+        # Still return OK to prevent retry flood, but log the error
+        return HttpResponse("OK", content_type="text/plain", status=200)

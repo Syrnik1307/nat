@@ -12,7 +12,9 @@ from .models import Subscription, Payment
 from .subscriptions_utils import get_subscription, require_active_subscription
 from .serializers import SubscriptionSerializer, PaymentSerializer
 from .payments_service import PaymentService
+from .tbank_service import TBankService
 from .models import Payment
+from django.conf import settings
 
 
 def _get_or_create_subscription(user: "Subscription.user") -> Subscription:
@@ -118,6 +120,14 @@ class SubscriptionCreatePaymentView(APIView):
         if plan not in (Subscription.PLAN_MONTHLY, Subscription.PLAN_YEARLY):
             return Response({'detail': 'Укажите план: monthly или yearly'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Выбор платёжного провайдера: tbank или yookassa (по умолчанию)
+        provider = str(request.data.get('provider', '')).lower().strip()
+        if not provider:
+            provider = getattr(settings, 'DEFAULT_PAYMENT_PROVIDER', 'yookassa')
+        
+        if provider not in ('yookassa', 'tbank'):
+            return Response({'detail': 'Неизвестный провайдер: yookassa или tbank'}, status=status.HTTP_400_BAD_REQUEST)
+
         sub = get_subscription(request.user)
 
         # Переводим подписку в ожидающую оплаты выбранного плана
@@ -125,8 +135,11 @@ class SubscriptionCreatePaymentView(APIView):
         sub.status = Subscription.STATUS_PENDING
         sub.save(update_fields=['plan', 'status', 'updated_at'])
 
-        # Создаём платёж через YooKassa
-        payment_result = PaymentService.create_subscription_payment(sub, plan)
+        # Создаём платёж через выбранный провайдер
+        if provider == 'tbank':
+            payment_result = TBankService.create_subscription_payment(sub, plan)
+        else:
+            payment_result = PaymentService.create_subscription_payment(sub, plan)
         
         if not payment_result:
             return Response({'detail': 'Не удалось создать платёж'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -137,15 +150,16 @@ class SubscriptionCreatePaymentView(APIView):
         return Response({
             'subscription': SubscriptionSerializer(sub).data,
             'payment': PaymentSerializer(payment).data,
-            'payment_url': payment_result['payment_url']
+            'payment_url': payment_result['payment_url'],
+            'provider': provider,
         }, status=status.HTTP_201_CREATED)
 
 
 class SubscriptionAddStorageView(APIView):
     """Запрос на покупку дополнительного объема хранилища (GB).
 
-    POST body: { "gb": 10 }
-    Создает Payment через YooKassa.
+    POST body: { "gb": 10, "provider": "tbank" } // provider опционально
+    Создает Payment через YooKassa или T-Bank.
     """
     permission_classes = [IsAuthenticated]
 
@@ -157,10 +171,18 @@ class SubscriptionAddStorageView(APIView):
         if gb <= 0 or gb > 1000:
             return Response({'detail': 'Некорректное значение GB (1..1000)'}, status=status.HTTP_400_BAD_REQUEST)
         
+        # Выбор платёжного провайдера
+        provider = str(request.data.get('provider', '')).lower().strip()
+        if not provider:
+            provider = getattr(settings, 'DEFAULT_PAYMENT_PROVIDER', 'yookassa')
+        
         sub = get_subscription(request.user)
         
-        # Создаём платёж через YooKassa
-        payment_result = PaymentService.create_storage_payment(sub, gb)
+        # Создаём платёж через выбранный провайдер
+        if provider == 'tbank':
+            payment_result = TBankService.create_storage_payment(sub, gb)
+        else:
+            payment_result = PaymentService.create_storage_payment(sub, gb)
         
         if not payment_result:
             return Response({'detail': 'Не удалось создать платёж'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -170,7 +192,8 @@ class SubscriptionAddStorageView(APIView):
         return Response({
             'payment': PaymentSerializer(payment).data,
             'subscription': SubscriptionSerializer(sub).data,
-            'payment_url': payment_result['payment_url']
+            'payment_url': payment_result['payment_url'],
+            'provider': provider,
         }, status=status.HTTP_201_CREATED)
 
 
