@@ -59,6 +59,51 @@ def _parse_ids_list(raw_value):
     return ids
 
 
+def _get_video_duration(file_obj):
+    """
+    Извлекает длительность видео в секундах с помощью ffprobe.
+    Возвращает None если не удалось определить.
+    """
+    import subprocess
+    import tempfile
+    import os
+    
+    try:
+        # Сохраняем файл во временную директорию
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp:
+            for chunk in file_obj.chunks():
+                tmp.write(chunk)
+            tmp_path = tmp.name
+        
+        # Сбрасываем позицию чтения файла для дальнейшего использования
+        file_obj.seek(0)
+        
+        # Запускаем ffprobe
+        result = subprocess.run(
+            [
+                'ffprobe', '-v', 'error',
+                '-show_entries', 'format=duration',
+                '-of', 'default=noprint_wrappers=1:nokey=1',
+                tmp_path
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        # Удаляем временный файл
+        os.unlink(tmp_path)
+        
+        if result.returncode == 0 and result.stdout.strip():
+            duration = float(result.stdout.strip())
+            return int(duration)
+        
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to get video duration: {e}")
+        return None
+
+
 def _user_has_recording_access(user, recording):
     role = getattr(user, 'role', None)
     if role == 'admin':
@@ -632,6 +677,10 @@ class LessonViewSet(viewsets.ModelViewSet):
             play_url = f'/media/{saved_path}'
             download_url = f'/media/{saved_path}'
         
+        # Извлекаем длительность видео
+        video_file.seek(0)  # Сбрасываем позицию после загрузки в GDrive
+        video_duration = _get_video_duration(video_file)
+        
         # Создаём запись БЕЗ урока (standalone recording)
         recording = LessonRecording.objects.create(
             lesson=None,
@@ -642,6 +691,7 @@ class LessonViewSet(viewsets.ModelViewSet):
             gdrive_file_id=gdrive_file_id,
             status='ready',
             file_size=video_file.size,
+            duration=video_duration,  # Реальная длительность видео
             storage_provider=storage_provider
         )
         

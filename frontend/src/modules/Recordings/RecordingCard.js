@@ -63,9 +63,11 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
         <div className="play-overlay" onClick={() => onPlay(recording)}>
           <div className="play-button"></div>
         </div>
-        <div className="duration-badge">
-          {recording.duration_display || 60} мин
-        </div>
+        {recording.duration_display && (
+          <div className="duration-badge">
+            {recording.duration_display} мин
+          </div>
+        )}
       </div>
 
       {/* Информация */}
