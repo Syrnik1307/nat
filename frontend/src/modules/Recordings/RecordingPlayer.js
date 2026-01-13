@@ -181,9 +181,26 @@ function RecordingPlayer({ recording, onClose }) {
         <div className="recording-player-body">
           <div className="player-media-column">
             <div className="player-video-wrapper">
-              {recording.play_url ? (
+              {recording.streaming_url ? (
+                // Используем HTML5 video player для Google Drive
+                <video
+                  src={recording.streaming_url}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="player-video"
+                  onError={(e) => {
+                    console.error('Video playback error:', e);
+                    // Если не удалось загрузить, показываем fallback
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                >
+                  Ваш браузер не поддерживает воспроизведение видео.
+                </video>
+              ) : recording.play_url ? (
                 isGoogleDriveUrl ? (
-                  // Google Drive не поддерживает iframe - показываем placeholder с кнопкой
+                  // Fallback: Google Drive без streaming_url - показываем placeholder с кнопкой
                   <div className="player-video-placeholder gdrive-placeholder">
                     <div className="gdrive-icon">
                       <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
@@ -215,6 +232,23 @@ function RecordingPlayer({ recording, onClose }) {
                   <p>Видео недоступно</p>
                 </div>
               )}
+              {/* Fallback для ошибки загрузки видео */}
+              <div className="player-video-placeholder gdrive-placeholder" style={{ display: 'none' }}>
+                <div className="gdrive-icon">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                  </svg>
+                </div>
+                <p className="gdrive-title">Не удалось загрузить видео</p>
+                <p className="gdrive-hint">Попробуйте открыть в новой вкладке</p>
+                <button 
+                  type="button" 
+                  className="gdrive-open-btn"
+                  onClick={handleOpenInNewTab}
+                >
+                  ▶ Открыть видео
+                </button>
+              </div>
             </div>
 
             <div className="player-media-footer">

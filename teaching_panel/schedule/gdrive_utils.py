@@ -403,6 +403,19 @@ class GoogleDriveManager:
         """
         return f"https://drive.google.com/uc?export=download&id={file_id}"
     
+    def get_streaming_link(self, file_id):
+        """
+        Получить ссылку для стриминга видео (для HTML5 video player)
+        
+        Args:
+            file_id: ID файла в Google Drive
+            
+        Returns:
+            str: Прямая ссылка для стриминга
+        """
+        # Используем webContentLink формат который работает для стриминга
+        return f"https://drive.google.com/uc?export=download&id={file_id}"
+    
     def get_embed_link(self, file_id):
         """
         Получить ссылку для встраивания видео
