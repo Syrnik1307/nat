@@ -447,7 +447,7 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         student_name = self._format_display_name(submission.student)
         hw_title = submission.homework.title
         score = submission.total_score or 0
-        max_score = submission.homework.max_score or 100
+        max_score = sum(q.points for q in submission.homework.questions.all()) or 100
         percent = round((score / max_score) * 100) if max_score > 0 else 0
         message = (
             f"✅ Авто-проверка ДЗ\n"
