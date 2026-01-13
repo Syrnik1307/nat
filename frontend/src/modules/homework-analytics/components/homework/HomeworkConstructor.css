@@ -1,70 +1,10 @@
 /* Минималистичный дизайн конструктора ДЗ */
 
-/* Общие стили кнопок */
-.gm-btn-primary {
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  padding: 0.625rem 1.25rem;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.gm-btn-primary:hover:not(:disabled) {
-  background: var(--color-primary-dark);
-}
-
-.gm-btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background: var(--text-light);
-}
-
-.gm-btn-surface {
-  background: white;
-  color: var(--color-primary);
-  border: 1px solid var(--border-light);
-  padding: 0.625rem 1rem;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.gm-btn-surface:hover:not(:disabled) {
-  background: var(--bg-app);
-  border-color: var(--color-primary);
-}
-
-.gm-btn-surface:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.gm-btn-danger {
-  background: var(--color-error);
-  color: white;
-  border: none;
-  padding: 0.625rem 1rem;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.gm-btn-danger:hover:not(:disabled) {
-  background: var(--color-error);
-}
-
-.gm-btn-danger:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* 
+ * Стили кнопок (.gm-btn-primary, .gm-btn-surface, .gm-btn-danger) 
+ * импортируются глобально из styles/buttons.css
+ * НЕ дублируйте их здесь!
+ */
 
 /* Общие стили форм */
 .gm-form {
@@ -941,71 +881,102 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease;
+  z-index: var(--z-modal-backdrop, 1000);
+  animation: hcFadeIn 0.3s ease-out;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes hcFadeIn {
+  from { 
+    opacity: 0; 
+    backdrop-filter: blur(0px);
+  }
+  to { 
+    opacity: 1; 
+    backdrop-filter: blur(12px);
+  }
 }
 
 .hc-modal-content {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: var(--space-xl, 2rem);
+  border-radius: var(--radius-3xl, 24px);
   max-width: 500px;
   width: 90%;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
-  animation: slideUp 0.3s ease;
+  box-shadow: 
+    0 25px 50px -12px rgba(79, 70, 229, 0.25), 
+    0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  animation: hcSlideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  position: relative;
+  overflow: hidden;
+  text-align: center;
 }
 
-@keyframes slideUp {
+.hc-modal-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #4f46e5 0%, #818CF8 50%, #4f46e5 100%);
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.4);
+}
+
+@keyframes hcSlideUp {
   from {
-    transform: translateY(20px);
+    transform: translateY(30px) scale(0.95);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
 }
 
 .hc-modal-content h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
+  margin-top: var(--space-md, 1rem);
+  margin-bottom: var(--space-md, 1rem);
   color: var(--text-main);
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: var(--text-2xl, 1.5rem);
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  text-transform: uppercase;
 }
 
 .hc-modal-content p {
-  color: var(--text-muted);
+  color: var(--text-main);
   margin-bottom: 0.5rem;
-  font-size: 0.875rem;
+  font-size: var(--text-base, 1rem);
+  font-weight: 500;
 }
 
 .hc-modal-content ul {
   text-align: left;
   color: var(--text-muted);
-  margin: 1rem 0;
+  margin: 1rem auto;
   padding-left: 1.5rem;
-  font-size: 0.875rem;
+  font-size: var(--text-sm, 0.875rem);
+  max-width: 320px;
 }
 
 .hc-modal-content ul li {
-  margin: 0.5rem 0;
+  margin: 0.75rem 0;
 }
 
 .hc-modal-buttons {
   display: flex;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-  justify-content: flex-end;
+  gap: var(--space-md, 0.75rem);
+  margin-top: var(--space-xl, 1.5rem);
+  justify-content: center;
 }
 
 .hc-action-buttons {

@@ -129,7 +129,7 @@ const RegisterPage = () => {
       const errorMessage = err.response?.data?.detail || err.response?.data?.email?.[0] || 'Ошибка регистрации';
       const isRecaptchaError = err.response?.data?.recaptcha_error;
       
-      alert(`❌ Ошибка: ${errorMessage}`);
+      toast.error(errorMessage);
       
       setErrors({
         submit: isRecaptchaError 
