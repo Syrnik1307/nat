@@ -112,9 +112,14 @@ const HomeworkTake = () => {
     );
   }
 
+  // Calculate percentage for confetti
+  const resultPercent = resultData?.max_score > 0 
+    ? Math.round((resultData.total_score / resultData.max_score) * 100) 
+    : 0;
+
   return (
     <div className="ht-container">
-      {showResult && resultData?.score >= 90 && <Confetti />}
+      {showResult && resultData?.status === 'graded' && resultPercent >= 90 && <Confetti />}
       <Modal
         isOpen={showResult}
         onClose={() => setShowResult(false)}
@@ -136,13 +141,21 @@ const HomeworkTake = () => {
         )}
       >
         <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--leading-relaxed)' }}>
-          Ваш результат: <strong>{resultData?.score ?? '—'} баллов</strong>
-          {resultData?.percent != null ? (
+          {resultData?.status === 'submitted' ? (
+            <>Ваша работа <strong>отправлена на проверку</strong>. Баллы появятся после проверки учителем.</>
+          ) : resultData?.status === 'graded' ? (
             <>
-              <br />
-              {resultData.percent}% правильных ответов
+              Ваш результат: <strong>{resultData?.total_score ?? 0} из {resultData?.max_score ?? '?'} баллов</strong>
+              {resultData?.max_score > 0 && (
+                <>
+                  <br />
+                  {Math.round((resultData.total_score / resultData.max_score) * 100)}% правильных ответов
+                </>
+              )}
             </>
-          ) : null}
+          ) : (
+            <>Ваш результат: <strong>{resultData?.total_score ?? '—'} баллов</strong></>
+          )}
         </p>
       </Modal>
       <header className="ht-header">
