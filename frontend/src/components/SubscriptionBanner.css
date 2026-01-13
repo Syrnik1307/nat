@@ -3,6 +3,198 @@
  * Следует дизайн-системе Lectio Space
  */
 
+/* =====================================================
+   BLOCKING OVERLAY (for expired/pending subscription)
+   ===================================================== */
+
+.subscription-banner-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg, 24px);
+  
+  /* Subtle gradient overlay */
+  background: linear-gradient(135deg, 
+    rgba(248, 250, 252, 0.97) 0%, 
+    rgba(241, 245, 249, 0.98) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  
+  animation: overlayFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.subscription-banner-blocked {
+  max-width: 520px;
+  width: 100%;
+  
+  background: white;
+  border-radius: var(--radius-2xl, 24px);
+  padding: var(--space-2xl, 48px) var(--space-xl, 32px);
+  
+  text-align: center;
+  
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
+  
+  animation: blockedBannerSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes blockedBannerSlideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.blocked-banner-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  
+  width: 80px;
+  height: 80px;
+  margin-bottom: var(--space-lg, 24px);
+  
+  background: linear-gradient(135deg, 
+    rgba(244, 63, 94, 0.1) 0%, 
+    rgba(244, 63, 94, 0.05) 100%);
+  border-radius: 50%;
+  
+  color: #F43F5E;
+}
+
+.blocked-banner-icon svg {
+  stroke-width: 1.5;
+}
+
+.blocked-banner-title {
+  margin: 0 0 var(--space-md, 16px) 0;
+  
+  font-family: var(--font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: 1.75rem;
+  font-weight: var(--font-bold, 700);
+  color: var(--text-main, #1E293B);
+  line-height: 1.2;
+  
+  letter-spacing: -0.02em;
+}
+
+.blocked-banner-description {
+  margin: 0 0 var(--space-xl, 32px) 0;
+  
+  font-family: var(--font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: var(--text-base, 1rem);
+  color: var(--text-muted, #64748B);
+  line-height: 1.6;
+}
+
+.blocked-banner-features {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-sm, 12px);
+  margin-bottom: var(--space-xl, 32px);
+}
+
+.blocked-feature {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs, 8px);
+  
+  padding: var(--space-xs, 8px) var(--space-md, 16px);
+  
+  background: rgba(244, 63, 94, 0.06);
+  border-radius: var(--radius-full, 999px);
+  
+  font-family: var(--font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: var(--font-medium, 500);
+  color: #BE123C;
+}
+
+.blocked-feature svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.7;
+}
+
+.blocked-banner-pay-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm, 12px);
+  
+  width: 100%;
+  max-width: 280px;
+  padding: var(--space-md, 16px) var(--space-xl, 32px);
+  
+  background: linear-gradient(135deg, 
+    var(--color-primary, #4F46E5) 0%, 
+    var(--color-primary-dark, #4338CA) 100%);
+  color: white;
+  
+  border: none;
+  border-radius: var(--radius-xl, 20px);
+  
+  font-family: var(--font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: var(--text-base, 1rem);
+  font-weight: var(--font-semibold, 600);
+  
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  box-shadow: 
+    0 4px 14px rgba(79, 70, 229, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.blocked-banner-pay-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 20px rgba(79, 70, 229, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.blocked-banner-pay-btn:active {
+  transform: translateY(0);
+  box-shadow: 
+    0 2px 8px rgba(79, 70, 229, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.blocked-banner-hint {
+  margin: var(--space-lg, 24px) 0 0 0;
+  
+  font-family: var(--font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-muted, #94A3B8);
+}
+
+/* =====================================================
+   WARNING BANNER (expiring soon)
+   ===================================================== */
+
 .subscription-banner {
   position: sticky;
   top: var(--space-sm, 12px);
@@ -24,17 +216,6 @@
   animation: bannerSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Expired / Pending state - needs attention */
-.subscription-banner.expired {
-  background: linear-gradient(135deg, 
-    rgba(254, 226, 226, 0.95) 0%, 
-    rgba(254, 202, 202, 0.9) 100%);
-  border: 1px solid rgba(244, 63, 94, 0.3);
-  box-shadow: 
-    var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.08)),
-    0 0 20px rgba(244, 63, 94, 0.1);
-}
-
 /* Warning state - expiring soon */
 .subscription-banner.warning {
   background: linear-gradient(135deg, 
@@ -53,7 +234,6 @@
 }
 
 .banner-icon {
-  font-size: 2rem;
   flex-shrink: 0;
   width: 48px;
   height: 48px;
@@ -62,6 +242,7 @@
   justify-content: center;
   background: rgba(255, 255, 255, 0.8);
   border-radius: var(--radius-lg, 16px);
+  color: #F59E0B;
 }
 
 .banner-text {
@@ -144,8 +325,48 @@
   }
 }
 
-/* Responsive */
+/* =====================================================
+   RESPONSIVE
+   ===================================================== */
+
 @media (max-width: 768px) {
+  .subscription-banner-overlay {
+    padding: var(--space-md, 16px);
+  }
+  
+  .subscription-banner-blocked {
+    padding: var(--space-xl, 32px) var(--space-lg, 24px);
+    border-radius: var(--radius-xl, 20px);
+  }
+  
+  .blocked-banner-icon {
+    width: 64px;
+    height: 64px;
+  }
+  
+  .blocked-banner-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .blocked-banner-title {
+    font-size: 1.5rem;
+  }
+  
+  .blocked-banner-description {
+    font-size: var(--text-sm, 0.875rem);
+  }
+  
+  .blocked-banner-features {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .blocked-banner-pay-btn {
+    width: 100%;
+    max-width: none;
+  }
+
   .subscription-banner {
     width: calc(100% - var(--space-md, 16px));
     padding: var(--space-md, 16px);
