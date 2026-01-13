@@ -80,7 +80,7 @@ python manage.py migrate
 if ($SkipFrontend) {
     $remoteScript = $remoteScript.Replace('__FRONTEND_BLOCK__', "echo '⏭️  Skipping frontend build'\n")
 } else {
-    $remoteScript = $remoteScript.Replace('__FRONTEND_BLOCK__', @"
+    $remoteScript = $remoteScript.Replace('__FRONTEND_BLOCK__', @'
 echo '🎨 Building frontend (npm install + restore lock)...'
 cd ../frontend
 sudo chown -R www-data:www-data .
@@ -107,7 +107,7 @@ cd ..
 sudo -u www-data git checkout -- frontend/package-lock.json || true
 
 cd ../teaching_panel
-"@)
+'@)
 }
 
 Write-Host "📋 Running deployment on: $SSHAlias" -ForegroundColor Yellow
