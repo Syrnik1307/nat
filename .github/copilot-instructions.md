@@ -404,6 +404,44 @@ python manage.py check --deploy
 
 **Docs:** See `YOOKASSA_INTEGRATION_GUIDE.md` for full documentation, `YOOKASSA_QUICK_START.md` for setup.
 
+## 🎭 Frontend Smoothness Rules (ОБЯЗАТЕЛЬНО!)
+
+Все изменения фронтенда должны обеспечивать **плавный UX без "лязга" и "дребезга"**.
+
+**Обязательно читать:** `FRONTEND_SMOOTHNESS_RULES.md`
+
+**Ключевые файлы:**
+- `src/styles/smooth-transitions.css` - система плавных анимаций
+- `src/styles/design-system.css` - дизайн токены
+
+**Быстрые правила:**
+
+1. **Никогда `display: none → block` без анимации** - используйте opacity + visibility
+2. **Все интерактивные элементы = transition** с токенами из smooth-transitions.css
+3. **Loading → Content = fade** - не резкая смена
+4. **Skeleton loaders** вместо пустоты при загрузке
+5. **Модалки с анимацией** - используйте `smoothScaleIn` keyframes
+6. **Списки с каскадом** - класс `animate-stagger`
+
+**CSS токены для transitions:**
+```css
+/* Используйте эти вместо захардкоженных значений */
+transition: 
+  opacity var(--duration-normal) var(--ease-smooth),
+  transform var(--duration-normal) var(--ease-spring);
+
+/* Duration токены */
+--duration-instant: 100ms;   /* Мгновенные */
+--duration-fast: 180ms;      /* Hover, click */
+--duration-normal: 280ms;    /* Переключения */
+--duration-slow: 400ms;      /* Модалки */
+
+/* Easing токены (НЕ linear!) */
+--ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+--ease-out-soft: cubic-bezier(0.33, 1, 0.68, 1);
+```
+
 ## Emergency Debugging
 
 If система полностью сломана:
@@ -417,4 +455,4 @@ If система полностью сломана:
 
 ---
 
-**Last Updated**: November 29, 2025
+**Last Updated**: January 14, 2026

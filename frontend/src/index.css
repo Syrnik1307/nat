@@ -1,5 +1,6 @@
 /* Импорт единой Design System */
 @import './styles/design-system.css';
+@import './styles/smooth-transitions.css';  /* 🎭 Плавные анимации - ОБЯЗАТЕЛЬНО */
 @import './styles/buttons.css';
 @import './styles/dashboard.css';
 @import './styles/mobile-responsive.css';

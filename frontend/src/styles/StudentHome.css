@@ -114,7 +114,23 @@
   box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
               0 10px 25px -5px rgba(0, 0, 0, 0.06),
               0 0 20px rgba(79, 70, 229, 0.08);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: 
+    box-shadow var(--duration-normal) var(--ease-smooth),
+    transform var(--duration-normal) var(--ease-spring),
+    border-color var(--duration-fast) var(--ease-smooth);
+  /* Плавное появление при загрузке */
+  animation: studentCardFadeIn var(--duration-slow) var(--ease-out-soft) forwards;
+}
+
+@keyframes studentCardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .student-courses-section:hover {
@@ -182,7 +198,10 @@
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: 
+    transform var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-normal) var(--ease-smooth),
+    background var(--duration-normal) var(--ease-smooth);
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
@@ -196,6 +215,7 @@
 
 .student-primary-btn:active {
   transform: translateY(0);
+  transition: transform var(--duration-instant) var(--ease-smooth);
 }
 
 /* Safety: скрываем старую кнопку курса, если придет из кэша/старой сборки */
@@ -594,12 +614,16 @@
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
   padding: 1rem 1.25rem;
-  transition: all 0.2s ease;
+  transition: 
+    border-color var(--duration-fast) var(--ease-smooth),
+    box-shadow var(--duration-normal) var(--ease-smooth),
+    transform var(--duration-normal) var(--ease-spring);
 }
 
 .student-lesson-card:hover {
   border-color: var(--color-primary);
   box-shadow: 0 4px 16px rgba(79, 70, 229, 0.1);
+  transform: translateY(-2px);
 }
 
 .student-lesson-time {

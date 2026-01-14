@@ -64,12 +64,15 @@ const Modal = ({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 'var(--z-modal-backdrop)',
     padding: 'var(--space-lg)',
+    animation: 'backdropFadeIn var(--duration-slow, 400ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1))',
   };
 
   const modalStyles = {
@@ -80,8 +83,8 @@ const Modal = ({
     maxHeight: '90vh',
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: 'var(--shadow-2xl)',
-    animation: 'slideInUp var(--transition-slow)',
+    boxShadow: '0 25px 50px -12px rgba(79, 70, 229, 0.25), 0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+    animation: 'smoothScaleIn var(--duration-slow, 400ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1))',
   };
 
   const headerStyles = {
@@ -107,7 +110,8 @@ const Modal = ({
     color: 'var(--text-secondary)',
     padding: 'var(--space-xs)',
     lineHeight: 1,
-    transition: 'color var(--transition-base)',
+    transition: 'color var(--duration-fast, 180ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)), transform var(--duration-fast, 180ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1))',
+    borderRadius: '8px',
   };
 
   const bodyStyles = {

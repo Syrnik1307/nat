@@ -59,21 +59,14 @@
   border: none;
   border-radius: 8px 8px 0 0;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: 
+    color var(--duration-normal) var(--ease-smooth),
+    background-color var(--duration-normal) var(--ease-smooth),
+    transform var(--duration-fast) var(--ease-smooth);
   position: relative;
 }
 
-.profile-tab:hover:not(.active) {
-  background: #f5f9ff;
-  color: #0d2f81;
-}
-
-.profile-tab.active {
-  color: #0d2f81;
-  background: linear-gradient(135deg, #f5f9ff 0%, #eef3ff 100%);
-}
-
-.profile-tab.active::after {
+.profile-tab::after {
   content: '';
   position: absolute;
   bottom: -4px;
@@ -82,6 +75,23 @@
   height: 3px;
   background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   border-radius: 2px 2px 0 0;
+  transform: scaleX(0);
+  transition: transform var(--duration-normal) var(--ease-spring);
+}
+
+.profile-tab:hover:not(.active) {
+  background: #f5f9ff;
+  color: #0d2f81;
+  transform: translateY(-1px);
+}
+
+.profile-tab.active {
+  color: #0d2f81;
+  background: linear-gradient(135deg, #f5f9ff 0%, #eef3ff 100%);
+}
+
+.profile-tab.active::after {
+  transform: scaleX(1);
 }
 
 .profile-content {
@@ -1475,6 +1485,97 @@
 .payment-status.status-refunded {
   background: rgba(0, 122, 255, 0.15);
   color: #007aff;
+}
+
+/* ========================================
+   🎭 ПЛАВНЫЕ ПЕРЕХОДЫ ДЛЯ КОНТЕНТА ТАБОВ
+   ======================================== */
+
+/* Контент таба с плавным появлением */
+.profile-content,
+.telegram-content,
+.security-content,
+.subscription-section {
+  animation: profileTabFadeIn var(--duration-normal) var(--ease-out-soft) forwards;
+}
+
+@keyframes profileTabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading состояние с плавной пульсацией */
+.profile-card.loading {
+  animation: smoothPulse 1.5s var(--ease-in-out-smooth) infinite;
+}
+
+/* Кнопки с улучшенными hover */
+.form-actions .primary,
+.form-actions button.secondary,
+.password-header button.secondary {
+  transition: 
+    transform var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-fast) var(--ease-smooth),
+    background-color var(--duration-fast) var(--ease-smooth),
+    border-color var(--duration-fast) var(--ease-smooth);
+}
+
+/* Input focus улучшенный */
+.field-group input {
+  transition: 
+    border-color var(--duration-fast) var(--ease-out-soft),
+    box-shadow var(--duration-fast) var(--ease-out-soft),
+    background-color var(--duration-fast) var(--ease-smooth);
+}
+
+/* Skeleton для loading состояний */
+.profile-skeleton {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.profile-skeleton-header {
+  height: 32px;
+  width: 200px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 0%,
+    rgba(241, 245, 249, 0.5) 20%,
+    rgba(241, 245, 249, 0.8) 40%,
+    rgba(241, 245, 249, 0.5) 60%,
+    var(--bg-surface) 80%,
+    var(--bg-surface) 100%
+  );
+  background-size: 200% 100%;
+}
+
+.profile-skeleton-content {
+  height: 200px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 0%,
+    rgba(241, 245, 249, 0.5) 20%,
+    rgba(241, 245, 249, 0.8) 40%,
+    rgba(241, 245, 249, 0.5) 60%,
+    var(--bg-surface) 80%,
+    var(--bg-surface) 100%
+  );
+  background-size: 200% 100%;
 }
 
 @media (max-width: 768px) {
