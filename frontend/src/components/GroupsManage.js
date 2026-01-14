@@ -319,7 +319,7 @@ const GroupsManage = () => {
             <div className="gm-card">
               <div className="gm-card-heading">
                 <div>
-                  <h3 className="gm-card-title">📋 Мои группы</h3>
+                  <h3 className="gm-card-title">Мои группы</h3>
                   <p className="gm-card-subtitle">
                     {groups.length
                       ? 'Выберите группу, чтобы отредактировать данные или управлять учениками.'
@@ -396,7 +396,6 @@ const GroupsManage = () => {
 
                 {groups.length === 0 && (
                   <div className="gm-empty-state">
-                    <div className="gm-empty-icon">📂</div>
                     <p>Нет групп. Создайте первую!</p>
                   </div>
                 )}

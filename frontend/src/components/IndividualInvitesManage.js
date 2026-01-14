@@ -182,7 +182,7 @@ const IndividualInviteForm = ({ data }) => (
       <div>
         <h3 className="gm-card-title">Индивидуальный ученик</h3>
         <p className="gm-card-subtitle">
-          Название предмета и описание как у групп, код генерится автоматически.
+          Создайте приглашение для индивидуального занятия. Код генерируется автоматически.
         </p>
       </div>
     </div>
@@ -234,8 +234,12 @@ const IndividualInviteList = ({ data }) => (
   <div className="gm-card iim-list-card">
     <div className="gm-card-heading">
       <div>
-        <h3 className="gm-card-title">Индивидуальные приглашения</h3>
-        <p className="gm-card-subtitle">Приглашения работают как групповые: код, ссылка, QR.</p>
+        <h3 className="gm-card-title">Индивидуальные ученики</h3>
+        <p className="gm-card-subtitle">
+          {data.safeCodes.length
+            ? 'Пригласите ученика по коду или ссылке. После регистрации ученик появится здесь.'
+            : 'Создайте первое приглашение для индивидуального ученика.'}
+        </p>
       </div>
       <span className="gm-badge gm-badge-blue">{data.safeCodes.length}</span>
     </div>
@@ -245,25 +249,31 @@ const IndividualInviteList = ({ data }) => (
     {data.loading ? (
       <div className="iim-loading">Загрузка...</div>
     ) : data.safeCodes.length === 0 ? (
-      <div className="iim-empty">
-        <div className="iim-empty-icon">📭</div>
+      <div className="gm-empty-state">
         <p>Нет приглашений. Создайте первое!</p>
       </div>
     ) : (
-      <div className="iim-list">
+      <div className="gm-groups-list">
         {data.safeCodes.map((code) => {
-          const descriptionText = code.description?.trim()
-            ? code.description
-            : 'Нет описания';
+          const studentName = code.used_by_name || code.used_by_email || null;
+          const descriptionText = code.description?.trim() || 'Без описания';
+
           return (
-            <div key={code.id} className="iim-invite-card">
-              <div className="iim-invite-header">
-                <div className="iim-invite-meta">
-                  <div className="iim-invite-subject">{code.subject || 'Без названия'}</div>
-                  <div className="iim-invite-description">{descriptionText}</div>
+            <article key={code.id} className="gm-group-card">
+              <div className="gm-group-card-header">
+                <div>
+                  <span className="gm-group-name" style={{ cursor: 'default' }}>
+                    {code.subject || 'Без названия'}
+                  </span>
+                  <p className="gm-group-description">{descriptionText}</p>
+                  {code.is_used && studentName && (
+                    <p className="gm-group-description" style={{ marginTop: '0.25rem' }}>
+                      <strong>Ученик:</strong> {studentName}
+                    </p>
+                  )}
                 </div>
-                <span className={`iim-status ${code.is_used ? 'used' : 'active'}`}>
-                  {code.is_used ? 'Использован' : 'Активен'}
+                <span className={`gm-badge ${code.is_used ? 'gm-badge-blue' : 'gm-badge-success'}`}>
+                  {code.is_used ? 'Присоединился' : 'Ожидает'}
                 </span>
               </div>
 
@@ -272,13 +282,13 @@ const IndividualInviteList = ({ data }) => (
                 <span className="iim-code-value">{code.invite_code}</span>
               </div>
 
-              <div className="iim-actions-row">
+              <div className="gm-group-card-actions">
                 <button
                   type="button"
                   className="gm-btn-primary"
                   onClick={() => data.setSelectedCode(code)}
                 >
-                  📩 Пригласить
+                  Пригласить
                 </button>
                 <button
                   type="button"
@@ -289,7 +299,7 @@ const IndividualInviteList = ({ data }) => (
                   Удалить
                 </button>
               </div>
-            </div>
+            </article>
           );
         })}
       </div>

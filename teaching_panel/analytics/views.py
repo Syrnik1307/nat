@@ -150,6 +150,13 @@ class GradebookViewSet(viewsets.ViewSet):
         except Group.DoesNotExist:
             return Response({'detail': 'Группа не найдена'}, status=404)
 
+        # Доступ: админ всегда, преподаватель только к своим группам, студент только если состоит
+        role = getattr(request.user, 'role', None)
+        if role == 'teacher' and group.teacher_id != request.user.id:
+            return Response({'detail': 'Нет доступа к этой группе'}, status=403)
+        if role == 'student' and not group.students.filter(id=request.user.id).exists():
+            return Response({'detail': 'Нет доступа к этой группе'}, status=403)
+
         students = group.students.all()
         attendance_stats = Attendance.objects.filter(lesson__group=group).values('student').annotate(
             present_count=Count('id', filter=Q(status='present')),
@@ -985,13 +992,27 @@ class ExtendedStudentAnalyticsViewSet(viewsets.ViewSet):
     """
     permission_classes = [IsAuthenticated]
     
-    def _check_teacher_access(self, request):
-        """Проверка что пользователь — учитель или админ"""
-        if getattr(request.user, 'role', None) not in ['teacher', 'admin']:
+    def _check_teacher_access(self, request, *, student=None, group=None):
+        """Разрешаем доступ только учителю к своим студентам/группам или админу."""
+        role = getattr(request.user, 'role', None)
+        if role not in ['teacher', 'admin']:
             return Response(
                 {'detail': 'Только для преподавателей'},
                 status=status.HTTP_403_FORBIDDEN
             )
+
+        if role == 'admin':
+            return None
+
+        # Для учителя проверяем принадлежность группы и ученика
+        if group and group.teacher_id != request.user.id:
+            return Response({'detail': 'Нет доступа к этой группе'}, status=status.HTTP_403_FORBIDDEN)
+
+        if student:
+            owns_student = Group.objects.filter(teacher=request.user, students=student).exists()
+            if not owns_student:
+                return Response({'detail': 'Нет доступа к этому ученику'}, status=status.HTTP_403_FORBIDDEN)
+
         return None
     
     @action(detail=False, methods=['get'], url_path='student/(?P<student_id>[^/.]+)')
@@ -1001,15 +1022,15 @@ class ExtendedStudentAnalyticsViewSet(viewsets.ViewSet):
         
         GET /api/analytics/extended/student/{student_id}/?group_id=123&period_days=30
         """
-        error = self._check_teacher_access(request)
-        if error:
-            return error
-        
         student = get_object_or_404(CustomUser, id=student_id, role='student')
-        
+
         group_id = request.query_params.get('group_id')
         group = Group.objects.filter(id=group_id).first() if group_id else None
-        
+
+        error = self._check_teacher_access(request, student=student, group=group)
+        if error:
+            return error
+
         period_days = int(request.query_params.get('period_days', 30))
         
         from .extended_analytics_service import ExtendedAnalyticsService
@@ -1033,15 +1054,15 @@ class ExtendedStudentAnalyticsViewSet(viewsets.ViewSet):
         
         GET /api/analytics/extended/student/{student_id}/cognitive/
         """
-        error = self._check_teacher_access(request)
-        if error:
-            return error
-        
         student = get_object_or_404(CustomUser, id=student_id, role='student')
-        
+
         group_id = request.query_params.get('group_id')
         group = Group.objects.filter(id=group_id).first() if group_id else None
-        
+
+        error = self._check_teacher_access(request, student=student, group=group)
+        if error:
+            return error
+
         from .extended_analytics_service import ExtendedAnalyticsService
         service = ExtendedAnalyticsService()
         analytics = service.collect_full_analytics(student, group, 30)
@@ -1061,15 +1082,15 @@ class ExtendedStudentAnalyticsViewSet(viewsets.ViewSet):
         
         GET /api/analytics/extended/student/{student_id}/errors/
         """
-        error = self._check_teacher_access(request)
-        if error:
-            return error
-        
         student = get_object_or_404(CustomUser, id=student_id, role='student')
-        
+
         group_id = request.query_params.get('group_id')
         group = Group.objects.filter(id=group_id).first() if group_id else None
-        
+
+        error = self._check_teacher_access(request, student=student, group=group)
+        if error:
+            return error
+
         from .extended_analytics_service import ExtendedAnalyticsService
         service = ExtendedAnalyticsService()
         analytics = service.collect_full_analytics(student, group, 30)
@@ -1090,15 +1111,15 @@ class ExtendedStudentAnalyticsViewSet(viewsets.ViewSet):
         
         GET /api/analytics/extended/student/{student_id}/activity/
         """
-        error = self._check_teacher_access(request)
-        if error:
-            return error
-        
         student = get_object_or_404(CustomUser, id=student_id, role='student')
-        
+
         group_id = request.query_params.get('group_id')
         group = Group.objects.filter(id=group_id).first() if group_id else None
-        
+
+        error = self._check_teacher_access(request, student=student, group=group)
+        if error:
+            return error
+
         from .extended_analytics_service import ExtendedAnalyticsService
         service = ExtendedAnalyticsService()
         analytics = service.collect_full_analytics(student, group, 30)
@@ -1132,15 +1153,11 @@ class ExtendedStudentAnalyticsViewSet(viewsets.ViewSet):
         
         GET /api/analytics/extended/group/{group_id}/social/
         """
-        error = self._check_teacher_access(request)
+        group = get_object_or_404(Group, id=group_id)
+
+        error = self._check_teacher_access(request, group=group)
         if error:
             return error
-        
-        group = get_object_or_404(Group, id=group_id)
-        
-        # Проверяем что учитель имеет доступ
-        if request.user.role == 'teacher' and group.teacher != request.user:
-            return Response({'detail': 'Нет доступа к этой группе'}, status=403)
         
         from datetime import timedelta
         
@@ -1215,14 +1232,11 @@ class ExtendedStudentAnalyticsViewSet(viewsets.ViewSet):
         
         GET /api/analytics/extended/group/{group_id}/rankings/
         """
-        error = self._check_teacher_access(request)
+        group = get_object_or_404(Group, id=group_id)
+
+        error = self._check_teacher_access(request, group=group)
         if error:
             return error
-        
-        group = get_object_or_404(Group, id=group_id)
-        
-        if request.user.role == 'teacher' and group.teacher != request.user:
-            return Response({'detail': 'Нет доступа к этой группе'}, status=403)
         
         from homework.models import StudentSubmission
         from datetime import timedelta
@@ -1287,18 +1301,15 @@ class ExtendedStudentAnalyticsViewSet(viewsets.ViewSet):
         POST /api/analytics/extended/recalculate-chat/
         {"group_id": 123}
         """
-        error = self._check_teacher_access(request)
-        if error:
-            return error
-        
         group_id = request.data.get('group_id')
         if not group_id:
             return Response({'detail': 'group_id required'}, status=400)
-        
+
         group = get_object_or_404(Group, id=group_id)
-        
-        if request.user.role == 'teacher' and group.teacher != request.user:
-            return Response({'detail': 'Нет доступа к этой группе'}, status=403)
+
+        error = self._check_teacher_access(request, group=group)
+        if error:
+            return error
         
         from .extended_analytics_service import recalculate_chat_analytics
         recalculate_chat_analytics(group, period_days=30)

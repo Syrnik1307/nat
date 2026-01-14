@@ -377,6 +377,19 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "prod: privacy smoke (pwsh)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"prod_privacy_smoke.ps1"
+			],
+			"isBackground": false
 		}
 	]
 }
