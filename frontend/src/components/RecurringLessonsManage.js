@@ -90,6 +90,26 @@ const RecurringLessonsManage = () => {
     setItems(Array.isArray(res.data) ? res.data : res.data.results || []);
   };
 
+  // Функция для нормализации даты в формат YYYY-MM-DD
+  const normalizeDateToISO = (dateStr) => {
+    if (!dateStr) return '';
+    // Уже в формате YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
+    }
+    // Формат DD.MM.YYYY -> YYYY-MM-DD
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateStr)) {
+      const [day, month, year] = dateStr.split('.');
+      return `${year}-${month}-${day}`;
+    }
+    // Попробуем распарсить как Date
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+    return dateStr; // Возвращаем как есть
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.group_id || form.day_of_week === '') {
@@ -112,7 +132,12 @@ const RecurringLessonsManage = () => {
 
     setSaving(true);
     try {
-      const payload = { ...form, day_of_week: parseInt(form.day_of_week, 10) };
+      const payload = {
+        ...form,
+        day_of_week: parseInt(form.day_of_week, 10),
+        start_date: normalizeDateToISO(form.start_date),
+        end_date: normalizeDateToISO(form.end_date),
+      };
       if (editingId) {
         await updateRecurringLesson(editingId, payload);
         showNotification('success', 'Успешно', 'Регулярный урок обновлен');
