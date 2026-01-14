@@ -671,7 +671,7 @@ const HomeworkConstructor = () => {
                           
                           <div className="hc-question-toolbar">
                             <div className="hc-question-toolbar-left">
-                              <span className="hc-question-index">{index + 1}</span>
+                              <span className="hc-question-index">{questions.length - index}</span>
                               <span className="hc-question-type-badge">
                                 {getQuestionLabel(question.question_type)}
                               </span>
