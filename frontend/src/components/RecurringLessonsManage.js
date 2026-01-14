@@ -25,12 +25,6 @@ const initialForm = {
   end_time: '',
   start_date: '',
   end_date: '',
-  // Telegram-уведомления
-  telegram_notify_enabled: false,
-  telegram_notify_minutes: 10,
-  telegram_notify_to_group: true,
-  telegram_notify_to_students: false,
-  telegram_group_chat_id: '',
 };
 
 const dayOptions = [
@@ -142,13 +136,6 @@ const RecurringLessonsManage = () => {
             const errorText = Array.isArray(errors) ? errors.join(', ') : String(errors);
             // Человекочитаемые названия полей
             const fieldNames = {
-              telegram_notify_enabled: 'Telegram-уведомления',
-              telegram_group_chat_id: 'Chat ID группы',
-              telegram_notify_to_group: 'Отправка в группу',
-              telegram_notify_minutes: 'Минуты до начала',
-              telegram_announce_enabled: 'Анонс',
-              telegram_announce_time: 'Время анонса',
-              zoom_pmi_link: 'Zoom PMI ссылка',
               end_time: 'Время окончания',
               start_time: 'Время начала',
               group_id: 'Группа',
@@ -179,12 +166,6 @@ const RecurringLessonsManage = () => {
       end_time: item.end_time.slice(0, 5),
       start_date: item.start_date,
       end_date: item.end_date,
-      // Telegram-уведомления
-      telegram_notify_enabled: item.telegram_notify_enabled || false,
-      telegram_notify_minutes: item.telegram_notify_minutes || 10,
-      telegram_notify_to_group: item.telegram_notify_to_group !== false,
-      telegram_notify_to_students: item.telegram_notify_to_students || false,
-      telegram_group_chat_id: item.telegram_group_chat_id || '',
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
