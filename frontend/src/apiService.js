@@ -314,8 +314,11 @@ export const uploadHomeworkFile = (file, fileType) => {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('file_type', fileType);
-  // Не задаём Content-Type явно - axios автоматически установит его с правильным boundary
-  return apiClient.post('homework/upload-file/', formData);
+  // Переопределяем Content-Type как undefined чтобы axios установил multipart/form-data с boundary
+  // (глобальный default Content-Type: application/json мешает)
+  return apiClient.post('homework/upload-file/', formData, {
+    headers: { 'Content-Type': undefined }
+  });
 };
 
 // Submissions
