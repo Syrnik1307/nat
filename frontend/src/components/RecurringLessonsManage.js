@@ -6,9 +6,7 @@ import {
   createRecurringLesson,
   updateRecurringLesson,
   deleteRecurringLesson,
-  createRecurringLessonTelegramBindCode,
 } from '../apiService';
-import { useAuth } from '../auth';
 import Button from '../shared/components/Button';
 import Input from '../shared/components/Input';
 import Badge from '../shared/components/Badge';
@@ -53,7 +51,6 @@ const weekTypeOptions = [
 
 const RecurringLessonsManage = () => {
   const { notification, confirm, showNotification, closeNotification, showConfirm, closeConfirm } = useNotification();
-  const { user } = useAuth();
   const [groups, setGroups] = useState([]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,9 +60,6 @@ const RecurringLessonsManage = () => {
   const [editingId, setEditingId] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
-
-  // Проверяем, есть ли у пользователя zoom_pmi_link
-  const hasZoomPmi = Boolean(user?.zoom_pmi_link?.trim());
 
   useEffect(() => {
     const load = async () => {
@@ -115,19 +109,6 @@ const RecurringLessonsManage = () => {
     if (!form.group_id || form.day_of_week === '') {
       showNotification('warning', 'Внимание', 'Заполните все обязательные поля');
       return;
-    }
-
-    if (form.telegram_notify_enabled) {
-      const toGroup = Boolean(form.telegram_notify_to_group);
-      const toStudents = Boolean(form.telegram_notify_to_students);
-      if (!toGroup && !toStudents) {
-        showNotification('warning', 'Внимание', 'Выберите получателей: в группу и/или в личку');
-        return;
-      }
-      if (toGroup && !String(form.telegram_group_chat_id || '').trim()) {
-        showNotification('warning', 'Внимание', 'Укажите Chat ID группы или привяжите группу через код');
-        return;
-      }
     }
 
     setSaving(true);
@@ -184,29 +165,6 @@ const RecurringLessonsManage = () => {
       showNotification('error', 'Ошибка', errorMessage);
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleGenerateBindCode = async () => {
-    if (!editingId) {
-      showNotification('info', 'Привязка группы', 'Сначала сохраните урок, затем получите код привязки.');
-      return;
-    }
-    try {
-      const resp = await createRecurringLessonTelegramBindCode(editingId);
-      const code = resp?.data?.code;
-      const ttl = resp?.data?.ttl_minutes;
-      if (!code) {
-        showNotification('error', 'Ошибка', 'Не удалось получить код привязки');
-        return;
-      }
-      showNotification(
-        'success',
-        'Код привязки группы',
-        `Добавьте бота в группу и отправьте в группе: /bindgroup ${code}${ttl ? ` (код действует ${ttl} мин.)` : ''}`
-      );
-    } catch (e) {
-      showNotification('error', 'Ошибка', 'Не удалось получить код привязки');
     }
   };
 
@@ -376,92 +334,7 @@ const RecurringLessonsManage = () => {
               />
             </div>
 
-            {/* Telegram-уведомления */}
-            <div className="rl-form-section">
-              <h3 className="rl-form-section-title">Telegram-уведомления</h3>
-              
-              {!hasZoomPmi && (
-                <div className="rl-warning-banner">
-                  Для включения Telegram-уведомлений добавьте постоянную Zoom-ссылку (PMI) в{' '}
-                  <a href="/profile" target="_blank" rel="noopener noreferrer">настройках профиля</a>
-                </div>
-              )}
-              
-              <label className="rl-checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={form.telegram_notify_enabled}
-                  disabled={!hasZoomPmi}
-                  onChange={(e) => setForm({ ...form, telegram_notify_enabled: e.target.checked })}
-                />
-                <span>Напоминать о начале урока</span>
-              </label>
-
-              {form.telegram_notify_enabled && (
-                <div className="rl-notify-settings">
-                  <Select
-                    label="За сколько минут"
-                    value={String(form.telegram_notify_minutes)}
-                    onChange={(e) => setForm({ ...form, telegram_notify_minutes: parseInt(e.target.value, 10) })}
-                    options={[
-                      { value: '5', label: '5 минут' },
-                      { value: '10', label: '10 минут' },
-                      { value: '15', label: '15 минут' },
-                      { value: '30', label: '30 минут' },
-                    ]}
-                  />
-
-                  <div className="rl-notify-targets">
-                    <span className="rl-notify-label">Отправлять в:</span>
-                    
-                    <label className="rl-checkbox-row">
-                      <input
-                        type="checkbox"
-                        checked={form.telegram_notify_to_group}
-                        onChange={(e) => setForm({ ...form, telegram_notify_to_group: e.target.checked })}
-                      />
-                      <span>Групповой чат</span>
-                    </label>
-
-                    {form.telegram_notify_to_group && (
-                      <>
-                        <Input
-                          label="Chat ID группы"
-                          type="text"
-                          value={form.telegram_group_chat_id}
-                          onChange={(e) => setForm({ ...form, telegram_group_chat_id: e.target.value })}
-                          placeholder="Например: -1001234567890"
-                          hint="В группе: /chatid. Или используйте код привязки ниже."
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="small"
-                          onClick={handleGenerateBindCode}
-                        >
-                          Получить код привязки
-                        </Button>
-                      </>
-                    )}
-
-                    <label className="rl-checkbox-row">
-                      <input
-                        type="checkbox"
-                        checked={form.telegram_notify_to_students}
-                        onChange={(e) => setForm({ ...form, telegram_notify_to_students: e.target.checked })}
-                      />
-                      <span>Личные сообщения ученикам</span>
-                    </label>
-                  </div>
-
-                  {!form.telegram_notify_to_group && !form.telegram_notify_to_students && (
-                    <div className="rl-warning-banner" style={{ marginTop: '12px' }}>
-                      Выберите хотя бы один способ доставки
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            {/* TODO: Telegram-уведомления (временно скрыты) */}
 
             <div className="rl-form-actions">
               <Button type="submit" variant="primary" disabled={saving}>
