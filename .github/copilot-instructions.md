@@ -12,6 +12,13 @@ Teaching Panel - это full-stack LMS (Learning Management System) для уп�
 - **Task Queue**: Celery + Redis
 - **External APIs**: Zoom API (Server-to-Server OAuth), Telegram Bot API, Google Drive API, YooKassa API
 
+## CRITICAL UI RULES
+
+**НЕ ИСПОЛЬЗОВАТЬ ЭМОДЗИ/СМАЙЛИКИ В UI!**
+- На платформе НЕ должно быть никаких эмодзи (📋, ✅, 🎉, ✏️, 💾 и т.д.)
+- Используй только текст и иконки из lucide-react или SVG
+- Это правило распространяется на ВСЕ компоненты: кнопки, табы, сообщения, уведомления
+
 ## Architecture & Project Structure
 
 ```

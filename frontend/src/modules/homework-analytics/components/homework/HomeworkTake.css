@@ -202,6 +202,8 @@
 .ht-question-image {
   margin-bottom: 1rem;
   text-align: center;
+  overflow: hidden;
+  border-radius: 12px;
 }
 
 .ht-question-image img {
@@ -211,6 +213,13 @@
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   background: var(--bg-app);
+  transition: transform 0.3s ease, max-height 0.3s ease;
+  cursor: zoom-in;
+}
+
+.ht-question-image:hover img {
+  transform: scale(1.3);
+  max-height: 600px;
 }
 
 .ht-options {

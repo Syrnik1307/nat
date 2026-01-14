@@ -65,28 +65,24 @@ const HomeworkPage = () => {
           className={`homework-tab ${activeTab === 'constructor' ? 'active' : ''}`}
           onClick={() => handleTabChange('constructor')}
         >
-          <span className="tab-icon">✏️</span>
           <span className="tab-label">Конструктор</span>
         </button>
         <button
           className={`homework-tab ${activeTab === 'templates' ? 'active' : ''}`}
           onClick={() => handleTabChange('templates')}
         >
-          <span className="tab-icon">📋</span>
           <span className="tab-label">Шаблоны</span>
         </button>
         <button
           className={`homework-tab ${activeTab === 'review' ? 'active' : ''}`}
           onClick={() => handleTabChange('review')}
         >
-          <span className="tab-icon">📥</span>
           <span className="tab-label">На проверку</span>
         </button>
         <button
           className={`homework-tab ${activeTab === 'graded' ? 'active' : ''}`}
           onClick={() => handleTabChange('graded')}
         >
-          <span className="tab-icon">✅</span>
           <span className="tab-label">Проверенные</span>
         </button>
       </div>

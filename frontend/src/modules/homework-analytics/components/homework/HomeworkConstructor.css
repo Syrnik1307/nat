@@ -409,22 +409,6 @@
   to { transform: rotate(360deg); }
 }
 
-.hc-card-image-preview {
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--bg-app);
-  border: 1px solid var(--border-light);
-}
-
-.hc-card-image-preview img {
-  display: block;
-  max-width: 100%;
-  max-height: 200px;
-  object-fit: contain;
-  margin: 0 auto;
-}
-
 .hc-card-image-remove {
   position: absolute;
   top: 8px;
@@ -442,6 +426,7 @@
   align-items: center;
   justify-content: center;
   transition: background 0.2s;
+  z-index: 20;
 }
 
 .hc-card-image-remove:hover {
@@ -504,23 +489,6 @@
 .hc-paste-hint {
   font-size: 0.75rem;
   color: var(--text-light);
-}
-
-.hc-image-preview-inline {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.5rem;
-  background: var(--bg-surface);
-  border-radius: 8px;
-  border: 1px solid var(--border-light);
-}
-
-.hc-image-preview-inline img {
-  max-width: 120px;
-  max-height: 80px;
-  object-fit: contain;
-  border-radius: 4px;
 }
 
 .hc-image-remove-btn {
@@ -713,12 +681,72 @@
   display: flex;
   justify-content: center;
   background: var(--bg-app);
+  position: relative;
 }
 
 .hc-image-preview img {
   width: 100%;
   height: auto;
   object-fit: contain;
+  transition: transform 0.3s ease;
+  cursor: zoom-in;
+}
+
+.hc-image-preview:hover img {
+  transform: scale(1.5);
+}
+
+/* Hover zoom для inline preview */
+.hc-image-preview-inline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: var(--bg-surface);
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  position: relative;
+  overflow: hidden;
+}
+
+.hc-image-preview-inline img {
+  max-width: 120px;
+  max-height: 80px;
+  object-fit: contain;
+  border-radius: 4px;
+  transition: transform 0.3s ease, max-width 0.3s ease, max-height 0.3s ease;
+  cursor: zoom-in;
+}
+
+.hc-image-preview-inline:hover img {
+  max-width: 300px;
+  max-height: 200px;
+  transform: scale(1.02);
+  z-index: 10;
+}
+
+/* Hover zoom для card preview */
+.hc-card-image-preview {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-app);
+  border: 1px solid var(--border-light);
+}
+
+.hc-card-image-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  margin: 0 auto;
+  transition: transform 0.3s ease, max-height 0.3s ease;
+  cursor: zoom-in;
+}
+
+.hc-card-image-preview:hover img {
+  max-height: 400px;
+  transform: scale(1.1);
 }
 
 .hc-preview-card {

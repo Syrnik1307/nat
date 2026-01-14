@@ -411,7 +411,7 @@ const HomeworkConstructor = () => {
 
       setFeedback({
         status: 'success',
-        message: '🎉 ДЗ опубликовано! Студенты получат уведомления.',
+        message: 'ДЗ опубликовано! Студенты получат уведомления.',
       });
 
       // Redirect через 2 секунды
@@ -490,10 +490,30 @@ const HomeworkConstructor = () => {
           <button
             type="button"
             className="gm-btn-surface hc-action-btn"
-            onClick={handleSaveDraft}
-            disabled={saving}
+            onClick={async () => {
+              setSavingTemplate(true);
+              setFeedback(null);
+              try {
+                // Сначала сохраняем как черновик, потом делаем шаблон
+                const result = await saveDraft(assignmentMeta, questions, homeworkId);
+                if (!result.saved) {
+                  setValidationIssues(result.validation);
+                  setFeedback({ status: 'warning', message: 'Проверьте настройки задания' });
+                  return;
+                }
+                const savedId = result.homeworkId;
+                setHomeworkId(savedId);
+                await saveAsTemplate(savedId);
+                setFeedback({ status: 'success', message: 'Шаблон создан! Перейдите во вкладку Шаблоны.' });
+              } catch (err) {
+                setFeedback({ status: 'error', message: err.response?.data?.detail || 'Ошибка сохранения шаблона' });
+              } finally {
+                setSavingTemplate(false);
+              }
+            }}
+            disabled={savingTemplate || questions.length === 0}
           >
-            {saving ? 'Сохранение...' : 'Черновик'}
+            {savingTemplate ? 'Сохранение...' : 'Создать шаблон'}
           </button>
           <button
             type="button"
@@ -503,26 +523,6 @@ const HomeworkConstructor = () => {
           >
             Опубликовать
           </button>
-          {homeworkId && (
-            <button
-              type="button"
-              className="gm-btn-surface hc-action-btn"
-              onClick={async () => {
-                setSavingTemplate(true);
-                try {
-                  await saveAsTemplate(homeworkId);
-                  setFeedback({ type: 'success', message: 'Шаблон сохранён! Перейдите во вкладку Шаблоны.' });
-                } catch (err) {
-                  setFeedback({ type: 'error', message: err.response?.data?.detail || 'Ошибка сохранения шаблона' });
-                } finally {
-                  setSavingTemplate(false);
-                }
-              }}
-              disabled={savingTemplate}
-            >
-              {savingTemplate ? 'Сохранение...' : '📋 В шаблоны'}
-            </button>
-          )}
         </div>
       </div>
 

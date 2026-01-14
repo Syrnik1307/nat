@@ -87,7 +87,6 @@ const TemplatesList = () => {
   if (templates.length === 0) {
     return (
       <div className="templates-list-empty">
-        <div className="templates-empty-icon">📋</div>
         <h3>Нет сохранённых шаблонов</h3>
         <p>Создайте домашнее задание и сохраните его как шаблон для повторного использования</p>
       </div>
