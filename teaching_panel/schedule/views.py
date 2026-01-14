@@ -2748,6 +2748,17 @@ class IndividualInviteCodeViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Привязываем ученика к индивидуальной группе учителя, чтобы он видел уроки/материалы
+        group_name = f"Индивидуально • {code_obj.subject}"
+        group = Group.objects.filter(teacher=code_obj.teacher, name=group_name).first()
+        if not group:
+            group = Group.objects.create(
+                name=group_name,
+                teacher=code_obj.teacher,
+                description='Автосозданная группа для индивидуального ученика по инвайт-коду'
+            )
+        group.students.add(user)
+
         # Отмечаем код как использованный
         code_obj.is_used = True
         code_obj.used_by = user
@@ -2763,6 +2774,11 @@ class IndividualInviteCodeViewSet(viewsets.ModelViewSet):
                 'email': code_obj.teacher.email,
                 'first_name': code_obj.teacher.first_name,
                 'last_name': code_obj.teacher.last_name
+            },
+            'group': {
+                'id': group.id,
+                'name': group.name,
+                'invite_code': group.invite_code
             }
         }, status=status.HTTP_200_OK)
 
