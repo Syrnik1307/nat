@@ -38,8 +38,8 @@ export const useHomeworkConstructor = () => {
     [groups]
   );
 
-  const checkBeforeSave = useCallback((meta, questions) => {
-    const metaIssues = validateAssignmentMeta(meta);
+  const checkBeforeSave = useCallback((meta, questions, options = {}) => {
+    const metaIssues = validateAssignmentMeta(meta, options);
     if (metaIssues.length) {
       return { ok: false, metaIssues, questionIssues: [] };
     }
@@ -65,8 +65,8 @@ export const useHomeworkConstructor = () => {
   );
 
   const saveDraft = useCallback(
-    async (meta, questions, existingId = null) => {
-      const validation = checkBeforeSave(meta, questions);
+    async (meta, questions, existingId = null, options = {}) => {
+      const validation = checkBeforeSave(meta, questions, options);
       if (!validation.ok) {
         return { saved: false, validation };
       }

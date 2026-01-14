@@ -121,12 +121,13 @@ export const validateQuestion = (question) => {
   return issues;
 };
 
-export const validateAssignmentMeta = (meta) => {
+export const validateAssignmentMeta = (meta, options = {}) => {
+  const { requireGroup = true } = options;
   const issues = [];
   if (!meta.title?.trim()) {
     issues.push('Название задания обязательно');
   }
-  if (!meta.groupId) {
+  if (requireGroup && !meta.groupId) {
     issues.push('Выберите группу');
   }
   if (!Number.isFinite(meta.maxScore) || meta.maxScore <= 0) {

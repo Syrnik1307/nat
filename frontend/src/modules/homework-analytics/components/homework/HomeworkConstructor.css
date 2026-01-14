@@ -706,7 +706,7 @@
   border-radius: 8px;
   border: 1px solid var(--border-light);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .hc-image-preview-inline img {
@@ -714,15 +714,18 @@
   max-height: 80px;
   object-fit: contain;
   border-radius: 4px;
-  transition: transform 0.3s ease, max-width 0.3s ease, max-height 0.3s ease;
+  transition: transform 0.22s ease;
   cursor: zoom-in;
 }
 
+.hc-image-preview-inline:hover {
+  z-index: 50;
+}
+
 .hc-image-preview-inline:hover img {
-  max-width: 300px;
-  max-height: 200px;
-  transform: scale(1.02);
-  z-index: 10;
+  transform: scale(2);
+  transform-origin: left top;
+  z-index: 60;
 }
 
 /* Hover zoom для card preview */

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { apiClient, uploadHomeworkFile, saveAsTemplate } from '../../../../apiService';
@@ -170,6 +170,20 @@ const HomeworkConstructor = () => {
   const [confirmDialog, setConfirmDialog] = useState({ open: false });
   const [uploadingImageFor, setUploadingImageFor] = useState(null); // index вопроса
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const blobUrlsRef = useRef(new Set());
+
+  useEffect(() => {
+    return () => {
+      blobUrlsRef.current.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (_) {
+          // ignore
+        }
+      });
+      blobUrlsRef.current.clear();
+    };
+  }, []);
 
   // Обработка вставки изображения прямо в карточку вопроса
   const handleCardPaste = useCallback(async (event, questionIndex) => {
@@ -185,6 +199,29 @@ const HomeworkConstructor = () => {
         event.preventDefault();
         const file = item.getAsFile();
         if (file) {
+          const localUrl = URL.createObjectURL(file);
+          blobUrlsRef.current.add(localUrl);
+
+          // Мгновенный preview до завершения загрузки
+          setQuestions((prev) => {
+            const updated = [...prev];
+            const q = updated[questionIndex];
+            const previousUrl = q?.config?.imageUrl;
+            if (previousUrl && previousUrl.startsWith('blob:') && previousUrl !== localUrl) {
+              try {
+                URL.revokeObjectURL(previousUrl);
+              } catch (_) {
+                // ignore
+              }
+              blobUrlsRef.current.delete(previousUrl);
+            }
+            updated[questionIndex] = {
+              ...q,
+              config: { ...q.config, imageUrl: localUrl, imageFileId: null }
+            };
+            return updated;
+          });
+
           setUploadingImageFor(questionIndex);
           try {
             const response = await uploadHomeworkFile(file, 'image');
@@ -192,14 +229,21 @@ const HomeworkConstructor = () => {
               setQuestions((prev) => {
                 const updated = [...prev];
                 const q = updated[questionIndex];
+                const previousUrl = q?.config?.imageUrl;
+                if (previousUrl && previousUrl.startsWith('blob:')) {
+                  try {
+                    URL.revokeObjectURL(previousUrl);
+                  } catch (_) {
+                    // ignore
+                  }
+                  blobUrlsRef.current.delete(previousUrl);
+                }
                 updated[questionIndex] = {
                   ...q,
                   config: { ...q.config, imageUrl: response.data.url, imageFileId: response.data.file_id || null }
                 };
                 return updated;
               });
-              setFeedback({ type: 'success', message: 'Изображение загружено' });
-              setTimeout(() => setFeedback(null), 2000);
             }
           } catch (err) {
             setFeedback({ type: 'error', message: 'Ошибка загрузки: ' + (err.message || 'Попробуйте ещё раз') });
@@ -341,37 +385,6 @@ const HomeworkConstructor = () => {
 
   const questionCount = questions.length;
 
-  const handleSaveDraft = async () => {
-    setSaving(true);
-    setFeedback(null);
-    setValidationIssues(null);
-    try {
-      const result = await saveDraft(assignmentMeta, questions, homeworkId);
-      if (!result.saved) {
-        setValidationIssues(result.validation);
-        setFeedback({
-          status: 'warning',
-          message: 'Проверьте настройки — найдено несколько моментов, требующих внимания.',
-        });
-        return;
-      }
-
-      // Сохраняем ID для последующей публикации
-      if (result.homeworkId) {
-        setHomeworkId(result.homeworkId);
-      }
-
-      setFeedback({ status: 'success', message: 'Черновик успешно сохранен.' });
-      setValidationIssues(result.validation);
-    } catch (error) {
-      console.error('[HomeworkConstructor] Save draft failed:', error);
-      const backendMessage = error.response?.data?.detail || error.message;
-      setFeedback({ status: 'error', message: backendMessage || 'Не удалось сохранить задание.' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handlePublish = async () => {
     // Валидация перед публикацией
     if (!assignmentMeta.title || !assignmentMeta.groupId || questions.length === 0) {
@@ -495,7 +508,7 @@ const HomeworkConstructor = () => {
               setFeedback(null);
               try {
                 // Сначала сохраняем как черновик, потом делаем шаблон
-                const result = await saveDraft(assignmentMeta, questions, homeworkId);
+                  const result = await saveDraft(assignmentMeta, questions, homeworkId, { requireGroup: false });
                 if (!result.saved) {
                   setValidationIssues(result.validation);
                   setFeedback({ status: 'warning', message: 'Проверьте настройки задания' });
@@ -723,16 +736,54 @@ const HomeworkConstructor = () => {
                                   onChange={async (e) => {
                                     const file = e.target.files?.[0];
                                     if (!file) return;
+
+                                    const localUrl = URL.createObjectURL(file);
+                                    blobUrlsRef.current.add(localUrl);
+
+                                    // Мгновенный preview до завершения загрузки
+                                    setQuestions((prev) => {
+                                      const updated = [...prev];
+                                      const q = updated[index];
+                                      const previousUrl = q?.config?.imageUrl;
+                                      if (previousUrl && previousUrl.startsWith('blob:') && previousUrl !== localUrl) {
+                                        try {
+                                          URL.revokeObjectURL(previousUrl);
+                                        } catch (_) {
+                                          // ignore
+                                        }
+                                        blobUrlsRef.current.delete(previousUrl);
+                                      }
+                                      updated[index] = {
+                                        ...q,
+                                        config: {
+                                          ...q.config,
+                                          imageUrl: localUrl,
+                                          imageFileId: null,
+                                        }
+                                      };
+                                      return updated;
+                                    });
+
                                     setUploadingImageFor(index);
                                     try {
                                       const response = await uploadHomeworkFile(file, 'image');
                                       if (response.data?.url) {
                                         setQuestions((prev) => {
                                           const updated = [...prev];
+                                          const q = updated[index];
+                                          const previousUrl = q?.config?.imageUrl;
+                                          if (previousUrl && previousUrl.startsWith('blob:')) {
+                                            try {
+                                              URL.revokeObjectURL(previousUrl);
+                                            } catch (_) {
+                                              // ignore
+                                            }
+                                            blobUrlsRef.current.delete(previousUrl);
+                                          }
                                           updated[index] = {
-                                            ...updated[index],
+                                            ...q,
                                             config: {
-                                              ...updated[index].config,
+                                              ...q.config,
                                               imageUrl: response.data.url,
                                               imageFileId: response.data.file_id || null,
                                             }
@@ -761,6 +812,15 @@ const HomeworkConstructor = () => {
                                   onClick={() => {
                                     setQuestions((prev) => {
                                       const updated = [...prev];
+                                      const previousUrl = updated[index]?.config?.imageUrl;
+                                      if (previousUrl && previousUrl.startsWith('blob:')) {
+                                        try {
+                                          URL.revokeObjectURL(previousUrl);
+                                        } catch (_) {
+                                          // ignore
+                                        }
+                                        blobUrlsRef.current.delete(previousUrl);
+                                      }
                                       updated[index] = {
                                         ...updated[index],
                                         config: { ...updated[index].config, imageUrl: null, imageFileId: null }
