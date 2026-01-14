@@ -258,8 +258,9 @@ const HomeworkConstructor = () => {
     const template = createQuestionTemplate(type);
     // Генерируем СТАБИЛЬНЫЙ уникальный ID один раз при создании
     template.id = `q-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    template.order = questions.length;
-    setQuestions((previous) => [...previous, template]);
+    template.order = 0; // Новый вопрос добавляется в начало UI
+    // Добавляем в начало массива для удобства редактирования (не нужно скроллить вверх)
+    setQuestions((previous) => [template, ...previous]);
     setShowTypeMenu(false);
   };
 
