@@ -48,9 +48,89 @@
   margin: 0.25rem 0 0;
 }
 
+/* Edit input */
+.iim-edit-input {
+  width: 100%;
+  max-width: 300px;
+}
+
+/* Student modal */
+.iim-student-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.iim-student-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.iim-student-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary) 0%, #6366f1 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.iim-student-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.iim-student-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.iim-student-email {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.iim-student-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.iim-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.iim-meta-label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.iim-meta-value {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
 @media (max-width: 768px) {
   .iim-code-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+  
+  .iim-student-info {
+    flex-direction: column;
+    text-align: center;
   }
 }

@@ -285,6 +285,7 @@ export const joinGroupByCode = (inviteCode) => apiClient.post('groups/join_by_co
 // Individual invite codes
 export const getIndividualInviteCodes = (params = {}) => apiClient.get('individual-invite-codes/', { params });
 export const createIndividualInviteCode = (data) => apiClient.post('individual-invite-codes/', data);
+export const updateIndividualInviteCode = (id, data) => apiClient.put(`individual-invite-codes/${id}/`, data);
 export const deleteIndividualInviteCode = (id) => apiClient.delete(`individual-invite-codes/${id}/`);
 export const regenerateIndividualInviteCode = (id) => apiClient.post('individual-invite-codes/regenerate/', { id });
 export const getIndividualInviteCodeByCode = (inviteCode) => apiClient.get(`individual-invite-codes/preview_by_code/?code=${inviteCode}`);

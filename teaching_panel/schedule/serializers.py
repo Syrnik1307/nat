@@ -663,20 +663,31 @@ class IndividualInviteCodeSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     used_by_name = serializers.SerializerMethodField(read_only=True)
+    group_id = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = IndividualInviteCode
         fields = [
             'id', 'teacher', 'subject', 'invite_code',
             'is_used', 'used_by', 'used_by_email', 'used_by_name',
-            'used_at', 'created_at'
+            'used_at', 'created_at', 'group_id'
         ]
-        read_only_fields = ['id', 'invite_code', 'is_used', 'used_by', 'used_at', 'created_at']
+        read_only_fields = ['id', 'invite_code', 'is_used', 'used_by', 'used_at', 'created_at', 'group_id']
     
     def get_used_by_name(self, obj):
         """Получить полное имя ученика"""
         if obj.used_by:
             return obj.used_by.get_full_name()
+        return None
+    
+    def get_group_id(self, obj):
+        """Получить ID автоматически созданной группы для индивидуального ученика"""
+        if obj.is_used and obj.teacher:
+            from .models import Group
+            group_name = f"Индивидуально • {obj.subject}"
+            group = Group.objects.filter(teacher=obj.teacher, name=group_name).first()
+            if group:
+                return group.id
         return None
 
 class LessonMaterialSerializer(serializers.ModelSerializer):

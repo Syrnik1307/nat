@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   getIndividualInviteCodes,
   createIndividualInviteCode,
+  updateIndividualInviteCode,
   deleteIndividualInviteCode,
   getAccessToken,
 } from '../apiService';
-import { ConfirmModal } from '../shared/components';
+import { ConfirmModal, Modal } from '../shared/components';
 import IndividualInviteModal from './IndividualInviteModal';
 import '../styles/IndividualInvitesManage.css';
 
@@ -69,6 +71,14 @@ export const useIndividualInvitesData = () => {
   const [selectedCode, setSelectedCode] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [descriptionMap, setDescriptionMap] = useState({});
+  
+  // Редактирование
+  const [editingCode, setEditingCode] = useState(null);
+  const [editSubject, setEditSubject] = useState('');
+  const [saving, setSaving] = useState(false);
+  
+  // Модалка ученика
+  const [studentModalCode, setStudentModalCode] = useState(null);
 
   useEffect(() => {
     setDescriptionMap(loadDescriptionMap());
@@ -151,6 +161,41 @@ export const useIndividualInvitesData = () => {
       setFormError('Ошибка при удалении кода');
     }
   };
+  
+  const startEdit = (code) => {
+    setEditingCode(code);
+    setEditSubject(code.subject || '');
+  };
+  
+  const cancelEdit = () => {
+    setEditingCode(null);
+    setEditSubject('');
+  };
+  
+  const handleSaveEdit = async () => {
+    if (!editingCode) return;
+    const trimmed = editSubject.trim();
+    if (!trimmed) {
+      setFormError('Введите название предмета');
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      const { data } = await updateIndividualInviteCode(editingCode.id, { subject: trimmed });
+      setCodes((prev) => 
+        normalizeCodes(prev).map((c) => c.id === data.id ? { ...c, ...data } : c)
+      );
+      setEditingCode(null);
+      setEditSubject('');
+      setFormError('');
+    } catch (err) {
+      console.error('Failed to update code:', err);
+      setFormError('Ошибка при сохранении');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return {
     // lists
@@ -173,6 +218,17 @@ export const useIndividualInvitesData = () => {
     showDeleteConfirm,
     setShowDeleteConfirm,
     handleDelete,
+    // editing
+    editingCode,
+    editSubject,
+    setEditSubject,
+    saving,
+    startEdit,
+    cancelEdit,
+    handleSaveEdit,
+    // student modal
+    studentModalCode,
+    setStudentModalCode,
   };
 };
 
@@ -230,7 +286,14 @@ const IndividualInviteForm = ({ data }) => (
   </div>
 );
 
-const IndividualInviteList = ({ data }) => (
+const IndividualInviteList = ({ data, navigate }) => {
+  const getInitials = (name) => {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    return parts.map(p => p[0] || '').join('').toUpperCase().slice(0, 2) || '?';
+  };
+
+  return (
   <div className="gm-card iim-list-card">
     <div className="gm-card-heading">
       <div>
@@ -257,14 +320,33 @@ const IndividualInviteList = ({ data }) => (
         {data.safeCodes.map((code) => {
           const studentName = code.used_by_name || code.used_by_email || null;
           const descriptionText = code.description?.trim() || 'Без описания';
+          const isEditing = data.editingCode?.id === code.id;
 
           return (
-            <article key={code.id} className="gm-group-card">
+            <article key={code.id} className={`gm-group-card ${isEditing ? 'is-active' : ''}`}>
               <div className="gm-group-card-header">
                 <div>
-                  <span className="gm-group-name" style={{ cursor: 'default' }}>
-                    {code.subject || 'Без названия'}
-                  </span>
+                  {isEditing ? (
+                    <input
+                      className="form-input iim-edit-input"
+                      type="text"
+                      value={data.editSubject}
+                      onChange={(e) => data.setEditSubject(e.target.value)}
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') data.handleSaveEdit();
+                        if (e.key === 'Escape') data.cancelEdit();
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="gm-group-name"
+                      onClick={() => data.startEdit(code)}
+                    >
+                      {code.subject || 'Без названия'}
+                    </button>
+                  )}
                   <p className="gm-group-description">{descriptionText}</p>
                   {code.is_used && studentName && (
                     <p className="gm-group-description" style={{ marginTop: '0.25rem' }}>
@@ -273,7 +355,7 @@ const IndividualInviteList = ({ data }) => (
                   )}
                 </div>
                 <span className={`gm-badge ${code.is_used ? 'gm-badge-blue' : 'gm-badge-success'}`}>
-                  {code.is_used ? 'Присоединился' : 'Ожидает'}
+                  {code.is_used ? '1 уч.' : 'Ожидает'}
                 </span>
               </div>
 
@@ -283,21 +365,71 @@ const IndividualInviteList = ({ data }) => (
               </div>
 
               <div className="gm-group-card-actions">
-                <button
-                  type="button"
-                  className="gm-btn-primary"
-                  onClick={() => data.setSelectedCode(code)}
-                >
-                  Пригласить
-                </button>
-                <button
-                  type="button"
-                  className="gm-btn-danger"
-                  onClick={() => data.setShowDeleteConfirm(code)}
-                  disabled={code.is_used}
-                >
-                  Удалить
-                </button>
+                {isEditing ? (
+                  <>
+                    <button
+                      type="button"
+                      className="gm-btn-primary"
+                      onClick={data.handleSaveEdit}
+                      disabled={data.saving}
+                    >
+                      {data.saving ? 'Сохранение...' : 'Сохранить'}
+                    </button>
+                    <button
+                      type="button"
+                      className="gm-btn-surface"
+                      onClick={data.cancelEdit}
+                      disabled={data.saving}
+                    >
+                      Отмена
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Открыть - только для присоединившихся */}
+                    {code.is_used && code.group_id && (
+                      <button
+                        type="button"
+                        className="gm-btn-primary"
+                        onClick={() => navigate && navigate(`/attendance/${code.group_id}`)}
+                      >
+                        Открыть
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="gm-btn-surface"
+                      onClick={() => data.startEdit(code)}
+                    >
+                      Изменить
+                    </button>
+                    <button
+                      type="button"
+                      className="gm-btn-surface"
+                      onClick={() => data.setSelectedCode(code)}
+                    >
+                      Пригласить
+                    </button>
+                    {/* Ученики - только для присоединившихся */}
+                    {code.is_used && (
+                      <button
+                        type="button"
+                        className="gm-btn-surface"
+                        onClick={() => data.setStudentModalCode(code)}
+                      >
+                        Ученик
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="gm-btn-danger"
+                      onClick={() => data.setShowDeleteConfirm(code)}
+                      disabled={code.is_used}
+                    >
+                      Удалить
+                    </button>
+                  </>
+                )}
               </div>
             </article>
           );
@@ -326,25 +458,72 @@ const IndividualInviteList = ({ data }) => (
         cancelText="Отмена"
       />
     )}
+
+    {/* Модалка ученика */}
+    {data.studentModalCode && (
+      <Modal
+        isOpen={Boolean(data.studentModalCode)}
+        onClose={() => data.setStudentModalCode(null)}
+        title="Ученик"
+        size="small"
+      >
+        <div className="iim-student-modal">
+          <div className="iim-student-info">
+            <div className="iim-student-avatar">
+              {getInitials(data.studentModalCode.used_by_name)}
+            </div>
+            <div className="iim-student-details">
+              <div className="iim-student-name">
+                {data.studentModalCode.used_by_name || 'Без имени'}
+              </div>
+              {data.studentModalCode.used_by_email && (
+                <div className="iim-student-email">{data.studentModalCode.used_by_email}</div>
+              )}
+            </div>
+          </div>
+          <div className="iim-student-meta">
+            <div className="iim-meta-row">
+              <span className="iim-meta-label">Предмет:</span>
+              <span className="iim-meta-value">{data.studentModalCode.subject}</span>
+            </div>
+            {data.studentModalCode.used_at && (
+              <div className="iim-meta-row">
+                <span className="iim-meta-label">Присоединился:</span>
+                <span className="iim-meta-value">
+                  {new Date(data.studentModalCode.used_at).toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
+    )}
   </div>
 );
+};
 
-const IndividualInvitesManage = ({ mode = 'full', data: providedData }) => {
+const IndividualInvitesManage = ({ mode = 'full', data: providedData, navigate: providedNavigate }) => {
   const hookData = useIndividualInvitesData();
+  const internalNavigate = useNavigate();
   const data = providedData || hookData;
+  const navigate = providedNavigate || internalNavigate;
 
   if (mode === 'form') {
     return <IndividualInviteForm data={data} />;
   }
 
   if (mode === 'list') {
-    return <IndividualInviteList data={data} />;
+    return <IndividualInviteList data={data} navigate={navigate} />;
   }
 
   return (
     <div className="individual-invites-manage">
       <IndividualInviteForm data={data} />
-      <IndividualInviteList data={data} />
+      <IndividualInviteList data={data} navigate={navigate} />
     </div>
   );
 };

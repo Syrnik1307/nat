@@ -402,7 +402,7 @@ const GroupsManage = () => {
               </div>
             </div>
           ) : (
-            <IndividualInviteList data={invitesData} />
+            <IndividualInviteList data={invitesData} navigate={navigate} />
           )}
         </div>
       </div>

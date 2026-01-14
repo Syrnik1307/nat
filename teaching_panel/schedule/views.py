@@ -2651,6 +2651,36 @@ class IndividualInviteCodeViewSet(viewsets.ModelViewSet):
         
         return super().destroy(request, *args, **kwargs)
     
+    def update(self, request, *args, **kwargs):
+        """Обновить инвайт-код (редактировать предмет)"""
+        obj = self.get_object()
+        
+        if request.user.role != 'admin' and obj.teacher != request.user:
+            return Response(
+                {'error': 'Вы не можете редактировать этот инвайт-код'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        subject = request.data.get('subject', '').strip()
+        if not subject:
+            return Response(
+                {'error': 'Название предмета обязательно'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        old_subject = obj.subject
+        obj.subject = subject
+        obj.save()
+        
+        # Если код уже использован, обновляем название группы
+        if obj.is_used:
+            old_group_name = f"Индивидуально • {old_subject}"
+            new_group_name = f"Индивидуально • {subject}"
+            Group.objects.filter(teacher=obj.teacher, name=old_group_name).update(name=new_group_name)
+        
+        serializer = self.get_serializer(obj)
+        return Response(serializer.data)
+    
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def regenerate(self, request):
         """Регенерировать инвайт-код (создать новый неиспользованный код)"""
