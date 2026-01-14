@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 from .models import Group, Lesson, Attendance, RecurringLesson, LessonRecording, AuditLog, IndividualInviteCode, LessonTranscriptStats
 from zoom_pool.models import ZoomAccount
 from django.db.models import F
-from .permissions import IsLessonOwnerOrReadOnly, IsGroupOwnerOrReadOnly
+from .permissions import IsLessonOwnerOrReadOnly, IsGroupOwnerOrReadOnly, IsTeacherOrReadOnly
 from .serializers import (
     GroupSerializer, 
     LessonSerializer, 
@@ -173,20 +173,21 @@ class GroupViewSet(viewsets.ModelViewSet):
     """
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
-    # Базовая аутентификация включится позже; сейчас ограничим по роли
-    permission_classes = [IsGroupOwnerOrReadOnly]
+    # Требуем аутентификацию + проверку владельца для мутаций
+    permission_classes = [IsAuthenticated, IsGroupOwnerOrReadOnly]
     
     def get_queryset(self):
         """Фильтруем группы по преподавателю для аутентифицированных пользователей"""
         # ОПТИМИЗАЦИЯ: prefetch students и select_related teacher для избежания N+1
         queryset = super().get_queryset().select_related('teacher').prefetch_related('students')
         user = self.request.user
-        if user.is_authenticated:
-            if getattr(user, 'role', None) == 'teacher':
-                return queryset.filter(teacher=user)
-            elif getattr(user, 'role', None) == 'student':
-                return queryset.filter(students=user)
-        return queryset
+        if not user.is_authenticated:
+            return queryset.none()
+        if getattr(user, 'role', None) == 'teacher':
+            return queryset.filter(teacher=user)
+        if getattr(user, 'role', None) == 'student':
+            return queryset.filter(students=user)
+        return queryset.none()
     
     @action(detail=True, methods=['post'])
     def add_students(self, request, pk=None):
@@ -300,7 +301,7 @@ class LessonViewSet(viewsets.ModelViewSet):
     """
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
-    permission_classes = [IsLessonOwnerOrReadOnly]
+    permission_classes = [IsAuthenticated, IsLessonOwnerOrReadOnly]
 
     def _include_recurring(self, request):
         flag = request.query_params.get('include_recurring')
@@ -725,11 +726,12 @@ class LessonViewSet(viewsets.ModelViewSet):
         queryset = queryset.filter(is_quick_lesson=False)
         
         user = self.request.user
-        if user.is_authenticated:
-            if getattr(user, 'role', None) == 'teacher':
-                queryset = queryset.filter(teacher=user)
-            elif getattr(user, 'role', None) == 'student':
-                queryset = queryset.filter(group__students=user)
+        if not user.is_authenticated:
+            return queryset.none()
+        if getattr(user, 'role', None) == 'teacher':
+            queryset = queryset.filter(teacher=user)
+        elif getattr(user, 'role', None) == 'student':
+            queryset = queryset.filter(group__students=user)
         
         # Фильтр по группе
         group_id = self.request.query_params.get('group')
@@ -1508,6 +1510,18 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Фильтрация посещаемости"""
         queryset = super().get_queryset()
+
+        user = self.request.user
+        if not user.is_authenticated:
+            return queryset.none()
+
+        role = getattr(user, 'role', None)
+        if role == 'teacher':
+            queryset = queryset.filter(lesson__teacher=user)
+        elif role == 'student':
+            queryset = queryset.filter(lesson__group__students=user)
+        elif role != 'admin':
+            return queryset.none()
         
         # Фильтр по занятию
         lesson_id = self.request.query_params.get('lesson')
@@ -1577,16 +1591,20 @@ class RecurringLessonViewSet(viewsets.ModelViewSet):
     """
     queryset = RecurringLesson.objects.all()
     serializer_class = RecurringLessonSerializer
+    permission_classes = [IsAuthenticated, IsTeacherOrReadOnly]
     
     def get_queryset(self):
         """Фильтрация регулярных уроков"""
         queryset = super().get_queryset()
         user = self.request.user
-        if user.is_authenticated:
-            if getattr(user, 'role', None) == 'teacher':
-                queryset = queryset.filter(teacher=user)
-            elif getattr(user, 'role', None) == 'student':
-                queryset = queryset.filter(group__students=user)
+        if not user.is_authenticated:
+            return queryset.none()
+        if getattr(user, 'role', None) == 'teacher':
+            queryset = queryset.filter(teacher=user)
+        elif getattr(user, 'role', None) == 'student':
+            queryset = queryset.filter(group__students=user)
+        else:
+            return queryset.none()
         
         # Фильтр по преподавателю
         teacher_id = self.request.query_params.get('teacher')
