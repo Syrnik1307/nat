@@ -29,7 +29,11 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                 # Студенты видят только опубликованные ДЗ из своих групп
                 # .distinct() нужен т.к. студент может быть в нескольких группах,
                 # что приводит к дубликатам при JOIN
-                return (qs.filter(lesson__group__students=user) | qs.filter(teacher__teaching_groups__students=user)).filter(status='published').distinct()
+                return (
+                    qs.filter(status='published').filter(
+                        Q(lesson__group__students=user) | Q(submissions__student=user)
+                    )
+                ).distinct()
         return qs.none()
 
     def get_serializer_class(self):
