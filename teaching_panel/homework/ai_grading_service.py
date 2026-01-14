@@ -14,7 +14,7 @@ AI Grading Service - проверка текстовых ответов с по�
 import json
 import logging
 import httpx
-from typing import Optional
+from typing import Optional, Tuple
 from dataclasses import dataclass
 from django.conf import settings
 
@@ -57,7 +57,7 @@ class AIGradingService:
         self.provider = provider
         self.timeout = 30  # секунд
         
-    def _get_api_config(self) -> tuple[str, str, str]:
+    def _get_api_config(self) -> Tuple[str, str, str]:
         """Возвращает (api_url, api_key, model) для провайдера"""
         if self.provider == 'deepseek':
             return (
