@@ -281,6 +281,8 @@ export const removeStudentsFromGroup = (groupId, studentIds) => apiClient.post(`
 export const regenerateGroupInviteCode = (groupId) => apiClient.post(`groups/${groupId}/regenerate_code/`);
 export const getGroupByInviteCode = (inviteCode) => apiClient.get(`groups/preview_by_code/?code=${inviteCode}`);
 export const joinGroupByCode = (inviteCode) => apiClient.post('groups/join_by_code/', { invite_code: inviteCode });
+export const transferStudent = (fromGroupId, studentId, toGroupId) => 
+  apiClient.post(`groups/${fromGroupId}/transfer_student/`, { student_id: studentId, to_group_id: toGroupId });
 
 // Individual invite codes
 export const getIndividualInviteCodes = (params = {}) => apiClient.get('individual-invite-codes/', { params });

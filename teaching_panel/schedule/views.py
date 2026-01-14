@@ -292,6 +292,55 @@ class GroupViewSet(viewsets.ModelViewSet):
             'message': f'Вы успешно присоединились к группе "{group.name}"',
             'group': serializer.data
         }, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'])
+    def transfer_student(self, request, pk=None):
+        """
+        Перенести ученика из одной группы в другую.
+        Используется для перевода между индивидуальными и групповыми занятиями.
+        """
+        from_group = self.get_object()
+        student_id = request.data.get('student_id')
+        to_group_id = request.data.get('to_group_id')
+        
+        if not student_id or not to_group_id:
+            return Response(
+                {'error': 'Необходимо указать student_id и to_group_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            student = CustomUser.objects.get(id=student_id, role='student')
+        except CustomUser.DoesNotExist:
+            return Response(
+                {'error': 'Ученик не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        try:
+            to_group = Group.objects.get(id=to_group_id, teacher=request.user)
+        except Group.DoesNotExist:
+            return Response(
+                {'error': 'Целевая группа не найдена или не принадлежит вам'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Проверяем что ученик в исходной группе
+        if not from_group.students.filter(id=student_id).exists():
+            return Response(
+                {'error': 'Ученик не состоит в исходной группе'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Переносим
+        from_group.students.remove(student)
+        to_group.students.add(student)
+        
+        return Response({
+            'message': f'Ученик успешно перенесён из "{from_group.name}" в "{to_group.name}"',
+            'from_group': GroupSerializer(from_group).data,
+            'to_group': GroupSerializer(to_group).data
+        }, status=status.HTTP_200_OK)
 
 
 class LessonViewSet(viewsets.ModelViewSet):

@@ -6,8 +6,10 @@ import {
   updateIndividualInviteCode,
   deleteIndividualInviteCode,
   getAccessToken,
+  transferStudent,
 } from '../apiService';
 import { ConfirmModal, Modal } from '../shared/components';
+import Select from '../shared/components/Select';
 import IndividualInviteModal from './IndividualInviteModal';
 import '../styles/IndividualInvitesManage.css';
 
@@ -286,7 +288,11 @@ const IndividualInviteForm = ({ data }) => (
   </div>
 );
 
-const IndividualInviteList = ({ data, navigate }) => {
+const IndividualInviteList = ({ data, navigate, allGroups = [], onGroupsChanged }) => {
+  const [showTransferModal, setShowTransferModal] = useState(null);
+  const [targetGroupId, setTargetGroupId] = useState('');
+  const [transferring, setTransferring] = useState(false);
+  
   const getInitials = (name) => {
     if (!name) return '?';
     const parts = name.trim().split(/\s+/);
@@ -323,7 +329,7 @@ const IndividualInviteList = ({ data, navigate }) => {
           const isEditing = data.editingCode?.id === code.id;
 
           return (
-            <article key={code.id} className={`gm-group-card ${isEditing ? 'is-active' : ''}`}>
+            <article key={code.id} className={`gm-group-card ${isEditing ? 'is-active' : ''} ${code.is_used ? 'has-student' : ''}`}>
               <div className="gm-group-card-header">
                 <div>
                   {isEditing ? (
@@ -348,16 +354,19 @@ const IndividualInviteList = ({ data, navigate }) => {
                     </button>
                   )}
                   <p className="gm-group-description">{descriptionText}</p>
-                  {code.is_used && studentName && (
-                    <p className="gm-group-description" style={{ marginTop: '0.25rem' }}>
-                      <strong>Ученик:</strong> {studentName}
-                    </p>
-                  )}
                 </div>
-                <span className={`gm-badge ${code.is_used ? 'gm-badge-blue' : 'gm-badge-success'}`}>
+                <span className={`gm-badge ${code.is_used ? 'gm-badge-blue' : 'gm-badge-muted'}`}>
                   {code.is_used ? '1 уч.' : 'Ожидает'}
                 </span>
               </div>
+
+              {/* Информация об ученике - если присоединился */}
+              {code.is_used && studentName && (
+                <div className="iim-student-row">
+                  <div className="iim-student-mini-avatar">{getInitials(studentName)}</div>
+                  <span className="iim-student-mini-name">{studentName}</span>
+                </div>
+              )}
 
               <div className="iim-code-row">
                 <span className="iim-code-label">Код:</span>
@@ -386,16 +395,16 @@ const IndividualInviteList = ({ data, navigate }) => {
                   </>
                 ) : (
                   <>
-                    {/* Открыть - только для присоединившихся */}
-                    {code.is_used && code.group_id && (
-                      <button
-                        type="button"
-                        className="gm-btn-primary"
-                        onClick={() => navigate && navigate(`/attendance/${code.group_id}`)}
-                      >
-                        Открыть
-                      </button>
-                    )}
+                    {/* Открыть - всегда показываем, disabled если нет ученика */}
+                    <button
+                      type="button"
+                      className="gm-btn-primary"
+                      onClick={() => code.group_id && navigate && navigate(`/attendance/${code.group_id}`)}
+                      disabled={!code.is_used || !code.group_id}
+                      title={!code.is_used ? 'Ожидает присоединения ученика' : ''}
+                    >
+                      Открыть
+                    </button>
                     <button
                       type="button"
                       className="gm-btn-surface"
@@ -410,16 +419,16 @@ const IndividualInviteList = ({ data, navigate }) => {
                     >
                       Пригласить
                     </button>
-                    {/* Ученики - только для присоединившихся */}
-                    {code.is_used && (
-                      <button
-                        type="button"
-                        className="gm-btn-surface"
-                        onClick={() => data.setStudentModalCode(code)}
-                      >
-                        Ученик
-                      </button>
-                    )}
+                    {/* Ученики - всегда показываем, disabled если нет ученика */}
+                    <button
+                      type="button"
+                      className="gm-btn-surface"
+                      onClick={() => code.is_used && data.setStudentModalCode(code)}
+                      disabled={!code.is_used}
+                      title={!code.is_used ? 'Ожидает присоединения ученика' : ''}
+                    >
+                      Ученики
+                    </button>
                     <button
                       type="button"
                       className="gm-btn-danger"
@@ -466,6 +475,30 @@ const IndividualInviteList = ({ data, navigate }) => {
         onClose={() => data.setStudentModalCode(null)}
         title="Ученик"
         size="small"
+        footer={
+          <div className="iim-modal-footer">
+            <button
+              type="button"
+              className="gm-btn-surface"
+              onClick={() => data.setStudentModalCode(null)}
+            >
+              Закрыть
+            </button>
+            {allGroups.length > 0 && data.studentModalCode.group_id && (
+              <button
+                type="button"
+                className="gm-btn-primary"
+                onClick={() => {
+                  setShowTransferModal(data.studentModalCode);
+                  setTargetGroupId('');
+                  data.setStudentModalCode(null);
+                }}
+              >
+                Перенести в группу
+              </button>
+            )}
+          </div>
+        }
       >
         <div className="iim-student-modal">
           <div className="iim-student-info">
@@ -499,6 +532,69 @@ const IndividualInviteList = ({ data, navigate }) => {
               </div>
             )}
           </div>
+        </div>
+      </Modal>
+    )}
+
+    {/* Модалка переноса в группу */}
+    {showTransferModal && (
+      <Modal
+        isOpen={Boolean(showTransferModal)}
+        onClose={() => setShowTransferModal(null)}
+        title="Перенести ученика в группу"
+        size="small"
+        footer={
+          <div className="iim-modal-footer">
+            <button
+              type="button"
+              className="gm-btn-surface"
+              onClick={() => setShowTransferModal(null)}
+              disabled={transferring}
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              className="gm-btn-primary"
+              disabled={!targetGroupId || transferring}
+              onClick={async () => {
+                if (!targetGroupId || !showTransferModal.group_id || !showTransferModal.used_by) return;
+                setTransferring(true);
+                try {
+                  await transferStudent(
+                    showTransferModal.group_id,
+                    showTransferModal.used_by,
+                    Number(targetGroupId)
+                  );
+                  setShowTransferModal(null);
+                  setTargetGroupId('');
+                  if (onGroupsChanged) onGroupsChanged();
+                } catch (error) {
+                  console.error('Error transferring student:', error);
+                } finally {
+                  setTransferring(false);
+                }
+              }}
+            >
+              {transferring ? 'Перенос...' : 'Перенести'}
+            </button>
+          </div>
+        }
+      >
+        <div className="iim-transfer-modal">
+          <p className="iim-transfer-info">
+            Перенести <strong>{showTransferModal.used_by_name || 'ученика'}</strong> из индивидуальных занятий в группу:
+          </p>
+          <Select
+            value={targetGroupId}
+            onChange={(e) => setTargetGroupId(e.target.value)}
+            options={[
+              { value: '', label: 'Выберите группу...' },
+              ...allGroups
+                .filter(g => !g.name.startsWith('Индивидуально •'))
+                .map(g => ({ value: String(g.id), label: g.name }))
+            ]}
+          />
         </div>
       </Modal>
     )}
