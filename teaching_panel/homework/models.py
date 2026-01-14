@@ -175,11 +175,23 @@ class Answer(models.Model):
         homework = q.homework
         
         if q.question_type == 'TEXT':
-            # Проверяем, включена ли AI проверка
-            if use_ai and homework.ai_grading_enabled:
+            # Сначала проверяем, есть ли correctAnswer в config
+            correct_answer = config.get('correctAnswer', '').strip()
+            student_answer = (self.text_answer or '').strip()
+            
+            if correct_answer:
+                # Есть эталонный ответ - сравниваем (регистронезависимо)
+                if student_answer.lower() == correct_answer.lower():
+                    self.auto_score = q.points
+                    self.needs_manual_review = False
+                else:
+                    self.auto_score = 0
+                    self.needs_manual_review = False
+            elif use_ai and homework.ai_grading_enabled:
+                # Нет эталонного ответа, но включена AI проверка
                 self._evaluate_with_ai(homework)
             else:
-                # Текстовые ответы требуют ручной проверки
+                # Нет эталонного ответа и нет AI - ручная проверка
                 self.needs_manual_review = True
                 self.auto_score = None
             
