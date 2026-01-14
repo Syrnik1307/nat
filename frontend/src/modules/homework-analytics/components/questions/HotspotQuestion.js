@@ -56,7 +56,10 @@ const HotspotQuestion = React.memo(({ question, onChange }) => {
         <FileUploader
           fileType="image"
           currentUrl={config.imageUrl || ''}
-          onUploadSuccess={(url) => updateConfig({ imageUrl: url })}
+          onUploadSuccess={(url, fileData) => updateConfig({
+            imageUrl: url,
+            imageFileId: fileData?.file_id || null,
+          })}
           accept="image/*"
         />
         <small className="gm-hint">Загрузите изображение (JPG, PNG, GIF, WebP, до 50 МБ)</small>

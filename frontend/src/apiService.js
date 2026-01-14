@@ -313,6 +313,12 @@ export const getHomework = (id) => apiClient.get(`homework/${id}/`);
 export const createHomework = (data) => apiClient.post('homework/', data);
 export const updateHomework = (id, data) => apiClient.put(`homework/${id}/`, data);
 export const deleteHomework = (id) => apiClient.delete(`homework/${id}/`);
+
+// Homework Templates
+export const getHomeworkTemplates = () => apiClient.get('homework/', { params: { is_template: 1 } });
+export const saveAsTemplate = (homeworkId) => apiClient.post(`homework/${homeworkId}/save-as-template/`);
+export const instantiateTemplate = (templateId, data) => apiClient.post(`homework/${templateId}/instantiate/`, data);
+
 export const uploadHomeworkFile = (file, fileType) => {
   const formData = new FormData();
   formData.append('file', file);

@@ -24,14 +24,23 @@ class HomeworkViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_authenticated:
             if getattr(user, 'role', None) == 'teacher':
-                return qs.filter(teacher=user)
+                is_template = self.request.query_params.get('is_template')
+                if is_template == '1':
+                    return qs.filter(teacher=user, is_template=True)
+                if is_template == '0':
+                    return qs.filter(teacher=user, is_template=False)
+                # default: показываем обычные ДЗ
+                return qs.filter(teacher=user, is_template=False)
             elif getattr(user, 'role', None) == 'student':
                 # Студенты видят только опубликованные ДЗ из своих групп
                 # .distinct() нужен т.к. студент может быть в нескольких группах,
                 # что приводит к дубликатам при JOIN
                 return (
-                    qs.filter(status='published').filter(
-                        Q(lesson__group__students=user) | Q(submissions__student=user)
+                    qs.filter(status='published', is_template=False).filter(
+                        Q(lesson__group__students=user) |
+                        Q(assigned_groups__students=user) |
+                        Q(assigned_students=user) |
+                        Q(submissions__student=user)
                     )
                 ).distinct()
         return qs.none()
@@ -146,85 +155,330 @@ class HomeworkViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            # Используем локальное хранение вместо Google Drive
+            from django.conf import settings
+            from django.utils.text import get_valid_filename
             import os
             import time
             import uuid
-            from django.conf import settings
-            from django.utils.text import get_valid_filename
-            
-            # БЕЗОПАСНАЯ санитизация имени файла (защита от Path Traversal)
+
             timestamp = int(time.time())
-            # 1. Убираем путь (../../../etc/passwd → passwd)
             original_name = os.path.basename(uploaded_file.name)
-            # 2. Удаляем все опасные символы
             safe_name = get_valid_filename(original_name)
-            # 3. Добавляем уникальный идентификатор для предотвращения коллизий
-            file_name = f"homework_teacher{request.user.id}_{timestamp}_{uuid.uuid4().hex[:8]}_{safe_name}"
-            
-            # Создаём директорию для homework файлов
+            storage_name = f"homework_teacher{request.user.id}_{timestamp}_{uuid.uuid4().hex[:8]}_{safe_name}"
+
+            # Если включен Google Drive — грузим туда (в папку учителя /Homework/Uploads)
+            if getattr(settings, 'USE_GDRIVE_STORAGE', False):
+                from schedule.gdrive_utils import get_gdrive_manager
+
+                gdrive = get_gdrive_manager()
+                teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
+                homework_root_folder_id = teacher_folders.get('homework')
+
+                # создаём подпапку Uploads
+                def get_or_create_subfolder(folder_name, parent_id):
+                    try:
+                        query = (
+                            f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' "
+                            f"and trashed=false and '{parent_id}' in parents"
+                        )
+                        results = gdrive.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+                        items = results.get('files', [])
+                        if items:
+                            return items[0]['id']
+                    except Exception:
+                        pass
+                    return gdrive.create_folder(folder_name, parent_id)
+
+                uploads_folder_id = get_or_create_subfolder('Uploads', homework_root_folder_id)
+                result = gdrive.upload_file(
+                    uploaded_file,
+                    storage_name,
+                    folder_id=uploads_folder_id,
+                    mime_type=mime_type,
+                    teacher=request.user
+                )
+
+                file_id = result['file_id']
+                file_url = gdrive.get_direct_download_link(file_id)
+                logger.info(f"Teacher {request.user.email} uploaded homework file to GDrive: {storage_name} -> {file_id}")
+
+                return Response({
+                    'status': 'success',
+                    'url': file_url,
+                    'download_url': file_url,
+                    'file_id': file_id,
+                    'file_name': uploaded_file.name,
+                    'mime_type': mime_type,
+                    'size': uploaded_file.size
+                }, status=status.HTTP_201_CREATED)
+
+            # Fallback: локальное хранение (dev)
             homework_media_dir = os.path.join(settings.MEDIA_ROOT, 'homework_files')
             os.makedirs(homework_media_dir, exist_ok=True)
-            
-            # Путь к файлу
-            file_path = os.path.join(homework_media_dir, file_name)
-            
-            # Сохраняем файл на диск
+            file_path = os.path.join(homework_media_dir, storage_name)
             with open(file_path, 'wb+') as destination:
                 for chunk in uploaded_file.chunks():
                     destination.write(chunk)
-            
-            # Логирование
+            file_url = f"{settings.MEDIA_URL}homework_files/{storage_name}"
             logger.info(
-                f"Teacher {request.user.email} uploaded homework file: "
-                f"{file_name} ({mime_type}, {uploaded_file.size} bytes) to local storage"
+                f"Teacher {request.user.email} uploaded homework file to local storage: "
+                f"{storage_name} ({mime_type}, {uploaded_file.size} bytes)"
             )
-            
-            # Генерируем URL для доступа
-            file_url = f"{settings.MEDIA_URL}homework_files/{file_name}"
-            
-            # Возвращаем URL для встраивания в вопрос
             return Response({
                 'status': 'success',
                 'url': file_url,
                 'download_url': file_url,
-                'file_id': file_name,
+                'file_id': storage_name,
                 'file_name': uploaded_file.name,
                 'mime_type': mime_type,
                 'size': uploaded_file.size
             }, status=status.HTTP_201_CREATED)
-            
+
         except Exception as e:
             logger.error(f"Failed to upload homework file: {e}", exc_info=True)
-            return Response(
-                {'detail': f'Ошибка загрузки файла: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({'detail': f'Ошибка загрузки файла: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _notify_students_about_new_homework(self, homework: Homework):
+        # Получатели: группы (assigned_groups) + индивидуальные ученики (assigned_students)
+        students = set()
+        try:
+            for group in homework.assigned_groups.all():
+                for st in group.students.filter(is_active=True):
+                    students.add(st)
+        except Exception:
+            pass
+        try:
+            for st in homework.assigned_students.filter(is_active=True):
+                students.add(st)
+        except Exception:
+            pass
+
+        # Backward compat: если ДЗ привязано к уроку/группе — тоже уведомляем
         lesson = getattr(homework, 'lesson', None)
-        if not lesson or not getattr(lesson, 'group', None):
-            return
-        students = list(lesson.group.students.filter(is_active=True))
+        if lesson and getattr(lesson, 'group', None):
+            for st in lesson.group.students.filter(is_active=True):
+                students.add(st)
+
+        students = list(students)
         if not students:
             return
 
         teacher_name = homework.teacher.get_full_name() or homework.teacher.email
-        start_local = timezone.localtime(lesson.start_time) if lesson.start_time else None
+        start_local = timezone.localtime(lesson.start_time) if (lesson and lesson.start_time) else None
         scheduled_line = ''
         if start_local:
             scheduled_line = f"\nСтарт урока: {start_local.strftime('%d.%m %H:%M')}"
 
+        group_label = ''
+        try:
+            group_names = list(homework.assigned_groups.values_list('name', flat=True)[:3])
+            if group_names:
+                group_label = f"\nГруппы: {', '.join(group_names)}"
+        except Exception:
+            pass
+        if not group_label and lesson and getattr(lesson, 'group', None):
+            group_label = f"\nГруппа: {lesson.group.name}"
+
         message = (
             f"📚 Новое домашнее задание: {homework.title}\n"
             f"Преподаватель: {teacher_name}\n"
-            f"Группа: {lesson.group.name}" 
+            f"{group_label}"
             f"{scheduled_line}\n"
             "Зайдите в Teaching Panel, чтобы посмотреть детали."
         )
 
         for student in students:
             send_telegram_notification(student, 'new_homework', message)
+
+    @action(detail=True, methods=['post'], url_path='save-as-template')
+    def save_as_template(self, request, pk=None):
+        """Создать шаблон (архив) на основе существующего ДЗ (с копией вложений)."""
+        from django.db import transaction
+        import copy as pycopy
+        from django.conf import settings
+
+        source = self.get_object()
+        if source.is_template:
+            return Response({'detail': 'Это уже шаблон'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            template = Homework.objects.create(
+                teacher=source.teacher,
+                lesson=None,
+                title=source.title,
+                description=source.description,
+                status='archived',
+                deadline=None,
+                max_score=source.max_score,
+                is_template=True,
+                ai_grading_enabled=source.ai_grading_enabled,
+                ai_provider=source.ai_provider,
+                ai_grading_prompt=source.ai_grading_prompt,
+            )
+
+            # Создаём папку шаблона на Drive и копируем вложения
+            gdrive = None
+            assets_folder_id = None
+            if getattr(settings, 'USE_GDRIVE_STORAGE', False):
+                try:
+                    from schedule.gdrive_utils import get_gdrive_manager
+                    gdrive = get_gdrive_manager()
+                    teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
+                    homework_root = teacher_folders.get('homework')
+
+                    def get_or_create_subfolder(folder_name, parent_id):
+                        query = (
+                            f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' "
+                            f"and trashed=false and '{parent_id}' in parents"
+                        )
+                        res = gdrive.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+                        items = res.get('files', [])
+                        if items:
+                            return items[0]['id']
+                        return gdrive.create_folder(folder_name, parent_id)
+
+                    templates_root = get_or_create_subfolder('Templates', homework_root)
+                    template_folder = gdrive.create_folder(f"Template_{template.id}", templates_root)
+                    assets_folder_id = get_or_create_subfolder('Assets', template_folder)
+                    template.gdrive_folder_id = template_folder
+                    template.save(update_fields=['gdrive_folder_id'])
+                except Exception:
+                    gdrive = None
+                    assets_folder_id = None
+
+            from .models import Question as QModel, Choice as CModel
+
+            for q in source.questions.all().prefetch_related('choices'):
+                cfg = pycopy.deepcopy(q.config) if isinstance(q.config, dict) else {}
+
+                if gdrive and assets_folder_id:
+                    for key_url, key_id in (('imageUrl', 'imageFileId'), ('audioUrl', 'audioFileId')):
+                        file_id = cfg.get(key_id)
+                        if file_id:
+                            try:
+                                copied = gdrive.copy_file(file_id, parent_folder_id=assets_folder_id)
+                                new_id = copied.get('file_id')
+                                if new_id:
+                                    cfg[key_id] = new_id
+                                    cfg[key_url] = gdrive.get_direct_download_link(new_id)
+                            except Exception:
+                                pass
+
+                created_q = QModel.objects.create(
+                    homework=template,
+                    prompt=q.prompt,
+                    question_type=q.question_type,
+                    points=q.points,
+                    order=q.order,
+                    config=cfg,
+                )
+                for c in q.choices.all():
+                    CModel.objects.create(question=created_q, text=c.text, is_correct=c.is_correct)
+
+        return Response({'status': 'success', 'template_id': template.id}, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='instantiate')
+    def instantiate(self, request, pk=None):
+        """Создать копию ДЗ из шаблона и назначить группам/ученикам (с копией вложений)."""
+        from django.db import transaction
+        import copy as pycopy
+        from django.conf import settings
+
+        template = self.get_object()
+        if not template.is_template:
+            return Response({'detail': 'instantiate доступен только для шаблонов'}, status=status.HTTP_400_BAD_REQUEST)
+
+        title = request.data.get('title') or template.title
+        description = request.data.get('description') or template.description
+        from django.utils.dateparse import parse_datetime
+        deadline_raw = request.data.get('deadline')
+        deadline = parse_datetime(deadline_raw) if deadline_raw else None
+        max_score = request.data.get('max_score')
+        group_ids = request.data.get('group_ids') or []
+        student_ids = request.data.get('student_ids') or []
+        publish_now = bool(request.data.get('publish', True))
+
+        with transaction.atomic():
+            new_hw = Homework.objects.create(
+                teacher=request.user,
+                lesson=None,
+                title=title,
+                description=description,
+                status='draft',
+                deadline=deadline,
+                max_score=int(max_score) if max_score is not None else template.max_score,
+                is_template=False,
+                ai_grading_enabled=template.ai_grading_enabled,
+                ai_provider=template.ai_provider,
+                ai_grading_prompt=template.ai_grading_prompt,
+            )
+            if group_ids:
+                new_hw.assigned_groups.set(group_ids)
+            if student_ids:
+                new_hw.assigned_students.set(student_ids)
+
+            gdrive = None
+            assets_folder_id = None
+            if getattr(settings, 'USE_GDRIVE_STORAGE', False):
+                try:
+                    from schedule.gdrive_utils import get_gdrive_manager
+                    gdrive = get_gdrive_manager()
+                    teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
+                    homework_root = teacher_folders.get('homework')
+
+                    def get_or_create_subfolder(folder_name, parent_id):
+                        query = (
+                            f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' "
+                            f"and trashed=false and '{parent_id}' in parents"
+                        )
+                        res = gdrive.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+                        items = res.get('files', [])
+                        if items:
+                            return items[0]['id']
+                        return gdrive.create_folder(folder_name, parent_id)
+
+                    assignments_root = get_or_create_subfolder('Assignments', homework_root)
+                    hw_folder = gdrive.create_folder(f"HW_{new_hw.id}", assignments_root)
+                    assets_folder_id = get_or_create_subfolder('Assets', hw_folder)
+                    new_hw.gdrive_folder_id = hw_folder
+                    new_hw.save(update_fields=['gdrive_folder_id'])
+                except Exception:
+                    gdrive = None
+                    assets_folder_id = None
+
+            from .models import Question as QModel, Choice as CModel
+            for q in template.questions.all().prefetch_related('choices'):
+                cfg = pycopy.deepcopy(q.config) if isinstance(q.config, dict) else {}
+                if gdrive and assets_folder_id:
+                    for key_url, key_id in (('imageUrl', 'imageFileId'), ('audioUrl', 'audioFileId')):
+                        file_id = cfg.get(key_id)
+                        if file_id:
+                            try:
+                                copied = gdrive.copy_file(file_id, parent_folder_id=assets_folder_id)
+                                new_id = copied.get('file_id')
+                                if new_id:
+                                    cfg[key_id] = new_id
+                                    cfg[key_url] = gdrive.get_direct_download_link(new_id)
+                            except Exception:
+                                pass
+                created_q = QModel.objects.create(
+                    homework=new_hw,
+                    prompt=q.prompt,
+                    question_type=q.question_type,
+                    points=q.points,
+                    order=q.order,
+                    config=cfg,
+                )
+                for c in q.choices.all():
+                    CModel.objects.create(question=created_q, text=c.text, is_correct=c.is_correct)
+
+            if publish_now:
+                new_hw.status = 'published'
+                new_hw.published_at = timezone.now()
+                new_hw.save(update_fields=['status', 'published_at'])
+                self._notify_students_about_new_homework(new_hw)
+
+        return Response({'status': 'success', 'homework_id': new_hw.id}, status=status.HTTP_201_CREATED)
 
 
 class StudentSubmissionViewSet(viewsets.ModelViewSet):

@@ -390,6 +390,44 @@ class GoogleDriveManager:
         except Exception as e:
             logger.error(f"Failed to set file as public: {e}")
             raise
+
+    def copy_file(self, file_id, parent_folder_id=None, new_name=None, make_public=True):
+        """Скопировать файл в другую папку Google Drive.
+
+        Используем для: шаблоны ДЗ → копии ДЗ (чтобы удаление шаблона не ломало назначенное).
+
+        Args:
+            file_id: исходный Google Drive fileId
+            parent_folder_id: папка назначения (parents)
+            new_name: новое имя файла (optional)
+            make_public: сделать копию доступной по ссылке
+
+        Returns:
+            dict: {file_id, name, size, web_view_link, web_content_link}
+        """
+        body = {}
+        if new_name:
+            body['name'] = new_name
+        if parent_folder_id:
+            body['parents'] = [parent_folder_id]
+
+        copied = self.service.files().copy(
+            fileId=file_id,
+            body=body,
+            fields='id, name, size, webViewLink, webContentLink'
+        ).execute()
+
+        new_id = copied.get('id')
+        if make_public and new_id:
+            self.set_file_public(new_id)
+
+        return {
+            'file_id': new_id,
+            'name': copied.get('name'),
+            'size': int(copied.get('size', 0) or 0),
+            'web_view_link': copied.get('webViewLink'),
+            'web_content_link': copied.get('webContentLink'),
+        }
     
     def get_direct_download_link(self, file_id):
         """

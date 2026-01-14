@@ -124,6 +124,10 @@ const AppRoutes = () => {
             element={<Protected allowRoles={['teacher']}><HomeworkPage /></Protected>}
           />
           <Route
+            path="/homework/templates"
+            element={<Protected allowRoles={['teacher']}><HomeworkPage /></Protected>}
+          />
+          <Route
             path="/homework/to-review"
             element={<Protected allowRoles={['teacher']}><HomeworkPage /></Protected>}
           />

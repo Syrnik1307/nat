@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from schedule.models import Lesson
+from schedule.models import Group
 
 
 class Homework(models.Model):
@@ -18,10 +19,40 @@ class Homework(models.Model):
     
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='homeworks', limit_choices_to={'role': 'teacher'})
     lesson = models.ForeignKey(Lesson, on_delete=models.SET_NULL, null=True, blank=True, related_name='homeworks')
+
+    # Assignment targeting (independent from lesson)
+    assigned_groups = models.ManyToManyField(
+        Group,
+        blank=True,
+        related_name='homeworks',
+        help_text='Группы, которым назначено ДЗ (без привязки к уроку)'
+    )
+    assigned_students = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name='assigned_homeworks',
+        limit_choices_to={'role': 'student'},
+        help_text='Индивидуально назначенные ученики (показывать даже без группы)'
+    )
+
+    # Templates / archive
+    is_template = models.BooleanField(
+        default=False,
+        help_text='Если true — это шаблон (архив) для переиспользования'
+    )
+
+    # Storage / structure on Google Drive
+    gdrive_folder_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text='ID папки Google Drive, где лежат материалы ДЗ/шаблона'
+    )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     deadline = models.DateTimeField(null=True, blank=True, help_text='Крайний срок сдачи')
+    max_score = models.IntegerField(default=100, help_text='Максимальный балл (UI/контрольная сумма)')
     published_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

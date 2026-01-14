@@ -35,7 +35,10 @@ const ListeningQuestion = React.memo(({ question, onChange }) => {
         <FileUploader
           fileType="audio"
           currentUrl={config.audioUrl || ''}
-          onUploadSuccess={(url) => updateConfig({ audioUrl: url })}
+          onUploadSuccess={(url, fileData) => updateConfig({
+            audioUrl: url,
+            audioFileId: fileData?.file_id || null,
+          })}
           accept="audio/*"
         />
         <small className="gm-hint">Загрузите аудио (MP3, WAV, OGG, до 50 МБ)</small>

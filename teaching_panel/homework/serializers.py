@@ -2,6 +2,7 @@ import copy
 from rest_framework import serializers
 from .models import Homework, Question, Choice, StudentSubmission, Answer
 from accounts.models import CustomUser
+from django.conf import settings
 
 
 class ChoiceSerializer(serializers.ModelSerializer):
@@ -29,6 +30,20 @@ def sanitize_question_config(question: Question):
 
     config = copy.deepcopy(raw_config)
     q_type = question.question_type
+
+    # Backward/forward compat: если фронт хранит только fileId, а url отсутствует — добавим.
+    # Это нужно для шаблонов/копирования вложений на Google Drive.
+    try:
+        if getattr(settings, 'USE_GDRIVE_STORAGE', False):
+            image_file_id = config.get('imageFileId')
+            if image_file_id and not config.get('imageUrl'):
+                config['imageUrl'] = f"https://drive.google.com/uc?export=download&id={image_file_id}"
+            audio_file_id = config.get('audioFileId')
+            if audio_file_id and not config.get('audioUrl'):
+                config['audioUrl'] = f"https://drive.google.com/uc?export=download&id={audio_file_id}"
+    except Exception:
+        # Не должны ломать выдачу ДЗ ученикам из-за вспомогательной логики
+        pass
 
     if q_type == 'TEXT':
         config.pop('correctAnswer', None)
@@ -114,21 +129,62 @@ class QuestionStudentSerializer(serializers.ModelSerializer):
 class HomeworkSerializer(serializers.ModelSerializer):
     teacher_email = serializers.EmailField(source='teacher.email', read_only=True)
     questions = QuestionSerializer(many=True, required=False)
+    assigned_group_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+    assigned_student_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+    group_id = serializers.SerializerMethodField(read_only=True)
+    group_name = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Homework
         fields = [
             'id', 'title', 'description', 'teacher', 'teacher_email', 'lesson', 
             'questions', 'created_at', 'updated_at',
+            'status', 'deadline', 'published_at', 'max_score',
+            'is_template', 'gdrive_folder_id',
+            'assigned_group_ids', 'assigned_student_ids',
+            'group_id', 'group_name',
             # AI grading fields
             'ai_grading_enabled', 'ai_provider', 'ai_grading_prompt'
         ]
         read_only_fields = ['teacher']
 
+    def get_group_id(self, obj: Homework):
+        # Для совместимости со старым UI: если назначено ровно на 1 группу — возвращаем её.
+        try:
+            group_ids = list(obj.assigned_groups.values_list('id', flat=True)[:2])
+            if len(group_ids) == 1:
+                return group_ids[0]
+        except Exception:
+            pass
+        if obj.lesson and getattr(obj.lesson, 'group', None):
+            return obj.lesson.group.id
+        return None
+
+    def get_group_name(self, obj: Homework):
+        try:
+            groups = list(obj.assigned_groups.all()[:2])
+            if len(groups) == 1:
+                return groups[0].name
+            if len(groups) > 1:
+                return 'Несколько групп'
+        except Exception:
+            pass
+        if obj.lesson and getattr(obj.lesson, 'group', None):
+            return obj.lesson.group.name
+        return 'Без группы'
+
     def create(self, validated_data):
+        assigned_group_ids = validated_data.pop('assigned_group_ids', [])
+        assigned_student_ids = validated_data.pop('assigned_student_ids', [])
         questions_data = validated_data.pop('questions', [])
         validated_data['teacher'] = self.context['request'].user
         homework = Homework.objects.create(**validated_data)
+
+        if assigned_group_ids:
+            homework.assigned_groups.set(assigned_group_ids)
+        if assigned_student_ids:
+            homework.assigned_students.set(assigned_student_ids)
+
         for q in questions_data:
             choices = q.pop('choices', [])
             question = Question.objects.create(homework=homework, **q)
@@ -136,16 +192,71 @@ class HomeworkSerializer(serializers.ModelSerializer):
                 Choice.objects.create(question=question, **c)
         return homework
 
+    def update(self, instance, validated_data):
+        assigned_group_ids = validated_data.pop('assigned_group_ids', None)
+        assigned_student_ids = validated_data.pop('assigned_student_ids', None)
+        questions_data = validated_data.pop('questions', None)
+
+        for attr, val in validated_data.items():
+            setattr(instance, attr, val)
+        instance.save()
+
+        if assigned_group_ids is not None:
+            instance.assigned_groups.set(assigned_group_ids)
+        if assigned_student_ids is not None:
+            instance.assigned_students.set(assigned_student_ids)
+
+        if questions_data is not None:
+            instance.questions.all().delete()
+            for q in questions_data:
+                choices = q.pop('choices', [])
+                question = Question.objects.create(homework=instance, **q)
+                for c in choices:
+                    Choice.objects.create(question=question, **c)
+
+        return instance
+
 
 class HomeworkStudentSerializer(serializers.ModelSerializer):
     """Чтение ДЗ учениками: без баллов и без флагов правильности."""
     teacher_email = serializers.EmailField(source='teacher.email', read_only=True)
     questions = QuestionStudentSerializer(many=True, read_only=True)
+    group_id = serializers.SerializerMethodField(read_only=True)
+    group_name = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Homework
-        fields = ['id', 'title', 'description', 'teacher', 'teacher_email', 'lesson', 'questions', 'created_at']
+        fields = [
+            'id', 'title', 'description', 'teacher', 'teacher_email', 'lesson',
+            'deadline', 'max_score',
+            'group_id', 'group_name',
+            'questions', 'created_at'
+        ]
         read_only_fields = fields
+
+    def get_group_id(self, obj: Homework):
+        try:
+            group_ids = list(obj.assigned_groups.values_list('id', flat=True)[:2])
+            if len(group_ids) == 1:
+                return group_ids[0]
+        except Exception:
+            pass
+        if obj.lesson and getattr(obj.lesson, 'group', None):
+            return obj.lesson.group.id
+        return None
+
+    def get_group_name(self, obj: Homework):
+        try:
+            groups = list(obj.assigned_groups.all()[:2])
+            if len(groups) == 1:
+                return groups[0].name
+            if len(groups) > 1:
+                return 'Несколько групп'
+        except Exception:
+            pass
+        if obj.lesson and getattr(obj.lesson, 'group', None):
+            return obj.lesson.group.name
+        return 'Без группы'
 
 
 class AnswerSerializer(serializers.ModelSerializer):

@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { apiClient, uploadHomeworkFile } from '../../../../apiService';
+import { apiClient, uploadHomeworkFile, saveAsTemplate } from '../../../../apiService';
 import { Modal, Button } from '../../../../shared/components';
 import useHomeworkConstructor from '../../hooks/useHomeworkConstructor';
 import {
@@ -169,6 +169,7 @@ const HomeworkConstructor = () => {
   const [previewQuestion, setPreviewQuestion] = useState(0);
   const [confirmDialog, setConfirmDialog] = useState({ open: false });
   const [uploadingImageFor, setUploadingImageFor] = useState(null); // index вопроса
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   // Обработка вставки изображения прямо в карточку вопроса
   const handleCardPaste = useCallback(async (event, questionIndex) => {
@@ -193,7 +194,7 @@ const HomeworkConstructor = () => {
                 const q = updated[questionIndex];
                 updated[questionIndex] = {
                   ...q,
-                  config: { ...q.config, imageUrl: response.data.url }
+                  config: { ...q.config, imageUrl: response.data.url, imageFileId: response.data.file_id || null }
                 };
                 return updated;
               });
@@ -501,6 +502,26 @@ const HomeworkConstructor = () => {
           >
             Опубликовать
           </button>
+          {homeworkId && (
+            <button
+              type="button"
+              className="gm-btn-surface hc-action-btn"
+              onClick={async () => {
+                setSavingTemplate(true);
+                try {
+                  await saveAsTemplate(homeworkId);
+                  setFeedback({ type: 'success', message: 'Шаблон сохранён! Перейдите во вкладку Шаблоны.' });
+                } catch (err) {
+                  setFeedback({ type: 'error', message: err.response?.data?.detail || 'Ошибка сохранения шаблона' });
+                } finally {
+                  setSavingTemplate(false);
+                }
+              }}
+              disabled={savingTemplate}
+            >
+              {savingTemplate ? 'Сохранение...' : '📋 В шаблоны'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -709,7 +730,11 @@ const HomeworkConstructor = () => {
                                           const updated = [...prev];
                                           updated[index] = {
                                             ...updated[index],
-                                            config: { ...updated[index].config, imageUrl: response.data.url }
+                                            config: {
+                                              ...updated[index].config,
+                                              imageUrl: response.data.url,
+                                              imageFileId: response.data.file_id || null,
+                                            }
                                           };
                                           return updated;
                                         });
@@ -737,7 +762,7 @@ const HomeworkConstructor = () => {
                                       const updated = [...prev];
                                       updated[index] = {
                                         ...updated[index],
-                                        config: { ...updated[index].config, imageUrl: null }
+                                        config: { ...updated[index].config, imageUrl: null, imageFileId: null }
                                       };
                                       return updated;
                                     });
