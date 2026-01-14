@@ -27,7 +27,9 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                 return qs.filter(teacher=user)
             elif getattr(user, 'role', None) == 'student':
                 # Студенты видят только опубликованные ДЗ из своих групп
-                return (qs.filter(lesson__group__students=user) | qs.filter(teacher__teaching_groups__students=user)).filter(status='published')
+                # .distinct() нужен т.к. студент может быть в нескольких группах,
+                # что приводит к дубликатам при JOIN
+                return (qs.filter(lesson__group__students=user) | qs.filter(teacher__teaching_groups__students=user)).filter(status='published').distinct()
         return qs.none()
 
     def get_serializer_class(self):
