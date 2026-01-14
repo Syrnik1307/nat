@@ -31,6 +31,7 @@ const HomeworkTake = () => {
   const [submitMessage, setSubmitMessage] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [resultData, setResultData] = useState(null);
+  const [imagePreview, setImagePreview] = useState({ open: false, url: '' });
 
   const questions = homework?.questions || [];
   const currentQuestion = questions[currentIndex];
@@ -158,6 +159,37 @@ const HomeworkTake = () => {
           )}
         </p>
       </Modal>
+
+      <Modal
+        isOpen={imagePreview.open}
+        onClose={() => setImagePreview({ open: false, url: '' })}
+        title="Изображение"
+        size="large"
+        closeOnBackdrop
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setImagePreview({ open: false, url: '' })}>
+              Закрыть
+            </Button>
+            {imagePreview.url ? (
+              <a
+                className="gm-btn-primary"
+                href={imagePreview.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Открыть в новой вкладке
+              </a>
+            ) : null}
+          </>
+        )}
+      >
+        {imagePreview.url ? (
+          <div className="ht-image-modal">
+            <img className="ht-image-modal-img" src={imagePreview.url} alt="Изображение" />
+          </div>
+        ) : null}
+      </Modal>
       <header className="ht-header">
         <div className="ht-header-primary">
           <h1 className="ht-title">{homework.title}</h1>
@@ -204,6 +236,9 @@ const HomeworkTake = () => {
                   <img 
                     src={currentQuestion.config.imageUrl} 
                     alt="Изображение к вопросу" 
+                    loading="lazy"
+                    decoding="async"
+                    onClick={() => setImagePreview({ open: true, url: currentQuestion.config.imageUrl })}
                   />
                 </div>
               )}
