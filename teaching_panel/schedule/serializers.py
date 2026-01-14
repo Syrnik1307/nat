@@ -698,6 +698,7 @@ class LessonMaterialSerializer(serializers.ModelSerializer):
     file_size_mb = serializers.SerializerMethodField()
     material_type_display = serializers.CharField(source='get_material_type_display', read_only=True)
     access_groups = serializers.SerializerMethodField()
+    access_students = serializers.SerializerMethodField()
     
     def get_lesson_info(self, obj):
         if not obj.lesson:
@@ -731,6 +732,12 @@ class LessonMaterialSerializer(serializers.ModelSerializer):
             for g in obj.allowed_groups.all()
         ]
     
+    def get_access_students(self, obj):
+        return [
+            {'id': s.id, 'name': s.get_full_name() or s.email, 'email': s.email}
+            for s in obj.allowed_students.all()
+        ]
+    
     class Meta:
         model = LessonMaterial
         fields = [
@@ -739,7 +746,7 @@ class LessonMaterialSerializer(serializers.ModelSerializer):
             'miro_board_id', 'miro_board_url', 'miro_embed_url', 'miro_thumbnail_url',
             'file_url', 'file_name', 'file_size_bytes', 'file_size_mb', 'gdrive_file_id',
             'content',
-            'visibility', 'allowed_groups', 'access_groups',
+            'visibility', 'allowed_groups', 'access_groups', 'allowed_students', 'access_students',
             'views_count', 'order',
             'uploaded_at', 'updated_at'
         ]

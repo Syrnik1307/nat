@@ -342,6 +342,34 @@ class GroupViewSet(viewsets.ModelViewSet):
             'to_group': GroupSerializer(to_group).data
         }, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def all_students(self, request):
+        """
+        Получить всех студентов из групп учителя.
+        Используется для выбора индивидуальной видимости материалов.
+        """
+        if request.user.role != 'teacher':
+            return Response(
+                {'error': 'Только для учителей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        teacher_groups = Group.objects.filter(teacher=request.user).prefetch_related('students')
+        students_dict = {}
+        
+        for group in teacher_groups:
+            for student in group.students.all():
+                if student.id not in students_dict:
+                    students_dict[student.id] = {
+                        'id': student.id,
+                        'email': student.email,
+                        'full_name': student.get_full_name() or student.email,
+                        'group_name': group.name,
+                        'group_id': group.id
+                    }
+        
+        return Response(list(students_dict.values()))
+
 
 class LessonViewSet(viewsets.ModelViewSet):
     """
@@ -2890,7 +2918,8 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
             qs = qs.filter(
                 Q(lesson__group__in=student_groups) |
                 Q(visibility='all_teacher_groups', lesson__group__in=student_groups) |
-                Q(visibility='custom_groups', allowed_groups__in=student_groups)
+                Q(visibility='custom_groups', allowed_groups__in=student_groups) |
+                Q(visibility='custom_students', allowed_students=user)
             ).distinct()
         
         # Фильтр по типу материала
@@ -3082,6 +3111,20 @@ def miro_add_board(request):
             groups = Group.objects.filter(id__in=group_ids, teacher=request.user)
             material.allowed_groups.set(groups)
     
+    # Добавляем студентов если нужно
+    if visibility == 'custom_students':
+        student_ids = request.data.get('allowed_students', [])
+        if student_ids:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            teacher_groups = Group.objects.filter(teacher=request.user)
+            students = User.objects.filter(
+                id__in=student_ids,
+                role='student',
+                enrolled_groups__in=teacher_groups
+            ).distinct()
+            material.allowed_students.set(students)
+    
     serializer = LessonMaterialSerializer(material)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -3234,6 +3277,21 @@ def add_notes(request):
             groups = Group.objects.filter(id__in=group_ids, teacher=request.user)
             material.allowed_groups.set(groups)
     
+    # Добавляем студентов если нужно
+    if visibility == 'custom_students':
+        student_ids = request.data.get('allowed_students', [])
+        if student_ids:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            # Только студенты из групп учителя
+            teacher_groups = Group.objects.filter(teacher=request.user)
+            students = User.objects.filter(
+                id__in=student_ids,
+                role='student',
+                enrolled_groups__in=teacher_groups
+            ).distinct()
+            material.allowed_students.set(students)
+    
     serializer = LessonMaterialSerializer(material)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -3296,6 +3354,27 @@ def add_document(request):
         file_size_bytes=request.data.get('file_size_bytes', 0) or 0,
         visibility=visibility
     )
+    
+    # Добавляем группы если нужно
+    if visibility == 'custom_groups':
+        group_ids = request.data.get('allowed_groups', [])
+        if group_ids:
+            groups = Group.objects.filter(id__in=group_ids, teacher=request.user)
+            material.allowed_groups.set(groups)
+    
+    # Добавляем студентов если нужно
+    if visibility == 'custom_students':
+        student_ids = request.data.get('allowed_students', [])
+        if student_ids:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            teacher_groups = Group.objects.filter(teacher=request.user)
+            students = User.objects.filter(
+                id__in=student_ids,
+                role='student',
+                enrolled_groups__in=teacher_groups
+            ).distinct()
+            material.allowed_students.set(students)
     
     serializer = LessonMaterialSerializer(material)
     return Response(serializer.data, status=status.HTTP_201_CREATED)

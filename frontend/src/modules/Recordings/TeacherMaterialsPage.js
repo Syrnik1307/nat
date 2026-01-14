@@ -14,6 +14,7 @@ function TeacherMaterialsPage() {
   const [materials, setMaterials] = useState({ miro: [], notes: [], document: [], link: [] });
   const [lessons, setLessons] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [students, setStudents] = useState([]);
   
   // UI State
   const [loading, setLoading] = useState(true);
@@ -32,7 +33,9 @@ function TeacherMaterialsPage() {
     title: '',
     description: '',
     lesson_id: '',
-    visibility: 'all_teacher_groups'
+    visibility: 'all_teacher_groups',
+    allowed_groups: [],
+    allowed_students: []
   });
   
   const [notesForm, setNotesForm] = useState({
@@ -40,7 +43,9 @@ function TeacherMaterialsPage() {
     content: '',
     description: '',
     lesson_id: '',
-    visibility: 'all_teacher_groups'
+    visibility: 'all_teacher_groups',
+    allowed_groups: [],
+    allowed_students: []
   });
   
   const [docForm, setDocForm] = useState({
@@ -49,7 +54,9 @@ function TeacherMaterialsPage() {
     description: '',
     lesson_id: '',
     material_type: 'document',
-    visibility: 'all_teacher_groups'
+    visibility: 'all_teacher_groups',
+    allowed_groups: [],
+    allowed_students: []
   });
 
   // Toasts & Confirm
@@ -95,7 +102,8 @@ function TeacherMaterialsPage() {
       await Promise.all([
         loadMaterials(),
         loadLessons(),
-        loadGroups()
+        loadGroups(),
+        loadStudents()
       ]);
     } catch (err) {
       console.error('Error loading data:', err);
@@ -139,6 +147,16 @@ function TeacherMaterialsPage() {
       setGroups(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error loading groups:', err);
+    }
+  };
+
+  const loadStudents = async () => {
+    try {
+      const response = await api.get('groups/all_students/', withScheduleApiBase());
+      const data = response.data || [];
+      setStudents(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error loading students:', err);
     }
   };
 
@@ -228,7 +246,7 @@ function TeacherMaterialsPage() {
       await api.post('miro/add-board/', miroForm, withScheduleApiBase());
       addToast({ type: 'success', title: 'Готово', message: 'Доска добавлена' });
       setShowAddMiroModal(false);
-      setMiroForm({ board_url: '', title: '', description: '', lesson_id: '', visibility: 'all_teacher_groups' });
+      setMiroForm({ board_url: '', title: '', description: '', lesson_id: '', visibility: 'all_teacher_groups', allowed_groups: [], allowed_students: [] });
       loadMaterials();
     } catch (err) {
       addToast({ type: 'error', title: 'Ошибка', message: err.response?.data?.error || 'Не удалось добавить' });
@@ -245,7 +263,7 @@ function TeacherMaterialsPage() {
       await api.post('materials/add-notes/', notesForm, withScheduleApiBase());
       addToast({ type: 'success', title: 'Готово', message: 'Конспект добавлен' });
       setShowAddNotesModal(false);
-      setNotesForm({ title: '', content: '', description: '', lesson_id: '', visibility: 'all_teacher_groups' });
+      setNotesForm({ title: '', content: '', description: '', lesson_id: '', visibility: 'all_teacher_groups', allowed_groups: [], allowed_students: [] });
       loadMaterials();
     } catch (err) {
       addToast({ type: 'error', title: 'Ошибка', message: err.response?.data?.error || 'Не удалось добавить' });
@@ -262,7 +280,7 @@ function TeacherMaterialsPage() {
       await api.post('materials/add-document/', docForm, withScheduleApiBase());
       addToast({ type: 'success', title: 'Готово', message: 'Документ добавлен' });
       setShowAddDocModal(false);
-      setDocForm({ title: '', file_url: '', description: '', lesson_id: '', material_type: 'document', visibility: 'all_teacher_groups' });
+      setDocForm({ title: '', file_url: '', description: '', lesson_id: '', material_type: 'document', visibility: 'all_teacher_groups', allowed_groups: [], allowed_students: [] });
       loadMaterials();
     } catch (err) {
       addToast({ type: 'error', title: 'Ошибка', message: err.response?.data?.error || 'Не удалось добавить' });
@@ -309,8 +327,16 @@ function TeacherMaterialsPage() {
   const visibilityOptions = [
     { value: 'all_teacher_groups', label: 'Все мои группы' },
     { value: 'lesson_group', label: 'Только группа урока' },
-    { value: 'custom_groups', label: 'Выбранные группы' }
+    { value: 'custom_groups', label: 'Выбранные группы' },
+    { value: 'custom_students', label: 'Выбранные ученики' }
   ];
+
+  const groupOptions = groups.map(g => ({ value: g.id, label: g.name }));
+  const studentOptions = students.map(s => ({ 
+    value: s.id, 
+    label: s.full_name || s.name || s.email,
+    group: s.group_name
+  }));
 
   const filterBySearch = (items, field = 'title') => {
     if (!searchTerm) return items;
@@ -644,10 +670,56 @@ function TeacherMaterialsPage() {
               <label>Видимость</label>
               <Select
                 value={miroForm.visibility}
-                onChange={(e) => setMiroForm({...miroForm, visibility: e.target.value})}
+                onChange={(e) => setMiroForm({...miroForm, visibility: e.target.value, allowed_groups: [], allowed_students: []})}
                 options={visibilityOptions}
               />
             </div>
+            
+            {miroForm.visibility === 'custom_groups' && (
+              <div className="form-group">
+                <label>Выберите группы</label>
+                <div className="checkbox-list">
+                  {groupOptions.map(g => (
+                    <label key={g.value} className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={miroForm.allowed_groups.includes(g.value)}
+                        onChange={(e) => {
+                          const newGroups = e.target.checked
+                            ? [...miroForm.allowed_groups, g.value]
+                            : miroForm.allowed_groups.filter(id => id !== g.value);
+                          setMiroForm({...miroForm, allowed_groups: newGroups});
+                        }}
+                      />
+                      <span>{g.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {miroForm.visibility === 'custom_students' && (
+              <div className="form-group">
+                <label>Выберите учеников</label>
+                <div className="checkbox-list">
+                  {studentOptions.map(s => (
+                    <label key={s.value} className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={miroForm.allowed_students.includes(s.value)}
+                        onChange={(e) => {
+                          const newStudents = e.target.checked
+                            ? [...miroForm.allowed_students, s.value]
+                            : miroForm.allowed_students.filter(id => id !== s.value);
+                          setMiroForm({...miroForm, allowed_students: newStudents});
+                        }}
+                      />
+                      <span>{s.label} {s.group && <small>({s.group})</small>}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             
             <div className="modal-footer">
               <button type="button" onClick={() => setShowAddMiroModal(false)} className="btn btn-secondary">
@@ -709,11 +781,57 @@ function TeacherMaterialsPage() {
                 <label>Видимость</label>
                 <Select
                   value={notesForm.visibility}
-                  onChange={(e) => setNotesForm({...notesForm, visibility: e.target.value})}
+                  onChange={(e) => setNotesForm({...notesForm, visibility: e.target.value, allowed_groups: [], allowed_students: []})}
                   options={visibilityOptions}
                 />
               </div>
             </div>
+            
+            {notesForm.visibility === 'custom_groups' && (
+              <div className="form-group">
+                <label>Выберите группы</label>
+                <div className="checkbox-list">
+                  {groupOptions.map(g => (
+                    <label key={g.value} className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={notesForm.allowed_groups.includes(g.value)}
+                        onChange={(e) => {
+                          const newGroups = e.target.checked
+                            ? [...notesForm.allowed_groups, g.value]
+                            : notesForm.allowed_groups.filter(id => id !== g.value);
+                          setNotesForm({...notesForm, allowed_groups: newGroups});
+                        }}
+                      />
+                      <span>{g.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {notesForm.visibility === 'custom_students' && (
+              <div className="form-group">
+                <label>Выберите учеников</label>
+                <div className="checkbox-list">
+                  {studentOptions.map(s => (
+                    <label key={s.value} className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={notesForm.allowed_students.includes(s.value)}
+                        onChange={(e) => {
+                          const newStudents = e.target.checked
+                            ? [...notesForm.allowed_students, s.value]
+                            : notesForm.allowed_students.filter(id => id !== s.value);
+                          setNotesForm({...notesForm, allowed_students: newStudents});
+                        }}
+                      />
+                      <span>{s.label} {s.group && <small>({s.group})</small>}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             
             <div className="modal-footer">
               <button type="button" onClick={() => setShowAddNotesModal(false)} className="btn btn-secondary">
@@ -790,11 +908,57 @@ function TeacherMaterialsPage() {
                 <label>Видимость</label>
                 <Select
                   value={docForm.visibility}
-                  onChange={(e) => setDocForm({...docForm, visibility: e.target.value})}
+                  onChange={(e) => setDocForm({...docForm, visibility: e.target.value, allowed_groups: [], allowed_students: []})}
                   options={visibilityOptions}
                 />
               </div>
             </div>
+            
+            {docForm.visibility === 'custom_groups' && (
+              <div className="form-group">
+                <label>Выберите группы</label>
+                <div className="checkbox-list">
+                  {groupOptions.map(g => (
+                    <label key={g.value} className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={docForm.allowed_groups.includes(g.value)}
+                        onChange={(e) => {
+                          const newGroups = e.target.checked
+                            ? [...docForm.allowed_groups, g.value]
+                            : docForm.allowed_groups.filter(id => id !== g.value);
+                          setDocForm({...docForm, allowed_groups: newGroups});
+                        }}
+                      />
+                      <span>{g.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {docForm.visibility === 'custom_students' && (
+              <div className="form-group">
+                <label>Выберите учеников</label>
+                <div className="checkbox-list">
+                  {studentOptions.map(s => (
+                    <label key={s.value} className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={docForm.allowed_students.includes(s.value)}
+                        onChange={(e) => {
+                          const newStudents = e.target.checked
+                            ? [...docForm.allowed_students, s.value]
+                            : docForm.allowed_students.filter(id => id !== s.value);
+                          setDocForm({...docForm, allowed_students: newStudents});
+                        }}
+                      />
+                      <span>{s.label} {s.group && <small>({s.group})</small>}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             
             <div className="modal-footer">
               <button type="button" onClick={() => setShowAddDocModal(false)} className="btn btn-secondary">

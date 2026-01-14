@@ -875,6 +875,7 @@ class LessonMaterial(models.Model):
         LESSON_GROUP = 'lesson_group', _('Только группа урока')
         ALL_TEACHER_GROUPS = 'all_teacher_groups', _('Все группы преподавателя')
         CUSTOM_GROUPS = 'custom_groups', _('Выбранные группы')
+        CUSTOM_STUDENTS = 'custom_students', _('Выбранные ученики')
     
     lesson = models.ForeignKey(
         'Lesson',
@@ -987,6 +988,14 @@ class LessonMaterial(models.Model):
         related_name='material_access',
         blank=True,
         verbose_name=_('доступные группы')
+    )
+    
+    allowed_students = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='material_access',
+        blank=True,
+        limit_choices_to={'role': 'student'},
+        verbose_name=_('доступные студенты')
     )
     
     uploaded_at = models.DateTimeField(_('дата загрузки'), auto_now_add=True)
