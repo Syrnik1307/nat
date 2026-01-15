@@ -42,6 +42,43 @@ const QUESTION_COMPONENTS = {
   HOTSPOT: HotspotQuestion,
 };
 
+// Нормализация URL для картинок (включая Google Drive)
+const normalizeUrl = (url) => {
+  if (!url) return '';
+  
+  // Конвертация Google Drive ссылок для inline отображения
+  if (url.includes('drive.google.com')) {
+    let fileId = null;
+    
+    // Формат: /uc?export=download&id=FILE_ID или /uc?id=FILE_ID
+    const ucMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (ucMatch) {
+      fileId = ucMatch[1];
+    }
+    
+    // Формат: /file/d/FILE_ID/view
+    const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileMatch) {
+      fileId = fileMatch[1];
+    }
+    
+    if (fileId) {
+      return `https://lh3.googleusercontent.com/d/${fileId}`;
+    }
+  }
+  
+  // Blob URL или полный URL
+  if (url.startsWith('blob:') || url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  
+  if (url.startsWith('/media')) {
+    return url;
+  }
+  
+  return `/media/${url}`;
+};
+
 const HomeworkPreviewSection = ({ questions, previewQuestion, onChangePreviewQuestion }) => {
   if (!questions || questions.length === 0) {
     return <div className="hc-preview-placeholder">Добавьте вопросы для превью</div>;
@@ -895,7 +932,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                               </div>
                             ) : (
                               <div className="hc-image-preview-inline">
-                                <img src={question.config.imageUrl} alt="" />
+                                <img src={normalizeUrl(question.config.imageUrl)} alt="" />
                                 <button
                                   type="button"
                                   className="hc-image-remove-btn"
