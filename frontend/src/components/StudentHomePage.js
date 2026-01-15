@@ -3,8 +3,18 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { getLessons, getHomeworkList, getSubmissions, getGroups, joinLesson } from '../apiService';
 import JoinGroupModal from './JoinGroupModal';
 import SupportWidget from './SupportWidget';
-import { Button } from '../shared/components';
+import { Button, StudentDashboardSkeleton } from '../shared/components';
 import '../styles/StudentHome.css';
+
+// Calendar SVG Icon
+const IconCalendar = ({ size = 16, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+    <line x1="16" x2="16" y1="2" y2="6"/>
+    <line x1="8" x2="8" y1="2" y2="6"/>
+    <line x1="3" x2="21" y1="10" y2="10"/>
+  </svg>
+);
 
 const StudentHomePage = () => {
   const location = useLocation();
@@ -17,6 +27,7 @@ const StudentHomePage = () => {
   const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -48,6 +59,7 @@ const StudentHomePage = () => {
   }, [showJoinModal]);
 
   const loadData = async () => {
+    setIsLoading(true);
     try {
       const now = new Date();
       const in30 = new Date();
@@ -71,6 +83,8 @@ const StudentHomePage = () => {
       setGroups(groupsList);
     } catch (e) {
       console.error('Error loading data:', e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -195,6 +209,16 @@ const StudentHomePage = () => {
     return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${day} ${month}`;
   };
 
+  // Show skeleton while loading
+  if (isLoading) {
+    return (
+      <div className="student-home">
+        <StudentDashboardSkeleton />
+        {!showJoinModal && <SupportWidget />}
+      </div>
+    );
+  }
+
   return (
     <div className="student-home">
       <main className="student-main-content">
@@ -203,7 +227,10 @@ const StudentHomePage = () => {
 
           {/* Today's status - compact */}
           <div className="student-today-banner">
-            <span className="student-today-date">📅 {formatTodayDate()}</span>
+            <span className="student-today-date">
+              <IconCalendar size={16} className="student-today-icon" />
+              {formatTodayDate()}
+            </span>
             <span className="student-today-separator">•</span>
             <span className={`student-today-status-text ${hasLessonsToday ? 'has-lessons' : ''}`}>
               {message}

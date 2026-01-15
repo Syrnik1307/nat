@@ -10,3 +10,18 @@ export { default as Select } from './Select';
 export { default as TimePicker } from './TimePicker';
 export { default as DatePicker } from './DatePicker';
 export { default as Toast, ToastContainer } from './Toast';
+
+// Skeleton loaders
+export { 
+  Skeleton,
+  SkeletonText,
+  SkeletonCard,
+  SkeletonCourseCard,
+  SkeletonTodayBanner,
+  SkeletonLessonCard,
+  PageLoadingSkeleton,
+  AuthCheckingSkeleton,
+  StudentDashboardSkeleton,
+  TeacherDashboardSkeleton,
+  HomeworkListSkeleton
+} from './Skeleton';

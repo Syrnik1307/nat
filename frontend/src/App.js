@@ -3,33 +3,51 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import './App.css';
 import { AuthProvider, useAuth, Protected } from './auth';
 import { NotificationProvider } from './shared/context/NotificationContext';
+import { AuthCheckingSkeleton } from './shared/components';
 
 // Навбары загружаются синхронно - они нужны сразу
 import NavBarNew from './components/NavBarNew';
 import StudentNavBar from './components/StudentNavBar';
 
-// Глобальный лоадер для Suspense
+// Глобальный лоадер для Suspense - премиальный вид
 const PageLoader = () => (
-  <div style={{ 
-    display: 'flex', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    height: '60vh',
-    color: '#64748b'
-  }}>
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ 
-        width: 40, 
-        height: 40, 
-        border: '3px solid #e2e8f0', 
-        borderTopColor: '#3b82f6', 
-        borderRadius: '50%', 
-        animation: 'spin 0.8s linear infinite',
-        margin: '0 auto 12px'
-      }} />
-      Загрузка...
+  <div className="page-loader-wrapper">
+    <div className="page-loader-content">
+      <div className="page-loader-spinner" />
+      <span className="page-loader-text">Загрузка</span>
     </div>
-    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <style>{`
+      .page-loader-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 60vh;
+        background: transparent;
+      }
+      .page-loader-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+      }
+      .page-loader-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e2e8f0;
+        border-top-color: #4F46E5;
+        border-radius: 50%;
+        animation: pageLoaderSpin 0.8s linear infinite;
+      }
+      .page-loader-text {
+        color: #64748b;
+        font-size: 15px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+      }
+      @keyframes pageLoaderSpin { 
+        to { transform: rotate(360deg); } 
+      }
+    `}</style>
   </div>
 );
 
@@ -72,7 +90,7 @@ const ChatPage = lazy(() => import('./components/ChatPage'));
 
 const RoleRouter = () => {
   const { accessTokenValid, role, loading } = useAuth();
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Проверка авторизации...</div>;
+  if (loading) return <AuthCheckingSkeleton />;
   if (!accessTokenValid) return <Navigate to="/auth-new" replace />;
   if (role === 'teacher') return <Navigate to="/teacher" replace />;
   if (role === 'student') return <Navigate to="/student" replace />;
@@ -91,7 +109,7 @@ const AppRoutes = () => {
 
   const RootRedirect = () => {
     const { accessTokenValid, role, loading } = useAuth();
-    if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Проверка авторизации...</div>;
+    if (loading) return <AuthCheckingSkeleton />;
     if (!accessTokenValid) return <Navigate to="/auth-new" replace />;
     if (role === 'teacher') return <Navigate to="/home-new" replace />;
     if (role === 'student') return <Navigate to="/student" replace />;

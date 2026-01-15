@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { getHomeworkList, getSubmissions, getGroups } from '../apiService';
 import { Link, useNavigate } from 'react-router-dom';
+import { HomeworkListSkeleton } from '../shared/components';
 import './HomeworkList.css';
 
 // SVG Icons
@@ -32,6 +33,28 @@ const IconStar = ({ size = 16 }) => (
 const IconFilter = ({ size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46"/>
+  </svg>
+);
+
+const IconAlertTriangle = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/>
+    <path d="M12 9v4"/>
+    <path d="M12 17h.01"/>
+  </svg>
+);
+
+const IconEdit = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+);
+
+const IconCheckCircle = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+    <polyline points="22,4 12,14.01 9,11.01"/>
   </svg>
 );
 
@@ -198,10 +221,7 @@ const HomeworkList = () => {
     return (
       <div className="hw-page">
         <div className="hw-container">
-          <div className="hw-loading">
-            <div className="hw-loading-spinner"></div>
-            <span>Загрузка заданий...</span>
-          </div>
+          <HomeworkListSkeleton />
         </div>
       </div>
     );
@@ -212,7 +232,7 @@ const HomeworkList = () => {
       <div className="hw-page">
         <div className="hw-container">
           <div className="hw-error">
-            <span className="hw-error-icon">⚠️</span>
+            <span className="hw-error-icon"><IconAlertTriangle size={32} /></span>
             <p>{error}</p>
             <button className="hw-btn hw-btn-primary" onClick={loadData}>Повторить</button>
           </div>
@@ -333,7 +353,7 @@ const HomeworkList = () => {
           {currentList.length === 0 ? (
             <div className="hw-empty">
               <div className="hw-empty-icon">
-                {activeTab === 'active' ? '📝' : '✅'}
+                {activeTab === 'active' ? <IconEdit size={40} /> : <IconCheckCircle size={40} />}
               </div>
               <h3 className="hw-empty-title">
                 {activeTab === 'active' 

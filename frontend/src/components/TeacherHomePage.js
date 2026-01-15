@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getTeacherStatsSummary, getLessons, getGroups, startQuickLesson, startLessonNew, updateLesson } from '../apiService';
 import { Link } from 'react-router-dom';
 import SubscriptionBanner from './SubscriptionBanner';
-import { Select } from '../shared/components';
+import { Select, TeacherDashboardSkeleton } from '../shared/components';
 import './TeacherHomePage.css';
 
 /* =====================================================
@@ -439,10 +439,7 @@ const TeacherHomePage = () => {
     return (
       <div className="dashboard-container">
         <style>{globalStyles}</style>
-        <div className="dashboard-loading">
-          <div className="loading-spinner"></div>
-          <p>Загрузка данных...</p>
-        </div>
+        <TeacherDashboardSkeleton />
       </div>
     );
   }

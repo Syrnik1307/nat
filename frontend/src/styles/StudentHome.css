@@ -64,8 +64,16 @@
 }
 
 .student-today-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-weight: 600;
   color: var(--text-main);
+}
+
+.student-today-icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
 }
 
 .student-today-separator {
