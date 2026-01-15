@@ -654,7 +654,7 @@ const TeacherHomePage = () => {
                 <IconVideo size={32} className="hero-icon" />
               </div>
               <h2 className="hero-title">Начать урок</h2>
-              <p className="hero-subtitle">Мгновенный запуск Zoom-конференции для вашего следующего занятия</p>
+              <p className="hero-subtitle">Мгновенный запуск видеоконференции для вашего следующего занятия</p>
               <button
                 className="hero-button"
                 onClick={openStartModal}

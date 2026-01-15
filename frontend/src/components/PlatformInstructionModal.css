@@ -1,0 +1,292 @@
+/* Модальное окно инструкции по подключению платформы */
+
+.platform-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  padding: 1rem;
+  animation: fadeIn var(--duration-normal, 280ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.platform-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  max-width: 540px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideUpModal var(--duration-slow, 400ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  position: relative;
+}
+
+/* Кнопка закрытия */
+.platform-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  z-index: 10;
+}
+
+.platform-modal-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  transform: scale(1.05);
+}
+
+/* Заголовок */
+.platform-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.platform-modal-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--platform-gradient, linear-gradient(135deg, #0d6efd 0%, #1d4ed8 100%));
+  color: white;
+  flex-shrink: 0;
+}
+
+.platform-modal-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.platform-modal-title-group h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.25rem 0;
+}
+
+.platform-modal-title-group p {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Ссылка на видео */
+.platform-modal-video-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 1.5rem 0;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  font-size: 0.875rem;
+  color: #1e40af;
+}
+
+.platform-modal-video-link:hover {
+  background: linear-gradient(135deg, #dbeafe 0%, #e0f2fe 100%);
+  border-color: #93c5fd;
+}
+
+.platform-modal-video-link svg:first-child {
+  width: 18px;
+  height: 18px;
+  color: #3b82f6;
+}
+
+.platform-modal-video-link a {
+  color: #2563eb;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.platform-modal-video-link a:hover {
+  color: #1d4ed8;
+}
+
+.platform-modal-video-link svg:last-child {
+  margin-left: auto;
+  color: #93c5fd;
+}
+
+/* Шаги инструкции */
+.platform-modal-steps {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.platform-modal-step {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.platform-modal-step-num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.platform-modal-step-content {
+  flex: 1;
+}
+
+.platform-modal-step-content strong {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 0.2rem;
+}
+
+.platform-modal-step-content p {
+  font-size: 0.825rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.platform-modal-step-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.platform-modal-step-link:hover {
+  text-decoration: underline;
+}
+
+/* Подсказки */
+.platform-modal-tips {
+  margin: 0 1.5rem 1.5rem;
+  padding: 1rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+}
+
+.platform-modal-tips-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #92400e;
+  margin: 0 0 0.5rem 0;
+}
+
+.platform-modal-tips ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.8rem;
+  color: #78350f;
+  line-height: 1.6;
+}
+
+.platform-modal-tips li {
+  margin-bottom: 0.25rem;
+}
+
+/* Футер */
+.platform-modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 0 0 16px 16px;
+}
+
+.platform-modal-footer button {
+  min-width: 120px;
+}
+
+/* Анимации */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUpModal {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Мобильная адаптация */
+@media (max-width: 560px) {
+  .platform-modal {
+    max-height: 95vh;
+    border-radius: 12px;
+  }
+
+  .platform-modal-header {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.25rem;
+  }
+
+  .platform-modal-close {
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 32px;
+    height: 32px;
+  }
+
+  .platform-modal-steps {
+    padding: 1rem;
+  }
+
+  .platform-modal-footer {
+    flex-direction: column-reverse;
+    padding: 1rem;
+  }
+
+  .platform-modal-footer button {
+    width: 100%;
+  }
+}

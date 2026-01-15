@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../apiService';
+import PlatformInstructionModal from './PlatformInstructionModal';
 import './PlatformsSection.css';
 
 /**
@@ -12,6 +13,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
   const [success, setSuccess] = useState('');
   const [platformsStatus, setPlatformsStatus] = useState(null);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [instructionModal, setInstructionModal] = useState(null); // 'zoom' | 'google_meet' | null
 
   // Статусы из user (приходят с бэкенда через сериализатор)
   const zoomConnected = user?.zoom_connected || false;
@@ -41,7 +43,14 @@ const PlatformsSection = ({ user, onRefresh }) => {
   const isGoogleMeetAvailable = platformsStatus?.google_meet?.available ?? false;
   const isZoomPoolAvailable = platformsStatus?.zoom_pool?.available ?? true;
 
-  // OAuth авторизация Zoom
+  // Показать модальное окно с инструкцией
+  const handleShowInstruction = (platform) => {
+    setInstructionModal(platform);
+    setError('');
+    setSuccess('');
+  };
+
+  // OAuth авторизация Zoom (вызывается из модалки)
   const handleConnectZoom = async () => {
     setLoading('zoom');
     setError('');
@@ -52,6 +61,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
         window.location.href = response.data.auth_url;
       } else {
         setError('Не удалось получить ссылку авторизации');
+        setInstructionModal(null);
       }
     } catch (err) {
       console.error('Zoom auth error:', err);
@@ -60,6 +70,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
       } else {
         setError(err.response?.data?.detail || 'Ошибка подключения Zoom');
       }
+      setInstructionModal(null);
     } finally {
       setLoading(null);
     }
@@ -82,7 +93,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
     }
   };
 
-  // OAuth авторизация Google Meet
+  // OAuth авторизация Google Meet (вызывается из модалки)
   const handleConnectGoogleMeet = async () => {
     setLoading('google_meet');
     setError('');
@@ -93,6 +104,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
         window.location.href = response.data.auth_url;
       } else {
         setError('Не удалось получить ссылку авторизации');
+        setInstructionModal(null);
       }
     } catch (err) {
       console.error('Google Meet auth error:', err);
@@ -101,6 +113,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
       } else {
         setError(err.response?.data?.detail || 'Ошибка подключения Google Meet');
       }
+      setInstructionModal(null);
     } finally {
       setLoading(null);
     }
@@ -161,7 +174,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
               <button
                 type="button"
                 className="btn-platform connect zoom"
-                onClick={handleConnectZoom}
+                onClick={() => handleShowInstruction('zoom')}
                 disabled={loading === 'zoom'}
               >
                 {loading === 'zoom' ? '...' : 'Подключить'}
@@ -199,7 +212,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
               <button
                 type="button"
                 className="btn-platform connect google"
-                onClick={handleConnectGoogleMeet}
+                onClick={() => handleShowInstruction('google_meet')}
                 disabled={loading === 'google_meet'}
               >
                 {loading === 'google_meet' ? '...' : 'Подключить'}
@@ -226,13 +239,22 @@ const PlatformsSection = ({ user, onRefresh }) => {
       <div className="platforms-help">
         <p className="platforms-help-title">Как это работает?</p>
         <ol>
-          <li>Нажмите «Подключить» → войдите в аккаунт → разрешите доступ</li>
+          <li>Нажмите «Подключить» → просмотрите инструкцию → подключите аккаунт</li>
           <li>При запуске урока выберите платформу</li>
         </ol>
         <div className="platforms-note">
           <strong>Совет:</strong> Zoom работает без регистрации для учеников. Для Google Meet ученикам нужен Google аккаунт.
         </div>
       </div>
+
+      {/* Модальное окно с инструкцией */}
+      <PlatformInstructionModal
+        platform={instructionModal}
+        isOpen={!!instructionModal}
+        onClose={() => setInstructionModal(null)}
+        onConnect={instructionModal === 'zoom' ? handleConnectZoom : handleConnectGoogleMeet}
+        isConnecting={loading === instructionModal}
+      />
     </section>
   );
 };
