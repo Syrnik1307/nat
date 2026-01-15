@@ -602,6 +602,25 @@
   border-color: #fef08a;
 }
 
+.hc-feedback-info {
+  background: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
+}
+
+/* Кнопка "Новое ДЗ" */
+.hc-new-btn {
+  background: var(--bg-secondary, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  color: var(--text-primary, #1e293b);
+}
+
+.hc-new-btn:hover {
+  background: var(--bg-hover, #f1f5f9);
+  border-color: var(--primary, #6366f1);
+  color: var(--primary, #6366f1);
+}
+
 .hc-validation-list {
   margin: 0;
   padding-left: 1.5rem;

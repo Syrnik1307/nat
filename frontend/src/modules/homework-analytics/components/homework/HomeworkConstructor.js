@@ -147,7 +147,7 @@ const HomeworkQuestionEditor = ({ question, index, onUpdateQuestion }) => {
   );
 };
 
-const HomeworkConstructor = () => {
+const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, onClearEditing = null }) => {
   const navigate = useNavigate();
   const {
     groupOptions,
@@ -170,7 +170,70 @@ const HomeworkConstructor = () => {
   const [confirmDialog, setConfirmDialog] = useState({ open: false });
   const [uploadingImageFor, setUploadingImageFor] = useState(null); // index вопроса
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const blobUrlsRef = useRef(new Set());
+
+  // Загрузка данных из editingHomework (редактирование или дублирование)
+  useEffect(() => {
+    if (editingHomework) {
+      // Если дублирование - создаём копию без ID
+      // Если редактирование - загружаем с ID
+      
+      const meta = {
+        title: isDuplicating ? `${editingHomework.title} (копия)` : editingHomework.title || '',
+        description: editingHomework.description || '',
+        groupId: editingHomework.assigned_groups?.[0]?.id || editingHomework.assigned_groups?.[0] || '',
+        deadline: editingHomework.deadline ? editingHomework.deadline.slice(0, 16) : '',
+        maxScore: editingHomework.max_score || 100,
+        gamificationEnabled: editingHomework.gamification_enabled !== false,
+      };
+      
+      setAssignmentMeta(meta);
+      
+      // Загружаем вопросы с их конфигурацией
+      if (editingHomework.questions && editingHomework.questions.length > 0) {
+        const loadedQuestions = editingHomework.questions.map((q, idx) => ({
+          id: isDuplicating ? `q-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : (q.id || `q-${idx}`),
+          question_type: q.question_type || 'TEXT',
+          question_text: q.question_text || '',
+          points: q.points || 1,
+          order: q.order || idx,
+          config: q.config || {},
+          correct_answer: q.correct_answer,
+        }));
+        setQuestions(loadedQuestions);
+      }
+      
+      // Устанавливаем ID для редактирования (не для дублирования)
+      if (!isDuplicating && editingHomework.id) {
+        setHomeworkId(editingHomework.id);
+        setIsEditMode(true);
+      } else {
+        setHomeworkId(null);
+        setIsEditMode(false);
+      }
+      
+      // Показываем уведомление
+      setFeedback({
+        status: 'info',
+        message: isDuplicating 
+          ? 'Создание копии ДЗ. Измените название и сохраните.'
+          : 'Режим редактирования ДЗ. После изменений нажмите "Сохранить".',
+      });
+    }
+  }, [editingHomework, isDuplicating]);
+
+  // Сброс при размонтировании или очистке
+  const handleClearEditing = useCallback(() => {
+    if (onClearEditing) {
+      onClearEditing();
+    }
+    setAssignmentMeta(initialMeta);
+    setQuestions([]);
+    setHomeworkId(null);
+    setIsEditMode(false);
+    setFeedback(null);
+  }, [onClearEditing]);
 
   useEffect(() => {
     return () => {
@@ -471,9 +534,14 @@ const HomeworkConstructor = () => {
   return (
     <div className="homework-constructor-page">
       <div className="hc-header">
-        <h1 className="hc-header-title">Конструктор домашних заданий</h1>
+        <h1 className="hc-header-title">
+          {isEditMode ? 'Редактирование ДЗ' : isDuplicating ? 'Создание копии ДЗ' : 'Конструктор домашних заданий'}
+        </h1>
         <p className="hc-header-subtitle">
-          Создавайте, назначайте и проверяйте работы учеников
+          {isEditMode 
+            ? 'Внесите изменения и сохраните' 
+            : 'Создавайте, назначайте и проверяйте работы учеников'
+          }
         </p>
       </div>
 
@@ -484,6 +552,8 @@ const HomeworkConstructor = () => {
               ? 'hc-feedback-success'
               : feedback.status === 'error'
               ? 'hc-feedback-error'
+              : feedback.status === 'info'
+              ? 'hc-feedback-info'
               : 'hc-feedback-warning'
           }`}
         >
@@ -496,6 +566,15 @@ const HomeworkConstructor = () => {
       {/* Sticky панель с действиями */}
       <div className="hc-sticky-actions">
         <div className="hc-sticky-actions-left">
+          {(isEditMode || isDuplicating) && (
+            <button
+              type="button"
+              className="gm-btn-surface hc-action-btn hc-new-btn"
+              onClick={handleClearEditing}
+            >
+              Новое ДЗ
+            </button>
+          )}
           <span className="hc-stats-badge">{questionCount} вопрос{questionCount === 1 ? '' : questionCount >= 2 && questionCount <= 4 ? 'а' : 'ов'}</span>
           {assignmentMeta.title && <span className="hc-stats-badge hc-stats-title">{assignmentMeta.title.slice(0, 30)}{assignmentMeta.title.length > 30 ? '...' : ''}</span>}
         </div>

@@ -133,6 +133,9 @@ class HomeworkSerializer(serializers.ModelSerializer):
     assigned_student_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
     group_id = serializers.SerializerMethodField(read_only=True)
     group_name = serializers.SerializerMethodField(read_only=True)
+    questions_count = serializers.SerializerMethodField(read_only=True)
+    submissions_count = serializers.SerializerMethodField(read_only=True)
+    assigned_groups = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Homework
@@ -143,10 +146,21 @@ class HomeworkSerializer(serializers.ModelSerializer):
             'is_template', 'gdrive_folder_id',
             'assigned_group_ids', 'assigned_student_ids',
             'group_id', 'group_name',
+            'questions_count', 'submissions_count', 'assigned_groups',
             # AI grading fields
             'ai_grading_enabled', 'ai_provider', 'ai_grading_prompt'
         ]
         read_only_fields = ['teacher']
+
+    def get_questions_count(self, obj):
+        return obj.questions.count()
+
+    def get_submissions_count(self, obj):
+        return obj.submissions.count()
+
+    def get_assigned_groups(self, obj):
+        """Возвращает список групп для переназначения."""
+        return [{'id': g.id, 'name': g.name} for g in obj.assigned_groups.all()]
 
     def get_group_id(self, obj: Homework):
         # Для совместимости со старым UI: если назначено ровно на 1 группу — возвращаем её.
