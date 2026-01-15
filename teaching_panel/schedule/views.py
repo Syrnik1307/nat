@@ -3247,6 +3247,59 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
             'stats': stats
         })
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def student_materials(self, request):
+        """Получить все материалы доступные студенту с группировкой по типу"""
+        if request.user.role != 'student':
+            return Response(
+                {'error': 'Только для студентов'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        from django.db.models import Q
+        
+        student_groups = request.user.enrolled_groups.all()
+        
+        materials = LessonMaterial.objects.filter(
+            Q(visibility='lesson_group', lesson__group__in=student_groups) |
+            Q(visibility='all_teacher_groups', lesson__group__in=student_groups) |
+            Q(visibility='custom_groups', allowed_groups__in=student_groups) |
+            Q(visibility='custom_students', allowed_students=request.user)
+        ).select_related('lesson', 'uploaded_by', 'lesson__group').distinct().order_by('-uploaded_at')
+        
+        # Группируем по типу
+        grouped = {
+            'miro': [],
+            'notes': [],
+            'document': [],
+            'link': [],
+            'image': [],
+        }
+        
+        for material in materials:
+            serialized = LessonMaterialSerializer(material).data
+            # Добавим информацию об учителе
+            if material.uploaded_by:
+                serialized['teacher_name'] = f"{material.uploaded_by.first_name} {material.uploaded_by.last_name}".strip() or material.uploaded_by.email
+            if material.lesson and material.lesson.group:
+                serialized['group_name'] = material.lesson.group.name
+            if material.material_type in grouped:
+                grouped[material.material_type].append(serialized)
+        
+        # Статистика
+        stats = {
+            'total': materials.count(),
+            'miro_count': len(grouped['miro']),
+            'notes_count': len(grouped['notes']),
+            'documents_count': len(grouped['document']),
+            'links_count': len(grouped['link']),
+        }
+        
+        return Response({
+            'materials': grouped,
+            'stats': stats
+        })
+
 
 # ============================================
 # Miro Integration API

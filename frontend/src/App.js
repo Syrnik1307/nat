@@ -77,6 +77,7 @@ const CalendarIntegrationPage = lazy(() => import('./components/CalendarIntegrat
 const StudentHomePage = lazy(() => import('./components/StudentHomePage'));
 const StudentDashboard = lazy(() => import('./components/StudentDashboard'));
 const RecordingsPage = lazy(() => import('./modules/Recordings/RecordingsPage'));
+const StudentMaterialsPage = lazy(() => import('./modules/Recordings/StudentMaterialsPage'));
 const HomeworkList = lazy(() => import('./components/HomeworkList'));
 const HomeworkTake = lazy(() => import('./modules/homework-analytics/components/homework/HomeworkTake'));
 
@@ -176,6 +177,7 @@ const AppRoutes = () => {
           <Route path="/student/courses" element={<Protected allowRoles={['student']}><StudentHomePage /></Protected>} />
           <Route path="/student/stats" element={<Protected allowRoles={['student']}><StudentDashboard /></Protected>} />
           <Route path="/student/recordings" element={<Protected allowRoles={['student']}><RecordingsPage /></Protected>} />
+          <Route path="/student/materials" element={<Protected allowRoles={['student']}><StudentMaterialsPage /></Protected>} />
           <Route path="/homework" element={<Protected allowRoles={['student']}><HomeworkList /></Protected>} />
           <Route path="/student/homework/:id" element={<Protected allowRoles={['student']}><HomeworkTake /></Protected>} />
         

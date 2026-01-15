@@ -9,6 +9,7 @@ const navItems = [
   { to: '/calendar', label: 'Расписание' },
   { to: '/homework', label: 'Домашнее задание' },
   { to: '/student/recordings', label: 'Записи уроков' },
+  { to: '/student/materials', label: 'Материалы' },
   { to: '/student/stats', label: 'Моя статистика' },
 ];
 
