@@ -185,6 +185,23 @@ export const logout = async () => {
 export const verifyToken = () => {
     const access = getAccessToken();
     if (!access) return Promise.resolve(false);
+    
+    // Быстрая проверка: декодируем JWT и проверяем exp локально
+    try {
+        const part = access.split('.')[1];
+        if (part) {
+            const base64 = part.replace(/-/g, '+').replace(/_/g, '/');
+            const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+            const payload = JSON.parse(atob(padded));
+            // Если токен истёк менее чем 5 секунд назад - всё ещё валиден на сервере
+            if (payload.exp && (payload.exp * 1000) > (Date.now() - 5000)) {
+                return Promise.resolve(true);
+            }
+        }
+    } catch (_) {
+        // Если не удалось декодировать - проверяем на сервере
+    }
+    
     return apiClient.post('jwt/verify/', { token: access })
         .then(() => true)
         .catch(() => false);
@@ -320,14 +337,48 @@ export const getHomeworkTemplates = () => apiClient.get('homework/', { params: {
 export const saveAsTemplate = (homeworkId) => apiClient.post(`homework/${homeworkId}/save-as-template/`);
 export const instantiateTemplate = (templateId, data) => apiClient.post(`homework/${templateId}/instantiate/`, data);
 
-export const uploadHomeworkFile = (file, fileType) => {
+// Импорт компрессора для изображений (lazy)
+let _compressImage = null;
+const getCompressor = async () => {
+  if (!_compressImage) {
+    const mod = await import('./utils/imageCompressor');
+    _compressImage = mod.compressImage || mod.default;
+  }
+  return _compressImage;
+};
+
+/**
+ * Загрузка файла для домашки с автоматическим сжатием изображений
+ * @param {File} file - Файл для загрузки
+ * @param {string} fileType - Тип файла ('image' или 'audio')
+ * @param {Function} onProgress - Callback для прогресса загрузки (0-100)
+ */
+export const uploadHomeworkFile = async (file, fileType, onProgress) => {
+  let fileToUpload = file;
+  
+  // Сжимаем изображения перед загрузкой
+  if (fileType === 'image' && file.type.startsWith('image/')) {
+    try {
+      const compress = await getCompressor();
+      fileToUpload = await compress(file);
+    } catch (e) {
+      console.warn('[uploadHomeworkFile] Compression failed, using original:', e);
+    }
+  }
+  
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', fileToUpload);
   formData.append('file_type', fileType);
+  
   // Переопределяем Content-Type как undefined чтобы axios установил multipart/form-data с boundary
-  // (глобальный default Content-Type: application/json мешает)
+  // Увеличиваем timeout для больших файлов
   return apiClient.post('homework/upload-file/', formData, {
-    headers: { 'Content-Type': undefined }
+    headers: { 'Content-Type': undefined },
+    timeout: 120000, // 2 минуты для загрузки
+    onUploadProgress: onProgress ? (progressEvent) => {
+      const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+      onProgress(percent);
+    } : undefined,
   });
 };
 

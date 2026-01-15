@@ -2,10 +2,31 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { prefetch } from '../utils/dataCache';
+import { getLessons, getHomeworkList, getSubmissions, getGroups } from '../apiService';
 import '../styles/StudentNavBar.css';
 
+// Prefetch функции для разных страниц
+const prefetchStudentData = () => {
+  const now = new Date();
+  const in30 = new Date();
+  in30.setDate(now.getDate() + 30);
+  
+  prefetch('student:lessons', () => getLessons({
+    start: now.toISOString(),
+    end: in30.toISOString(),
+    include_recurring: true,
+  }).then(res => Array.isArray(res.data) ? res.data : res.data.results || []));
+  
+  prefetch('student:homework', () => getHomeworkList({})
+    .then(res => Array.isArray(res.data) ? res.data : res.data.results || []));
+  
+  prefetch('student:groups', () => getGroups()
+    .then(res => Array.isArray(res.data) ? res.data : res.data.results || []));
+};
+
 const navItems = [
-  { to: '/student', label: 'Мои курсы' },
+  { to: '/student', label: 'Мои курсы', prefetch: prefetchStudentData },
   { to: '/calendar', label: 'Расписание' },
   { to: '/homework', label: 'Домашнее задание' },
   { to: '/student/recordings', label: 'Записи уроков' },
@@ -104,6 +125,7 @@ const StudentNavBar = () => {
               className={({ isActive }) =>
                 `student-nav-link${isActive ? ' active' : ''}`
               }
+              onMouseEnter={item.prefetch}
             >
               {item.label}
             </NavLink>

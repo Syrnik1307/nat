@@ -42,9 +42,13 @@ const NavBar = () => {
 
   useEffect(() => {
     if (accessTokenValid) {
-      loadMessages();
+      // Отложенная загрузка сообщений - не блокирует первый рендер
+      const timer = setTimeout(loadMessages, 2000);
       const interval = setInterval(loadMessages, 30000);
-      return () => clearInterval(interval);
+      return () => {
+        clearTimeout(timer);
+        clearInterval(interval);
+      };
     }
   }, [accessTokenValid]);
 

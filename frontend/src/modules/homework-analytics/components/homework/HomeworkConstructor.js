@@ -169,6 +169,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
   const [previewQuestion, setPreviewQuestion] = useState(0);
   const [confirmDialog, setConfirmDialog] = useState({ open: false });
   const [uploadingImageFor, setUploadingImageFor] = useState(null); // index вопроса
+  const [uploadProgress, setUploadProgress] = useState(0); // прогресс загрузки 0-100
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const blobUrlsRef = useRef(new Set());
@@ -286,8 +287,11 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
           });
 
           setUploadingImageFor(questionIndex);
+          setUploadProgress(0);
           try {
-            const response = await uploadHomeworkFile(file, 'image');
+            const response = await uploadHomeworkFile(file, 'image', (percent) => {
+              setUploadProgress(percent);
+            });
             if (response.data?.url) {
               setQuestions((prev) => {
                 const updated = [...prev];
@@ -312,6 +316,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
             setFeedback({ type: 'error', message: 'Ошибка загрузки: ' + (err.message || 'Попробуйте ещё раз') });
           } finally {
             setUploadingImageFor(null);
+            setUploadProgress(0);
           }
         }
         break;
@@ -756,8 +761,10 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                         >
                           {uploadingImageFor === index && (
                             <div className="hc-upload-overlay">
-                              <div className="hc-upload-spinner" />
-                              <span>Загрузка...</span>
+                              <div className="hc-upload-progress-container">
+                                <div className="hc-upload-progress-bar" style={{ width: `${uploadProgress}%` }} />
+                              </div>
+                              <span>{uploadProgress > 0 ? `Загрузка ${uploadProgress}%` : 'Сжатие изображения...'}</span>
                             </div>
                           )}
                           
@@ -844,8 +851,11 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                                     });
 
                                     setUploadingImageFor(index);
+                                    setUploadProgress(0);
                                     try {
-                                      const response = await uploadHomeworkFile(file, 'image');
+                                      const response = await uploadHomeworkFile(file, 'image', (percent) => {
+                                        setUploadProgress(percent);
+                                      });
                                       if (response.data?.url) {
                                         setQuestions((prev) => {
                                           const updated = [...prev];
@@ -874,11 +884,12 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                                       setFeedback({ type: 'error', message: 'Ошибка загрузки: ' + (err.message || '') });
                                     } finally {
                                       setUploadingImageFor(null);
+                                      setUploadProgress(0);
                                       e.target.value = '';
                                     }
                                   }}
                                 />
-                                {uploadingImageFor === index ? 'Загрузка...' : '+ Выбрать файл'}
+                                {uploadingImageFor === index ? (uploadProgress > 0 ? `${uploadProgress}%` : 'Сжатие...') : '+ Выбрать файл'}
                               </label>
                                 <span className="hc-paste-hint">или Ctrl+V</span>
                               </div>

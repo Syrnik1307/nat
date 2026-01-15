@@ -83,14 +83,17 @@ export const AuthProvider = ({ children }) => {
 
   const loadUser = useCallback(async () => {
     try {
-      const res = await getCurrentUser();
+      // Загружаем user и подписку параллельно для ускорения
+      const userPromise = getCurrentUser();
+      
+      const res = await userPromise;
       setUser(res.data);
       if (res.data?.role) {
         setRole(res.data.role);
       }
-      // Загружаем подписку для teacher/student/admin
+      // Загружаем подписку для teacher в фоне (не блокируем UI)
       if (res.data?.role === 'teacher') {
-        await loadSubscription();
+        loadSubscription(); // Без await - грузим в фоне
       }
       return res.data;
     } catch (err) {
@@ -127,8 +130,10 @@ export const AuthProvider = ({ children }) => {
       setAccessTokenValid(true);
       const userRole = getRoleFromToken();
       setRole(userRole);
-      await loadUser();
+      // Снимаем loading сразу после проверки токена - UI может рендериться
       setLoading(false);
+      // Загружаем user в фоне
+      loadUser();
       return;
     }
     
@@ -148,8 +153,10 @@ export const AuthProvider = ({ children }) => {
           setAccessTokenValid(true);
           const userRole = getRoleFromToken();
           setRole(userRole);
-          await loadUser();
+          // Снимаем loading сразу - UI рендерится
           setLoading(false);
+          // Загружаем user в фоне
+          loadUser();
           return;
         }
       } catch (err) {

@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import './App.css';
 import { AuthProvider, useAuth, Protected } from './auth';
@@ -9,47 +9,55 @@ import { AuthCheckingSkeleton } from './shared/components';
 import NavBarNew from './components/NavBarNew';
 import StudentNavBar from './components/StudentNavBar';
 
-// Глобальный лоадер для Suspense - премиальный вид
-const PageLoader = () => (
-  <div className="page-loader-wrapper">
-    <div className="page-loader-content">
-      <div className="page-loader-spinner" />
-      <span className="page-loader-text">Загрузка</span>
+// Минимальный fallback - показываем предыдущий контент пока грузится новый
+// Используем fade-in анимацию только если загрузка длится > 100ms
+const PageLoader = () => {
+  const [showSpinner, setShowSpinner] = useState(false);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSpinner(true), 150);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  return (
+    <div className={`page-loader-wrapper ${showSpinner ? 'visible' : ''}`}>
+      <div className="page-loader-content">
+        <div className="page-loader-spinner" />
+      </div>
+      <style>{`
+        .page-loader-wrapper {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 40vh;
+          background: transparent;
+          opacity: 0;
+          transition: opacity 0.15s ease-out;
+        }
+        .page-loader-wrapper.visible {
+          opacity: 1;
+        }
+        .page-loader-content {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+        }
+        .page-loader-spinner {
+          width: 32px;
+          height: 32px;
+          border: 2px solid #e2e8f0;
+          border-top-color: #4F46E5;
+          border-radius: 50%;
+          animation: pageLoaderSpin 0.7s linear infinite;
+        }
+        @keyframes pageLoaderSpin { 
+          to { transform: rotate(360deg); } 
+        }
+      `}</style>
     </div>
-    <style>{`
-      .page-loader-wrapper {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 60vh;
-        background: transparent;
-      }
-      .page-loader-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
-      }
-      .page-loader-spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid #e2e8f0;
-        border-top-color: #4F46E5;
-        border-radius: 50%;
-        animation: pageLoaderSpin 0.8s linear infinite;
-      }
-      .page-loader-text {
-        color: #64748b;
-        font-size: 15px;
-        font-weight: 500;
-        letter-spacing: -0.01em;
-      }
-      @keyframes pageLoaderSpin { 
-        to { transform: rotate(360deg); } 
-      }
-    `}</style>
-  </div>
-);
+  );
+};
 
 // Lazy-loaded компоненты - грузятся по требованию
 const AuthPage = lazy(() => import('./components/AuthPage'));

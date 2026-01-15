@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getLessons, getHomeworkList, getSubmissions, getGroups, joinLesson } from '../apiService';
+import { getCached, invalidateCache } from '../utils/dataCache';
 import JoinGroupModal from './JoinGroupModal';
 import SupportWidget from './SupportWidget';
 import { Button, StudentDashboardSkeleton } from '../shared/components';
@@ -28,9 +29,11 @@ const StudentHomePage = () => {
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const initialLoadDone = useRef(false);
 
   useEffect(() => {
-    loadData();
+    loadData(!initialLoadDone.current);
+    initialLoadDone.current = true;
   }, []);
 
   useEffect(() => {
@@ -58,7 +61,52 @@ const StudentHomePage = () => {
     };
   }, [showJoinModal]);
 
-  const loadData = async () => {
+  const loadData = async (useCache = true) => {
+    // Используем кэш для мгновенного показа данных
+    const cacheTTL = 30000; // 30 секунд
+    
+    // Если есть кэш - показываем сразу, потом обновляем в фоне
+    if (useCache) {
+      try {
+        const now = new Date();
+        const in30 = new Date();
+        in30.setDate(now.getDate() + 30);
+        
+        const [lessonsData, hwData, subsData, groupsData] = await Promise.all([
+          getCached('student:lessons', async () => {
+            const res = await getLessons({
+              start: now.toISOString(),
+              end: in30.toISOString(),
+              include_recurring: true,
+            });
+            return Array.isArray(res.data) ? res.data : res.data.results || [];
+          }, cacheTTL),
+          getCached('student:homework', async () => {
+            const res = await getHomeworkList({});
+            return Array.isArray(res.data) ? res.data : res.data.results || [];
+          }, cacheTTL),
+          getCached('student:submissions', async () => {
+            const res = await getSubmissions({});
+            return Array.isArray(res.data) ? res.data : res.data.results || [];
+          }, cacheTTL),
+          getCached('student:groups', async () => {
+            const res = await getGroups();
+            return Array.isArray(res.data) ? res.data : res.data.results || [];
+          }, cacheTTL),
+        ]);
+        
+        setLessons(lessonsData);
+        setHomework(hwData);
+        setSubmissions(subsData);
+        setGroups(groupsData);
+        setIsLoading(false);
+        return;
+      } catch (e) {
+        console.error('Error loading cached data:', e);
+      }
+    }
+    
+    // Fallback: загружаем без кэша
     setIsLoading(true);
     try {
       const now = new Date();
@@ -81,6 +129,9 @@ const StudentHomePage = () => {
       setSubmissions(subsList);
       const groupsList = Array.isArray(groupsRes.data) ? groupsRes.data : groupsRes.data.results || [];
       setGroups(groupsList);
+      
+      // Инвалидируем старый кэш
+      invalidateCache('student');
     } catch (e) {
       console.error('Error loading data:', e);
     } finally {
@@ -90,7 +141,8 @@ const StudentHomePage = () => {
 
   const handleJoinSuccess = () => {
     setInviteCodeFromUrl(''); // Clear the code after successful join
-    loadData();
+    invalidateCache('student'); // Сбрасываем кэш после присоединения
+    loadData(false); // Загружаем свежие данные без кэша
   };
 
   const getStudentsText = (count) => {

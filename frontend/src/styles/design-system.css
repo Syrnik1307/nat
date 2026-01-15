@@ -277,9 +277,10 @@ html, body {
               radial-gradient(760px at 40% 85%, rgba(191, 219, 254, 0.35), transparent 60%);
   filter: blur(60px);
   opacity: 0.75;
-  animation: globalAuroraFloat 18s ease-in-out infinite alternate;
+  /* Анимация отключена для производительности - статичный красивый фон */
   pointer-events: none;
   z-index: 0;
+  will-change: auto; /* Убираем GPU слой для статичного элемента */
 }
 
 @keyframes globalAuroraFloat {

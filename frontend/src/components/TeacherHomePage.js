@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { getTeacherStatsSummary, getLessons, getGroups, startQuickLesson, startLessonNew, updateLesson } from '../apiService';
+import { getCached } from '../utils/dataCache';
 import { Link } from 'react-router-dom';
 import SubscriptionBanner from './SubscriptionBanner';
 import { Select, TeacherDashboardSkeleton } from '../shared/components';
@@ -218,9 +219,12 @@ const TeacherHomePage = () => {
   const [editingTopicLessonId, setEditingTopicLessonId] = useState(null);
   const [editingTopicValue, setEditingTopicValue] = useState('');
   const [savingTopic, setSavingTopic] = useState(false);
+  const initialLoadDone = useRef(false);
 
   useEffect(() => {
     const loadData = async () => {
+      const cacheTTL = 30000; // 30 секунд
+      
       try {
         // ВАЖНО: не используем toISOString() (UTC), иначе день может сдвигаться назад.
         // Backend поддерживает параметр `date=YYYY-MM-DD` и сам строит диапазон в локальной TZ.
@@ -229,6 +233,33 @@ const TeacherHomePage = () => {
         const mm = String(now.getMonth() + 1).padStart(2, '0');
         const dd = String(now.getDate()).padStart(2, '0');
         const today = `${yyyy}-${mm}-${dd}`;
+        
+        // Используем кэш для мгновенного отображения при навигации
+        const useCache = initialLoadDone.current;
+        initialLoadDone.current = true;
+        
+        if (useCache) {
+          const [statsData, lessonsData, groupsData] = await Promise.all([
+            getCached('teacher:stats', async () => {
+              const res = await getTeacherStatsSummary();
+              return res.data;
+            }, cacheTTL),
+            getCached(`teacher:lessons:${today}`, async () => {
+              const res = await getLessons({ date: today, include_recurring: true });
+              return Array.isArray(res.data) ? res.data : res.data.results || [];
+            }, cacheTTL),
+            getCached('teacher:groups', async () => {
+              const res = await getGroups();
+              return Array.isArray(res.data) ? res.data : res.data.results || [];
+            }, cacheTTL),
+          ]);
+          
+          setStats(statsData);
+          setLessons(lessonsData);
+          setGroups(groupsData);
+          setLoading(false);
+          return;
+        }
 
         const [statsRes, lessonsRes, groupsRes] = await Promise.all([
           getTeacherStatsSummary(),

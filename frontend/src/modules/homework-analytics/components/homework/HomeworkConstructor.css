@@ -384,7 +384,7 @@
 .hc-upload-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -394,6 +394,23 @@
   z-index: 10;
   font-size: 0.875rem;
   color: var(--text-muted);
+  backdrop-filter: blur(2px);
+}
+
+.hc-upload-progress-container {
+  width: 80%;
+  max-width: 200px;
+  height: 6px;
+  background: var(--border-light, #e2e8f0);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.hc-upload-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary, #4F46E5), var(--color-primary-light, #6366f1));
+  border-radius: 3px;
+  transition: width 0.15s ease-out;
 }
 
 .hc-upload-spinner {

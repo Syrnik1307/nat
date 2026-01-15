@@ -19,6 +19,8 @@
   background-size: 400% 100%;
   animation: skeletonShimmer 1.8s ease-in-out infinite;
   border-radius: var(--radius-md, 12px);
+  will-change: background-position;
+  contain: layout style;
 }
 
 @keyframes skeletonShimmer {
