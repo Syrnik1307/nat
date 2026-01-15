@@ -71,11 +71,28 @@ export const buildHomeworkPayload = (meta, questions) => {
   // Реверсируем массив: в UI новые вопросы добавляются в начало,
   // но для студентов они должны идти в порядке создания (старые первые)
   const orderedQuestions = [...questions].reverse();
-  return {
+  const payload = {
     title: meta.title?.trim() || '',
     description: meta.description?.trim() || '',
     questions: orderedQuestions.map((question, index) => mapQuestionToPayload(question, index)),
   };
+
+  // Передаём выбранную группу в assigned_group_ids
+  if (meta.groupId) {
+    payload.assigned_group_ids = [Number(meta.groupId)];
+  }
+
+  // Передаём дедлайн
+  if (meta.deadline) {
+    payload.deadline = meta.deadline;
+  }
+
+  // Передаём максимальный балл
+  if (meta.maxScore) {
+    payload.max_score = Number(meta.maxScore);
+  }
+
+  return payload;
 };
 
 export const homeworkService = {
