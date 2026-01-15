@@ -26,6 +26,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     
     # Вычисляемые поля для статуса платформ
     zoom_connected = serializers.SerializerMethodField()
+    zoom_email = serializers.SerializerMethodField()
     google_meet_connected = serializers.SerializerMethodField()
     available_platforms = serializers.SerializerMethodField()
 
@@ -47,6 +48,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'zoom_pmi_link',
             # Статус платформ (read-only)
             'zoom_connected',
+            'zoom_email',
             'google_meet_connected',
             'google_meet_email',
             'available_platforms',
@@ -55,7 +57,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'email', 'phone_number', 'role', 'created_at', 'updated_at',
-            'zoom_connected', 'google_meet_connected', 'google_meet_email', 'available_platforms'
+            'zoom_connected', 'zoom_email', 'google_meet_connected', 'google_meet_email', 'available_platforms'
         ]
         extra_kwargs = {
             'first_name': {'allow_blank': True, 'required': False},
@@ -67,6 +69,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def get_zoom_connected(self, obj):
         """Возвращает True если Zoom подключён (личные credentials)"""
         return obj.is_zoom_connected()
+
+    def get_zoom_email(self, obj):
+        """Возвращает email/user_id привязанного Zoom аккаунта"""
+        if obj.is_zoom_connected():
+            return obj.zoom_user_id or ''
+        return ''
 
     def get_google_meet_connected(self, obj):
         """Возвращает True если Google Meet подключён"""
