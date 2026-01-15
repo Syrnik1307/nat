@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { joinGroupByCode, getGroupByInviteCode } from '../apiService';
+import { 
+  joinGroupByCode, 
+  getGroupByInviteCode, 
+  getIndividualInviteCodeByCode, 
+  joinIndividualByCode 
+} from '../apiService';
 import '../styles/JoinGroupModal.css';
 
 const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
@@ -11,6 +16,7 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
   const [success, setSuccess] = useState('');
   const [groupInfo, setGroupInfo] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isIndividualCode, setIsIndividualCode] = useState(false);
 
   const normalizedCode = (code) => code.trim().toUpperCase();
 
@@ -25,15 +31,37 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
     setLoadingGroupInfo(true);
     setError('');
     setSuccess('');
+    setIsIndividualCode(false);
+    
     try {
+      // Сначала пробуем обычные группы
       const response = await getGroupByInviteCode(cleanedCode);
       setGroupInfo(response.data);
       setShowConfirm(true);
       setInviteCode(cleanedCode);
+      setIsIndividualCode(false);
     } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Группа с таким кодом не найдена';
-      setError(errorMsg);
-      setShowConfirm(false);
+      // Если не нашли обычную группу, пробуем индивидуальный инвайт-код
+      try {
+        const individualResponse = await getIndividualInviteCodeByCode(cleanedCode);
+        const data = individualResponse.data;
+        // Преобразуем данные индивидуального кода в формат для отображения
+        setGroupInfo({
+          name: `Индивидуально • ${data.subject || 'Без предмета'}`,
+          description: 'Индивидуальные занятия',
+          teacher: data.teacher || {},
+          student_count: 0,
+          is_individual: true
+        });
+        setShowConfirm(true);
+        setInviteCode(cleanedCode);
+        setIsIndividualCode(true);
+      } catch (individualErr) {
+        // Оба эндпоинта не нашли код
+        const errorMsg = err.response?.data?.error || individualErr.response?.data?.error || 'Группа с таким кодом не найдена';
+        setError(errorMsg);
+        setShowConfirm(false);
+      }
     } finally {
       setLoadingGroupInfo(false);
     }
@@ -78,15 +106,18 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
     setSuccess('');
 
     try {
-      const response = await joinGroupByCode(cleanedCode);
-      setSuccess(response.data.message || 'Вы успешно присоединились к группе!');
+      // Используем соответствующий эндпоинт в зависимости от типа кода
+      const response = isIndividualCode 
+        ? await joinIndividualByCode(cleanedCode)
+        : await joinGroupByCode(cleanedCode);
+      setSuccess(response.data.message || 'Вы успешно присоединились!');
 
       setTimeout(() => {
         if (onSuccess) onSuccess(response.data.group);
         onClose();
       }, 1200);
     } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Не удалось присоединиться к группе';
+      const errorMsg = err.response?.data?.error || 'Не удалось присоединиться';
       setError(errorMsg);
     } finally {
       setLoading(false);
@@ -146,7 +177,9 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
           </>
         ) : (
           <>
-            <h2 className="join-modal-title">Присоединиться к группе?</h2>
+            <h2 className="join-modal-title">
+              {isIndividualCode ? 'Присоединиться к занятиям?' : 'Присоединиться к группе?'}
+            </h2>
 
             {groupInfo && (
               <div className="join-group-preview">
@@ -157,10 +190,12 @@ const JoinGroupModal = ({ onClose, onSuccess, initialCode = '' }) => {
                     <span className="join-stat-label">Преподаватель</span>
                     <span className="join-stat-value">{groupInfo.teacher?.first_name || groupInfo.teacher?.email || 'Не указан'}</span>
                   </div>
-                  <div className="join-stat">
-                    <span className="join-stat-label">Учеников</span>
-                    <span className="join-stat-value">{groupInfo.student_count || 0}</span>
-                  </div>
+                  {!isIndividualCode && (
+                    <div className="join-stat">
+                      <span className="join-stat-label">Учеников</span>
+                      <span className="join-stat-value">{groupInfo.student_count || 0}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
