@@ -1399,23 +1399,34 @@ class LessonViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='start-new')
     def start_new(self, request, pk=None):
         """
-        Новый старт урока, использующий пул из приложения zoom_pool.
+        Новый старт урока с выбором платформы (Zoom или Google Meet).
         POST /api/schedule/lessons/{id}/start-new/
 
-        Возвращает 503 если все аккаунты заняты.
+        Параметры:
+            - provider: 'zoom_pool' (default) | 'google_meet'
+            - record_lesson: bool (только для Zoom)
+            - force_new_meeting: bool
+
+        Возвращает 503 если все Zoom аккаунты заняты.
         Ограничение: запускать можно за 15 минут до начала.
         Если встреча уже создана – возвращаем существующие данные.
         Rate limit: 3 попытки в минуту на пользователя.
         """
         lesson = self.get_object()
         user = request.user
+        
         # Требуем активную подписку
         try:
             require_active_subscription(user)
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
 
-        # Позволяем передать флаг записи вместе с запросом, чтобы исключить расхождения между фронтом и БД
+        # Определяем провайдера (по умолчанию zoom_pool для backward compatibility)
+        provider = request.data.get('provider', 'zoom_pool')
+        if provider not in ('zoom_pool', 'zoom_personal', 'google_meet'):
+            provider = 'zoom_pool'
+
+        # Позволяем передать флаг записи вместе с запросом
         record_flag_raw = request.data.get('record_lesson')
         force_new_meeting = str(request.data.get('force_new_meeting', '')).lower() in (
             '1', 'true', 'yes', 'on', 'y', 't'
@@ -1428,7 +1439,7 @@ class LessonViewSet(viewsets.ModelViewSet):
                 lesson.save(update_fields=['record_lesson'])
                 record_flag_changed = True
 
-        # Если просили включить запись и встреча уже есть — пересоздаём её, чтобы передать авто-запись в Zoom
+        # Если просили включить запись и встреча уже есть — пересоздаём её
         force_new_meeting = force_new_meeting or (record_flag_changed and lesson.record_lesson)
 
         # Rate limiting - 3 попытки в минуту на пользователя
@@ -1445,14 +1456,25 @@ class LessonViewSet(viewsets.ModelViewSet):
         if lesson.teacher != user:
             return Response({'detail': 'Только преподаватель урока может его запустить'}, status=status.HTTP_403_FORBIDDEN)
 
-        # Если уже есть встреча и не требуется пересоздание – вернуть её
+        # Проверка времени (за 15 минут до начала)
+        now = timezone.now()
+        if lesson.start_time - timezone.timedelta(minutes=15) > now:
+            return Response({'detail': 'Урок можно начать за 15 минут до начала'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ========== Google Meet ==========
+        if provider == 'google_meet':
+            return self._start_via_google_meet(lesson, user, request)
+
+        # ========== Zoom (legacy path - не трогаем) ==========
+        # Если уже есть Zoom встреча и не требуется пересоздание – вернуть её
         if lesson.zoom_meeting_id and not force_new_meeting:
             return Response({
                 'zoom_join_url': lesson.zoom_join_url,
                 'zoom_start_url': lesson.zoom_start_url,
                 'zoom_meeting_id': lesson.zoom_meeting_id,
                 'zoom_password': lesson.zoom_password,
-                'account_email': getattr(lesson.zoom_account, 'email', 'уже назначен')
+                'account_email': getattr(lesson.zoom_account, 'email', 'уже назначен'),
+                'provider': 'zoom',
             }, status=status.HTTP_200_OK)
 
         # Пересоздаём встречу, если нужно включить запись
@@ -1473,16 +1495,91 @@ class LessonViewSet(viewsets.ModelViewSet):
                 except Exception:
                     logger.exception('Не удалось освободить Zoom аккаунт при пересоздании встречи')
 
-        # Проверка времени (за 15 минут до начала)
-        now = timezone.now()
-        if lesson.start_time - timezone.timedelta(minutes=15) > now:
-            return Response({'detail': 'Урок можно начать за 15 минут до начала'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Поиск свободного аккаунта
+        # Поиск свободного аккаунта из пула
         payload, error_response = self._start_zoom_via_pool(lesson, user, request)
         if error_response:
             return error_response
+        payload['provider'] = 'zoom'
         return Response(payload, status=status.HTTP_200_OK)
+
+    def _start_via_google_meet(self, lesson, user, request):
+        """
+        Вспомогательный метод для старта урока через Google Meet.
+        Создаёт событие в Google Calendar с Meet conferencing.
+        """
+        from django.conf import settings
+        
+        # Проверяем, включена ли интеграция Google Meet
+        if not getattr(settings, 'GOOGLE_MEET_ENABLED', False):
+            return Response(
+                {'detail': 'Google Meet интеграция не включена на сервере'},
+                status=status.HTTP_501_NOT_IMPLEMENTED
+            )
+        
+        # Проверяем, подключён ли Google Meet у пользователя
+        if not user.is_google_meet_connected():
+            return Response(
+                {'detail': 'Google Meet не подключён. Подключите его в профиле.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Проверяем, есть ли уже Google Meet ссылка для этого урока
+        if lesson.google_meet_link:
+            return Response({
+                'meet_link': lesson.google_meet_link,
+                'start_url': lesson.google_meet_link,
+                'join_url': lesson.google_meet_link,
+                'google_calendar_event_id': lesson.google_calendar_event_id,
+                'provider': 'google_meet',
+            }, status=status.HTTP_200_OK)
+        
+        try:
+            from integrations.google_meet_service import GoogleMeetService, GoogleMeetError
+            
+            service = GoogleMeetService(user=user)
+            
+            # Создаём встречу
+            group_name = lesson.group.name if lesson.group else 'Урок'
+            title = f"{group_name} - {lesson.title}"
+            
+            meeting_data = service.create_meeting(
+                title=title,
+                start_time=lesson.start_time,
+                duration_minutes=lesson.duration(),
+                description=f"Урок на платформе Teaching Panel\nПреподаватель: {user.get_full_name()}",
+            )
+            
+            # Сохраняем данные в урок
+            lesson.google_meet_link = meeting_data.get('meet_link', '')
+            lesson.google_calendar_event_id = meeting_data.get('event_id', '')
+            lesson.save(update_fields=['google_meet_link', 'google_calendar_event_id'])
+            
+            logger.info(f"Google Meet created for lesson {lesson.id}: {lesson.google_meet_link}")
+            
+            # Логирование
+            log_audit(
+                user=user,
+                action='lesson_start_google_meet',
+                resource_type='Lesson',
+                resource_id=lesson.id,
+                request=request,
+                details={'meet_link': lesson.google_meet_link, 'teacher': user.email}
+            )
+            
+            return Response({
+                'meet_link': lesson.google_meet_link,
+                'start_url': lesson.google_meet_link,
+                'join_url': lesson.google_meet_link,
+                'google_calendar_event_id': lesson.google_calendar_event_id,
+                'provider': 'google_meet',
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.exception(f"Failed to create Google Meet for lesson {lesson.id}: {e}")
+            return Response(
+                {'detail': f'Ошибка при создании Google Meet: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=False, methods=['post'], url_path='quick-start')
     def quick_start(self, request):

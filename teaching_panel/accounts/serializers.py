@@ -23,6 +23,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для профиля текущего пользователя"""
+    
+    # Вычисляемые поля для статуса платформ
+    zoom_connected = serializers.SerializerMethodField()
+    google_meet_connected = serializers.SerializerMethodField()
+    available_platforms = serializers.SerializerMethodField()
 
     class Meta:
         model = get_user_model()
@@ -40,16 +45,39 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'telegram_username',
             'telegram_verified',
             'zoom_pmi_link',
+            # Статус платформ (read-only)
+            'zoom_connected',
+            'google_meet_connected',
+            'google_meet_email',
+            'available_platforms',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['email', 'phone_number', 'role', 'created_at', 'updated_at']
+        read_only_fields = [
+            'email', 'phone_number', 'role', 'created_at', 'updated_at',
+            'zoom_connected', 'google_meet_connected', 'google_meet_email', 'available_platforms'
+        ]
         extra_kwargs = {
             'first_name': {'allow_blank': True, 'required': False},
             'middle_name': {'allow_blank': True, 'required': False},
             'last_name': {'allow_blank': True, 'required': False},
             'avatar': {'allow_blank': True, 'required': False},
         }
+
+    def get_zoom_connected(self, obj):
+        """Возвращает True если Zoom подключён (личные credentials)"""
+        return obj.is_zoom_connected()
+
+    def get_google_meet_connected(self, obj):
+        """Возвращает True если Google Meet подключён"""
+        return obj.is_google_meet_connected()
+
+    def get_available_platforms(self, obj):
+        """Возвращает список доступных платформ для проведения уроков"""
+        # Только для учителей
+        if obj.role != 'teacher':
+            return []
+        return obj.get_available_platforms()
 
 
 class SystemSettingsSerializer(serializers.ModelSerializer):

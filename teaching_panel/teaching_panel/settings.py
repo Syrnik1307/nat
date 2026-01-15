@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     'analytics',
     'zoom_pool',
     'support',
+    'integrations',  # Third-party platform integrations (Google Meet, etc.)
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'django_celery_beat',
@@ -325,6 +326,23 @@ GDRIVE_ATTACHMENTS_FOLDER_ID = os.environ.get('GDRIVE_ATTACHMENTS_FOLDER_ID', ''
 
 # Storage backends
 USE_GDRIVE_STORAGE = os.environ.get('USE_GDRIVE_STORAGE', '0') == '1'  # Включить хранение на Google Drive
+
+# =============================================================================
+# Google Meet Integration (Feature-flagged)
+# =============================================================================
+# Enable Google Meet as alternative video platform for lessons
+# Set GOOGLE_MEET_ENABLED=1 to enable the feature
+GOOGLE_MEET_ENABLED = os.environ.get('GOOGLE_MEET_ENABLED', '0') == '1'
+
+# Google OAuth2 credentials for Meet integration (Calendar API)
+# Create OAuth 2.0 Client ID at https://console.cloud.google.com/apis/credentials
+# Required scopes: https://www.googleapis.com/auth/calendar.events
+GOOGLE_MEET_CLIENT_ID = os.environ.get('GOOGLE_MEET_CLIENT_ID', '')
+GOOGLE_MEET_CLIENT_SECRET = os.environ.get('GOOGLE_MEET_CLIENT_SECRET', '')
+GOOGLE_MEET_REDIRECT_URI = os.environ.get(
+    'GOOGLE_MEET_REDIRECT_URI',
+    'http://localhost:8000/api/integrations/google-meet/callback/'
+)
 
 # Video compression settings
 VIDEO_COMPRESSION_ENABLED = os.environ.get('VIDEO_COMPRESSION_ENABLED', '1') == '1'

@@ -74,6 +74,10 @@ class LessonSerializer(serializers.ModelSerializer):
     homework_id = serializers.SerializerMethodField()
     # display_name: тема урока или название группы
     display_name = serializers.CharField(read_only=True)
+    # Универсальная ссылка для подключения (Zoom или Google Meet)
+    join_url = serializers.SerializerMethodField()
+    # Провайдер видеоконференции
+    video_provider = serializers.SerializerMethodField()
     
     class Meta:
         model = Lesson
@@ -83,10 +87,31 @@ class LessonSerializer(serializers.ModelSerializer):
             'start_time', 'end_time', 'duration_minutes',
             'topics', 'location',
             'zoom_meeting_id', 'zoom_start_url', 'zoom_join_url', 'zoom_password',
+            'google_meet_link', 'google_calendar_event_id',  # Google Meet
+            'join_url', 'video_provider',  # Универсальные поля
             'record_lesson', 'recording_available_for_days',  # Добавили поля записи
             'notes', 'created_at', 'updated_at',
             'recording_id', 'homework_id',  # Для календаря студента
         ]
+    
+    def get_join_url(self, obj):
+        """
+        Универсальная ссылка для подключения к уроку.
+        Приоритет: Google Meet > Zoom.
+        """
+        if obj.google_meet_link:
+            return obj.google_meet_link
+        return obj.zoom_join_url or None
+    
+    def get_video_provider(self, obj):
+        """
+        Определяет провайдера видеоконференции для урока.
+        """
+        if obj.google_meet_link:
+            return 'google_meet'
+        if obj.zoom_meeting_id:
+            return 'zoom'
+        return None
     
     def get_recording_id(self, obj):
         """ID первой доступной записи урока (или None)"""

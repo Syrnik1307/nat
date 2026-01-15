@@ -234,6 +234,24 @@ class Lesson(models.Model):
         help_text=_('Сколько дней запись будет доступна ученикам (0 = бессрочно)')
     )
     
+    # ==========================================================================
+    # Google Meet Integration
+    # ==========================================================================
+    google_meet_link = models.URLField(
+        _('ссылка Google Meet'),
+        max_length=500,
+        blank=True,
+        default='',
+        help_text=_('Ссылка на Google Meet для этого урока')
+    )
+    google_calendar_event_id = models.CharField(
+        _('ID события Google Calendar'),
+        max_length=255,
+        blank=True,
+        default='',
+        help_text=_('ID события в Google Calendar (для обновления/удаления)')
+    )
+    
     created_at = models.DateTimeField(_('дата создания'), auto_now_add=True)
     updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
     

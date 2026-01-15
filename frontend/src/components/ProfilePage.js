@@ -12,6 +12,7 @@ import {
   patchNotificationSettings,
 } from '../apiService';
 import SubscriptionPage from './SubscriptionPage';
+import PlatformsSection from './PlatformsSection';
 import './ProfilePage.css';
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
@@ -78,6 +79,7 @@ const ProfilePage = () => {
       { key: 'security', label: 'Безопасность' },
     ];
     if (user.role === 'teacher') {
+      items.push({ key: 'platforms', label: 'Платформы' });
       items.push({ key: 'subscription', label: 'Моя подписка' });
     }
     return items;
@@ -1086,6 +1088,13 @@ const ProfilePage = () => {
               )}
             </section>
           </div>
+
+        {/* Platforms Tab (Teachers only) */}
+        {activeTab === 'platforms' && user.role === 'teacher' && (
+          <div className="profile-content platforms-tab">
+            <PlatformsSection user={user} onRefresh={refreshUser} />
+          </div>
+        )}
 
         {/* Subscription Tab */}
         {activeTab === 'subscription' && user.role === 'teacher' && (

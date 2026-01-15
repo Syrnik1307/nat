@@ -113,6 +113,9 @@ urlpatterns = [
     # Zoom Pool API
     path('api/zoom-pool/', include('zoom_pool.urls')),
     
+    # Integrations API (Google Meet, etc.)
+    path('api/integrations/', include('integrations.urls')),
+    
     # Support API
     path('api/support/', include('support.urls')),
     

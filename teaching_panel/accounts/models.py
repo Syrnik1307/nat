@@ -188,6 +188,43 @@ class CustomUser(AbstractUser):
         help_text=_('Постоянная ссылка Zoom (Personal Meeting ID) для регулярных уроков')
     )
     
+    # ==========================================================================
+    # Google Meet Integration (OAuth2 tokens stored per-user)
+    # ==========================================================================
+    google_meet_connected = models.BooleanField(
+        _('Google Meet подключён'),
+        default=False,
+        help_text=_('Флаг показывает, что учитель успешно авторизовал Google Meet')
+    )
+    
+    google_meet_access_token = models.TextField(
+        _('Google Meet Access Token'),
+        blank=True,
+        default='',
+        help_text=_('OAuth2 access token для Google Calendar API (зашифрован)')
+    )
+    
+    google_meet_refresh_token = models.TextField(
+        _('Google Meet Refresh Token'),
+        blank=True,
+        default='',
+        help_text=_('OAuth2 refresh token для обновления access token')
+    )
+    
+    google_meet_token_expires_at = models.DateTimeField(
+        _('Google Meet Token Expires'),
+        blank=True,
+        null=True,
+        help_text=_('Время истечения access token')
+    )
+    
+    google_meet_email = models.EmailField(
+        _('Google Meet Email'),
+        blank=True,
+        default='',
+        help_text=_('Email аккаунта Google, к которому привязан Meet')
+    )
+    
     # Google Drive для хранения файлов
     gdrive_folder_id = models.CharField(
         _('Google Drive Folder ID'),
@@ -236,6 +273,60 @@ class CustomUser(AbstractUser):
         parts = [self.last_name or '', self.first_name or '', self.middle_name or '']
         full = ' '.join(filter(None, parts)).strip()
         return full or self.email
+
+    # =========================================================================
+    # Platform connection status helpers
+    # =========================================================================
+    def is_zoom_connected(self):
+        """
+        Проверяет, подключён ли Zoom для этого учителя.
+        Zoom считается подключённым если есть все три OAuth credentials.
+        """
+        return bool(
+            self.zoom_account_id and
+            self.zoom_client_id and
+            self.zoom_client_secret
+        )
+
+    def is_google_meet_connected(self):
+        """
+        Проверяет, подключён ли Google Meet для этого учителя.
+        Meet считается подключённым если есть refresh token и флаг connected.
+        """
+        return bool(self.google_meet_connected and self.google_meet_refresh_token)
+
+    def get_available_platforms(self):
+        """
+        Возвращает список доступных платформ для проведения уроков.
+        Используется в UI для показа выбора платформы.
+        """
+        platforms = []
+        # Zoom через пул платформы всегда доступен (если пул настроен глобально)
+        platforms.append({
+            'id': 'zoom_pool',
+            'name': 'Zoom (пул платформы)',
+            'connected': True,  # Пул всегда доступен
+            'icon': 'video'
+        })
+        # Персональный Zoom учителя
+        if self.is_zoom_connected():
+            platforms.append({
+                'id': 'zoom_personal',
+                'name': 'Zoom (личный)',
+                'connected': True,
+                'email': self.zoom_user_id or 'настроен',
+                'icon': 'video'
+            })
+        # Google Meet
+        if self.is_google_meet_connected():
+            platforms.append({
+                'id': 'google_meet',
+                'name': 'Google Meet',
+                'connected': True,
+                'email': self.google_meet_email or 'подключён',
+                'icon': 'users'
+            })
+        return platforms
 
     def save(self, *args, **kwargs):
         # Генерируем реферальный код, если пуст
