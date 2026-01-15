@@ -213,6 +213,47 @@
   color: #9a3412;
 }
 
+/* Unavailable platform state */
+.platform-row.unavailable {
+  opacity: 0.65;
+  background: #f8fafc;
+}
+
+.platform-row.unavailable .platform-icon.google {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+}
+
+.platform-unavailable-hint {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 500;
+  padding: 0.45rem 0.9rem;
+  background: #f1f5f9;
+  border-radius: 7px;
+  border: 1px dashed #cbd5e1;
+}
+
+/* Notice about unavailable platforms */
+.platform-unavailable-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #0369a1;
+}
+
+.platform-unavailable-notice .info-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: #0ea5e9;
+}
+
 /* Mobile */
 @media (max-width: 480px) {
   .platform-row {
@@ -228,5 +269,10 @@
     width: 100%;
     text-align: center;
     padding: 0.5rem;
+  }
+  
+  .platform-unavailable-hint {
+    width: 100%;
+    text-align: center;
   }
 }

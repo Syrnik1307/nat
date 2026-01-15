@@ -174,11 +174,17 @@ class GoogleMeetStatusView(APIView):
     def get(self, request):
         user = request.user
         
-        # Check if feature is enabled
+        # Check if feature is enabled and configured
         meet_enabled = getattr(settings, 'GOOGLE_MEET_ENABLED', False)
+        meet_configured = bool(
+            meet_enabled and
+            getattr(settings, 'GOOGLE_MEET_CLIENT_ID', '') and
+            getattr(settings, 'GOOGLE_MEET_CLIENT_SECRET', '')
+        )
         
         return Response({
             'enabled': meet_enabled,
+            'configured': meet_configured,  # True only if OAuth credentials are set
             'connected': user.is_google_meet_connected() if hasattr(user, 'is_google_meet_connected') else False,
             'email': getattr(user, 'google_meet_email', '') or '',
         })

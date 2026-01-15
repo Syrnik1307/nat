@@ -16,11 +16,15 @@ from .zoom_views import (
     ZoomCallbackView,
     ZoomDisconnectView,
     ZoomStatusView,
+    PlatformsAvailabilityView,
 )
 
 app_name = 'integrations'
 
 urlpatterns = [
+    # Общий статус платформ
+    path('platforms/', PlatformsAvailabilityView.as_view(), name='platforms-availability'),
+    
     # Zoom OAuth
     path('zoom/auth-url/', ZoomAuthURLView.as_view(), name='zoom-auth-url'),
     path('zoom/callback/', ZoomCallbackView.as_view(), name='zoom-callback'),
