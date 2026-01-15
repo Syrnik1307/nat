@@ -295,6 +295,26 @@ const StartLessonButton = ({ lessonId, lesson, onSuccess }) => {
                         </a>
                       )}
                     </div>
+                    
+                    {/* Предупреждение об ограничениях Google Meet */}
+                    {selectedPlatform === 'google_meet' && (
+                      <div style={{
+                        fontSize: '0.8rem',
+                        color: '#92400e',
+                        padding: '0.75rem',
+                        backgroundColor: '#fffbeb',
+                        borderRadius: '8px',
+                        border: '1px solid #fde68a',
+                        marginTop: '0.5rem',
+                      }}>
+                        <strong>Ограничения Google Meet:</strong>
+                        <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.25rem' }}>
+                          <li>Нет автоматической расшифровки активности</li>
+                          <li>Посещаемость фиксируется по клику «Присоединиться»</li>
+                          <li>Ученикам нужен Google аккаунт</li>
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

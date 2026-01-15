@@ -440,7 +440,20 @@ const Calendar = () => {
                       onClick={() => window.open(selectedEvent.zoom_join_url, '_blank')}
                       style={{ width: '100%' }}
                     >
-                      🎥 Присоединиться к Zoom
+                      Присоединиться к Zoom
+                    </Button>
+                  </div>
+                );
+              } else if (!isPast && selectedEvent.google_meet_link) {
+                // Предстоящий/текущий урок с Google Meet ссылкой
+                return (
+                  <div className="tp-section">
+                    <Button
+                      variant="primary"
+                      onClick={() => window.open(selectedEvent.google_meet_link, '_blank')}
+                      style={{ width: '100%', background: 'linear-gradient(135deg, #00ac47 0%, #00832d 100%)' }}
+                    >
+                      Присоединиться к Google Meet
                     </Button>
                   </div>
                 );

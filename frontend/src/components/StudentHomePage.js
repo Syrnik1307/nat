@@ -147,11 +147,28 @@ const StudentHomePage = () => {
     setJoinLoading(true);
     try {
       const resp = await joinLesson(nextTodayLesson.id);
-      const url = resp?.data?.zoom_join_url;
+      // Используем универсальную ссылку (поддерживает Zoom и Google Meet)
+      const url = resp?.data?.join_url || resp?.data?.zoom_join_url;
+      const platform = resp?.data?.platform;
+      
       if (!url) {
         setJoinError('Ссылка пока недоступна. Попробуйте позже.');
         return;
       }
+      
+      // Для Google Meet показываем предупреждение о необходимости Google аккаунта
+      if (platform === 'google_meet') {
+        const confirmed = window.confirm(
+          'Для входа в Google Meet вам потребуется Google аккаунт.\n\n' +
+          'Если у вас нет Google аккаунта, создайте его бесплатно на google.com\n\n' +
+          'Нажмите OK, чтобы перейти к уроку.'
+        );
+        if (!confirmed) {
+          setJoinLoading(false);
+          return;
+        }
+      }
+      
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (e) {
       const status = e?.response?.status;

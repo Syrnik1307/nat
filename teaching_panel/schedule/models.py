@@ -1473,3 +1473,73 @@ class LessonTranscriptStats(models.Model):
     def __str__(self):
         return f"Stats for {self.lesson}"
 
+
+class LessonJoinLog(models.Model):
+    """
+    Лог подключений к уроку.
+    Фиксирует когда студент нажал кнопку "Присоединиться" для любой платформы.
+    Это позволяет отслеживать активность даже без автоматической аналитики платформы.
+    """
+    
+    PLATFORM_ZOOM = 'zoom'
+    PLATFORM_GOOGLE_MEET = 'google_meet'
+    PLATFORM_CHOICES = [
+        (PLATFORM_ZOOM, 'Zoom'),
+        (PLATFORM_GOOGLE_MEET, 'Google Meet'),
+    ]
+    
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.CASCADE,
+        related_name='join_logs',
+        verbose_name=_('урок')
+    )
+    
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='lesson_join_logs',
+        limit_choices_to={'role': 'student'},
+        verbose_name=_('ученик')
+    )
+    
+    platform = models.CharField(
+        _('платформа'),
+        max_length=20,
+        choices=PLATFORM_CHOICES,
+        help_text=_('Через какую платформу подключался')
+    )
+    
+    clicked_at = models.DateTimeField(
+        _('время клика'),
+        auto_now_add=True,
+        help_text=_('Когда ученик нажал кнопку Присоединиться')
+    )
+    
+    # IP и User-Agent для дополнительной проверки
+    ip_address = models.GenericIPAddressField(
+        _('IP адрес'),
+        blank=True,
+        null=True
+    )
+    
+    user_agent = models.TextField(
+        _('User Agent'),
+        blank=True,
+        default=''
+    )
+    
+    class Meta:
+        verbose_name = _('лог подключения к уроку')
+        verbose_name_plural = _('логи подключений к урокам')
+        ordering = ['-clicked_at']
+        # Уникальность: один ученик - один клик на платформу за урок
+        # (можно убрать если нужно логировать множественные клики)
+        indexes = [
+            models.Index(fields=['lesson', 'student']),
+            models.Index(fields=['clicked_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.student} -> {self.lesson} ({self.platform})"
+

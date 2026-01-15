@@ -17,7 +17,7 @@ from django.core.cache import cache
 import hashlib
 import logging
 from datetime import datetime, timedelta
-from .models import Group, Lesson, Attendance, RecurringLesson, LessonRecording, AuditLog, IndividualInviteCode, LessonTranscriptStats
+from .models import Group, Lesson, Attendance, RecurringLesson, LessonRecording, AuditLog, IndividualInviteCode, LessonTranscriptStats, LessonJoinLog
 from zoom_pool.models import ZoomAccount
 from django.db.models import F
 from .permissions import IsLessonOwnerOrReadOnly, IsGroupOwnerOrReadOnly, IsTeacherOrReadOnly
@@ -548,7 +548,9 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='join', permission_classes=[IsAuthenticated])
     def join(self, request, pk=None):
-        """Вернуть ссылку для входа в Zoom для участника урока.
+        """Вернуть ссылку для входа в конференцию для участника урока.
+        
+        Поддерживает Zoom и Google Meet.
 
         POST /api/schedule/lessons/{id}/join/
         Доступ:
@@ -572,17 +574,68 @@ class LessonViewSet(viewsets.ModelViewSet):
         if not allowed:
             return Response({'detail': 'Нет доступа к этому уроку'}, status=status.HTTP_403_FORBIDDEN)
 
-        if not lesson.zoom_join_url:
+        # Определяем какая платформа используется
+        join_url = None
+        platform = None
+        
+        if lesson.google_meet_link:
+            join_url = lesson.google_meet_link
+            platform = 'google_meet'
+        elif lesson.zoom_join_url:
+            join_url = lesson.zoom_join_url
+            platform = 'zoom'
+        
+        if not join_url:
             return Response(
                 {'detail': 'Ссылка появится, когда преподаватель начнёт занятие'},
                 status=status.HTTP_409_CONFLICT
             )
+        
+        # Логируем клик студента для аналитики
+        if role == 'student':
+            try:
+                x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+                if x_forwarded_for:
+                    ip_address = x_forwarded_for.split(',')[0].strip()
+                else:
+                    ip_address = request.META.get('REMOTE_ADDR')
+                user_agent = request.META.get('HTTP_USER_AGENT', '')[:500]
+                
+                LessonJoinLog.objects.update_or_create(
+                    lesson=lesson,
+                    student=user,
+                    platform=platform,
+                    defaults={
+                        'ip_address': ip_address,
+                        'user_agent': user_agent,
+                    }
+                )
+                
+                # Для Google Meet автоматически отмечаем посещаемость
+                if platform == 'google_meet':
+                    from accounts.attendance_service import AttendanceService
+                    try:
+                        AttendanceService.auto_record_attendance(
+                            lesson_id=lesson.id,
+                            student_id=user.id,
+                            is_joined=True
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to auto-record attendance: {e}")
+                
+                logger.info(f"Student {user.id} joined lesson {lesson.id} via {platform}")
+            except Exception as e:
+                logger.warning(f"Failed to log join: {e}")
 
         return Response(
             {
-                'zoom_join_url': lesson.zoom_join_url,
-                'zoom_meeting_id': lesson.zoom_meeting_id,
-                'zoom_password': lesson.zoom_password,
+                'join_url': join_url,
+                'platform': platform,
+                # Backward compatibility
+                'zoom_join_url': lesson.zoom_join_url if platform == 'zoom' else None,
+                'zoom_meeting_id': lesson.zoom_meeting_id if platform == 'zoom' else None,
+                'zoom_password': lesson.zoom_password if platform == 'zoom' else None,
+                'google_meet_link': lesson.google_meet_link if platform == 'google_meet' else None,
             },
             status=status.HTTP_200_OK
         )
@@ -1119,6 +1172,82 @@ class LessonViewSet(viewsets.ModelViewSet):
         
         serializer = LessonDetailSerializer(lesson)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def log_join(self, request, pk=None):
+        """
+        Записать клик студента на кнопку "Присоединиться".
+        Используется для отслеживания активности на платформах без автоматической аналитики.
+        
+        POST /api/schedule/lessons/{id}/log_join/
+        Body: {"platform": "zoom" | "google_meet"}
+        """
+        from .models import LessonJoinLog
+        
+        lesson = self.get_object()
+        user = request.user
+        
+        # Только студенты могут логировать присоединение
+        if user.role != 'student':
+            return Response(
+                {'detail': 'Только студенты могут использовать этот endpoint'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Проверяем что студент в группе этого урока
+        if not lesson.group.students.filter(id=user.id).exists():
+            return Response(
+                {'detail': 'Вы не состоите в группе этого урока'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        platform = request.data.get('platform', '')
+        if platform not in [LessonJoinLog.PLATFORM_ZOOM, LessonJoinLog.PLATFORM_GOOGLE_MEET]:
+            return Response(
+                {'detail': 'platform должен быть "zoom" или "google_meet"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Получаем IP и User-Agent
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip_address = x_forwarded_for.split(',')[0].strip()
+        else:
+            ip_address = request.META.get('REMOTE_ADDR')
+        user_agent = request.META.get('HTTP_USER_AGENT', '')[:500]  # Ограничиваем длину
+        
+        # Создаём или обновляем лог (один клик на платформу за урок)
+        log, created = LessonJoinLog.objects.update_or_create(
+            lesson=lesson,
+            student=user,
+            platform=platform,
+            defaults={
+                'ip_address': ip_address,
+                'user_agent': user_agent,
+            }
+        )
+        
+        # Также автоматически отмечаем посещаемость как "attended"
+        # если используется Google Meet (где нет автоматической аналитики)
+        if platform == LessonJoinLog.PLATFORM_GOOGLE_MEET:
+            from accounts.attendance_service import AttendanceService
+            try:
+                AttendanceService.auto_record_attendance(
+                    lesson_id=lesson.id,
+                    student_id=user.id,
+                    is_joined=True
+                )
+            except Exception as e:
+                logger.warning(f"Failed to auto-record attendance for lesson {lesson.id}, student {user.id}: {e}")
+        
+        logger.info(f"Student {user.id} joined lesson {lesson.id} via {platform}")
+        
+        return Response({
+            'status': 'logged',
+            'platform': platform,
+            'created': created,
+            'clicked_at': log.clicked_at.isoformat()
+        })
 
     @action(detail=True, methods=['post'])
     def add_recording(self, request, pk=None):
