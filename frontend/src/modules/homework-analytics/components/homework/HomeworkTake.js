@@ -10,9 +10,31 @@ import QuestionNav from '../student/QuestionNav';
 import MediaPreview from '../shared/MediaPreview';
 import './HomeworkTake.css';
 
-// Нормализация URL для картинок
+// Нормализация URL для картинок (включая Google Drive)
 const normalizeUrl = (url) => {
   if (!url) return '';
+  
+  // Конвертация Google Drive ссылок для inline отображения
+  if (url.includes('drive.google.com')) {
+    let fileId = null;
+    
+    // Формат: /uc?export=download&id=FILE_ID или /uc?id=FILE_ID
+    const ucMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (ucMatch) {
+      fileId = ucMatch[1];
+    }
+    
+    // Формат: /file/d/FILE_ID/view
+    const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileMatch) {
+      fileId = fileMatch[1];
+    }
+    
+    if (fileId) {
+      return `https://lh3.googleusercontent.com/d/${fileId}`;
+    }
+  }
+  
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }

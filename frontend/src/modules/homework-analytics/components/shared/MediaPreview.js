@@ -9,11 +9,41 @@ const MediaPreview = ({ type = 'image', src, alt = 'Медиа', className = '' 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  // Нормализация URL - добавляем baseURL если нужно
+  // Нормализация URL - добавляем baseURL если нужно, конвертируем Google Drive
   const normalizeUrl = (url) => {
     if (!url) return '';
     
-    // Если уже полный URL, возвращаем как есть
+    // Конвертация Google Drive ссылок для inline отображения
+    // https://drive.google.com/uc?export=download&id=FILE_ID -> прямая ссылка
+    if (url.includes('drive.google.com')) {
+      // Извлекаем file ID из разных форматов Google Drive URL
+      let fileId = null;
+      
+      // Формат: /uc?export=download&id=FILE_ID или /uc?id=FILE_ID
+      const ucMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (ucMatch) {
+        fileId = ucMatch[1];
+      }
+      
+      // Формат: /file/d/FILE_ID/view или /file/d/FILE_ID
+      const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (fileMatch) {
+        fileId = fileMatch[1];
+      }
+      
+      // Формат: /open?id=FILE_ID
+      const openMatch = url.match(/\/open\?id=([a-zA-Z0-9_-]+)/);
+      if (openMatch) {
+        fileId = openMatch[1];
+      }
+      
+      if (fileId) {
+        // Используем lh3.googleusercontent.com для прямого доступа к изображениям
+        return `https://lh3.googleusercontent.com/d/${fileId}`;
+      }
+    }
+    
+    // Если уже полный URL (не Google Drive), возвращаем как есть
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
     }
