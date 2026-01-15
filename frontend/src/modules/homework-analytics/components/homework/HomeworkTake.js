@@ -7,7 +7,20 @@ import useHomeworkSession from '../../hooks/useHomeworkSession';
 import QuestionRenderer from '../student/QuestionRenderer';
 import ProgressBar from '../student/ProgressBar';
 import QuestionNav from '../student/QuestionNav';
+import MediaPreview from '../shared/MediaPreview';
 import './HomeworkTake.css';
+
+// Нормализация URL для картинок
+const normalizeUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  if (url.startsWith('/media')) {
+    return url;
+  }
+  return `/media/${url}`;
+};
 
 const HomeworkTake = () => {
   const { notification, confirm, closeNotification, showConfirm, closeConfirm } = useNotification();
@@ -174,7 +187,7 @@ const HomeworkTake = () => {
             {imagePreview.url ? (
               <a
                 className="gm-btn-primary"
-                href={imagePreview.url}
+                href={normalizeUrl(imagePreview.url)}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -186,7 +199,7 @@ const HomeworkTake = () => {
       >
         {imagePreview.url ? (
           <div className="ht-image-modal">
-            <img className="ht-image-modal-img" src={imagePreview.url} alt="Изображение" />
+            <img className="ht-image-modal-img" src={normalizeUrl(imagePreview.url)} alt="Изображение" />
           </div>
         ) : null}
       </Modal>
@@ -232,13 +245,14 @@ const HomeworkTake = () => {
               </div>
               {/* Изображение вопроса (если есть) */}
               {currentQuestion.config?.imageUrl && (
-                <div className="ht-question-image">
-                  <img 
+                <div 
+                  className="ht-question-image"
+                  onClick={() => setImagePreview({ open: true, url: currentQuestion.config.imageUrl })}
+                >
+                  <MediaPreview 
+                    type="image"
                     src={currentQuestion.config.imageUrl} 
-                    alt="Изображение к вопросу" 
-                    loading="lazy"
-                    decoding="async"
-                    onClick={() => setImagePreview({ open: true, url: currentQuestion.config.imageUrl })}
+                    alt="Изображение к вопросу"
                   />
                 </div>
               )}
