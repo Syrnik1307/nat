@@ -12,7 +12,6 @@ const PlatformsSection = ({ user, onRefresh }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [platformsStatus, setPlatformsStatus] = useState(null);
-  const [statusLoading, setStatusLoading] = useState(true);
   const [instructionModal, setInstructionModal] = useState(null); // 'zoom' | 'google_meet' | null
 
   // Статусы из user (приходят с бэкенда через сериализатор)
@@ -30,18 +29,12 @@ const PlatformsSection = ({ user, onRefresh }) => {
       console.error('Failed to fetch platforms status:', err);
       // При ошибке показываем все платформы
       setPlatformsStatus(null);
-    } finally {
-      setStatusLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchPlatformsStatus();
   }, [fetchPlatformsStatus]);
-
-  // Проверка доступности платформы для подключения
-  const isGoogleMeetAvailable = platformsStatus?.google_meet?.available ?? false;
-  const isZoomPoolAvailable = platformsStatus?.zoom_pool?.available ?? true;
 
   // Показать модальное окно с инструкцией
   const handleShowInstruction = (platform) => {
@@ -93,12 +86,29 @@ const PlatformsSection = ({ user, onRefresh }) => {
     }
   };
 
-  // OAuth авторизация Google Meet (вызывается из модалки)
-  const handleConnectGoogleMeet = async () => {
+  // OAuth авторизация Google Meet с credentials (вызывается из модалки)
+  const handleConnectGoogleMeet = async (credentials = null) => {
     setLoading('google_meet');
     setError('');
     setSuccess('');
     try {
+      // Если переданы credentials - сначала сохраняем их, затем начинаем OAuth
+      if (credentials && credentials.clientId && credentials.clientSecret) {
+        const response = await apiClient.post('/integrations/google-meet/save-credentials/', {
+          client_id: credentials.clientId,
+          client_secret: credentials.clientSecret
+        });
+        if (response.data?.auth_url) {
+          window.location.href = response.data.auth_url;
+          return;
+        } else {
+          setError('Не удалось получить ссылку авторизации');
+          setInstructionModal(null);
+          return;
+        }
+      }
+      
+      // Старый путь - без credentials (если уже сохранены)
       const response = await apiClient.get('/integrations/google-meet/auth-url/');
       if (response.data?.auth_url) {
         window.location.href = response.data.auth_url;
@@ -184,7 +194,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
         </div>
 
         {/* Google Meet */}
-        <div className={`platform-row ${googleMeetConnected ? 'connected' : ''} ${!isGoogleMeetAvailable && !googleMeetConnected ? 'unavailable' : ''}`}>
+        <div className={`platform-row ${googleMeetConnected ? 'connected' : ''}`}>
           <div className="platform-icon google">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
@@ -195,7 +205,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
             <p className={`platform-status ${googleMeetConnected ? 'is-connected' : ''}`}>
               {googleMeetConnected 
                 ? (googleMeetEmail || 'Подключён') 
-                : (isGoogleMeetAvailable ? 'Не подключён' : 'Недоступен')}
+                : 'Не подключён'}
             </p>
           </div>
           <div className="platform-action">
@@ -208,7 +218,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
               >
                 {loading === 'google_meet' ? '...' : 'Отключить'}
               </button>
-            ) : isGoogleMeetAvailable ? (
+            ) : (
               <button
                 type="button"
                 className="btn-platform connect google"
@@ -217,23 +227,10 @@ const PlatformsSection = ({ user, onRefresh }) => {
               >
                 {loading === 'google_meet' ? '...' : 'Подключить'}
               </button>
-            ) : (
-              <span className="platform-unavailable-hint">Скоро</span>
             )}
           </div>
         </div>
       </div>
-
-      {/* Информация о недоступных платформах */}
-      {!statusLoading && !isGoogleMeetAvailable && !googleMeetConnected && (
-        <div className="platform-unavailable-notice">
-          <svg className="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 16v-4M12 8h.01"/>
-          </svg>
-          <span>Интеграция с Google Meet находится в разработке и скоро будет доступна.</span>
-        </div>
-      )}
 
       {/* Справка */}
       <div className="platforms-help">

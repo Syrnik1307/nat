@@ -28,12 +28,83 @@ from .google_meet_service import (
 logger = logging.getLogger(__name__)
 
 
+class GoogleMeetSaveCredentialsView(APIView):
+    """
+    POST /api/integrations/google-meet/save-credentials/
+    
+    Saves teacher's personal Google OAuth credentials (Client ID and Secret).
+    After saving, returns the auth URL to start OAuth flow.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        # Only teachers can connect Google Meet
+        if getattr(request.user, 'role', '') != 'teacher':
+            return Response(
+                {'detail': 'Только учителя могут подключить Google Meet'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        client_id = request.data.get('client_id', '').strip()
+        client_secret = request.data.get('client_secret', '').strip()
+        
+        if not client_id or not client_secret:
+            return Response(
+                {'detail': 'Client ID и Client Secret обязательны'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate format (basic check)
+        if not client_id.endswith('.apps.googleusercontent.com'):
+            return Response(
+                {'detail': 'Неверный формат Client ID. Должен заканчиваться на .apps.googleusercontent.com'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Save credentials to user
+            request.user.google_meet_client_id = client_id
+            request.user.google_meet_client_secret = client_secret
+            request.user.save(update_fields=['google_meet_client_id', 'google_meet_client_secret'])
+            
+            # Generate auth URL with user's credentials
+            service = GoogleMeetService(
+                user=request.user,
+                client_id=client_id,
+                client_secret=client_secret
+            )
+            
+            # Generate state token for CSRF protection
+            state = secrets.token_urlsafe(32)
+            
+            # Store state in session for validation in callback
+            request.session['google_meet_oauth_state'] = state
+            request.session.modified = True
+            
+            auth_url = service.get_auth_url(state=state)
+            
+            logger.info(f"Saved Google Meet credentials for user {request.user.id}")
+            
+            return Response({
+                'auth_url': auth_url,
+                'message': 'Credentials сохранены. Перенаправляем на Google для авторизации.',
+            })
+            
+        except Exception as e:
+            logger.exception(f"Error saving credentials: {e}")
+            return Response(
+                {'detail': 'Ошибка сохранения credentials'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 class GoogleMeetAuthURLView(APIView):
     """
     GET /api/integrations/google-meet/auth-url/
     
     Returns the OAuth authorization URL for Google Meet.
     User should be redirected to this URL to start the OAuth flow.
+    Requires that credentials are already saved.
     """
     permission_classes = [IsAuthenticated]
     
@@ -45,8 +116,15 @@ class GoogleMeetAuthURLView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
+        # Check if user has credentials
+        if not request.user.google_meet_client_id or not request.user.google_meet_client_secret:
+            return Response(
+                {'detail': 'Сначала введите Client ID и Client Secret', 'need_credentials': True},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         try:
-            service = GoogleMeetService()
+            service = GoogleMeetService(user=request.user)
             
             # Generate state token for CSRF protection
             state = secrets.token_urlsafe(32)
@@ -64,8 +142,8 @@ class GoogleMeetAuthURLView(APIView):
         except GoogleMeetNotConfiguredError as e:
             logger.warning(f"Google Meet not configured: {e}")
             return Response(
-                {'detail': 'Google Meet интеграция не настроена на сервере'},
-                status=status.HTTP_501_NOT_IMPLEMENTED
+                {'detail': 'Введите Client ID и Client Secret для подключения Google Meet', 'need_credentials': True},
+                status=status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
             logger.exception(f"Error generating auth URL: {e}")

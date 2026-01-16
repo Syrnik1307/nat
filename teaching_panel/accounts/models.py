@@ -190,11 +190,29 @@ class CustomUser(AbstractUser):
     
     # ==========================================================================
     # Google Meet Integration (OAuth2 tokens stored per-user)
+    # Each teacher creates their own Google Cloud project and enters credentials
     # ==========================================================================
     google_meet_connected = models.BooleanField(
         _('Google Meet подключён'),
         default=False,
         help_text=_('Флаг показывает, что учитель успешно авторизовал Google Meet')
+    )
+    
+    # Personal Google OAuth credentials (each teacher has their own)
+    google_meet_client_id = models.CharField(
+        _('Google Meet Client ID'),
+        max_length=255,
+        blank=True,
+        default='',
+        help_text=_('OAuth2 Client ID из Google Cloud Console учителя')
+    )
+    
+    google_meet_client_secret = models.CharField(
+        _('Google Meet Client Secret'),
+        max_length=255,
+        blank=True,
+        default='',
+        help_text=_('OAuth2 Client Secret из Google Cloud Console учителя')
     )
     
     google_meet_access_token = models.TextField(

@@ -103,11 +103,11 @@ class PlatformsAvailabilityView(APIView):
             getattr(settings, 'ZOOM_CLIENT_SECRET', '')
         )
         
-        # Google Meet OAuth
-        google_meet_configured = bool(
-            getattr(settings, 'GOOGLE_MEET_ENABLED', False) and
-            getattr(settings, 'GOOGLE_MEET_CLIENT_ID', '') and
-            getattr(settings, 'GOOGLE_MEET_CLIENT_SECRET', '')
+        # Google Meet - теперь всегда доступен, т.к. каждый учитель вводит свои credentials
+        # Проверяем, ввёл ли учитель свои credentials
+        has_google_credentials = bool(
+            getattr(user, 'google_meet_client_id', '') and
+            getattr(user, 'google_meet_client_secret', '')
         )
         
         # User connection status
@@ -128,8 +128,9 @@ class PlatformsAvailabilityView(APIView):
                     'email': getattr(user, 'zoom_user_id', '') or '',
                 },
                 'google_meet': {
-                    'available': google_meet_configured,
+                    'available': True,  # Всегда доступен - учитель вводит свои OAuth credentials
                     'configured': google_meet_connected,
+                    'has_credentials': has_google_credentials,  # Указывает, ввёл ли учитель credentials
                     'name': 'Google Meet',
                     'email': getattr(user, 'google_meet_email', '') or '',
                 },

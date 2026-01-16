@@ -60,44 +60,56 @@ class GoogleMeetService:
     GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo'
     GOOGLE_CALENDAR_API = 'https://www.googleapis.com/calendar/v3'
     
-    def __init__(self, user=None):
+    def __init__(self, user=None, client_id: str = None, client_secret: str = None):
         """
-        Initialize service, optionally with a user for authenticated operations.
+        Initialize service with user's personal credentials.
         
         Args:
             user: Django user model instance (for token-based operations)
+            client_id: Optional override for client_id (used during initial setup)
+            client_secret: Optional override for client_secret (used during initial setup)
         """
         self.user = user
+        self._client_id = client_id
+        self._client_secret = client_secret
         self._validate_config()
     
     def _validate_config(self):
-        """Check that Google Meet integration is properly configured"""
-        if not getattr(settings, 'GOOGLE_MEET_ENABLED', False):
-            raise GoogleMeetNotConfiguredError(
-                'Google Meet integration is disabled. Set GOOGLE_MEET_ENABLED=1'
-            )
+        """Check that Google Meet credentials are available"""
+        # If explicit credentials provided, use them
+        if self._client_id and self._client_secret:
+            return
         
-        if not getattr(settings, 'GOOGLE_MEET_CLIENT_ID', ''):
-            raise GoogleMeetNotConfiguredError(
-                'GOOGLE_MEET_CLIENT_ID not configured'
-            )
+        # If user has personal credentials, use them
+        if self.user:
+            if self.user.google_meet_client_id and self.user.google_meet_client_secret:
+                return
         
-        if not getattr(settings, 'GOOGLE_MEET_CLIENT_SECRET', ''):
-            raise GoogleMeetNotConfiguredError(
-                'GOOGLE_MEET_CLIENT_SECRET not configured'
-            )
+        # No credentials available
+        raise GoogleMeetNotConfiguredError(
+            'Google Meet credentials not configured. Teacher needs to add Client ID and Client Secret.'
+        )
     
     @property
     def client_id(self) -> str:
-        return settings.GOOGLE_MEET_CLIENT_ID
+        if self._client_id:
+            return self._client_id
+        if self.user and self.user.google_meet_client_id:
+            return self.user.google_meet_client_id
+        return ''
     
     @property
     def client_secret(self) -> str:
-        return settings.GOOGLE_MEET_CLIENT_SECRET
+        if self._client_secret:
+            return self._client_secret
+        if self.user and self.user.google_meet_client_secret:
+            return self.user.google_meet_client_secret
+        return ''
     
     @property
     def redirect_uri(self) -> str:
-        return settings.GOOGLE_MEET_REDIRECT_URI
+        return getattr(settings, 'GOOGLE_MEET_REDIRECT_URI', 
+                       'https://lectio.tw1.ru/api/integrations/google-meet/callback/')
     
     def get_auth_url(self, state: Optional[str] = None) -> str:
         """
@@ -363,6 +375,7 @@ class GoogleMeetService:
 def connect_google_meet(user, code: str) -> Dict[str, Any]:
     """
     Complete OAuth flow and connect Google Meet for a user.
+    Uses user's personal Google OAuth credentials.
     
     Args:
         user: Django user model instance
@@ -371,7 +384,8 @@ def connect_google_meet(user, code: str) -> Dict[str, Any]:
     Returns:
         Dict with connected email
     """
-    service = GoogleMeetService()
+    # Use user's personal credentials
+    service = GoogleMeetService(user=user)
     
     # Exchange code for tokens
     token_data = service.exchange_code_for_tokens(code)
