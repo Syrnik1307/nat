@@ -65,6 +65,7 @@ const RegisterPage = lazy(() => import('./components/RegisterPage'));
 const EmailVerificationPage = lazy(() => import('./components/EmailVerificationPage'));
 const PasswordResetPage = lazy(() => import('./components/PasswordResetPage'));
 const MockPaymentPage = lazy(() => import('./components/MockPaymentPage'));
+const PaymentResultPage = lazy(() => import('./components/PaymentResultPage'));
 
 // Teacher pages
 const TeacherHomePage = lazy(() => import('./components/TeacherHomePage'));
@@ -138,6 +139,7 @@ const AppRoutes = () => {
           <Route path="/verify-email" element={<EmailVerificationPage />} />
           <Route path="/reset-password/:uid/:token" element={<PasswordResetPage />} />
           <Route path="/mock-payment" element={<MockPaymentPage />} />
+          <Route path="/teacher/subscription/success" element={<Protected allowRoles={['teacher', 'admin']}><PaymentResultPage /></Protected>} />
           
           {/* Teacher */}
           <Route path="/home-new" element={<Protected allowRoles={['teacher', 'admin']}><TeacherHomePage /></Protected>} />

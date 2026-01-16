@@ -1,0 +1,212 @@
+/*
+ * Payment Result Page Styles
+ * Страница результата оплаты (успех/ошибка/ожидание)
+ */
+
+.payment-result-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  
+  /* Aurora Background - как на SubscriptionPage */
+  background: radial-gradient(circle at 20% 20%, rgba(224, 231, 255, 0.5), transparent 40%),
+              radial-gradient(circle at 80% 10%, rgba(221, 214, 254, 0.45), transparent 40%),
+              radial-gradient(circle at 40% 80%, rgba(191, 219, 254, 0.35), transparent 45%),
+              #f8fafc;
+}
+
+.payment-result-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 24px;
+  padding: 3rem;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 
+    0 25px 50px -12px rgba(79, 70, 229, 0.15),
+    0 10px 25px -5px rgba(0, 0, 0, 0.08),
+    0 0 30px rgba(79, 70, 229, 0.08);
+  
+  animation: cardAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cardAppear {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Icon container */
+.result-icon {
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+  animation: iconPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+}
+
+@keyframes iconPop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Processing spinner animation */
+.processing-spinner {
+  animation: spinnerRotate 1s linear infinite;
+}
+
+@keyframes spinnerRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Titles */
+.result-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.75rem 0;
+  line-height: 1.3;
+}
+
+.result-title-success {
+  color: #059669;
+}
+
+.result-title-pending {
+  color: #d97706;
+}
+
+.result-title-error {
+  color: #dc2626;
+}
+
+/* Messages */
+.result-message {
+  font-size: 1rem;
+  color: #64748b;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.6;
+}
+
+/* Details block */
+.result-details {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.detail-row:not(:last-child) {
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 0.5rem;
+}
+
+.detail-label {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.detail-value {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* Hint block */
+.result-hint {
+  background: rgba(79, 70, 229, 0.05);
+  border: 1px solid rgba(79, 70, 229, 0.15);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.result-hint p {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Actions */
+.result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.result-button {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Auto-redirect text */
+.auto-redirect-text {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  margin: 0.5rem 0 0 0;
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .payment-result-page {
+    padding: 1rem;
+  }
+  
+  .payment-result-card {
+    padding: 2rem 1.5rem;
+    border-radius: 20px;
+  }
+  
+  .result-title {
+    font-size: 1.5rem;
+  }
+  
+  .result-message {
+    font-size: 0.9375rem;
+  }
+}
+
+/* Success state specific glow */
+.result-icon-success svg circle:first-child {
+  filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.4));
+}
+
+/* Error state specific glow */
+.result-icon-error svg circle:first-child {
+  filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.3));
+}
+
+/* Pending state specific glow */
+.result-icon-pending svg circle:first-child {
+  filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.3));
+}
