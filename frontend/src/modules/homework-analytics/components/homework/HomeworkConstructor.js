@@ -209,6 +209,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
   const [uploadProgress, setUploadProgress] = useState(0); // прогресс загрузки 0-100
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isPublished, setIsPublished] = useState(false);
   const blobUrlsRef = useRef(new Set());
 
   // Загрузка данных из editingHomework (редактирование или дублирование)
@@ -246,9 +247,12 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
       if (!isDuplicating && editingHomework.id) {
         setHomeworkId(editingHomework.id);
         setIsEditMode(true);
+        // Проверяем статус - если опубликовано, показываем кнопку "Сохранить"
+        setIsPublished(editingHomework.status === 'published');
       } else {
         setHomeworkId(null);
         setIsEditMode(false);
+        setIsPublished(false);
       }
       
       // Показываем уведомление
@@ -256,7 +260,9 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
         status: 'info',
         message: isDuplicating 
           ? 'Создание копии ДЗ. Измените название и сохраните.'
-          : 'Режим редактирования ДЗ. После изменений нажмите "Сохранить".',
+          : editingHomework.status === 'published'
+            ? 'Редактирование опубликованного ДЗ. Нажмите "Сохранить" для применения изменений.'
+            : 'Режим редактирования ДЗ. После изменений нажмите "Сохранить".',
       });
     }
   }, [editingHomework, isDuplicating]);
@@ -270,6 +276,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
     setQuestions([]);
     setHomeworkId(null);
     setIsEditMode(false);
+    setIsPublished(false);
     setFeedback(null);
   }, [onClearEditing]);
 
@@ -490,6 +497,45 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
 
   const questionCount = questions.length;
 
+  // Сохранение изменений для уже опубликованного ДЗ
+  const handleSaveChanges = async () => {
+    if (!assignmentMeta.title || questions.length === 0) {
+      setFeedback({
+        status: 'error',
+        message: 'Заполните название и добавьте хотя бы один вопрос',
+      });
+      return;
+    }
+
+    setSaving(true);
+    setFeedback(null);
+
+    try {
+      const result = await saveDraft(assignmentMeta, questions, homeworkId);
+      if (!result.saved) {
+        setValidationIssues(result.validation);
+        setFeedback({
+          status: 'warning',
+          message: 'Проверьте настройки задания',
+        });
+        return;
+      }
+      
+      setHomeworkId(result.homeworkId);
+      setFeedback({
+        status: 'success',
+        message: 'Изменения сохранены!',
+      });
+    } catch (err) {
+      setFeedback({
+        status: 'error',
+        message: err.response?.data?.detail || 'Ошибка сохранения',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handlePublish = async () => {
     // Валидация перед публикацией
     if (!assignmentMeta.title || !assignmentMeta.groupId || questions.length === 0) {
@@ -649,14 +695,27 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
           >
             {savingTemplate ? 'Сохранение...' : 'Создать шаблон'}
           </button>
-          <button
-            type="button"
-            className="gm-btn-primary hc-action-btn"
-            onClick={() => setShowPublishModal(true)}
-            disabled={saving || questions.length === 0}
-          >
-            Опубликовать
-          </button>
+          {isEditMode && isPublished ? (
+            // Для опубликованного ДЗ показываем кнопку "Сохранить"
+            <button
+              type="button"
+              className="gm-btn-primary hc-action-btn"
+              onClick={handleSaveChanges}
+              disabled={saving || questions.length === 0}
+            >
+              {saving ? 'Сохранение...' : 'Сохранить изменения'}
+            </button>
+          ) : (
+            // Для нового или черновика - кнопка "Опубликовать"
+            <button
+              type="button"
+              className="gm-btn-primary hc-action-btn"
+              onClick={() => setShowPublishModal(true)}
+              disabled={saving || questions.length === 0}
+            >
+              Опубликовать
+            </button>
+          )}
         </div>
       </div>
 
