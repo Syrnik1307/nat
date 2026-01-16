@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../apiService';
 import PlatformInstructionModal from './PlatformInstructionModal';
+import { Modal } from '../shared/components';
 import './PlatformsSection.css';
 
 /**
@@ -13,6 +14,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
   const [success, setSuccess] = useState('');
   const [platformsStatus, setPlatformsStatus] = useState(null);
   const [instructionModal, setInstructionModal] = useState(null); // 'zoom' | 'google_meet' | null
+  const [confirmDisconnect, setConfirmDisconnect] = useState(null); // 'zoom' | 'google_meet' | null
 
   // Статусы из user (приходят с бэкенда через сериализатор)
   const zoomConnected = user?.zoom_connected || false;
@@ -92,7 +94,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
 
   // Отключить Zoom
   const handleDisconnectZoom = async () => {
-    if (!window.confirm('Отключить Zoom?')) return;
+    setConfirmDisconnect(null);
     setLoading('zoom');
     setError('');
     try {
@@ -152,7 +154,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
 
   // Отключить Google Meet
   const handleDisconnectGoogleMeet = async () => {
-    if (!window.confirm('Отключить Google Meet?')) return;
+    setConfirmDisconnect(null);
     setLoading('google_meet');
     setError('');
     try {
@@ -196,7 +198,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
               <button
                 type="button"
                 className="btn-platform disconnect"
-                onClick={handleDisconnectZoom}
+                onClick={() => setConfirmDisconnect('zoom')}
                 disabled={loading === 'zoom'}
               >
                 {loading === 'zoom' ? '...' : 'Отключить'}
@@ -234,7 +236,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
               <button
                 type="button"
                 className="btn-platform disconnect"
-                onClick={handleDisconnectGoogleMeet}
+                onClick={() => setConfirmDisconnect('google_meet')}
                 disabled={loading === 'google_meet'}
               >
                 {loading === 'google_meet' ? '...' : 'Отключить'}
@@ -273,6 +275,37 @@ const PlatformsSection = ({ user, onRefresh }) => {
         onConnect={instructionModal === 'zoom' ? handleConnectZoom : handleConnectGoogleMeet}
         isConnecting={loading === instructionModal}
       />
+
+      {/* Модальное окно подтверждения отключения */}
+      <Modal
+        isOpen={!!confirmDisconnect}
+        onClose={() => setConfirmDisconnect(null)}
+        title={`Отключить ${confirmDisconnect === 'zoom' ? 'Zoom' : 'Google Meet'}?`}
+        size="sm"
+      >
+        <div className="confirm-disconnect-modal">
+          <p className="confirm-disconnect-text">
+            Вы уверены, что хотите отключить {confirmDisconnect === 'zoom' ? 'Zoom' : 'Google Meet'}?
+            Учётные данные будут удалены.
+          </p>
+          <div className="confirm-disconnect-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setConfirmDisconnect(null)}
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              className="btn-danger"
+              onClick={confirmDisconnect === 'zoom' ? handleDisconnectZoom : handleDisconnectGoogleMeet}
+            >
+              Отключить
+            </button>
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 };

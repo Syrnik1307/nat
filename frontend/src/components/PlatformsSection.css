@@ -276,3 +276,54 @@
     text-align: center;
   }
 }
+
+/* Модалка подтверждения отключения */
+.confirm-disconnect-modal {
+  padding: 0.5rem 0;
+}
+
+.confirm-disconnect-text {
+  font-size: 0.9375rem;
+  color: #334155;
+  line-height: 1.5;
+  margin: 0 0 1.5rem 0;
+}
+
+.confirm-disconnect-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.confirm-disconnect-actions .btn-secondary {
+  padding: 0.625rem 1.25rem;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.confirm-disconnect-actions .btn-secondary:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.confirm-disconnect-actions .btn-danger {
+  padding: 0.625rem 1.25rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.confirm-disconnect-actions .btn-danger:hover {
+  background: #dc2626;
+}
