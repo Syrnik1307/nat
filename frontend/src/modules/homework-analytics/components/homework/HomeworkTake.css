@@ -449,3 +449,128 @@
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .ht-container {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .ht-header {
+    padding: 1.25rem;
+    border-radius: 14px;
+  }
+
+  .ht-title {
+    font-size: 1.35rem;
+  }
+
+  .ht-subtitle {
+    font-size: 0.875rem;
+  }
+
+  .ht-header-meta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ht-progress-track {
+    width: 100%;
+  }
+
+  .ht-layout {
+    gap: 1rem;
+  }
+
+  .ht-sidebar {
+    position: relative;
+    top: 0;
+    padding: 1rem;
+    border-radius: 12px;
+  }
+
+  .ht-question-nav {
+    gap: 0.5rem;
+  }
+
+  .ht-question-nav-item {
+    height: 40px;
+    font-size: 0.9rem;
+    border-radius: 10px;
+  }
+
+  .ht-question-card {
+    padding: 1.25rem;
+    border-radius: 14px;
+    gap: 1rem;
+  }
+
+  .ht-question-text {
+    font-size: 1.1rem;
+  }
+
+  .ht-option {
+    padding: 0.875rem 1rem;
+    font-size: 0.95rem;
+    border-radius: 10px;
+  }
+
+  .ht-textarea {
+    min-height: 120px;
+    font-size: 0.95rem;
+    padding: 0.875rem;
+  }
+
+  .ht-footer {
+    padding: 1rem 1.25rem;
+    border-radius: 14px;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .ht-footer-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .ht-footer-actions .btn,
+  .ht-footer-actions button {
+    width: 100%;
+  }
+
+  .ht-controls {
+    flex-direction: column;
+  }
+
+  .ht-controls button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .ht-container {
+    padding: 0.75rem;
+  }
+
+  .ht-header {
+    padding: 1rem;
+  }
+
+  .ht-title {
+    font-size: 1.2rem;
+  }
+
+  .ht-question-card {
+    padding: 1rem;
+  }
+
+  .ht-question-text {
+    font-size: 1rem;
+  }
+
+  .ht-option {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+}
+
