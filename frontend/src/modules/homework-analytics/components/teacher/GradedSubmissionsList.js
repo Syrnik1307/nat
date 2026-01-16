@@ -88,7 +88,7 @@ const GradedSubmissionsList = () => {
   };
 
   const getScoreColor = (score, maxScore) => {
-    if (!score || !maxScore) return '#64748B';
+    if (score == null || !maxScore) return '#64748B';
     const percentage = (score / maxScore) * 100;
     if (percentage >= 80) return '#10B981';
     if (percentage >= 60) return '#F59E0B';
@@ -187,8 +187,8 @@ const GradedSubmissionsList = () => {
                 {items.map(sub => (
                   <div key={sub.id} className="graded-card">
                     <div className="graded-card-score">
-                      <span style={{ color: getScoreColor(sub.score, sub.max_score) }}>
-                        {sub.score} / {sub.max_score}
+                      <span style={{ color: getScoreColor(sub.total_score, sub.max_score) }}>
+                        {sub.total_score ?? '—'} / {sub.max_score}
                       </span>
                     </div>
                     <div className="graded-card-title">{sub.homework_title}</div>

@@ -19,22 +19,25 @@
 .iim-code-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
 }
 
 .iim-code-label {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .iim-code-value {
   font-weight: 700;
-  letter-spacing: 1px;
+  font-size: 0.85rem;
+  letter-spacing: 1.5px;
   color: var(--color-primary);
-  background: rgba(59, 130, 246, 0.08);
-  padding: 0.35rem 0.65rem;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(59, 130, 246, 0.06) 100%);
+  padding: 0.4rem 0.75rem;
   border-radius: var(--radius-md);
+  font-family: 'Roboto Mono', 'SF Mono', monospace;
 }
 
 .iim-loading {
@@ -139,32 +142,40 @@
 .iim-student-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  margin: 0.25rem 0;
-  background: rgba(59, 130, 246, 0.06);
-  border-radius: var(--radius-md);
-  border-left: 3px solid var(--color-primary);
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  margin: 0.5rem 0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  transition: all 0.2s ease;
+}
+
+.iim-student-row:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(59, 130, 246, 0.08) 100%);
+  border-color: rgba(99, 102, 241, 0.18);
 }
 
 .iim-student-mini-avatar {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary) 0%, #6366f1 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
 .iim-student-mini-name {
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 /* Muted badge for waiting status */
@@ -175,7 +186,13 @@
 
 /* Card with student highlight */
 .gm-group-card.has-student {
-  border-left: 3px solid var(--color-primary);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(238, 242, 255, 0.3) 100%);
+}
+
+.gm-group-card.has-student:hover {
+  border-color: rgba(99, 102, 241, 0.25);
+  box-shadow: var(--shadow-md), 0 0 20px rgba(99, 102, 241, 0.08);
 }
 
 /* Modal footer */

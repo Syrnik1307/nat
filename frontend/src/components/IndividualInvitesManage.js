@@ -433,7 +433,6 @@ const IndividualInviteList = ({ data, navigate, allGroups = [], onGroupsChanged 
                       type="button"
                       className="gm-btn-danger"
                       onClick={() => data.setShowDeleteConfirm(code)}
-                      disabled={code.is_used}
                     >
                       Удалить
                     </button>
