@@ -1,5 +1,6 @@
 import React from 'react';
 import MediaPreview from '../shared/MediaPreview';
+import CodeQuestionRenderer from './CodeQuestionRenderer';
 
 const QuestionRenderer = ({ question, answer, onChange, disabled = false }) => {
   if (!question) return null;
@@ -275,6 +276,17 @@ const QuestionRenderer = ({ question, answer, onChange, disabled = false }) => {
           ))}
         </div>
       </div>
+    );
+  }
+
+  if (type === 'CODE') {
+    return (
+      <CodeQuestionRenderer
+        question={question}
+        answer={answer}
+        onChange={onChange}
+        disabled={disabled}
+      />
     );
   }
 

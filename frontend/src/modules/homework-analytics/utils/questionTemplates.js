@@ -39,6 +39,11 @@ const QUESTION_TYPES = [
     label: 'Хотспот',
     description: 'Выбор областей на изображении',
   },
+  {
+    value: 'CODE',
+    label: 'Программирование',
+    description: 'Написание и запуск кода с автопроверкой',
+  },
 ];
 
 const defaultConfigByType = {
@@ -91,6 +96,15 @@ const defaultConfigByType = {
     hotspots: [],
     maxAttempts: 1,
   },
+  CODE: {
+    language: 'python',
+    starterCode: '',
+    solutionCode: '',
+    testCases: [
+      { id: 'tc-1', input: '', expectedOutput: '' }
+    ],
+    hint: '',
+  },
 };
 
 const createQuestionTemplate = (type) => {
@@ -123,6 +137,7 @@ const getQuestionIcon = (type) => {
     DRAG_DROP: '↕️',
     FILL_BLANKS: '✍️',
     HOTSPOT: '🎯',
+    CODE: '💻',
   };
   return icons[type] || '❓';
 };

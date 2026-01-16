@@ -15,6 +15,7 @@ const SUPPORTED_TYPES = [
   'DRAG_DROP',
   'FILL_BLANKS',
   'HOTSPOT',
+  'CODE',
 ];
 
 const mapFrontendTypeToBackend = (type) => {

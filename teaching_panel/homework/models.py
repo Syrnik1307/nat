@@ -81,6 +81,7 @@ class Question(models.Model):
         ('DRAG_DROP', 'Перетаскивание'),
         ('FILL_BLANKS', 'Заполнение пропусков'),
         ('HOTSPOT', 'Хотспот на изображении'),
+        ('CODE', 'Программирование'),
     )
     homework = models.ForeignKey(Homework, on_delete=models.CASCADE, related_name='questions')
     prompt = models.TextField(blank=True, default='')  # blank allowed for image-only questions
@@ -410,6 +411,37 @@ class Answer(models.Model):
                         false_pos = len(student_hotspot_ids - correct_hotspot_ids)
                         partial = max(0, true_pos - false_pos)
                         self.auto_score = int(q.points * (partial / len(correct_hotspot_ids)))
+                    else:
+                        self.auto_score = 0
+                        
+        elif q.question_type == 'CODE':
+            # Программирование - результаты тестов передаются из браузера
+            # config содержит: language, starterCode, testCases[{input, expectedOutput}]
+            # text_answer содержит JSON: {code: "...", testResults: [{passed, input, expected, actual}]}
+            test_cases = config.get('testCases', [])
+            if not test_cases:
+                # Нет тестов - требуется ручная проверка
+                self.needs_manual_review = True
+                self.auto_score = None
+            else:
+                try:
+                    import json
+                    answer_data = json.loads(self.text_answer) if self.text_answer else {}
+                except (json.JSONDecodeError, TypeError):
+                    answer_data = {}
+                
+                test_results = answer_data.get('testResults', [])
+                
+                if not test_results:
+                    # Код не был запущен - 0 баллов
+                    self.auto_score = 0
+                else:
+                    # Считаем пройденные тесты
+                    passed_count = sum(1 for tr in test_results if tr.get('passed'))
+                    total_count = len(test_cases)
+                    
+                    if total_count > 0:
+                        self.auto_score = int(q.points * (passed_count / total_count))
                     else:
                         self.auto_score = 0
         else:

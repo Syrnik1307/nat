@@ -1,0 +1,344 @@
+/* Стили для вопросов типа CODE (программирование) */
+
+.code-textarea {
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace !important;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  tab-size: 2;
+}
+
+/* Тест-кейсы */
+.code-test-cases {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.code-test-case {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.code-test-case-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.code-test-case-number {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-main);
+}
+
+.code-test-case-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .code-test-case-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.code-test-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.form-label-small {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* Редактор кода для студента */
+.code-editor-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.code-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.code-language-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.code-editor-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.code-editor-textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 1rem;
+  border: none;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  resize: vertical;
+}
+
+.code-editor-textarea:focus {
+  outline: none;
+}
+
+.code-editor-textarea::placeholder {
+  color: #6a6a6a;
+}
+
+/* Результаты выполнения */
+.code-output-container {
+  border-top: 1px solid var(--border-light);
+}
+
+.code-output-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.625rem 1rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.code-output-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.code-output-content {
+  padding: 0.75rem 1rem;
+  background: #1e1e1e;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #d4d4d4;
+  min-height: 60px;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.code-output-error {
+  color: #f48771;
+}
+
+.code-output-success {
+  color: #89d185;
+}
+
+/* Результаты тестов */
+.code-tests-results {
+  padding: 0.75rem 1rem;
+  background: var(--bg-surface);
+}
+
+.code-tests-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.code-tests-passed {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.code-tests-passed.all-passed {
+  color: var(--color-success);
+}
+
+.code-tests-passed.some-failed {
+  color: var(--color-warning);
+}
+
+.code-tests-passed.all-failed {
+  color: var(--color-error);
+}
+
+.code-tests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.code-test-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+}
+
+.code-test-result.passed {
+  border-color: var(--color-success);
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.code-test-result.failed {
+  border-color: var(--color-error);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.code-test-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+.code-test-details {
+  flex: 1;
+  font-size: 0.8125rem;
+}
+
+.code-test-label {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.code-test-io {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.375rem;
+}
+
+@media (max-width: 480px) {
+  .code-test-io {
+    grid-template-columns: 1fr;
+  }
+}
+
+.code-test-io-item {
+  font-size: 0.75rem;
+}
+
+.code-test-io-label {
+  color: var(--text-muted);
+  margin-bottom: 0.125rem;
+}
+
+.code-test-io-value {
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  background: var(--bg-app);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Кнопка запуска */
+.code-run-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-success);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.code-run-btn:hover:not(:disabled) {
+  background: #16a34a;
+}
+
+.code-run-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.code-run-btn.running {
+  background: var(--color-warning);
+}
+
+/* Подсказка */
+.code-hint-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.code-hint-toggle:hover {
+  background: var(--bg-surface);
+  color: var(--text-main);
+}
+
+.code-hint-content {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--text-main);
+}
+
+/* Статус загрузки Pyodide */
+.code-loading-pyodide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.code-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-light);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

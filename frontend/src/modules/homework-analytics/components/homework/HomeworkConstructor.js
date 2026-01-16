@@ -18,6 +18,8 @@ import MatchingQuestion from '../questions/MatchingQuestion';
 import DragDropQuestion from '../questions/DragDropQuestion';
 import FillBlanksQuestion from '../questions/FillBlanksQuestion';
 import HotspotQuestion from '../questions/HotspotQuestion';
+import CodeQuestion from '../questions/CodeQuestion';
+import '../questions/CodeQuestion.css';
 import './HomeworkConstructor.css';
 import DateTimePicker from './DateTimePicker';
 import GroupSelect from './GroupSelect';
@@ -40,6 +42,7 @@ const QUESTION_COMPONENTS = {
   DRAG_DROP: DragDropQuestion,
   FILL_BLANKS: FillBlanksQuestion,
   HOTSPOT: HotspotQuestion,
+  CODE: CodeQuestion,
 };
 
 // Нормализация URL для картинок (включая Google Drive)

@@ -38,6 +38,12 @@ const buildInitialAnswers = (homework) => {
     if (question.question_type === 'HOTSPOT') {
       accumulator[question.id] = [];
     }
+    if (question.question_type === 'CODE') {
+      accumulator[question.id] = {
+        code: question.config?.starterCode || '',
+        testResults: [],
+      };
+    }
     return accumulator;
   }, {});
 };
@@ -86,6 +92,12 @@ const convertAnswersArrayToMap = (answersArray, questions) => {
         acc[qId] = answer.text_answer ? JSON.parse(answer.text_answer) : [];
       } catch {
         acc[qId] = [];
+      }
+    } else if (qType === 'CODE') {
+      try {
+        acc[qId] = answer.text_answer ? JSON.parse(answer.text_answer) : { code: '', testResults: [] };
+      } catch {
+        acc[qId] = { code: '', testResults: [] };
       }
     } else {
       // Fallback: prefer text_answer, then selected_choices
@@ -285,6 +297,11 @@ const useHomeworkSession = (homeworkId, injectedService) => {
       }
       if (question.question_type === 'HOTSPOT') {
         return Array.isArray(value) && value.length > 0;
+      }
+      if (question.question_type === 'CODE') {
+        // CODE считается отвеченным если есть код (не пустой) и хотя бы один тест запущен
+        const codeValue = typeof value === 'object' ? value : {};
+        return Boolean(codeValue.code?.trim()) && (codeValue.testResults?.length > 0);
       }
       return false;
     }).length;

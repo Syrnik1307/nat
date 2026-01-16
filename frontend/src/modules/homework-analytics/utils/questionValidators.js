@@ -114,6 +114,19 @@ export const validateQuestion = (question) => {
       }
       break;
     }
+    case 'CODE': {
+      const testCases = question.config?.testCases || [];
+      if (!testCases.length) {
+        issues.push('Добавьте хотя бы один тест-кейс для автопроверки');
+      } else {
+        // Проверяем, что у каждого теста есть ожидаемый вывод
+        const emptyOutputs = testCases.filter(tc => !tc.expectedOutput?.trim());
+        if (emptyOutputs.length > 0) {
+          issues.push('Каждый тест должен иметь ожидаемый вывод');
+        }
+      }
+      break;
+    }
     default:
       break;
   }
