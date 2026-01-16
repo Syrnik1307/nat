@@ -1,10 +1,26 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { prefetch } from '../utils/dataCache';
 import { getLessons, getHomeworkList, getSubmissions, getGroups } from '../apiService';
 import '../styles/StudentNavBar.css';
+
+// SVG Icons для мобильного меню
+const IconMenu = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="3" y1="12" x2="21" y2="12"/>
+    <line x1="3" y1="6" x2="21" y2="6"/>
+    <line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+);
+
+const IconX = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
 
 // Prefetch функции для разных страниц
 const prefetchStudentData = () => {
@@ -37,9 +53,28 @@ const navItems = [
 const StudentNavBar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const profileButtonRef = useRef(null);
+
+  // Закрываем мобильное меню при переходе на другую страницу
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Блокируем скролл body при открытом мобильном меню
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
   // Calculate dropdown position based on button
   const updateMenuPosition = useCallback(() => {
@@ -117,7 +152,8 @@ const StudentNavBar = () => {
           </NavLink>
         </div>
 
-        <div className="student-navbar-center">
+        {/* Desktop: nav links в центре */}
+        <div className="student-navbar-center student-navbar-center-desktop">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -133,6 +169,17 @@ const StudentNavBar = () => {
         </div>
 
         <div className="student-navbar-right">
+          {/* Hamburger button для мобильных */}
+          <button
+            type="button"
+            className="student-mobile-menu-btn"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? <IconX size={24} /> : <IconMenu size={24} />}
+          </button>
+
           <button
             type="button"
             className="student-profile-button"
@@ -184,6 +231,46 @@ const StudentNavBar = () => {
           )}
         </div>
       </div>
+
+      {/* Mobile: выдвижное меню */}
+      {mobileMenuOpen && createPortal(
+        <>
+          {/* Backdrop */}
+          <div 
+            className="student-mobile-backdrop"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          {/* Menu */}
+          <div className="student-mobile-menu">
+            <div className="student-mobile-menu-header">
+              <span className="student-mobile-menu-title">Меню</span>
+              <button
+                type="button"
+                className="student-mobile-menu-close"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Закрыть меню"
+              >
+                <IconX size={24} />
+              </button>
+            </div>
+            <nav className="student-mobile-nav">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `student-mobile-nav-link${isActive ? ' active' : ''}`
+                  }
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
+        </>,
+        document.body
+      )}
     </nav>
   );
 };
