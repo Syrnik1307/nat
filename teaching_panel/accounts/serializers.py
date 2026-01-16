@@ -201,6 +201,17 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
             'grading_backlog_hours',
             'notify_inactive_student',
             'inactive_student_days',
+            # Новые — учитель: события с учениками и уроками
+            'notify_student_joined',
+            'notify_student_left',
+            'notify_recording_ready',
+            # Глобальные настройки уроков — учитель
+            'default_lesson_reminder_enabled',
+            'default_lesson_reminder_minutes',
+            'default_notify_to_group_chat',
+            'default_notify_to_students_dm',
+            'notify_lesson_link_on_start',
+            'notify_materials_added',
             # Базовые — ученик
             'notify_homework_graded',
             'notify_homework_deadline',

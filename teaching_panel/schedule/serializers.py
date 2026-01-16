@@ -45,7 +45,7 @@ class GroupSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 
             'teacher', 'teacher_id',
             'students', 'student_ids', 'student_count',
-            'invite_code',
+            'invite_code', 'telegram_chat_id',
             'created_at', 'updated_at'
         ]
     

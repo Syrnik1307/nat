@@ -1024,6 +1024,58 @@ class NotificationSettings(models.Model):
         help_text='Количество дней без активности для уведомления'
     )
 
+    # ===== НОВЫЕ: Учителям — события с учениками и уроками =====
+    
+    # Вступление/уход ученика
+    notify_student_joined = models.BooleanField(
+        default=True,
+        help_text='Уведомление когда ученик вступает в группу или становится индивидуальным'
+    )
+    notify_student_left = models.BooleanField(
+        default=True,
+        help_text='Уведомление когда ученик покидает группу'
+    )
+    
+    # Запись урока
+    notify_recording_ready = models.BooleanField(
+        default=True,
+        help_text='Уведомление когда запись урока обработана и доступна'
+    )
+    
+    # ===== Глобальные настройки уведомлений по умолчанию (для уроков) =====
+    
+    # Анонсы/напоминания перед уроком
+    default_lesson_reminder_enabled = models.BooleanField(
+        default=True,
+        help_text='По умолчанию отправлять напоминания о начале урока'
+    )
+    default_lesson_reminder_minutes = models.PositiveSmallIntegerField(
+        default=15,
+        help_text='За сколько минут до урока отправлять напоминание (5, 10, 15, 30, 60)'
+    )
+    
+    # Куда отправлять уведомления ученикам
+    default_notify_to_group_chat = models.BooleanField(
+        default=True,
+        help_text='Отправлять уведомления в Telegram-группу (если привязана)'
+    )
+    default_notify_to_students_dm = models.BooleanField(
+        default=True,
+        help_text='Отправлять уведомления ученикам в личные сообщения'
+    )
+    
+    # Отправка ссылки при старте урока
+    notify_lesson_link_on_start = models.BooleanField(
+        default=True,
+        help_text='Отправлять ссылку на урок (Zoom/Meet) когда учитель начинает урок'
+    )
+    
+    # Новые материалы
+    notify_materials_added = models.BooleanField(
+        default=True,
+        help_text='Уведомлять учеников о добавлении новых материалов к уроку'
+    )
+
     # Ученикам — базовые
     notify_homework_graded = models.BooleanField(default=True)
     notify_homework_deadline = models.BooleanField(default=True)
@@ -1087,6 +1139,14 @@ class NotificationLog(models.Model):
         ('group_health_alert', 'Аномалии по группе'),
         ('grading_backlog', 'Непроверенные ДЗ накопились'),
         ('inactive_student_alert', 'Неактивный ученик'),
+        # Новые события — для учителя
+        ('student_joined', 'Ученик вступил в группу'),
+        ('student_left', 'Ученик покинул группу'),
+        ('recording_ready', 'Запись урока готова'),
+        # Новые события — для ученика
+        ('lesson_link_sent', 'Ссылка на урок отправлена'),
+        ('materials_added', 'Добавлены материалы к уроку'),
+        ('welcome_to_group', 'Добро пожаловать в группу'),
         # Аналитика — для ученика
         ('student_absence_warning', 'Предупреждение о пропусках'),
         ('control_point_deadline', 'Напоминание о контрольной точке'),

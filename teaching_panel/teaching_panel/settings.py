@@ -544,7 +544,7 @@ if not DEBUG and RECAPTCHA_PUBLIC_KEY == '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZK
 # ВАЖНО: Храните API ID в переменных окружения, не коммитьте в git!
 
 SMSRU_API_ID = os.environ.get('SMSRU_API_ID', '')
-SMSRU_FROM_NAME = os.environ.get('SMSRU_FROM_NAME', 'Teaching Panel')
+SMSRU_FROM_NAME = os.environ.get('SMSRU_FROM_NAME', 'Lectio Space')
 
 # Стоимость SMS: от 1.15 руб за SMS по России
 # Регистрация: 2 минуты, пополнение: от 100 руб

@@ -155,7 +155,7 @@ class TBankService:
         request_data = {
             'Amount': amount_kopecks,
             'OrderId': order_id,
-            'Description': f'Подписка Teaching Panel ({plan})',
+            'Description': f'Подписка Lectio Space ({plan})',
             'CustomerKey': str(subscription.user.id),  # For card binding
             'SuccessURL': f"{settings.FRONTEND_URL}/teacher/subscription?status=success",
             'FailURL': f"{settings.FRONTEND_URL}/teacher/subscription?status=fail",
@@ -307,7 +307,7 @@ class TBankService:
         init_data = {
             'Amount': amount_kopecks,
             'OrderId': order_id,
-            'Description': f'Автопродление подписки Teaching Panel ({plan})',
+            'Description': f'Автопродление подписки Lectio Space ({plan})',
             'CustomerKey': str(subscription.user.id),
             'NotificationURL': f"{settings.SITE_URL}/api/payments/tbank/webhook/",
             'PayType': 'O',

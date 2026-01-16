@@ -203,6 +203,17 @@ const ProfilePage = () => {
         grading_backlog_hours: notificationSettings.grading_backlog_hours,
         notify_inactive_student: notificationSettings.notify_inactive_student,
         inactive_student_days: notificationSettings.inactive_student_days,
+        // Новые — учитель: события с учениками и уроками
+        notify_student_joined: notificationSettings.notify_student_joined,
+        notify_student_left: notificationSettings.notify_student_left,
+        notify_recording_ready: notificationSettings.notify_recording_ready,
+        // Глобальные настройки уроков — учитель
+        default_lesson_reminder_enabled: notificationSettings.default_lesson_reminder_enabled,
+        default_lesson_reminder_minutes: notificationSettings.default_lesson_reminder_minutes,
+        default_notify_to_group_chat: notificationSettings.default_notify_to_group_chat,
+        default_notify_to_students_dm: notificationSettings.default_notify_to_students_dm,
+        notify_lesson_link_on_start: notificationSettings.notify_lesson_link_on_start,
+        notify_materials_added: notificationSettings.notify_materials_added,
         // Базовые — ученик
         notify_homework_graded: notificationSettings.notify_homework_graded,
         notify_homework_deadline: notificationSettings.notify_homework_deadline,
@@ -995,6 +1006,108 @@ const ProfilePage = () => {
                               />
                               <span>Аномалии в группе</span>
                             </label>
+
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_student_joined)}
+                                onChange={() => handleToggleNotificationSetting('notify_student_joined')}
+                              />
+                              <span>Новый ученик вступил</span>
+                            </label>
+
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_student_left)}
+                                onChange={() => handleToggleNotificationSetting('notify_student_left')}
+                              />
+                              <span>Ученик покинул группу</span>
+                            </label>
+
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_recording_ready)}
+                                onChange={() => handleToggleNotificationSetting('notify_recording_ready')}
+                              />
+                              <span>Запись урока готова</span>
+                            </label>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Уроки и уведомления — только для учителя */}
+                      {isTeacher && (
+                        <div className="notification-category">
+                          <div className="category-header">
+                            <h4>Уроки</h4>
+                          </div>
+                          <div className="category-items">
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.default_lesson_reminder_enabled)}
+                                onChange={() => handleToggleNotificationSetting('default_lesson_reminder_enabled')}
+                              />
+                              <span>Напоминания ученикам о начале урока</span>
+                            </label>
+                            {notificationSettings.default_lesson_reminder_enabled && (
+                              <div className="notification-inline-settings">
+                                <div className="inline-setting">
+                                  <span>За</span>
+                                  <select
+                                    value={notificationSettings.default_lesson_reminder_minutes || 15}
+                                    onChange={(e) => handleChangeNotificationNumber('default_lesson_reminder_minutes', e.target.value)}
+                                  >
+                                    <option value={5}>5</option>
+                                    <option value={10}>10</option>
+                                    <option value={15}>15</option>
+                                    <option value={30}>30</option>
+                                    <option value={60}>60</option>
+                                  </select>
+                                  <span>минут до урока</span>
+                                </div>
+                              </div>
+                            )}
+
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_lesson_link_on_start)}
+                                onChange={() => handleToggleNotificationSetting('notify_lesson_link_on_start')}
+                              />
+                              <span>Ссылка на урок при старте</span>
+                            </label>
+
+                            <label className="notification-item-compact">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(notificationSettings.notify_materials_added)}
+                                onChange={() => handleToggleNotificationSetting('notify_materials_added')}
+                              />
+                              <span>Уведомлять учеников о новых материалах</span>
+                            </label>
+
+                            <div className="notification-subsection">
+                              <p className="subsection-title">Куда отправлять уведомления:</p>
+                              <label className="notification-item-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(notificationSettings.default_notify_to_group_chat)}
+                                  onChange={() => handleToggleNotificationSetting('default_notify_to_group_chat')}
+                                />
+                                <span>В Telegram-группу</span>
+                              </label>
+                              <label className="notification-item-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(notificationSettings.default_notify_to_students_dm)}
+                                  onChange={() => handleToggleNotificationSetting('default_notify_to_students_dm')}
+                                />
+                                <span>Ученикам в личные сообщения</span>
+                              </label>
+                            </div>
                           </div>
                         </div>
                       )}

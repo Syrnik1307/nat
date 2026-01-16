@@ -212,12 +212,27 @@ class GroupViewSet(viewsets.ModelViewSet):
         group = self.get_object()
         student_ids = request.data.get('student_ids', [])
         
+        removed_students = []
         for student_id in student_ids:
             try:
                 student = CustomUser.objects.get(id=student_id, role='student')
                 group.students.remove(student)
+                removed_students.append(student)
             except CustomUser.DoesNotExist:
                 pass
+        
+        # Отправляем уведомления учителю об удалённых учениках
+        if removed_students:
+            try:
+                from accounts.notifications import notify_teacher_student_left
+                for student in removed_students:
+                    notify_teacher_student_left(
+                        teacher=group.teacher,
+                        student=student,
+                        group_name=group.name
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to send student left notifications: {e}")
         
         group.save()
         serializer = self.get_serializer(group)
@@ -286,6 +301,23 @@ class GroupViewSet(viewsets.ModelViewSet):
             )
         
         group.students.add(user)
+        
+        # Отправляем уведомления
+        try:
+            from accounts.notifications import notify_teacher_student_joined, notify_student_welcome
+            # Уведомление учителю
+            notify_teacher_student_joined(
+                teacher=group.teacher,
+                student=user,
+                group_name=group.name,
+                is_individual=False
+            )
+            # Приветствие ученику
+            teacher_name = group.teacher.get_full_name() or group.teacher.email
+            notify_student_welcome(user, group.name, teacher_name)
+        except Exception as e:
+            logger.warning(f"Failed to send join notifications: {e}")
+        
         serializer = self.get_serializer(group)
         
         return Response({
@@ -1512,6 +1544,13 @@ class LessonViewSet(viewsets.ModelViewSet):
                 details={'meeting_id': meeting_data['id'], 'teacher': user.email}
             )
             
+            # Отправляем ссылку ученикам
+            try:
+                from accounts.notifications import notify_lesson_link
+                notify_lesson_link(lesson, meeting_data['join_url'], platform='zoom')
+            except Exception as e:
+                logger.warning(f"Failed to send lesson link notifications: {e}")
+            
             return Response({
                 'zoom_join_url': meeting_data['join_url'],
                 'zoom_start_url': meeting_data['start_url'],
@@ -1629,6 +1668,14 @@ class LessonViewSet(viewsets.ModelViewSet):
         if error_response:
             return error_response
         payload['provider'] = 'zoom'
+        
+        # Отправляем ссылку ученикам
+        try:
+            from accounts.notifications import notify_lesson_link
+            notify_lesson_link(lesson, payload.get('zoom_join_url', ''), platform='zoom')
+        except Exception as e:
+            logger.warning(f"Failed to send lesson link notifications: {e}")
+        
         return Response(payload, status=status.HTTP_200_OK)
 
     def _start_via_google_meet(self, lesson, user, request):
@@ -1675,7 +1722,7 @@ class LessonViewSet(viewsets.ModelViewSet):
                 title=title,
                 start_time=lesson.start_time,
                 duration_minutes=lesson.duration(),
-                description=f"Урок на платформе Teaching Panel\nПреподаватель: {user.get_full_name()}",
+                description=f"Урок на платформе Lectio Space\nПреподаватель: {user.get_full_name()}",
             )
             
             # Сохраняем данные в урок
@@ -1694,6 +1741,13 @@ class LessonViewSet(viewsets.ModelViewSet):
                 request=request,
                 details={'meet_link': lesson.google_meet_link, 'teacher': user.email}
             )
+            
+            # Отправляем ссылку ученикам
+            try:
+                from accounts.notifications import notify_lesson_link
+                notify_lesson_link(lesson, lesson.google_meet_link, platform='google_meet')
+            except Exception as e:
+                logger.warning(f"Failed to send lesson link notifications for Google Meet: {e}")
             
             return Response({
                 'meet_link': lesson.google_meet_link,
@@ -3098,6 +3152,22 @@ class IndividualInviteCodeViewSet(viewsets.ModelViewSet):
         code_obj.used_at = timezone.now()
         code_obj.save()
         
+        # Отправляем уведомления
+        try:
+            from accounts.notifications import notify_teacher_student_joined, notify_student_welcome
+            # Уведомление учителю (индивидуальный ученик)
+            notify_teacher_student_joined(
+                teacher=code_obj.teacher,
+                student=user,
+                group_name=code_obj.subject,
+                is_individual=True
+            )
+            # Приветствие ученику
+            teacher_name = code_obj.teacher.get_full_name() or code_obj.teacher.email
+            notify_student_welcome(user, code_obj.subject, teacher_name)
+        except Exception as e:
+            logger.warning(f"Failed to send individual join notifications: {e}")
+        
         serializer = self.get_serializer(code_obj)
         return Response({
             'message': f'Вы успешно присоединились к предмету "{code_obj.subject}" преподавателя {code_obj.teacher.get_full_name()}',
@@ -3404,6 +3474,14 @@ def miro_add_board(request):
             ).distinct()
             material.allowed_students.set(students)
     
+    # Отправляем уведомления ученикам о новом материале (Miro)
+    if lesson and visibility in ('all', 'lesson_group', 'group'):
+        try:
+            from accounts.notifications import notify_materials_added_to_students
+            notify_materials_added_to_students(lesson, material.title, 'miro')
+        except Exception as e:
+            logger.warning(f"Failed to send materials notification for Miro: {e}")
+    
     serializer = LessonMaterialSerializer(material)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -3571,6 +3649,14 @@ def add_notes(request):
             ).distinct()
             material.allowed_students.set(students)
     
+    # Отправляем уведомления ученикам о новом конспекте
+    if lesson and visibility in ('all', 'lesson_group', 'group'):
+        try:
+            from accounts.notifications import notify_materials_added_to_students
+            notify_materials_added_to_students(lesson, material.title, 'notes')
+        except Exception as e:
+            logger.warning(f"Failed to send materials notification for notes: {e}")
+    
     serializer = LessonMaterialSerializer(material)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -3654,6 +3740,14 @@ def add_document(request):
                 enrolled_groups__in=teacher_groups
             ).distinct()
             material.allowed_students.set(students)
+    
+    # Отправляем уведомления ученикам о новом документе
+    if lesson and visibility in ('all', 'lesson_group', 'group'):
+        try:
+            from accounts.notifications import notify_materials_added_to_students
+            notify_materials_added_to_students(lesson, material.title, 'document')
+        except Exception as e:
+            logger.warning(f"Failed to send materials notification for document: {e}")
     
     serializer = LessonMaterialSerializer(material)
     return Response(serializer.data, status=status.HTTP_201_CREATED)

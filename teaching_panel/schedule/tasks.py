@@ -812,28 +812,76 @@ def _cleanup_temp_file(file_path):
 def _notify_students_about_recording(recording):
     """Отправляет уведомления ученикам о доступности записи урока"""
     import logging
+    from accounts.notifications import (
+        notify_recording_ready_to_teacher,
+        send_telegram_notification,
+        send_telegram_to_group_chat
+    )
+    from accounts.models import NotificationSettings
     
     logger = logging.getLogger(__name__)
     
     try:
         lesson = recording.lesson
+        teacher = lesson.teacher
+        
+        # 1. Уведомляем учителя о готовности записи
+        try:
+            notify_recording_ready_to_teacher(teacher, lesson, recording)
+            logger.info(f"Notified teacher {teacher.email} about recording {recording.id}")
+        except Exception as e:
+            logger.warning(f"Failed to notify teacher about recording: {e}")
         
         # Получаем учеников группы
         if not lesson.group:
-            logger.info(f"Lesson {lesson.id} has no group, skipping notifications")
+            logger.info(f"Lesson {lesson.id} has no group, skipping student notifications")
             return
         
-        students = lesson.group.students.filter(is_active=True)
+        group = lesson.group
         
-        logger.info(f"Notifying {students.count()} students about recording for lesson {lesson.id}")
+        # Проверяем настройки учителя
+        try:
+            settings_obj = NotificationSettings.objects.get(user=teacher)
+            send_to_group = settings_obj.default_notify_to_group_chat
+            send_to_students = settings_obj.default_notify_to_students_dm
+        except NotificationSettings.DoesNotExist:
+            send_to_group = True
+            send_to_students = True
         
-        # TODO: Интегрировать с системой уведомлений
-        # Можно использовать email, Telegram, push-уведомления и т.д.
+        # Формируем сообщение
+        lesson_title = lesson.title or group.name
+        lesson_date = lesson.start_time.strftime('%d.%m.%Y') if lesson.start_time else ''
         
-        logger.info(f"Would send {students.count()} notifications for recording {recording.id}")
+        message = (
+            f"Запись урока доступна\n\n"
+            f"Урок: {lesson_title}\n"
+            f"Дата: {lesson_date}\n\n"
+            f"Просмотреть запись можно в разделе Записи на платформе."
+        )
+        
+        sent_count = 0
+        
+        # 2. Отправка в Telegram-группу
+        if send_to_group and group.telegram_chat_id:
+            if send_telegram_to_group_chat(group.telegram_chat_id, message, notification_source='recording_available'):
+                logger.info(f"Sent recording notification to group chat {group.telegram_chat_id}")
+        
+        # 3. Отправка ученикам в личку
+        if send_to_students:
+            students = group.students.filter(
+                is_active=True,
+                telegram_chat_id__isnull=False,
+                telegram_verified=True
+            ).exclude(telegram_chat_id='')
+            
+            for student in students:
+                if send_telegram_notification(student, 'recording_available', message):
+                    sent_count += 1
+        
+        logger.info(f"Sent {sent_count} recording notifications for recording {recording.id}")
     
     except Exception as e:
-        logger.exception(f"Error notifying students: {e}")
+        logger.exception(f"Error notifying about recording: {e}")
 
 
 @shared_task

@@ -64,6 +64,16 @@ class Group(models.Model):
         null=True,
         help_text=_('Уникальный код для присоединения учеников к группе')
     )
+    
+    # Telegram-интеграция для группы
+    telegram_chat_id = models.CharField(
+        _('Chat ID Telegram-группы'),
+        max_length=50,
+        blank=True,
+        default='',
+        help_text=_('ID чата/группы в Telegram для отправки уведомлений (бот должен быть добавлен в группу)')
+    )
+    
     created_at = models.DateTimeField(_('дата создания'), auto_now_add=True)
     updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
     

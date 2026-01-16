@@ -28,6 +28,16 @@ NOTIFICATION_FIELD_MAP: Dict[str, str] = {
     'group_health_alert': 'notify_group_health',
     'grading_backlog': 'notify_grading_backlog',
     'inactive_student_alert': 'notify_inactive_student',
+    
+    # Новые события — учителю
+    'student_joined': 'notify_student_joined',
+    'student_left': 'notify_student_left',
+    'recording_ready': 'notify_recording_ready',
+    
+    # Новые события — ученику
+    'lesson_link_sent': 'notify_lesson_reminders',  # Использует общую настройку уроков
+    'materials_added': 'notify_new_homework',  # Использует настройку новых материалов/ДЗ
+    'welcome_to_group': 'notify_lesson_reminders',  # Всегда отправляем приветствие
 
     # Аналитика — ученику
     'student_absence_warning': 'notify_student_absence_warning',
@@ -214,3 +224,325 @@ def send_telegram_to_group_chat(chat_id: str, message: str, *, notification_sour
     except requests.RequestException as exc:
         logger.exception('Failed to send Telegram group notification to %s (%s): %s', chat_id, notification_source, exc)
         return False
+
+
+# =============================================================================
+# Специализированные функции уведомлений
+# =============================================================================
+
+def notify_teacher_student_joined(teacher, student, group_name: str, is_individual: bool = False) -> bool:
+    """Уведомить учителя о вступлении ученика в группу или к индивидуальным занятиям.
+    
+    Args:
+        teacher: Учитель (CustomUser)
+        student: Ученик (CustomUser)
+        group_name: Название группы или предмета
+        is_individual: True если это индивидуальный ученик
+        
+    Returns:
+        bool: Успешность отправки
+    """
+    student_name = student.get_full_name() or student.email
+    
+    if is_individual:
+        message = f"Новый индивидуальный ученик\n\n{student_name} присоединился к занятиям по предмету \"{group_name}\"."
+    else:
+        message = f"Новый ученик в группе\n\n{student_name} вступил в группу \"{group_name}\"."
+    
+    return send_telegram_notification(teacher, 'student_joined', message)
+
+
+def notify_teacher_student_left(teacher, student, group_name: str) -> bool:
+    """Уведомить учителя о выходе ученика из группы.
+    
+    Args:
+        teacher: Учитель (CustomUser)
+        student: Ученик (CustomUser)
+        group_name: Название группы
+        
+    Returns:
+        bool: Успешность отправки
+    """
+    student_name = student.get_full_name() or student.email
+    message = f"Ученик покинул группу\n\n{student_name} вышел из группы \"{group_name}\"."
+    
+    return send_telegram_notification(teacher, 'student_left', message)
+
+
+def notify_student_welcome(student, group_name: str, teacher_name: str) -> bool:
+    """Отправить ученику приветственное сообщение при вступлении в группу.
+    
+    Args:
+        student: Ученик (CustomUser)
+        group_name: Название группы
+        teacher_name: Имя преподавателя
+        
+    Returns:
+        bool: Успешность отправки
+    """
+    message = (
+        f"Добро пожаловать в Lectio Space\n\n"
+        f"Вы успешно присоединились к группе \"{group_name}\".\n"
+        f"Преподаватель: {teacher_name}\n\n"
+        f"Ожидайте уведомления о предстоящих занятиях."
+    )
+    
+    return send_telegram_notification(student, 'welcome_to_group', message)
+
+
+def notify_lesson_link(lesson, join_url: str, platform: str = 'zoom') -> dict:
+    """Отправить ссылку на урок ученикам группы.
+    
+    Отправляет ссылку:
+    - В Telegram-группу (если привязана)
+    - В личные сообщения каждому ученику (если подключен Telegram)
+    
+    Args:
+        lesson: Урок (Lesson)
+        join_url: Ссылка для подключения
+        platform: 'zoom' или 'google_meet'
+        
+    Returns:
+        dict: Статистика отправки {sent_to_group, sent_to_students, failed}
+    """
+    from .models import NotificationSettings
+    
+    result = {'sent_to_group': False, 'sent_to_students': 0, 'failed': 0}
+    
+    if not lesson.group:
+        return result
+    
+    group = lesson.group
+    teacher = lesson.teacher
+    
+    # Проверяем настройки учителя
+    try:
+        settings_obj = NotificationSettings.objects.get(user=teacher)
+    except NotificationSettings.DoesNotExist:
+        settings_obj = None
+    
+    # Определяем куда отправлять
+    send_to_group = True
+    send_to_students = True
+    
+    if settings_obj:
+        if not settings_obj.notify_lesson_link_on_start:
+            return result
+        send_to_group = settings_obj.default_notify_to_group_chat
+        send_to_students = settings_obj.default_notify_to_students_dm
+    
+    # Формируем сообщение
+    lesson_title = lesson.title or group.name
+    platform_name = 'Google Meet' if platform == 'google_meet' else 'Zoom'
+    teacher_name = teacher.get_full_name() or teacher.email
+    
+    message = (
+        f"Урок начинается\n\n"
+        f"{lesson_title}\n"
+        f"Преподаватель: {teacher_name}\n\n"
+        f"Подключиться ({platform_name}):\n{join_url}"
+    )
+    
+    # 1. Отправка в Telegram-группу
+    if send_to_group and group.telegram_chat_id:
+        if send_telegram_to_group_chat(group.telegram_chat_id, message, notification_source='lesson_link_sent'):
+            result['sent_to_group'] = True
+    
+    # 2. Отправка ученикам в личку
+    if send_to_students:
+        students = group.students.filter(
+            is_active=True,
+            telegram_chat_id__isnull=False,
+            telegram_verified=True
+        ).exclude(telegram_chat_id='')
+        
+        for student in students:
+            if send_telegram_notification(student, 'lesson_link_sent', message):
+                result['sent_to_students'] += 1
+            else:
+                result['failed'] += 1
+    
+    return result
+
+
+def notify_recording_ready_to_teacher(teacher, lesson, recording) -> bool:
+    """Уведомить учителя о готовности записи урока.
+    
+    Args:
+        teacher: Учитель (CustomUser)
+        lesson: Урок (Lesson)
+        recording: Запись (LessonRecording)
+        
+    Returns:
+        bool: Успешность отправки
+    """
+    lesson_title = lesson.title or (lesson.group.name if lesson.group else 'Урок')
+    lesson_date = lesson.start_time.strftime('%d.%m.%Y') if lesson.start_time else ''
+    
+    message = (
+        f"Запись урока готова\n\n"
+        f"Урок: {lesson_title}\n"
+        f"Дата: {lesson_date}\n\n"
+        f"Запись обработана и доступна для просмотра в разделе Записи."
+    )
+    
+    return send_telegram_notification(teacher, 'recording_ready', message)
+
+
+def notify_materials_added_to_students(lesson, material_title: str, material_type: str) -> dict:
+    """Уведомить учеников о добавлении новых материалов к уроку.
+    
+    Args:
+        lesson: Урок (Lesson)
+        material_title: Название материала
+        material_type: Тип материала (notes, document, miro)
+        
+    Returns:
+        dict: Статистика {sent_to_group, sent_to_students, failed}
+    """
+    from .models import NotificationSettings
+    
+    result = {'sent_to_group': False, 'sent_to_students': 0, 'failed': 0}
+    
+    if not lesson.group:
+        return result
+    
+    group = lesson.group
+    teacher = lesson.teacher
+    
+    # Проверяем настройки учителя
+    try:
+        settings_obj = NotificationSettings.objects.get(user=teacher)
+        if not settings_obj.notify_materials_added:
+            return result
+        send_to_group = settings_obj.default_notify_to_group_chat
+        send_to_students = settings_obj.default_notify_to_students_dm
+    except NotificationSettings.DoesNotExist:
+        send_to_group = True
+        send_to_students = True
+    
+    # Формируем сообщение
+    type_names = {
+        'notes': 'конспект',
+        'document': 'документ',
+        'miro': 'доска Miro',
+    }
+    type_name = type_names.get(material_type, 'материал')
+    lesson_title = lesson.title or group.name
+    
+    message = (
+        f"Новый {type_name}\n\n"
+        f"К уроку \"{lesson_title}\" добавлен новый материал:\n"
+        f"{material_title}\n\n"
+        f"Посмотреть можно в разделе Материалы."
+    )
+    
+    # 1. Отправка в Telegram-группу
+    if send_to_group and group.telegram_chat_id:
+        if send_telegram_to_group_chat(group.telegram_chat_id, message, notification_source='materials_added'):
+            result['sent_to_group'] = True
+    
+    # 2. Отправка ученикам в личку
+    if send_to_students:
+        students = group.students.filter(
+            is_active=True,
+            telegram_chat_id__isnull=False,
+            telegram_verified=True
+        ).exclude(telegram_chat_id='')
+        
+        for student in students:
+            if send_telegram_notification(student, 'materials_added', message):
+                result['sent_to_students'] += 1
+            else:
+                result['failed'] += 1
+    
+    return result
+
+
+def notify_lesson_reminder_with_link(lesson, minutes_before: int) -> dict:
+    """Отправить напоминание об уроке (анонс) с возможной ссылкой.
+    
+    Используется для отправки напоминаний за N минут до урока.
+    Ссылка включается только если она уже есть (урок запущен ранее).
+    
+    Args:
+        lesson: Урок (Lesson)
+        minutes_before: За сколько минут до урока
+        
+    Returns:
+        dict: Статистика {sent_to_group, sent_to_students, failed}
+    """
+    from .models import NotificationSettings
+    
+    result = {'sent_to_group': False, 'sent_to_students': 0, 'failed': 0}
+    
+    if not lesson.group:
+        return result
+    
+    group = lesson.group
+    teacher = lesson.teacher
+    
+    # Проверяем настройки учителя
+    try:
+        settings_obj = NotificationSettings.objects.get(user=teacher)
+        if not settings_obj.default_lesson_reminder_enabled:
+            return result
+        send_to_group = settings_obj.default_notify_to_group_chat
+        send_to_students = settings_obj.default_notify_to_students_dm
+    except NotificationSettings.DoesNotExist:
+        send_to_group = True
+        send_to_students = True
+    
+    # Формируем сообщение
+    lesson_title = lesson.title or group.name
+    teacher_name = teacher.get_full_name() or teacher.email
+    start_time = lesson.start_time.strftime('%H:%M') if lesson.start_time else ''
+    
+    # Определяем текст времени
+    if minutes_before <= 5:
+        time_text = 'через 5 минут'
+    elif minutes_before <= 15:
+        time_text = 'через 15 минут'
+    elif minutes_before <= 30:
+        time_text = 'через 30 минут'
+    elif minutes_before <= 60:
+        time_text = 'через час'
+    else:
+        time_text = f'через {minutes_before} минут'
+    
+    message = (
+        f"Напоминание об уроке\n\n"
+        f"{lesson_title}\n"
+        f"Начало: {start_time} ({time_text})\n"
+        f"Преподаватель: {teacher_name}"
+    )
+    
+    # Добавляем ссылку если есть
+    join_url = lesson.google_meet_link or lesson.zoom_join_url
+    if join_url:
+        platform = 'Google Meet' if lesson.google_meet_link else 'Zoom'
+        message += f"\n\nПодключиться ({platform}):\n{join_url}"
+    else:
+        message += "\n\nСсылка для подключения будет отправлена когда преподаватель начнёт урок."
+    
+    # 1. Отправка в Telegram-группу
+    if send_to_group and group.telegram_chat_id:
+        if send_telegram_to_group_chat(group.telegram_chat_id, message, notification_source='lesson_reminder'):
+            result['sent_to_group'] = True
+    
+    # 2. Отправка ученикам в личку
+    if send_to_students:
+        students = group.students.filter(
+            is_active=True,
+            telegram_chat_id__isnull=False,
+            telegram_verified=True
+        ).exclude(telegram_chat_id='')
+        
+        for student in students:
+            if send_telegram_notification(student, 'lesson_reminder', message):
+                result['sent_to_students'] += 1
+            else:
+                result['failed'] += 1
+    
+    return result
+

@@ -91,7 +91,7 @@ class PaymentService:
                     "return_url": f"{settings.FRONTEND_URL}/teacher/subscription/success"
                 },
                 "capture": True,
-                "description": f"Подписка Teaching Panel ({plan})",
+                "description": f"Подписка Lectio Space ({plan})",
                 "metadata": {
                     "subscription_id": subscription.id,
                     "user_id": subscription.user.id,

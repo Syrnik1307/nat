@@ -800,6 +800,41 @@
   box-shadow: 0 0 0 3px rgba(33, 84, 187, 0.12);
 }
 
+.inline-setting select {
+  padding: 5px 10px;
+  border: 1px solid rgba(25, 59, 140, 0.2);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #0d2f81;
+  background: #f8faff;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.inline-setting select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(33, 84, 187, 0.12);
+}
+
+/* Subsection for grouped settings */
+.notification-subsection {
+  padding: 12px 12px 8px 42px;
+  margin-top: 4px;
+  border-top: 1px dashed rgba(25, 59, 140, 0.15);
+}
+
+.notification-subsection .subsection-title {
+  font-size: 12px;
+  color: #5174c2;
+  margin: 0 0 8px 0;
+  font-weight: 500;
+}
+
+.notification-subsection .notification-item-compact {
+  padding: 6px 0;
+}
+
 /* Legacy styles kept for backward compatibility */
 .notification-item {
   display: flex;
