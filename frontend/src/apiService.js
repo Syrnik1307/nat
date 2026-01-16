@@ -228,6 +228,11 @@ export const unlinkTelegramAccount = () => apiClient.post('telegram/unlink/');
 export const getNotificationSettings = () => apiClient.get('notifications/settings/');
 export const patchNotificationSettings = (payload) => apiClient.patch('notifications/settings/', payload);
 
+// Notification mutes (заглушки по группам/ученикам)
+export const getNotificationMutes = () => apiClient.get('notifications/mutes/');
+export const createNotificationMute = (payload) => apiClient.post('notifications/mutes/', payload);
+export const deleteNotificationMute = (id) => apiClient.delete(`notifications/mutes/${id}/`);
+
 // =====================
 // Helper for calendar feed
 // =====================

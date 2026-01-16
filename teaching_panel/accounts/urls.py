@@ -49,6 +49,8 @@ from .api_views import (
     generate_telegram_code,
     verify_telegram,
     notification_settings_view,
+    notification_mutes_view,
+    notification_mute_delete_view,
 )
 
 
@@ -132,6 +134,8 @@ urlpatterns = [
     path('api/password-reset-telegram/request/', request_password_reset, name='request_password_reset_telegram'),
     path('api/password-reset-telegram/confirm/', reset_password_with_token, name='reset_password_with_token'),
     path('api/notifications/settings/', notification_settings_view, name='notification_settings'),
+    path('api/notifications/mutes/', notification_mutes_view, name='notification_mutes'),
+    path('api/notifications/mutes/<int:pk>/', notification_mute_delete_view, name='notification_mute_delete'),
     
     # API для чатов
     path('api/', include(router.urls)),

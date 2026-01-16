@@ -690,12 +690,24 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         teacher = getattr(submission.homework, 'teacher', None)
         if not teacher:
             return
+        
+        # Проверяем mutes
+        from accounts.notifications import is_notification_muted
+        student = submission.student
+        
+        # Получаем группу из homework (если есть)
+        groups = submission.homework.assigned_groups.all()
+        group = groups.first() if groups.exists() else None
+        
+        if is_notification_muted(teacher, 'homework_submitted', group=group, student=student):
+            return
+        
         student_name = self._format_display_name(submission.student)
         hw_title = submission.homework.title
         message = (
-            f"📘 Новая сдача ДЗ\n"
+            f"Новая сдача ДЗ\n"
             f"{student_name} отправил(а) '{hw_title}'.\n"
-            f"Откройте Teaching Panel, чтобы проверить работу."
+            f"Откройте Lectio Space, чтобы проверить работу."
         )
         send_telegram_notification(teacher, 'homework_submitted', message)
 
@@ -704,13 +716,25 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         teacher = getattr(submission.homework, 'teacher', None)
         if not teacher:
             return
+        
+        # Проверяем mutes
+        from accounts.notifications import is_notification_muted
+        student = submission.student
+        
+        # Получаем группу из homework (если есть)
+        groups = submission.homework.assigned_groups.all()
+        group = groups.first() if groups.exists() else None
+        
+        if is_notification_muted(teacher, 'homework_submitted', group=group, student=student):
+            return
+        
         student_name = self._format_display_name(submission.student)
         hw_title = submission.homework.title
         score = submission.total_score or 0
         max_score = sum(q.points for q in submission.homework.questions.all()) or 100
         percent = round((score / max_score) * 100) if max_score > 0 else 0
         message = (
-            f"✅ Авто-проверка ДЗ\n"
+            f"Авто-проверка ДЗ\n"
             f"{student_name} сдал(а) '{hw_title}'.\n"
             f"Результат: {score}/{max_score} ({percent}%).\n"
             f"Работа проверена автоматически."

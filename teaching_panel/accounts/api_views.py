@@ -6,8 +6,8 @@ from rest_framework import status
 from django.utils import timezone
 from django.conf import settings
 
-from .serializers import UserProfileSerializer, NotificationSettingsSerializer
-from .models import CustomUser, PasswordResetToken, NotificationSettings
+from .serializers import UserProfileSerializer, NotificationSettingsSerializer, NotificationMuteSerializer
+from .models import CustomUser, PasswordResetToken, NotificationSettings, NotificationMute
 from .telegram_utils import (
     generate_link_code_for_user,
     link_account_with_code,
@@ -317,3 +317,71 @@ def notification_settings_view(request):
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response(serializer.data)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def notification_mutes_view(request):
+    """
+    GET: Получить список заглушенных групп/учеников для текущего пользователя.
+    POST: Добавить новую заглушку (группу или ученика).
+    """
+    if request.method == 'GET':
+        mutes = NotificationMute.objects.filter(user=request.user).select_related('group', 'student')
+        serializer = NotificationMuteSerializer(mutes, many=True)
+        return Response(serializer.data)
+    
+    # POST — создать новую заглушку
+    serializer = NotificationMuteSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    
+    # Проверяем, что группа/ученик принадлежит этому учителю
+    mute_type = serializer.validated_data.get('mute_type')
+    if mute_type == 'group':
+        group = serializer.validated_data.get('group')
+        if group and group.teacher != request.user:
+            return Response(
+                {'error': 'Вы можете заглушать только свои группы'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+    elif mute_type == 'student':
+        student = serializer.validated_data.get('student')
+        # Проверяем, что ученик находится в одной из групп учителя
+        from schedule.models import Group
+        teacher_student_ids = Group.objects.filter(
+            teacher=request.user
+        ).values_list('students__id', flat=True).distinct()
+        if student and student.id not in teacher_student_ids:
+            return Response(
+                {'error': 'Вы можете заглушать только своих учеников'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+    
+    # Сохраняем с привязкой к текущему пользователю
+    try:
+        serializer.save(user=request.user)
+    except Exception as e:
+        # Вероятно, дубликат
+        return Response(
+            {'error': 'Эта группа или ученик уже заглушены'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def notification_mute_delete_view(request, pk):
+    """
+    DELETE: Удалить заглушку (включить уведомления обратно).
+    """
+    try:
+        mute = NotificationMute.objects.get(pk=pk, user=request.user)
+    except NotificationMute.DoesNotExist:
+        return Response(
+            {'error': 'Заглушка не найдена'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    mute.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)

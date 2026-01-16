@@ -229,7 +229,8 @@ class GroupViewSet(viewsets.ModelViewSet):
                     notify_teacher_student_left(
                         teacher=group.teacher,
                         student=student,
-                        group_name=group.name
+                        group_name=group.name,
+                        group=group
                     )
             except Exception as e:
                 logger.warning(f"Failed to send student left notifications: {e}")
@@ -310,7 +311,8 @@ class GroupViewSet(viewsets.ModelViewSet):
                 teacher=group.teacher,
                 student=user,
                 group_name=group.name,
-                is_individual=False
+                is_individual=False,
+                group=group
             )
             # Приветствие ученику
             teacher_name = group.teacher.get_full_name() or group.teacher.email

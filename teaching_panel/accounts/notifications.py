@@ -1,7 +1,7 @@
 """Helper utilities for user notification delivery."""
 from datetime import timedelta
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 import requests
 from django.conf import settings
@@ -52,6 +52,61 @@ NOTIFICATION_FIELD_MAP: Dict[str, str] = {
     'storage_limit_exceeded': 'notify_lesson_reminders',
     'recording_available': 'notify_lesson_reminders',
 }
+
+
+def is_notification_muted(
+    user,
+    notification_type: str,
+    *,
+    group=None,
+    student=None,
+) -> bool:
+    """
+    Проверяет, заглушено ли уведомление для данного пользователя.
+    
+    Args:
+        user: Пользователь (обычно учитель)
+        notification_type: Тип уведомления
+        group: Группа (schedule.Group) - если уведомление связано с группой
+        student: Ученик (CustomUser) - если уведомление связано с учеником
+        
+    Returns:
+        bool: True если уведомление заглушено
+    """
+    from .models import NotificationMute
+    
+    if not user:
+        return False
+    
+    # Проверяем mute по группе
+    if group:
+        mute = NotificationMute.objects.filter(
+            user=user,
+            mute_type='group',
+            group=group,
+        ).first()
+        if mute:
+            # Если muted_notification_types пусто - заглушены все
+            if not mute.muted_notification_types:
+                return True
+            # Иначе проверяем конкретный тип
+            if notification_type in mute.muted_notification_types:
+                return True
+    
+    # Проверяем mute по ученику
+    if student:
+        mute = NotificationMute.objects.filter(
+            user=user,
+            mute_type='student',
+            student=student,
+        ).first()
+        if mute:
+            if not mute.muted_notification_types:
+                return True
+            if notification_type in mute.muted_notification_types:
+                return True
+    
+    return False
 
 
 def _get_bot_token() -> str:
@@ -230,7 +285,7 @@ def send_telegram_to_group_chat(chat_id: str, message: str, *, notification_sour
 # Специализированные функции уведомлений
 # =============================================================================
 
-def notify_teacher_student_joined(teacher, student, group_name: str, is_individual: bool = False) -> bool:
+def notify_teacher_student_joined(teacher, student, group_name: str, is_individual: bool = False, group=None) -> bool:
     """Уведомить учителя о вступлении ученика в группу или к индивидуальным занятиям.
     
     Args:
@@ -238,10 +293,17 @@ def notify_teacher_student_joined(teacher, student, group_name: str, is_individu
         student: Ученик (CustomUser)
         group_name: Название группы или предмета
         is_individual: True если это индивидуальный ученик
+        group: Объект группы для проверки mutes
         
     Returns:
         bool: Успешность отправки
     """
+    # Проверяем mutes
+    if is_notification_muted(teacher, 'student_joined', group=group, student=student):
+        logger.info('Notification muted for teacher %s: student_joined (student=%s, group=%s)', 
+                    teacher.email, student.email if student else None, group_name)
+        return False
+    
     student_name = student.get_full_name() or student.email
     
     if is_individual:
@@ -252,17 +314,24 @@ def notify_teacher_student_joined(teacher, student, group_name: str, is_individu
     return send_telegram_notification(teacher, 'student_joined', message)
 
 
-def notify_teacher_student_left(teacher, student, group_name: str) -> bool:
+def notify_teacher_student_left(teacher, student, group_name: str, group=None) -> bool:
     """Уведомить учителя о выходе ученика из группы.
     
     Args:
         teacher: Учитель (CustomUser)
         student: Ученик (CustomUser)
         group_name: Название группы
+        group: Объект группы для проверки mutes
         
     Returns:
         bool: Успешность отправки
     """
+    # Проверяем mutes
+    if is_notification_muted(teacher, 'student_left', group=group, student=student):
+        logger.info('Notification muted for teacher %s: student_left (student=%s, group=%s)', 
+                    teacher.email, student.email if student else None, group_name)
+        return False
+    
     student_name = student.get_full_name() or student.email
     message = f"Ученик покинул группу\n\n{student_name} вышел из группы \"{group_name}\"."
     

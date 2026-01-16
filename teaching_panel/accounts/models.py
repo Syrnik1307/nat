@@ -1181,6 +1181,92 @@ class NotificationLog(models.Model):
         return f"{self.notification_type} → {self.user.email} ({self.status})"
 
 
+class NotificationMute(models.Model):
+    """
+    Модель для отключения уведомлений по конкретным группам или ученикам.
+    Позволяет учителю заглушить уведомления от определённых сущностей,
+    не отключая глобально весь тип уведомлений.
+    """
+    
+    MUTE_TYPE_CHOICES = (
+        ('group', 'Группа'),
+        ('student', 'Ученик'),
+    )
+    
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='notification_mutes',
+        verbose_name=_('пользователь'),
+        help_text=_('Учитель, который заглушает уведомления')
+    )
+    mute_type = models.CharField(
+        _('тип'),
+        max_length=20,
+        choices=MUTE_TYPE_CHOICES,
+        help_text=_('Заглушить группу или конкретного ученика')
+    )
+    # Ссылка на группу (если mute_type == 'group')
+    group = models.ForeignKey(
+        'schedule.Group',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='notification_mutes',
+        verbose_name=_('группа')
+    )
+    # Ссылка на ученика (если mute_type == 'student')
+    student = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='muted_by_teachers',
+        verbose_name=_('ученик')
+    )
+    # Опционально: какие именно типы уведомлений заглушить (если пусто — все)
+    muted_notification_types = models.JSONField(
+        _('типы уведомлений'),
+        default=list,
+        blank=True,
+        help_text=_('Список типов уведомлений для заглушки (пусто = все)')
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = _('заглушка уведомлений')
+        verbose_name_plural = _('заглушки уведомлений')
+        ordering = ['-created_at']
+        # Уникальность: один пользователь не может заглушить одну группу/ученика дважды
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'mute_type', 'group'],
+                condition=models.Q(mute_type='group'),
+                name='unique_group_mute'
+            ),
+            models.UniqueConstraint(
+                fields=['user', 'mute_type', 'student'],
+                condition=models.Q(mute_type='student'),
+                name='unique_student_mute'
+            ),
+        ]
+    
+    def __str__(self):
+        if self.mute_type == 'group' and self.group:
+            return f"{self.user.email} заглушил группу {self.group.name}"
+        elif self.mute_type == 'student' and self.student:
+            return f"{self.user.email} заглушил ученика {self.student.get_full_name()}"
+        return f"NotificationMute #{self.pk}"
+    
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.mute_type == 'group' and not self.group:
+            raise ValidationError({'group': _('Укажите группу для заглушки')})
+        if self.mute_type == 'student' and not self.student:
+            raise ValidationError({'student': _('Укажите ученика для заглушки')})
+
+
 # ============================================================================
 # НОВЫЕ МОДЕЛИ: СИСТЕМА ПОСЕЩЕНИЙ И РЕЙТИНГА
 # ============================================================================

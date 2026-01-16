@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import SystemSettings, Subscription, Payment, NotificationSettings
+from .models import SystemSettings, Subscription, Payment, NotificationSettings, NotificationMute
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -225,3 +225,48 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['updated_at']
+
+
+class NotificationMuteSerializer(serializers.ModelSerializer):
+    """Сериализатор для заглушек уведомлений по группам/ученикам."""
+    
+    # Read-only поля для отображения информации
+    group_name = serializers.CharField(source='group.name', read_only=True, allow_null=True)
+    student_name = serializers.SerializerMethodField()
+    student_email = serializers.CharField(source='student.email', read_only=True, allow_null=True)
+    
+    class Meta:
+        model = NotificationMute
+        fields = [
+            'id',
+            'mute_type',
+            'group',
+            'group_name',
+            'student',
+            'student_name',
+            'student_email',
+            'muted_notification_types',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'group_name', 'student_name', 'student_email']
+    
+    def get_student_name(self, obj):
+        if obj.student:
+            return obj.student.get_full_name() or obj.student.email
+        return None
+    
+    def validate(self, attrs):
+        mute_type = attrs.get('mute_type')
+        group = attrs.get('group')
+        student = attrs.get('student')
+        
+        if mute_type == 'group':
+            if not group:
+                raise serializers.ValidationError({'group': 'Укажите группу для заглушки'})
+            attrs['student'] = None
+        elif mute_type == 'student':
+            if not student:
+                raise serializers.ValidationError({'student': 'Укажите ученика для заглушки'})
+            attrs['group'] = None
+        
+        return attrs

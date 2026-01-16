@@ -10,6 +10,9 @@ import {
   unlinkTelegramAccount,
   getNotificationSettings,
   patchNotificationSettings,
+  getNotificationMutes,
+  createNotificationMute,
+  deleteNotificationMute,
 } from '../apiService';
 import SubscriptionPage from './SubscriptionPage';
 import PlatformsSection from './PlatformsSection';
@@ -60,6 +63,18 @@ const ProfilePage = () => {
   const [notificationSaving, setNotificationSaving] = useState(false);
   const [notificationError, setNotificationError] = useState('');
   const [notificationSuccess, setNotificationSuccess] = useState('');
+
+  // Notification mutes (заглушки по группам/ученикам)
+  const [notificationMutes, setNotificationMutes] = useState([]);
+  const [mutesLoading, setMutesLoading] = useState(false);
+  const [showMuteModal, setShowMuteModal] = useState(false);
+  const [muteForm, setMuteForm] = useState({ mute_type: 'group', group: '', student: '' });
+  const [muteSaving, setMuteSaving] = useState(false);
+  const [muteError, setMuteError] = useState('');
+
+  // Данные для селектов в модалке
+  const [teacherGroups, setTeacherGroups] = useState([]);
+  const [teacherStudents, setTeacherStudents] = useState([]);
 
   const resolveInitialTab = () => {
     const params = new URLSearchParams(location.search);
@@ -148,12 +163,66 @@ const ProfilePage = () => {
     }
   }, []);
 
+  const fetchNotificationMutes = useCallback(async () => {
+    setMutesLoading(true);
+    try {
+      const { data } = await getNotificationMutes();
+      setNotificationMutes(data);
+    } catch (err) {
+      console.error('Failed to load notification mutes:', err);
+    } finally {
+      setMutesLoading(false);
+    }
+  }, []);
+
+  // Загрузка групп и студентов учителя для селектов
+  const fetchTeacherData = useCallback(async () => {
+    if (user?.role !== 'teacher') return;
+    try {
+      // Используем существующий API для групп
+      const groupsResponse = await fetch('/api/schedule/groups/', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('tp_access_token')}`,
+        },
+      });
+      if (groupsResponse.ok) {
+        const groupsData = await groupsResponse.json();
+        const groups = groupsData.results || groupsData || [];
+        setTeacherGroups(groups);
+        
+        // Собираем уникальных студентов из всех групп
+        const studentsMap = new Map();
+        groups.forEach(group => {
+          if (group.students) {
+            group.students.forEach(student => {
+              if (!studentsMap.has(student.id)) {
+                studentsMap.set(student.id, {
+                  id: student.id,
+                  name: `${student.last_name || ''} ${student.first_name || ''}`.trim() || student.email,
+                  email: student.email,
+                  groupName: group.name,
+                });
+              }
+            });
+          }
+        });
+        setTeacherStudents(Array.from(studentsMap.values()));
+      }
+    } catch (err) {
+      console.error('Failed to load teacher data:', err);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (activeTab === 'telegram' && !telegramInfo && !telegramLoading) {
       fetchTelegramStatus();
     }
     if (activeTab === 'telegram' && !notificationSettings && !notificationLoading) {
       fetchNotificationSettings();
+    }
+    if (activeTab === 'telegram' && user?.role === 'teacher') {
+      fetchNotificationMutes();
+      fetchTeacherData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
@@ -302,6 +371,70 @@ const ProfilePage = () => {
     } catch (err) {
       console.error('Failed to unlink telegram:', err);
       setTelegramError(err.response?.data?.detail || 'Не удалось отвязать Telegram. Попробуйте позже.');
+    }
+  };
+
+  // === Mute функции ===
+  const handleOpenMuteModal = () => {
+    setMuteForm({ mute_type: 'group', group: '', student: '' });
+    setMuteError('');
+    setShowMuteModal(true);
+  };
+
+  const handleCloseMuteModal = () => {
+    setShowMuteModal(false);
+    setMuteError('');
+  };
+
+  const handleCreateMute = async () => {
+    if (!muteForm.mute_type) {
+      setMuteError('Выберите тип заглушки');
+      return;
+    }
+    if (muteForm.mute_type === 'group' && !muteForm.group) {
+      setMuteError('Выберите группу');
+      return;
+    }
+    if (muteForm.mute_type === 'student' && !muteForm.student) {
+      setMuteError('Выберите ученика');
+      return;
+    }
+
+    setMuteSaving(true);
+    setMuteError('');
+    try {
+      const payload = {
+        mute_type: muteForm.mute_type,
+        group: muteForm.mute_type === 'group' ? parseInt(muteForm.group, 10) : null,
+        student: muteForm.mute_type === 'student' ? parseInt(muteForm.student, 10) : null,
+      };
+      await createNotificationMute(payload);
+      handleCloseMuteModal();
+      fetchNotificationMutes();
+    } catch (err) {
+      console.error('Failed to create mute:', err);
+      const detail = err.response?.data?.detail || err.response?.data?.non_field_errors?.[0];
+      setMuteError(detail || 'Не удалось добавить заглушку');
+    } finally {
+      setMuteSaving(false);
+    }
+  };
+
+  const handleDeleteMute = async (muteId) => {
+    const confirmed = await showConfirm({
+      title: 'Удалить заглушку',
+      message: 'Уведомления для этой группы или ученика будут снова отправляться.',
+      variant: 'warning',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена'
+    });
+    if (!confirmed) return;
+
+    try {
+      await deleteNotificationMute(muteId);
+      fetchNotificationMutes();
+    } catch (err) {
+      console.error('Failed to delete mute:', err);
     }
   };
 
@@ -1173,6 +1306,61 @@ const ProfilePage = () => {
                           </div>
                         </div>
                       )}
+
+                      {/* Исключения — только для учителя */}
+                      {isTeacher && (
+                        <div className="notification-category mutes-category">
+                          <div className="category-header">
+                            <h4>Исключения</h4>
+                            <button
+                              type="button"
+                              className="add-mute-btn"
+                              onClick={handleOpenMuteModal}
+                            >
+                              Добавить
+                            </button>
+                          </div>
+                          <p className="category-hint">
+                            Отключите уведомления для конкретных групп или учеников
+                          </p>
+                          <div className="mutes-list">
+                            {mutesLoading ? (
+                              <div className="mutes-loading">
+                                <div className="spinner" />
+                              </div>
+                            ) : notificationMutes.length === 0 ? (
+                              <p className="mutes-empty">
+                                Нет исключений. Все уведомления активны.
+                              </p>
+                            ) : (
+                              notificationMutes.map(mute => (
+                                <div key={mute.id} className="mute-item">
+                                  <div className="mute-info">
+                                    <span className={`mute-type-badge ${mute.mute_type}`}>
+                                      {mute.mute_type === 'group' ? 'Группа' : 'Ученик'}
+                                    </span>
+                                    <span className="mute-name">
+                                      {mute.mute_type === 'group' 
+                                        ? mute.group_name 
+                                        : mute.student_name}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="mute-delete-btn"
+                                    onClick={() => handleDeleteMute(mute.id)}
+                                    title="Удалить исключение"
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M18 6L6 18M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1216,6 +1404,102 @@ const ProfilePage = () => {
           </div>
         )}
       </div>
+
+      {/* Modal для добавления исключения */}
+      {showMuteModal && (
+        <div className="modal-overlay" onClick={handleCloseMuteModal}>
+          <div className="modal-content mute-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Добавить исключение</h3>
+              <button className="modal-close" onClick={handleCloseMuteModal}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-hint">
+                Уведомления об этой группе или ученике не будут отправляться
+              </p>
+
+              <div className="mute-form">
+                <div className="form-group">
+                  <label>Тип исключения</label>
+                  <div className="mute-type-selector">
+                    <button
+                      type="button"
+                      className={`type-btn ${muteForm.mute_type === 'group' ? 'active' : ''}`}
+                      onClick={() => setMuteForm(prev => ({ ...prev, mute_type: 'group', student: '' }))}
+                    >
+                      Группа
+                    </button>
+                    <button
+                      type="button"
+                      className={`type-btn ${muteForm.mute_type === 'student' ? 'active' : ''}`}
+                      onClick={() => setMuteForm(prev => ({ ...prev, mute_type: 'student', group: '' }))}
+                    >
+                      Ученик
+                    </button>
+                  </div>
+                </div>
+
+                {muteForm.mute_type === 'group' && (
+                  <div className="form-group">
+                    <label htmlFor="mute-group-select">Выберите группу</label>
+                    <select
+                      id="mute-group-select"
+                      value={muteForm.group}
+                      onChange={e => setMuteForm(prev => ({ ...prev, group: e.target.value }))}
+                    >
+                      <option value="">-- Выберите группу --</option>
+                      {teacherGroups.map(g => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {muteForm.mute_type === 'student' && (
+                  <div className="form-group">
+                    <label htmlFor="mute-student-select">Выберите ученика</label>
+                    <select
+                      id="mute-student-select"
+                      value={muteForm.student}
+                      onChange={e => setMuteForm(prev => ({ ...prev, student: e.target.value }))}
+                    >
+                      <option value="">-- Выберите ученика --</option>
+                      {teacherStudents.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.groupName})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {muteError && <p className="form-message error">{muteError}</p>}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="secondary"
+                onClick={handleCloseMuteModal}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={handleCreateMute}
+                disabled={muteSaving}
+              >
+                {muteSaving ? 'Сохранение...' : 'Добавить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
