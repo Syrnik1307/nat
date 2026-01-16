@@ -6,7 +6,7 @@ import Button from '../shared/components/Button';
 import './SubscriptionPage.css';
 
 const SubscriptionPage = ({ embedded = false }) => {
-  const { subscription: cachedSubscription } = useAuth();
+  const { subscription: cachedSubscription, refreshSubscription } = useAuth();
   
   // Используем кешированные данные из AuthContext как начальные
   const [loading, setLoading] = useState(!cachedSubscription);
@@ -28,6 +28,10 @@ const SubscriptionPage = ({ embedded = false }) => {
     try {
       const subResponse = await apiClient.get('subscription/');
       setSubData(subResponse.data);
+      // Also update global cache in AuthContext
+      if (refreshSubscription) {
+        refreshSubscription();
+      }
     } catch (error) {
       console.error('Failed to load subscription:', error);
     } finally {
@@ -43,20 +47,18 @@ const SubscriptionPage = ({ embedded = false }) => {
     } finally {
       setStorageLoading(false);
     }
-  }, []);
+  }, [refreshSubscription]);
 
   // Sync pending payments with T-Bank API
-  const syncPendingPayments = async () => {
+  const syncPendingPayments = useCallback(async () => {
     try {
       await apiClient.post('subscription/sync-payments/');
-      // Reload subscription data after sync
-      await loadSubscription();
     } catch (error) {
       console.error('Failed to sync payments:', error);
-      // Still reload subscription even if sync fails
-      await loadSubscription();
     }
-  };
+    // Always reload subscription and storage after sync attempt
+    await loadSubscription();
+  }, [loadSubscription]);
 
   useEffect(() => {
     processingRef.current = processing;

@@ -264,10 +264,10 @@ export const AuthProvider = ({ children }) => {
     window.location.href = '/auth-new';
   }, []);
 
-  const refreshUser = useCallback(async () => loadUser(), [loadUser]);
+  const refreshSubscription = useCallback(async () => loadSubscription(), [loadSubscription]);
 
   return (
-    <AuthContext.Provider value={{ accessTokenValid, role, loading, user, subscription, login, logout, refreshUser, register }}>
+    <AuthContext.Provider value={{ accessTokenValid, role, loading, user, subscription, login, logout, refreshUser, register, refreshSubscription }}>
       {children}
     </AuthContext.Provider>
   );
