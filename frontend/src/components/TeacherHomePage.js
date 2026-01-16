@@ -4,6 +4,7 @@ import { getCached } from '../utils/dataCache';
 import { Link } from 'react-router-dom';
 import SubscriptionBanner from './SubscriptionBanner';
 import { Select, TeacherDashboardSkeleton } from '../shared/components';
+import { useAuth } from '../auth';
 import './TeacherHomePage.css';
 
 /* =====================================================
@@ -195,6 +196,7 @@ const IconCode = ({ size = 24, className = '' }) => (
 // =====================================================
 
 const TeacherHomePage = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -215,11 +217,23 @@ const TeacherHomePage = () => {
   const [lessonStartError, setLessonStartError] = useState(null);
   const [lessonStarting, setLessonStarting] = useState(false);
   
+  // Modal state for platform selection
+  const [showPlatformModal, setShowPlatformModal] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState('zoom'); // 'zoom' | 'google_meet'
+  const [platformModalContext, setPlatformModalContext] = useState(null); // 'quick' | 'scheduled'
+  
   // State for editing lesson topic inline
   const [editingTopicLessonId, setEditingTopicLessonId] = useState(null);
   const [editingTopicValue, setEditingTopicValue] = useState('');
   const [savingTopic, setSavingTopic] = useState(false);
   const initialLoadDone = useRef(false);
+  
+  // Determine available platforms from user profile
+  const zoomConnected = user?.zoom_connected || false;
+  const googleMeetConnected = user?.google_meet_connected || false;
+  const availablePlatforms = [];
+  if (zoomConnected) availablePlatforms.push('zoom');
+  if (googleMeetConnected) availablePlatforms.push('google_meet');
 
   useEffect(() => {
     const loadData = async () => {
@@ -281,11 +295,41 @@ const TeacherHomePage = () => {
     loadData();
   }, []);
 
+  // Determine if we need to show platform selection modal
+  const needsPlatformSelection = zoomConnected && googleMeetConnected;
+  
+  // Get the only available platform if just one is connected
+  const getSinglePlatform = () => {
+    if (zoomConnected && !googleMeetConnected) return 'zoom';
+    if (googleMeetConnected && !zoomConnected) return 'google_meet';
+    return null;
+  };
+
   const openStartModal = () => {
     setStartError(null);
     setRecordLesson(true);
     setSelectedGroupId(groups.length > 0 ? groups[0].id : '');
-    setShowStartModal(true);
+    
+    // If both platforms connected, show platform selection first
+    if (needsPlatformSelection) {
+      setSelectedPlatform('zoom'); // Default to Zoom
+      setPlatformModalContext('quick');
+      setShowPlatformModal(true);
+    } else {
+      // Use the single available platform or default to zoom (fallback for pool)
+      setSelectedPlatform(getSinglePlatform() || 'zoom');
+      setShowStartModal(true);
+    }
+  };
+  
+  // Handle platform selection confirmation
+  const handlePlatformConfirm = () => {
+    setShowPlatformModal(false);
+    if (platformModalContext === 'quick') {
+      setShowStartModal(true);
+    } else if (platformModalContext === 'scheduled') {
+      setShowLessonStartModal(true);
+    }
   };
 
   const handleQuickStart = async () => {
@@ -317,7 +361,17 @@ const TeacherHomePage = () => {
     setLessonRecordEnabled(lesson.record_lesson || false);
     setRecordingTitle(lesson.display_name || lesson.title || lesson.group_name || '');
     setLessonStartError(null);
-    setShowLessonStartModal(true);
+    
+    // If both platforms connected, show platform selection first
+    if (needsPlatformSelection) {
+      setSelectedPlatform('zoom'); // Default to Zoom
+      setPlatformModalContext('scheduled');
+      setShowPlatformModal(true);
+    } else {
+      // Use the single available platform or default to zoom
+      setSelectedPlatform(getSinglePlatform() || 'zoom');
+      setShowLessonStartModal(true);
+    }
   };
   
   // Начать редактирование темы урока
@@ -481,6 +535,76 @@ const TeacherHomePage = () => {
       
       {/* Subscription Banner */}
       <SubscriptionBanner />
+
+      {/* Platform Selection Modal */}
+      {showPlatformModal && (
+        <>
+          <div className="modal-overlay" onClick={() => setShowPlatformModal(false)} />
+          <div className="platform-modal">
+            <h3 className="platform-modal-title">Выберите платформу</h3>
+            <p className="platform-modal-subtitle">Где вы хотите провести урок?</p>
+            
+            <div className="platform-options">
+              <button
+                type="button"
+                className={`platform-option ${selectedPlatform === 'zoom' ? 'selected' : ''}`}
+                onClick={() => setSelectedPlatform('zoom')}
+              >
+                <div className="platform-option-icon zoom-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M4.5 4.5C3.12 4.5 2 5.62 2 7v10c0 1.38 1.12 2.5 2.5 2.5h11c1.38 0 2.5-1.12 2.5-2.5v-3.35l4 3V7.85l-4 3V7c0-1.38-1.12-2.5-2.5-2.5h-11z"/>
+                  </svg>
+                </div>
+                <div className="platform-option-info">
+                  <span className="platform-option-name">Zoom</span>
+                  <span className="platform-option-desc">Видеоконференция через Zoom</span>
+                </div>
+                {selectedPlatform === 'zoom' && (
+                  <div className="platform-option-check">
+                    <IconCheck size={18} />
+                  </div>
+                )}
+              </button>
+              
+              <button
+                type="button"
+                className={`platform-option ${selectedPlatform === 'google_meet' ? 'selected' : ''}`}
+                onClick={() => setSelectedPlatform('google_meet')}
+              >
+                <div className="platform-option-icon meet-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                  </svg>
+                </div>
+                <div className="platform-option-info">
+                  <span className="platform-option-name">Google Meet</span>
+                  <span className="platform-option-desc">Видеоконференция через Google</span>
+                </div>
+                {selectedPlatform === 'google_meet' && (
+                  <div className="platform-option-check">
+                    <IconCheck size={18} />
+                  </div>
+                )}
+              </button>
+            </div>
+            
+            <div className="platform-modal-actions">
+              <button
+                className="platform-modal-btn primary"
+                onClick={handlePlatformConfirm}
+              >
+                Продолжить
+              </button>
+              <button
+                className="platform-modal-btn secondary"
+                onClick={() => setShowPlatformModal(false)}
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Start Lesson Modal */}
       {showStartModal && (
@@ -1105,12 +1229,13 @@ const globalStyles = `
   }
 
   .hero-subtitle {
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 500;
-    opacity: 0.9;
+    color: rgba(255, 255, 255, 0.95);
     margin-bottom: 1.25rem;
     max-width: 380px;
-    line-height: 1.5;
+    line-height: 1.6;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   }
 
   .hero-button {
@@ -2101,6 +2226,169 @@ const globalStyles = `
   }
 
   .start-modal-btn.secondary:hover {
+    background: #e5e7eb;
+  }
+
+  /* === PLATFORM SELECTION MODAL === */
+  .platform-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: var(--radius-xl);
+    padding: 1.75rem;
+    width: 400px;
+    max-width: 92vw;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+    z-index: 1001;
+    animation: modalFadeIn 0.2s ease-out;
+  }
+
+  @keyframes modalFadeIn {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -48%);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  .platform-modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin: 0 0 0.25rem 0;
+    letter-spacing: -0.02em;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .platform-modal-subtitle {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    margin: 0 0 1.25rem 0;
+  }
+
+  .platform-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .platform-option {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    width: 100%;
+  }
+
+  .platform-option:hover {
+    border-color: var(--indigo-200);
+    background: var(--slate-50);
+  }
+
+  .platform-option.selected {
+    border-color: var(--color-primary);
+    background: var(--indigo-50);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+
+  .platform-option-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .platform-option-icon.zoom-icon {
+    background: linear-gradient(135deg, #2d8cff 0%, #0b5cff 100%);
+    color: #fff;
+  }
+
+  .platform-option-icon.meet-icon {
+    background: linear-gradient(135deg, #00c853 0%, #00897b 100%);
+    color: #fff;
+  }
+
+  .platform-option-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .platform-option-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .platform-option-desc {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+  }
+
+  .platform-option-check {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .platform-modal-actions {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .platform-modal-btn {
+    flex: 1;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: var(--font-family);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+  }
+
+  .platform-modal-btn.primary {
+    background: var(--gradient-primary);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  }
+
+  .platform-modal-btn.primary:hover {
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .platform-modal-btn.secondary {
+    background: #f3f4f6;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+  }
+
+  .platform-modal-btn.secondary:hover {
     background: #e5e7eb;
   }
 
