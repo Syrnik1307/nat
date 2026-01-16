@@ -111,19 +111,11 @@ const FileUploader = ({ fileType = 'image', onUploadSuccess, currentUrl, accept 
     try {
       validateFile(file);
 
-      // Симуляция прогресса (реальный прогресс требует xhr)
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 200);
+      // Реальный прогресс загрузки через onProgress callback
+      const response = await uploadHomeworkFile(file, fileType, (progressPercent) => {
+        setProgress(progressPercent);
+      });
 
-      const response = await uploadHomeworkFile(file, fileType);
-      clearInterval(progressInterval);
       setProgress(100);
 
       if (response.data && response.data.url) {
