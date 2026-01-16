@@ -43,12 +43,33 @@ const PlatformsSection = ({ user, onRefresh }) => {
     setSuccess('');
   };
 
-  // OAuth авторизация Zoom (вызывается из модалки)
-  const handleConnectZoom = async () => {
+  // Подключение Zoom с credentials (вызывается из модалки)
+  const handleConnectZoom = async (credentials = null) => {
     setLoading('zoom');
     setError('');
     setSuccess('');
     try {
+      // Если переданы credentials - сохраняем их
+      if (credentials && credentials.accountId && credentials.clientId && credentials.clientSecret) {
+        const response = await apiClient.post('/integrations/zoom/save-credentials/', {
+          account_id: credentials.accountId,
+          client_id: credentials.clientId,
+          client_secret: credentials.clientSecret
+        });
+        if (response.data?.success) {
+          setSuccess('Zoom подключён');
+          setInstructionModal(null);
+          if (onRefresh) onRefresh();
+          setTimeout(() => setSuccess(''), 3000);
+          return;
+        } else {
+          setError(response.data?.detail || 'Не удалось сохранить данные');
+          setInstructionModal(null);
+          return;
+        }
+      }
+      
+      // Старый путь OAuth (если нет credentials)
       const response = await apiClient.get('/integrations/zoom/auth-url/');
       if (response.data?.auth_url) {
         window.location.href = response.data.auth_url;

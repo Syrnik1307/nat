@@ -17,6 +17,7 @@ from .zoom_views import (
     ZoomCallbackView,
     ZoomDisconnectView,
     ZoomStatusView,
+    ZoomSaveCredentialsView,
     PlatformsAvailabilityView,
 )
 
@@ -31,6 +32,7 @@ urlpatterns = [
     path('zoom/callback/', ZoomCallbackView.as_view(), name='zoom-callback'),
     path('zoom/disconnect/', ZoomDisconnectView.as_view(), name='zoom-disconnect'),
     path('zoom/status/', ZoomStatusView.as_view(), name='zoom-status'),
+    path('zoom/save-credentials/', ZoomSaveCredentialsView.as_view(), name='zoom-save-credentials'),
     
     # Google Meet OAuth
     path('google-meet/auth-url/', GoogleMeetAuthURLView.as_view(), name='google-meet-auth-url'),

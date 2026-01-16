@@ -4,6 +4,7 @@ import './PlatformInstructionModal.css';
 
 /**
  * Модальное окно с инструкцией по подключению Zoom или Google Meet
+ * Каждый учитель создаёт свой проект и вводит свои credentials
  */
 
 const IconClose = () => (
@@ -13,29 +14,17 @@ const IconClose = () => (
   </svg>
 );
 
-const IconPlay = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <polygon points="5,3 19,12 5,21"/>
-  </svg>
-);
-
 const IconExternalLink = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
     <polyline points="15,3 21,3 21,9"/>
     <line x1="10" y1="14" x2="21" y2="3"/>
   </svg>
 );
 
-const IconChevronDown = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polyline points="6 9 12 15 18 9"/>
-  </svg>
-);
-
-const IconChevronUp = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polyline points="18 15 12 9 6 15"/>
+const IconCheck = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+    <polyline points="20 6 9 17 4 12"/>
   </svg>
 );
 
@@ -46,95 +35,140 @@ const IconCopy = () => (
   </svg>
 );
 
-// Инструкции для каждой платформы
+const IconLock = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+);
+
+// Данные платформ с подробными инструкциями
 const PLATFORM_DATA = {
   zoom: {
     name: 'Zoom',
-    color: '#0d6efd',
-    gradient: 'linear-gradient(135deg, #0d6efd 0%, #1d4ed8 100%)',
+    color: '#2D8CFF',
+    gradient: 'linear-gradient(135deg, #2D8CFF 0%, #0B5CFF 100%)',
+    lightBg: '#EBF5FF',
     icon: (
-      <svg viewBox="0 0 24 24" fill="currentColor" width="32" height="32">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
         <path d="M4.585 11.828V16a2 2 0 002 2h7.829a2 2 0 002-2v-4.172a2 2 0 00-2-2H6.585a2 2 0 00-2 2zm13.243 4.415l2.829 2.122a.75.75 0 001.193-.607V10.071a.75.75 0 00-1.193-.607l-2.829 2.122v4.657z"/>
       </svg>
     ),
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Заменить на реальное видео
-    instructions: [
-      {
-        title: 'Создайте Zoom приложение',
-        description: 'Перейдите в Zoom Marketplace и создайте Server-to-Server OAuth приложение',
-        link: 'https://marketplace.zoom.us/',
-        linkText: 'Открыть Zoom Marketplace'
-      },
-      {
-        title: 'Скопируйте учётные данные',
-        description: 'Account ID, Client ID и Client Secret из созданного приложения'
-      },
-      {
-        title: 'Передайте администратору',
-        description: 'Отправьте эти данные администратору платформы для добавления в систему'
-      },
-      {
-        title: 'Проверьте подключение',
-        description: 'После настройки администратором Zoom появится как доступная платформа'
-      }
-    ],
-    oauthInstructions: [
-      {
-        title: 'Нажмите "Подключить"',
-        description: 'Откроется страница авторизации Zoom'
-      },
-      {
-        title: 'Войдите в Zoom аккаунт',
-        description: 'Используйте ваш Zoom аккаунт для входа'
-      },
-      {
-        title: 'Разрешите доступ',
-        description: 'Подтвердите разрешение на создание конференций'
-      },
-      {
-        title: 'Готово',
-        description: 'Вы будете перенаправлены обратно на платформу'
-      }
-    ],
-    tips: [
-      'Zoom работает без регистрации для учеников',
-      'Поддерживается автоматическая запись уроков',
-      'Можно использовать с любого устройства'
-    ]
-  },
-  google_meet: {
-    name: 'Google Meet',
-    color: '#16a34a',
-    gradient: 'linear-gradient(135deg, #16a34a 0%, #00832d 100%)',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="currentColor" width="32" height="32">
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-      </svg>
-    ),
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Заменить на реальное видео
     requiresCredentials: true,
+    credentialFields: [
+      { id: 'accountId', label: 'Account ID', placeholder: 'xxxxxxxxx', type: 'text' },
+      { id: 'clientId', label: 'Client ID', placeholder: 'xxxxxxxxx', type: 'text' },
+      { id: 'clientSecret', label: 'Client Secret', placeholder: 'xxxxxxxxx', type: 'password' }
+    ],
+    validateCredentials: (creds) => {
+      if (!creds.accountId?.trim()) return 'Введите Account ID';
+      if (!creds.clientId?.trim()) return 'Введите Client ID';
+      if (!creds.clientSecret?.trim()) return 'Введите Client Secret';
+      return null;
+    },
     instructions: [
       {
-        title: 'Создайте проект Google Cloud',
-        description: 'Перейдите в Google Cloud Console и создайте новый проект',
-        link: 'https://console.cloud.google.com/projectcreate',
-        linkText: 'Открыть Google Cloud Console',
-        details: [
-          'Нажмите "Select a project" в верхнем меню',
-          'Нажмите "New Project"',
-          'Введите название (например: "Lectio Meet")',
+        title: 'Создайте приложение в Zoom Marketplace',
+        description: 'Войдите и создайте Server-to-Server OAuth приложение',
+        link: 'https://marketplace.zoom.us/develop/create',
+        linkText: 'Открыть Zoom Marketplace',
+        substeps: [
+          'Нажмите "Develop" в правом верхнем углу',
+          'Выберите "Build App"',
+          'Найдите "Server-to-Server OAuth" и нажмите "Create"',
+          'Введите название приложения (например "Lectio")',
           'Нажмите "Create"'
         ]
       },
       {
+        title: 'Скопируйте учётные данные',
+        description: 'На странице "App Credentials" найдите три значения',
+        substeps: [
+          'Account ID - длинная строка сверху',
+          'Client ID - идентификатор клиента',
+          'Client Secret - нажмите "Show" чтобы увидеть'
+        ]
+      },
+      {
+        title: 'Добавьте разрешения (Scopes)',
+        description: 'Перейдите на вкладку "Scopes"',
+        substeps: [
+          'Нажмите "+ Add Scopes"',
+          'В поиске введите "meeting"',
+          'Добавьте: meeting:write:admin',
+          'В поиске введите "user"',
+          'Добавьте: user:read:admin',
+          'Нажмите "Done"'
+        ]
+      },
+      {
+        title: 'Активируйте приложение',
+        description: 'Перейдите на вкладку "Activation"',
+        substeps: [
+          'Нажмите "Activate your app"',
+          'Статус изменится на "Activated"'
+        ]
+      },
+      {
+        title: 'Введите данные ниже',
+        description: 'Вставьте скопированные учётные данные',
+        isCredentialsStep: true
+      }
+    ],
+    benefits: [
+      'Ученики без регистрации',
+      'Автозапись уроков',
+      'Стабильное качество'
+    ]
+  },
+  google_meet: {
+    name: 'Google Meet',
+    color: '#00897B',
+    gradient: 'linear-gradient(135deg, #00897B 0%, #00695C 100%)',
+    lightBg: '#E0F2F1',
+    icon: (
+      <svg viewBox="0 0 24 24" width="28" height="28">
+        <path fill="#00832d" d="M12 14.5l6-4.5v9H6v-9z"/>
+        <path fill="#0066da" d="M6 10l6 4.5V19H6z"/>
+        <path fill="#e94235" d="M12 5l6 4.5L12 14V5z"/>
+        <path fill="#2684fc" d="M6 10l6 4V5L6 9.5z"/>
+        <path fill="#00ac47" d="M18 10l-6 4.5V19l6-4.5z"/>
+        <path fill="#ffba00" d="M18 5v4.5l-6 4.5V5h6z"/>
+      </svg>
+    ),
+    requiresCredentials: true,
+    credentialFields: [
+      { id: 'clientId', label: 'Client ID', placeholder: 'xxxxx.apps.googleusercontent.com', type: 'text' },
+      { id: 'clientSecret', label: 'Client Secret', placeholder: 'GOCSPX-xxxxxxxxx', type: 'password' }
+    ],
+    validateCredentials: (creds) => {
+      if (!creds.clientId?.trim()) return 'Введите Client ID';
+      if (!creds.clientId.endsWith('.apps.googleusercontent.com')) {
+        return 'Client ID должен заканчиваться на .apps.googleusercontent.com';
+      }
+      if (!creds.clientSecret?.trim()) return 'Введите Client Secret';
+      return null;
+    },
+    instructions: [
+      {
+        title: 'Создайте проект в Google Cloud',
+        description: 'Откройте консоль и создайте новый проект',
+        link: 'https://console.cloud.google.com/projectcreate',
+        linkText: 'Открыть Google Cloud Console',
+        substeps: [
+          'Введите название проекта (например "Lectio")',
+          'Нажмите "Create"',
+          'Дождитесь создания проекта (10-20 сек)'
+        ]
+      },
+      {
         title: 'Включите Google Calendar API',
-        description: 'Активируйте API для работы с календарём и Meet',
+        description: 'API необходим для создания встреч Meet',
         link: 'https://console.cloud.google.com/apis/library/calendar-json.googleapis.com',
-        linkText: 'Открыть Google Calendar API',
-        details: [
-          'Убедитесь что выбран ваш проект',
-          'Нажмите "Enable" для включения API',
-          'Подождите несколько секунд'
+        linkText: 'Открыть Calendar API',
+        substeps: [
+          'Убедитесь что выбран ваш проект в шапке',
+          'Нажмите большую синюю кнопку "Enable"'
         ]
       },
       {
@@ -142,122 +176,156 @@ const PLATFORM_DATA = {
         description: 'Создайте экран согласия для авторизации',
         link: 'https://console.cloud.google.com/apis/credentials/consent',
         linkText: 'Настроить Consent Screen',
-        details: [
+        substeps: [
           'Выберите "External" и нажмите "Create"',
-          'Заполните: App name = "Lectio"',
-          'User support email = ваш email',
-          'Developer contact = ваш email',
+          'App name: введите "Lectio"',
+          'User support email: выберите ваш email',
+          'Developer contact: введите ваш email',
           'Нажмите "Save and Continue"',
-          'На шаге "Scopes" просто нажмите "Save and Continue"',
-          'На шаге "Test Users" добавьте свой Google email',
-          'Нажмите "Save and Continue", затем "Back to Dashboard"'
+          'Пропустите Scopes - нажмите "Save and Continue"',
+          'На Test Users нажмите "Add Users"',
+          'Введите ваш Google email',
+          'Нажмите "Save and Continue"'
         ]
       },
       {
         title: 'Создайте OAuth Client ID',
-        description: 'Получите Client ID и Client Secret',
+        description: 'Получите учётные данные для интеграции',
         link: 'https://console.cloud.google.com/apis/credentials',
         linkText: 'Создать Credentials',
-        details: [
-          'Нажмите "+ Create Credentials" → "OAuth client ID"',
+        substeps: [
+          'Нажмите "+ Create Credentials"',
+          'Выберите "OAuth client ID"',
           'Application type: "Web application"',
-          'Name: "Lectio Web Client"',
-          'В поле "Authorized redirect URIs" добавьте:',
-        ],
-        copyValue: 'https://lectio.tw1.ru/api/integrations/google-meet/callback/',
-        copyLabel: 'Redirect URI (нажмите чтобы скопировать)',
-        detailsAfterCopy: [
+          'Name: "Lectio Web"',
+          'В "Authorized redirect URIs" нажмите "+ Add URI"',
+          'Вставьте URI из поля ниже',
           'Нажмите "Create"',
-          'Скопируйте Client ID и Client Secret из появившегося окна'
-        ]
+          'Скопируйте Client ID и Client Secret из окна'
+        ],
+        copyValue: 'https://lectio.tw1.ru/api/integrations/google-meet/callback/'
       },
       {
-        title: 'Введите credentials ниже',
-        description: 'Вставьте полученные Client ID и Client Secret в форму',
+        title: 'Введите данные ниже',
+        description: 'Вставьте Client ID и Client Secret',
         isCredentialsStep: true
       }
     ],
-    tips: [
-      'Проект Google Cloud бесплатный',
-      'Ваши credentials хранятся только у вас',
-      'Интеграция с Google Calendar'
+    benefits: [
+      'Бесплатный сервис',
+      'Google Calendar',
+      'Надёжная работа'
     ]
   }
 };
 
-// Компонент раскрывающихся деталей шага
-const StepDetails = ({ step, platformColor }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+// Компонент одного шага
+const InstructionStep = ({ step, index, platformColor, platformGradient }) => {
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
-  const handleCopy = async (text) => {
+  const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(step.copyValue);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error('Copy failed:', err);
     }
   };
 
-  if (!step.details && !step.copyValue) return null;
-
   return (
-    <div className="step-details-container">
-      <button 
-        className="step-details-toggle"
-        onClick={() => setIsExpanded(!isExpanded)}
-        type="button"
-      >
-        <span>Подробные шаги</span>
-        {isExpanded ? <IconChevronUp /> : <IconChevronDown />}
-      </button>
-      
-      {isExpanded && (
-        <div className="step-details-content">
-          {step.details && (
-            <ol className="step-details-list">
-              {step.details.map((detail, idx) => (
-                <li key={idx}>{detail}</li>
-              ))}
-            </ol>
-          )}
-          
-          {step.copyValue && (
-            <div 
-              className={`step-copy-box ${copied ? 'copied' : ''}`}
-              onClick={() => handleCopy(step.copyValue)}
-              title="Нажмите чтобы скопировать"
+    <div className="instruction-step">
+      <div className="instruction-step-marker" style={{ background: platformGradient }}>
+        {index + 1}
+      </div>
+      <div className="instruction-step-body">
+        <div className="instruction-step-header">
+          <h4>{step.title}</h4>
+          {step.link && (
+            <a 
+              href={step.link} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="instruction-step-link"
+              style={{ color: platformColor }}
             >
-              <code>{step.copyValue}</code>
-              <button type="button" className="copy-btn">
-                {copied ? 'Скопировано!' : <><IconCopy /> Копировать</>}
-              </button>
-            </div>
-          )}
-          
-          {step.detailsAfterCopy && (
-            <ol className="step-details-list" start={(step.details?.length || 0) + 2}>
-              {step.detailsAfterCopy.map((detail, idx) => (
-                <li key={idx}>{detail}</li>
-              ))}
-            </ol>
+              {step.linkText} <IconExternalLink />
+            </a>
           )}
         </div>
-      )}
+        <p className="instruction-step-desc">{step.description}</p>
+        
+        {step.substeps && step.substeps.length > 0 && (
+          <>
+            <button 
+              type="button" 
+              className="substeps-toggle"
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? 'Скрыть подробности' : 'Показать подробности'}
+            </button>
+            {expanded && (
+              <ul className="instruction-substeps">
+                {step.substeps.map((substep, idx) => (
+                  <li key={idx}>{substep}</li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+        
+        {step.copyValue && (
+          <div className="copy-uri-box">
+            <code>{step.copyValue}</code>
+            <button 
+              type="button" 
+              className={`copy-uri-btn ${copied ? 'copied' : ''}`}
+              onClick={handleCopy}
+            >
+              {copied ? <><IconCheck /> Скопировано</> : <><IconCopy /> Копировать</>}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Форма ввода credentials
+const CredentialsForm = ({ fields, values, onChange, error }) => {
+  return (
+    <div className="credentials-form-modern">
+      {fields.map((field) => (
+        <div key={field.id} className="credentials-input-group">
+          <label htmlFor={field.id}>{field.label}</label>
+          <div className="credentials-input-wrapper">
+            <Input
+              id={field.id}
+              type={field.type}
+              value={values[field.id] || ''}
+              onChange={(e) => onChange(field.id, e.target.value)}
+              placeholder={field.placeholder}
+            />
+            {field.type === 'password' && (
+              <span className="input-icon-right"><IconLock /></span>
+            )}
+          </div>
+        </div>
+      ))}
+      {error && <p className="credentials-error-msg">{error}</p>}
     </div>
   );
 };
 
 const PlatformInstructionModal = ({ 
-  platform, // 'zoom' | 'google_meet'
+  platform,
   isOpen, 
   onClose, 
   onConnect,
   isConnecting = false
 }) => {
-  const [clientId, setClientId] = useState('');
-  const [clientSecret, setClientSecret] = useState('');
+  const [credentials, setCredentials] = useState({});
   const [error, setError] = useState('');
 
   if (!isOpen || !platform) return null;
@@ -271,142 +339,116 @@ const PlatformInstructionModal = ({
     }
   };
 
-  const handleVideoClick = () => {
-    if (data.videoUrl) {
-      window.open(data.videoUrl, '_blank', 'noopener,noreferrer');
-    }
+  const handleCredentialChange = (field, value) => {
+    setCredentials(prev => ({ ...prev, [field]: value }));
+    setError('');
   };
 
   const handleConnect = () => {
-    if (data.requiresCredentials) {
-      // Валидация credentials для Google Meet
-      if (!clientId.trim()) {
-        setError('Введите Client ID');
+    if (data.requiresCredentials && data.validateCredentials) {
+      const validationError = data.validateCredentials(credentials);
+      if (validationError) {
+        setError(validationError);
         return;
       }
-      if (!clientId.endsWith('.apps.googleusercontent.com')) {
-        setError('Client ID должен заканчиваться на .apps.googleusercontent.com');
-        return;
-      }
-      if (!clientSecret.trim()) {
-        setError('Введите Client Secret');
-        return;
-      }
-      setError('');
-      onConnect({ clientId: clientId.trim(), clientSecret: clientSecret.trim() });
+    }
+    setError('');
+    
+    if (platform === 'google_meet') {
+      onConnect({ 
+        clientId: credentials.clientId?.trim(), 
+        clientSecret: credentials.clientSecret?.trim() 
+      });
+    } else if (platform === 'zoom') {
+      onConnect({
+        accountId: credentials.accountId?.trim(),
+        clientId: credentials.clientId?.trim(),
+        clientSecret: credentials.clientSecret?.trim()
+      });
     } else {
       onConnect();
     }
   };
 
-  const isCredentialsValid = !data.requiresCredentials || (
-    clientId.trim() && 
-    clientId.endsWith('.apps.googleusercontent.com') && 
-    clientSecret.trim()
-  );
+  const isValid = !data.requiresCredentials || 
+    (data.validateCredentials && !data.validateCredentials(credentials));
 
   return (
     <div className="platform-modal-overlay" onClick={handleBackdropClick}>
-      <div className={`platform-modal ${data.requiresCredentials ? 'platform-modal--large' : ''}`}>
-        <button className="platform-modal-close" onClick={onClose}>
+      <div className="platform-modal-modern">
+        {/* Закрыть */}
+        <button className="modal-close-btn" onClick={onClose} type="button">
           <IconClose />
         </button>
 
         {/* Заголовок */}
-        <div className="platform-modal-header" style={{ '--platform-color': data.color, '--platform-gradient': data.gradient }}>
-          <div className="platform-modal-icon">
+        <header className="modal-header-modern" style={{ '--accent': data.color, '--accent-bg': data.lightBg }}>
+          <div className="modal-platform-badge" style={{ background: data.gradient }}>
             {data.icon}
           </div>
-          <div className="platform-modal-title-group">
+          <div>
             <h2>Подключение {data.name}</h2>
-            <p>Следуйте инструкции для настройки интеграции</p>
+            <p>Создайте своё приложение для интеграции</p>
           </div>
-        </div>
-
-        {/* Ссылка на видео */}
-        <div className="platform-modal-video-link" onClick={handleVideoClick}>
-          <IconPlay />
-          <span>Смотреть <a href={data.videoUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>видео</a>-инструкцию</span>
-          <IconExternalLink />
-        </div>
+        </header>
 
         {/* Шаги инструкции */}
-        <div className="platform-modal-steps">
+        <div className="modal-instructions-list">
           {data.instructions.map((step, index) => (
-            <div key={index} className={`platform-modal-step ${step.isCredentialsStep ? 'credentials-step' : ''}`}>
-              <span className="platform-modal-step-num" style={{ background: data.gradient }}>
-                {index + 1}
-              </span>
-              <div className="platform-modal-step-content">
-                <strong>{step.title}</strong>
-                <p>{step.description}</p>
-                {step.link && (
-                  <a 
-                    href={step.link} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="platform-modal-step-link"
-                  >
-                    {step.linkText} <IconExternalLink />
-                  </a>
-                )}
-                <StepDetails step={step} platformColor={data.color} />
-                
-                {/* Форма credentials для последнего шага Google Meet */}
-                {step.isCredentialsStep && (
-                  <div className="credentials-form">
-                    <div className="credentials-field">
-                      <label htmlFor="clientId">Client ID</label>
-                      <Input
-                        id="clientId"
-                        type="text"
-                        value={clientId}
-                        onChange={(e) => setClientId(e.target.value)}
-                        placeholder="xxxxx.apps.googleusercontent.com"
-                      />
-                    </div>
-                    <div className="credentials-field">
-                      <label htmlFor="clientSecret">Client Secret</label>
-                      <Input
-                        id="clientSecret"
-                        type="password"
-                        value={clientSecret}
-                        onChange={(e) => setClientSecret(e.target.value)}
-                        placeholder="GOCSPX-xxxxxxxxx"
-                      />
-                    </div>
-                    {error && <p className="credentials-error">{error}</p>}
-                  </div>
-                )}
+            step.isCredentialsStep ? (
+              <div key={index} className="instruction-step credentials-step-container">
+                <div className="instruction-step-marker" style={{ background: data.gradient }}>
+                  {index + 1}
+                </div>
+                <div className="instruction-step-body">
+                  <h4>{step.title}</h4>
+                  <p className="instruction-step-desc">{step.description}</p>
+                  <CredentialsForm
+                    fields={data.credentialFields}
+                    values={credentials}
+                    onChange={handleCredentialChange}
+                    error={error}
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              <InstructionStep
+                key={index}
+                step={step}
+                index={index}
+                platformColor={data.color}
+                platformGradient={data.gradient}
+              />
+            )
           ))}
         </div>
 
-        {/* Подсказки */}
-        <div className="platform-modal-tips">
-          <p className="platform-modal-tips-title">Полезная информация:</p>
-          <ul>
-            {data.tips.map((tip, index) => (
-              <li key={index}>{tip}</li>
+        {/* Преимущества */}
+        <div className="modal-benefits" style={{ background: data.lightBg }}>
+          <span className="benefits-label">Преимущества:</span>
+          <div className="benefits-list">
+            {data.benefits.map((benefit, idx) => (
+              <span key={idx} className="benefit-tag" style={{ color: data.color }}>
+                <IconCheck /> {benefit}
+              </span>
             ))}
-          </ul>
+          </div>
         </div>
 
-        {/* Кнопки */}
-        <div className="platform-modal-footer">
+        {/* Действия */}
+        <footer className="modal-footer-modern">
           <Button variant="secondary" onClick={onClose}>
-            Закрыть
+            Отмена
           </Button>
           <Button 
             variant="primary" 
             onClick={handleConnect}
-            disabled={isConnecting || !isCredentialsValid}
-            style={{ background: data.gradient }}
+            disabled={isConnecting || !isValid}
+            style={{ background: isValid ? data.gradient : undefined }}
           >
-            {isConnecting ? 'Подключение...' : `Подключить ${data.name}`}
+            {isConnecting ? 'Подключение...' : 'Подключить'}
           </Button>
-        </div>
+        </footer>
       </div>
     </div>
   );
