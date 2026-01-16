@@ -289,6 +289,14 @@
   background: var(--color-warning);
 }
 
+.code-run-btn-tests {
+  background: var(--color-primary);
+}
+
+.code-run-btn-tests:hover:not(:disabled) {
+  background: #2563eb;
+}
+
 /* Подсказка */
 .code-hint-toggle {
   display: inline-flex;

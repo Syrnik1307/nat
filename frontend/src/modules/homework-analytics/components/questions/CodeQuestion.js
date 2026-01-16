@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { runCode, runTests, preloadPyodide } from '../../services/codeRunner';
+import './CodeQuestion.css';
 
 /**
  * CodeQuestion - компонент для создания/редактирования задания на программирование
  * Используется учителем в конструкторе ДЗ
+ * Включает встроенный терминал для тестирования эталонного решения
  */
 const CodeQuestion = ({ question, onChange }) => {
   const { config = {} } = question;
@@ -11,11 +14,26 @@ const CodeQuestion = ({ question, onChange }) => {
     { id: 'tc-1', input: '', expectedOutput: '' }
   ]);
   
+  // Состояние терминала
+  const [terminalOutput, setTerminalOutput] = useState('');
+  const [testResults, setTestResults] = useState([]);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isLoadingPyodide, setIsLoadingPyodide] = useState(false);
+  const [activeTab, setActiveTab] = useState('output'); // 'output' | 'tests'
+  
   useEffect(() => {
     if (config.testCases && config.testCases.length > 0) {
       setTestCases(config.testCases);
     }
   }, [config.testCases]);
+
+  // Предзагрузка Pyodide для Python
+  useEffect(() => {
+    const language = config.language || 'python';
+    if (language === 'python') {
+      preloadPyodide();
+    }
+  }, [config.language]);
 
   const updateConfig = useCallback((patch) => {
     const nextConfig = { ...config, ...patch };
@@ -24,6 +42,9 @@ const CodeQuestion = ({ question, onChange }) => {
 
   const handleLanguageChange = (language) => {
     updateConfig({ language });
+    // Сброс результатов при смене языка
+    setTerminalOutput('');
+    setTestResults([]);
   };
 
   const handleStarterCodeChange = (e) => {
@@ -57,6 +78,72 @@ const CodeQuestion = ({ question, onChange }) => {
   };
 
   const language = config.language || 'python';
+  const solutionCode = config.solutionCode || '';
+
+  // Запуск эталонного решения
+  const handleRunSolution = async () => {
+    if (isRunning || !solutionCode.trim()) return;
+    
+    setIsRunning(true);
+    setActiveTab('output');
+    
+    if (language === 'python') {
+      setIsLoadingPyodide(true);
+    }
+    
+    try {
+      const result = await runCode(language, solutionCode, '');
+      
+      if (result.error) {
+        setTerminalOutput(`Ошибка: ${result.error}`);
+      } else {
+        const outputText = result.stdout || '(нет вывода)';
+        const timeInfo = `\n\n--- Выполнено за ${result.duration}ms ---`;
+        setTerminalOutput(outputText + timeInfo);
+      }
+    } catch (error) {
+      setTerminalOutput(`Ошибка: ${error.message}`);
+    } finally {
+      setIsRunning(false);
+      setIsLoadingPyodide(false);
+    }
+  };
+
+  // Запуск тестов на эталонном решении
+  const handleRunTests = async () => {
+    if (isRunning || !solutionCode.trim() || testCases.length === 0) return;
+    
+    // Проверяем что есть хотя бы один тест с ожидаемым выводом
+    const hasValidTests = testCases.some(tc => tc.expectedOutput.trim());
+    if (!hasValidTests) {
+      setTerminalOutput('Добавьте хотя бы один тест с ожидаемым выводом');
+      return;
+    }
+    
+    setIsRunning(true);
+    setActiveTab('tests');
+    
+    if (language === 'python') {
+      setIsLoadingPyodide(true);
+    }
+    
+    try {
+      const results = await runTests(language, solutionCode, testCases);
+      setTestResults(results);
+      
+      const passed = results.filter(r => r.passed).length;
+      const total = results.length;
+      setTerminalOutput(`Тесты: ${passed}/${total} пройдено`);
+    } catch (error) {
+      setTerminalOutput(`Ошибка: ${error.message}`);
+    } finally {
+      setIsRunning(false);
+      setIsLoadingPyodide(false);
+    }
+  };
+
+  const passedCount = testResults.filter(r => r.passed).length;
+  const totalTests = testCases.length;
 
   return (
     <div className="hc-question-editor">
@@ -99,21 +186,145 @@ const CodeQuestion = ({ question, onChange }) => {
         </small>
       </div>
 
-      {/* Решение учителя (опционально, для проверки тестов) */}
+      {/* Эталонное решение с терминалом */}
       <div className="form-group">
         <label className="form-label">Эталонное решение (для проверки тестов)</label>
-        <textarea
-          className="form-textarea code-textarea"
-          rows={6}
-          value={config.solutionCode || ''}
-          onChange={handleSolutionCodeChange}
-          placeholder={language === 'python'
-            ? 'def solution():\n    return "Hello"'
-            : 'function solution() {\n  return "Hello";\n}'}
-          style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
-        />
+        <div className="code-editor-container">
+          {/* Заголовок с языком и кнопками */}
+          <div className="code-editor-header">
+            <span className="code-language-badge">
+              {language === 'python' ? 'Python' : 'JavaScript'}
+            </span>
+            <div className="code-editor-actions">
+              <button
+                type="button"
+                className={`code-run-btn ${isRunning ? 'running' : ''}`}
+                onClick={handleRunSolution}
+                disabled={isRunning || !solutionCode.trim()}
+                title="Запустить эталонное решение"
+              >
+                {isRunning ? 'Выполняется...' : 'Запустить'}
+              </button>
+              {testCases.length > 0 && (
+                <button
+                  type="button"
+                  className="code-run-btn code-run-btn-tests"
+                  onClick={handleRunTests}
+                  disabled={isRunning || !solutionCode.trim()}
+                  title="Проверить эталонное решение на тестах"
+                >
+                  {isRunning ? '...' : 'Тесты'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Загрузка Pyodide */}
+          {isLoadingPyodide && (
+            <div className="code-loading-pyodide">
+              <div className="code-loading-spinner" />
+              <span>Загрузка Python...</span>
+            </div>
+          )}
+
+          {/* Редактор кода */}
+          <textarea
+            className="code-editor-textarea"
+            value={solutionCode}
+            onChange={handleSolutionCodeChange}
+            placeholder={language === 'python'
+              ? 'def solution():\n    return "Hello"'
+              : 'function solution() {\n  return "Hello";\n}'}
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+          />
+
+          {/* Терминал вывода */}
+          <div className="code-output-container">
+            <div className="code-output-header">
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className={`gm-tab-button ${activeTab === 'output' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('output')}
+                  style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
+                >
+                  Вывод
+                </button>
+                {testCases.length > 0 && (
+                  <button
+                    type="button"
+                    className={`gm-tab-button ${activeTab === 'tests' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('tests')}
+                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}
+                  >
+                    Тесты ({passedCount}/{totalTests})
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {activeTab === 'output' && (
+              <div className={`code-output-content ${terminalOutput.startsWith('Ошибка') ? 'code-output-error' : ''}`}>
+                {terminalOutput || 'Нажмите "Запустить" для выполнения эталонного решения'}
+              </div>
+            )}
+
+            {activeTab === 'tests' && testCases.length > 0 && (
+              <div className="code-tests-results">
+                <div className="code-tests-summary">
+                  <span className={`code-tests-passed ${
+                    passedCount === totalTests ? 'all-passed' : 
+                    passedCount === 0 ? 'all-failed' : 'some-failed'
+                  }`}>
+                    {testResults.length > 0 ? `${passedCount}/${totalTests} тестов пройдено` : 'Нажмите "Тесты" для проверки'}
+                  </span>
+                </div>
+                {testResults.length > 0 && (
+                  <div className="code-tests-list">
+                    {testCases.map((tc, index) => {
+                      const result = testResults[index];
+                      const passed = result?.passed || false;
+                      
+                      return (
+                        <div key={tc.id || index} className={`code-test-result ${passed ? 'passed' : 'failed'}`}>
+                          <span className="code-test-icon">
+                            {passed ? '✓' : '✗'}
+                          </span>
+                          <div className="code-test-details">
+                            <div className="code-test-label">
+                              Тест {index + 1}: {passed ? 'Пройден' : 'Не пройден'}
+                            </div>
+                            {!passed && result && (
+                              <div className="code-test-io">
+                                <div className="code-test-io-item">
+                                  <div className="code-test-io-label">Ожидалось:</div>
+                                  <div className="code-test-io-value">{result.expected || '(пусто)'}</div>
+                                </div>
+                                <div className="code-test-io-item">
+                                  <div className="code-test-io-label">Получено:</div>
+                                  <div className="code-test-io-value">{result.actual || '(пусто)'}</div>
+                                </div>
+                              </div>
+                            )}
+                            {result?.error && (
+                              <div className="code-test-io-item" style={{ marginTop: '0.25rem' }}>
+                                <div className="code-test-io-value code-output-error">{result.error}</div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
         <small className="gm-hint">
-          Опционально: для проверки корректности тестов
+          Напишите эталонное решение и нажмите "Тесты" для проверки корректности тест-кейсов
         </small>
       </div>
 
