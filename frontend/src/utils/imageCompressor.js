@@ -1,18 +1,19 @@
 /**
- * Image Compressor Utility (Optimized)
+ * Image Compressor Utility (Optimized v2)
  * Сжимает изображения перед загрузкой на сервер для ускорения upload
  * 
- * Оптимизации:
- * - Использует createObjectURL вместо readAsDataURL (в 5-10 раз быстрее)
- * - Не читает файл дважды для проверки размеров
- * - Пропускает маленькие файлы без чтения
- * - Использует OffscreenCanvas если доступен
+ * Оптимизации v2:
+ * - Агрессивный ресайз до 1200px (достаточно для веба)
+ * - Качество 0.7 для быстрого сжатия
+ * - SKIP_THRESHOLD увеличен до 150KB (сжимаем больше файлов)
+ * - Добавлен таймаут для предотвращения зависаний
  */
 
-const MAX_WIDTH = 1600;
-const MAX_HEIGHT = 1600;
-const QUALITY = 0.75;
-const SKIP_THRESHOLD = 300 * 1024; // 300KB - не сжимаем очень маленькие файлы
+const MAX_WIDTH = 1200;  // Уменьшено с 1600 для скорости
+const MAX_HEIGHT = 1200;
+const QUALITY = 0.7;     // Уменьшено с 0.75
+const SKIP_THRESHOLD = 150 * 1024; // 150KB - сжимаем больше файлов
+const COMPRESSION_TIMEOUT = 5000;  // 5 секунд максимум на сжатие
 
 /**
  * Сжимает изображение, если оно слишком большое
@@ -35,7 +36,8 @@ export const compressImage = async (file) => {
     return file;
   }
 
-  return new Promise((resolve) => {
+  // Оборачиваем в Promise.race с таймаутом
+  const compressionPromise = new Promise((resolve) => {
     // createObjectURL намного быстрее чем readAsDataURL
     // Не конвертирует в base64, просто создаёт ссылку на blob
     const objectUrl = URL.createObjectURL(file);
@@ -55,7 +57,7 @@ export const compressImage = async (file) => {
       const needsResize = width > MAX_WIDTH || height > MAX_HEIGHT;
       
       // Маленький файл без ресайза - возвращаем оригинал
-      if (!needsResize && file.size <= 800 * 1024) {
+      if (!needsResize && file.size <= 500 * 1024) {
         resolve(file);
         return;
       }
@@ -75,8 +77,9 @@ export const compressImage = async (file) => {
       canvas.height = height;
 
       const ctx = canvas.getContext('2d');
+      // 'medium' быстрее чем 'high' при достаточном качестве
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
+      ctx.imageSmoothingQuality = 'medium';
       ctx.drawImage(img, 0, 0, width, height);
 
       // Конвертируем в blob
@@ -117,6 +120,18 @@ export const compressImage = async (file) => {
     
     img.src = objectUrl;
   });
+
+  // Таймаут: если сжатие занимает больше 5 сек - возвращаем оригинал
+  const timeoutPromise = new Promise((resolve) => {
+    setTimeout(() => {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`[ImageCompressor] Timeout: ${file.name}`);
+      }
+      resolve(file);
+    }, COMPRESSION_TIMEOUT);
+  });
+
+  return Promise.race([compressionPromise, timeoutPromise]);
 };
 
 /**

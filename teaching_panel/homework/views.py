@@ -181,27 +181,35 @@ class HomeworkViewSet(viewsets.ModelViewSet):
             # Если включен Google Drive — грузим туда (в папку учителя /Homework/Uploads)
             if getattr(settings, 'USE_GDRIVE_STORAGE', False):
                 from schedule.gdrive_utils import get_gdrive_manager
+                from django.core.cache import cache
 
                 gdrive = get_gdrive_manager()
                 teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
                 homework_root_folder_id = teacher_folders.get('homework')
 
-                # создаём подпапку Uploads
-                def get_or_create_subfolder(folder_name, parent_id):
-                    try:
-                        query = (
-                            f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' "
-                            f"and trashed=false and '{parent_id}' in parents"
-                        )
-                        results = gdrive.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
-                        items = results.get('files', [])
-                        if items:
-                            return items[0]['id']
-                    except Exception:
-                        pass
-                    return gdrive.create_folder(folder_name, parent_id)
+                # Кешируем uploads folder ID чтобы не создавать/искать каждый раз
+                uploads_cache_key = f"gdrive_uploads_folder_{request.user.id}"
+                uploads_folder_id = cache.get(uploads_cache_key)
+                
+                if not uploads_folder_id:
+                    # создаём подпапку Uploads
+                    def get_or_create_subfolder(folder_name, parent_id):
+                        try:
+                            query = (
+                                f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' "
+                                f"and trashed=false and '{parent_id}' in parents"
+                            )
+                            results = gdrive.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+                            items = results.get('files', [])
+                            if items:
+                                return items[0]['id']
+                        except Exception:
+                            pass
+                        return gdrive.create_folder(folder_name, parent_id)
 
-                uploads_folder_id = get_or_create_subfolder('Uploads', homework_root_folder_id)
+                    uploads_folder_id = get_or_create_subfolder('Uploads', homework_root_folder_id)
+                    # Кешируем на 1 день
+                    cache.set(uploads_cache_key, uploads_folder_id, 86400)
                 result = gdrive.upload_file(
                     uploaded_file,
                     storage_name,

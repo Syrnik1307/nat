@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { apiClient, uploadHomeworkFile, saveAsTemplate } from '../../../../apiService';
+import { apiClient, uploadHomeworkFile, saveAsTemplate, preloadImageCompressor } from '../../../../apiService';
 import { Modal, Button } from '../../../../shared/components';
 import useHomeworkConstructor from '../../hooks/useHomeworkConstructor';
 import {
@@ -215,6 +215,11 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const blobUrlsRef = useRef(new Set());
+
+  // Предзагрузка компрессора изображений при монтировании
+  useEffect(() => {
+    preloadImageCompressor();
+  }, []);
 
   // Загрузка данных из editingHomework (редактирование или дублирование)
   useEffect(() => {
