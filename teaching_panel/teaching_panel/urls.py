@@ -22,7 +22,7 @@ from django.views.generic import TemplateView
 from rest_framework.routers import DefaultRouter
 from core import views as core_views
 from schedule import views as schedule_views
-from homework.views import HomeworkViewSet, StudentSubmissionViewSet
+from homework.views import HomeworkViewSet, StudentSubmissionViewSet, HomeworkFileProxyView
 from analytics.views import GradebookViewSet
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from accounts.jwt_views import LogoutView, RegisterView, CaseInsensitiveTokenObtainPairView, DirectTokenView
@@ -112,6 +112,9 @@ urlpatterns = [
     
     # Zoom Pool API
     path('api/zoom-pool/', include('zoom_pool.urls')),
+    
+    # Homework file proxy (быстрый доступ к файлам)
+    path('api/homework/file/<str:file_id>/', HomeworkFileProxyView.as_view(), name='homework-file-proxy'),
     
     # Integrations API (Google Meet, etc.)
     path('api/integrations/', include('integrations.urls')),

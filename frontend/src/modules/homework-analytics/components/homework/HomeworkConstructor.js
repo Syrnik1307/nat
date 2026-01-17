@@ -909,7 +909,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                               <div className="hc-upload-progress-container">
                                 <div className="hc-upload-progress-bar" style={{ width: `${uploadProgress}%` }} />
                               </div>
-                              <span>{uploadProgress > 0 ? `Загрузка ${uploadProgress}%` : 'Сжатие изображения...'}</span>
+                              <span>{uploadProgress > 0 ? `Загрузка ${uploadProgress}%` : 'Подготовка...'}</span>
                             </div>
                           )}
                           
@@ -1034,7 +1034,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                                     }
                                   }}
                                 />
-                                {uploadingImageFor === index ? (uploadProgress > 0 ? `${uploadProgress}%` : 'Сжатие...') : '+ Выбрать файл'}
+                                {uploadingImageFor === index ? (uploadProgress > 0 ? `${uploadProgress}%` : 'Загрузка...') : '+ Выбрать файл'}
                               </label>
                                 <span className="hc-paste-hint">или Ctrl+V</span>
                               </div>

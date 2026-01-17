@@ -709,3 +709,63 @@ class StudentQuestion(models.Model):
     def __str__(self):
         return f"{self.student.get_full_name()}: {self.question_text[:50]}..."
 
+
+class HomeworkFile(models.Model):
+    """
+    Файл загруженный для вопроса в ДЗ.
+    Сначала хранится локально, потом переносится на Google Drive.
+    Прокси-endpoint отдаёт файл откуда он доступен.
+    """
+    STORAGE_LOCAL = 'local'
+    STORAGE_GDRIVE = 'gdrive'
+    STORAGE_CHOICES = [
+        (STORAGE_LOCAL, 'Локально'),
+        (STORAGE_GDRIVE, 'Google Drive'),
+    ]
+    
+    id = models.CharField(max_length=64, primary_key=True)  # UUID-like ID
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='homework_files'
+    )
+    original_name = models.CharField(max_length=255)
+    mime_type = models.CharField(max_length=100)
+    size = models.PositiveIntegerField()
+    
+    # Где хранится файл
+    storage = models.CharField(
+        max_length=10,
+        choices=STORAGE_CHOICES,
+        default=STORAGE_LOCAL
+    )
+    local_path = models.CharField(max_length=500, blank=True)  # Путь к локальному файлу
+    gdrive_file_id = models.CharField(max_length=100, blank=True)  # ID файла на GDrive
+    gdrive_url = models.URLField(max_length=500, blank=True)  # Direct URL на GDrive
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    migrated_at = models.DateTimeField(null=True, blank=True)  # Когда перенесён на GDrive
+    
+    class Meta:
+        verbose_name = 'файл домашки'
+        verbose_name_plural = 'файлы домашек'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.original_name} ({self.storage})"
+    
+    def get_proxy_url(self):
+        """URL для доступа к файлу через прокси."""
+        return f"/api/homework/file/{self.id}/"
+    
+    def delete_local_file(self):
+        """Удалить локальный файл после миграции на GDrive."""
+        import os
+        if self.local_path and os.path.exists(self.local_path):
+            try:
+                os.remove(self.local_path)
+                self.local_path = ''
+                self.save(update_fields=['local_path'])
+            except Exception:
+                pass
+

@@ -388,7 +388,11 @@ export const preloadImageCompressor = () => {
 };
 
 /**
- * Загрузка файла для домашки с автоматическим сжатием изображений
+ * Загрузка файла для домашки.
+ * Быстрое клиентское сжатие + мгновенная отправка на сервер.
+ * Сервер сохраняет локально и возвращает URL сразу,
+ * а в фоне мигрирует на Google Drive.
+ * 
  * @param {File} file - Файл для загрузки
  * @param {string} fileType - Тип файла ('image' или 'audio')
  * @param {Function} onProgress - Callback для прогресса загрузки (0-100)
@@ -396,8 +400,8 @@ export const preloadImageCompressor = () => {
 export const uploadHomeworkFile = async (file, fileType, onProgress) => {
   let fileToUpload = file;
   
-  // Сжимаем изображения перед загрузкой
-  if (fileType === 'image' && file.type.startsWith('image/')) {
+  // Быстрое сжатие только для больших изображений (>2MB)
+  if (fileType === 'image' && file.type.startsWith('image/') && file.size > 2 * 1024 * 1024) {
     try {
       const compress = await getCompressor();
       fileToUpload = await compress(file);

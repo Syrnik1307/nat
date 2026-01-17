@@ -105,7 +105,12 @@ class HomeworkViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='upload-file')
     def upload_file(self, request):
         """
-        Загрузить файл (изображение или аудио) для вопроса домашки в Google Drive
+        Быстрая загрузка файла для вопроса домашки.
+        
+        Логика:
+        1. Сохраняем файл локально (быстро)
+        2. Возвращаем прокси-URL сразу
+        3. В фоне мигрируем на Google Drive
         
         POST /api/homework/homeworks/upload-file/
         Body (multipart/form-data):
@@ -114,13 +119,18 @@ class HomeworkViewSet(viewsets.ModelViewSet):
         
         Returns:
             {
-                'url': 'https://drive.google.com/...',
-                'file_id': 'gdrive_file_id',
+                'url': '/api/homework/file/<file_id>/',
+                'file_id': 'unique_file_id',
                 'file_name': 'original_filename.jpg',
                 'mime_type': 'image/jpeg'
             }
         """
         import logging
+        import os
+        import uuid
+        from django.conf import settings as django_settings
+        from .models import HomeworkFile
+        
         logger = logging.getLogger(__name__)
         
         # Проверка прав: только учителя
@@ -167,88 +177,58 @@ class HomeworkViewSet(viewsets.ModelViewSet):
             )
         
         try:
-            from django.conf import settings
-            from django.utils.text import get_valid_filename
-            import os
-            import time
-            import uuid
-
-            timestamp = int(time.time())
-            original_name = os.path.basename(uploaded_file.name)
-            safe_name = get_valid_filename(original_name)
-            storage_name = f"homework_teacher{request.user.id}_{timestamp}_{uuid.uuid4().hex[:8]}_{safe_name}"
-
-            # Если включен Google Drive — грузим туда (в папку учителя /Homework/Uploads)
-            if getattr(settings, 'USE_GDRIVE_STORAGE', False):
-                from schedule.gdrive_utils import get_gdrive_manager
-                from django.core.cache import cache
-
-                gdrive = get_gdrive_manager()
-                teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
-                homework_root_folder_id = teacher_folders.get('homework')
-
-                # Кешируем uploads folder ID чтобы не создавать/искать каждый раз
-                uploads_cache_key = f"gdrive_uploads_folder_{request.user.id}"
-                uploads_folder_id = cache.get(uploads_cache_key)
-                
-                if not uploads_folder_id:
-                    # создаём подпапку Uploads
-                    def get_or_create_subfolder(folder_name, parent_id):
-                        try:
-                            query = (
-                                f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' "
-                                f"and trashed=false and '{parent_id}' in parents"
-                            )
-                            results = gdrive.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
-                            items = results.get('files', [])
-                            if items:
-                                return items[0]['id']
-                        except Exception:
-                            pass
-                        return gdrive.create_folder(folder_name, parent_id)
-
-                    uploads_folder_id = get_or_create_subfolder('Uploads', homework_root_folder_id)
-                    # Кешируем на 1 день
-                    cache.set(uploads_cache_key, uploads_folder_id, 86400)
-                result = gdrive.upload_file(
-                    uploaded_file,
-                    storage_name,
-                    folder_id=uploads_folder_id,
-                    mime_type=mime_type,
-                    teacher=request.user
-                )
-
-                file_id = result['file_id']
-                file_url = gdrive.get_direct_download_link(file_id)
-                logger.info(f"Teacher {request.user.email} uploaded homework file to GDrive: {storage_name} -> {file_id}")
-
-                return Response({
-                    'status': 'success',
-                    'url': file_url,
-                    'download_url': file_url,
-                    'file_id': file_id,
-                    'file_name': uploaded_file.name,
-                    'mime_type': mime_type,
-                    'size': uploaded_file.size
-                }, status=status.HTTP_201_CREATED)
-
-            # Fallback: локальное хранение (dev)
-            homework_media_dir = os.path.join(settings.MEDIA_ROOT, 'homework_files')
+            # Генерируем уникальный ID
+            file_id = uuid.uuid4().hex
+            
+            # Сохраняем локально (быстро!)
+            homework_media_dir = os.path.join(django_settings.MEDIA_ROOT, 'homework_files')
             os.makedirs(homework_media_dir, exist_ok=True)
-            file_path = os.path.join(homework_media_dir, storage_name)
-            with open(file_path, 'wb+') as destination:
+            
+            # Расширение из оригинального имени
+            ext = os.path.splitext(uploaded_file.name)[1].lower() or '.bin'
+            local_filename = f"{file_id}{ext}"
+            local_path = os.path.join(homework_media_dir, local_filename)
+            
+            with open(local_path, 'wb+') as destination:
                 for chunk in uploaded_file.chunks():
                     destination.write(chunk)
-            file_url = f"{settings.MEDIA_URL}homework_files/{storage_name}"
-            logger.info(
-                f"Teacher {request.user.email} uploaded homework file to local storage: "
-                f"{storage_name} ({mime_type}, {uploaded_file.size} bytes)"
+            
+            # Создаём запись в БД
+            hw_file = HomeworkFile.objects.create(
+                id=file_id,
+                teacher=request.user,
+                original_name=uploaded_file.name,
+                mime_type=mime_type,
+                size=uploaded_file.size,
+                storage=HomeworkFile.STORAGE_LOCAL,
+                local_path=local_path,
             )
+            
+            proxy_url = hw_file.get_proxy_url()
+            
+            logger.info(
+                f"Teacher {request.user.email} uploaded homework file locally: "
+                f"{uploaded_file.name} -> {file_id} ({uploaded_file.size} bytes)"
+            )
+            
+            # Запускаем фоновую миграцию на GDrive (если включён)
+            if getattr(django_settings, 'USE_GDRIVE_STORAGE', False):
+                from threading import Thread
+                
+                def migrate_to_gdrive():
+                    try:
+                        _migrate_file_to_gdrive(file_id)
+                    except Exception as e:
+                        logger.error(f"Background GDrive migration failed for {file_id}: {e}")
+                
+                thread = Thread(target=migrate_to_gdrive, daemon=True)
+                thread.start()
+            
             return Response({
                 'status': 'success',
-                'url': file_url,
-                'download_url': file_url,
-                'file_id': storage_name,
+                'url': proxy_url,
+                'download_url': proxy_url,
+                'file_id': file_id,
                 'file_name': uploaded_file.name,
                 'mime_type': mime_type,
                 'size': uploaded_file.size
@@ -1271,3 +1251,138 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
+
+
+# ============================================================
+# Helper function для фоновой миграции файлов на Google Drive
+# ============================================================
+
+def _migrate_file_to_gdrive(file_id: str):
+    """
+    Фоновая миграция файла с локального хранилища на Google Drive.
+    Вызывается асинхронно после upload.
+    """
+    import logging
+    import os
+    from django.conf import settings as django_settings
+    from django.core.cache import cache
+    from django.utils import timezone as tz
+    from .models import HomeworkFile
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        hw_file = HomeworkFile.objects.get(id=file_id)
+    except HomeworkFile.DoesNotExist:
+        logger.warning(f"HomeworkFile {file_id} not found for migration")
+        return
+    
+    if hw_file.storage != HomeworkFile.STORAGE_LOCAL:
+        logger.info(f"HomeworkFile {file_id} already migrated")
+        return
+    
+    if not hw_file.local_path or not os.path.exists(hw_file.local_path):
+        logger.warning(f"HomeworkFile {file_id} local file not found: {hw_file.local_path}")
+        return
+    
+    try:
+        from schedule.gdrive_utils import get_gdrive_manager
+        
+        gdrive = get_gdrive_manager()
+        teacher_folders = gdrive.get_or_create_teacher_folder(hw_file.teacher)
+        homework_root_folder_id = teacher_folders.get('homework')
+        
+        # Кешируем uploads folder ID
+        uploads_cache_key = f"gdrive_uploads_folder_{hw_file.teacher.id}"
+        uploads_folder_id = cache.get(uploads_cache_key)
+        
+        if not uploads_folder_id:
+            # Создаём подпапку Uploads
+            try:
+                query = (
+                    f"name='Uploads' and mimeType='application/vnd.google-apps.folder' "
+                    f"and trashed=false and '{homework_root_folder_id}' in parents"
+                )
+                results = gdrive.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+                items = results.get('files', [])
+                if items:
+                    uploads_folder_id = items[0]['id']
+                else:
+                    uploads_folder_id = gdrive.create_folder('Uploads', homework_root_folder_id)
+            except Exception:
+                uploads_folder_id = gdrive.create_folder('Uploads', homework_root_folder_id)
+            
+            cache.set(uploads_cache_key, uploads_folder_id, 86400)
+        
+        # Загружаем файл на GDrive
+        storage_name = f"hw_{file_id}_{hw_file.original_name}"
+        
+        with open(hw_file.local_path, 'rb') as f:
+            result = gdrive.upload_file(
+                f,
+                storage_name,
+                folder_id=uploads_folder_id,
+                mime_type=hw_file.mime_type,
+                teacher=hw_file.teacher
+            )
+        
+        gdrive_file_id = result['file_id']
+        gdrive_url = gdrive.get_direct_download_link(gdrive_file_id)
+        
+        # Обновляем запись в БД
+        hw_file.storage = HomeworkFile.STORAGE_GDRIVE
+        hw_file.gdrive_file_id = gdrive_file_id
+        hw_file.gdrive_url = gdrive_url
+        hw_file.migrated_at = tz.now()
+        hw_file.save(update_fields=['storage', 'gdrive_file_id', 'gdrive_url', 'migrated_at'])
+        
+        # Удаляем локальный файл
+        hw_file.delete_local_file()
+        
+        logger.info(f"HomeworkFile {file_id} migrated to GDrive: {gdrive_file_id}")
+        
+    except Exception as e:
+        logger.error(f"Failed to migrate HomeworkFile {file_id} to GDrive: {e}", exc_info=True)
+
+
+# ============================================================
+# Прокси-endpoint для доступа к файлам домашек
+# ============================================================
+
+from django.http import HttpResponse, FileResponse, HttpResponseRedirect
+from django.views import View
+
+
+class HomeworkFileProxyView(View):
+    """
+    Прокси для доступа к файлам домашек.
+    Отдаёт файл из локального хранилища или редиректит на GDrive.
+    
+    GET /api/homework/file/<file_id>/
+    """
+    
+    def get(self, request, file_id):
+        from .models import HomeworkFile
+        import os
+        
+        try:
+            hw_file = HomeworkFile.objects.get(id=file_id)
+        except HomeworkFile.DoesNotExist:
+            return HttpResponse("File not found", status=404)
+        
+        # Если на GDrive - редирект
+        if hw_file.storage == HomeworkFile.STORAGE_GDRIVE and hw_file.gdrive_url:
+            return HttpResponseRedirect(hw_file.gdrive_url)
+        
+        # Если локально - отдаём файл
+        if hw_file.local_path and os.path.exists(hw_file.local_path):
+            response = FileResponse(
+                open(hw_file.local_path, 'rb'),
+                content_type=hw_file.mime_type
+            )
+            response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
+            # Кеширование на 1 год (файлы не меняются)
+            response['Cache-Control'] = 'public, max-age=31536000'
+            return response
+        
+        return HttpResponse("File not found", status=404)
