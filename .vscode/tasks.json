@@ -390,6 +390,46 @@
 				"prod_privacy_smoke.ps1"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "prod: cleanup files",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && python manage.py cleanup_local_homework_files"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "prod: cleanup files v2",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && python manage.py cleanup_local_homework_files > /tmp/cleanup.log 2>&1 && cat /tmp/cleanup.log"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "prod: read cleanup log",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cat /tmp/cleanup.log"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "prod: tail cleanup log",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"tail -50 /tmp/cleanup.log"
+			],
+			"isBackground": false
 		}
 	]
 }

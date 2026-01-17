@@ -211,18 +211,11 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                 f"{uploaded_file.name} -> {file_id} ({uploaded_file.size} bytes)"
             )
             
-            # Запускаем фоновую миграцию на GDrive (если включён)
-            if getattr(django_settings, 'USE_GDRIVE_STORAGE', False):
-                from threading import Thread
-                
-                def migrate_to_gdrive():
-                    try:
-                        _migrate_file_to_gdrive(file_id)
-                    except Exception as e:
-                        logger.error(f"Background GDrive migration failed for {file_id}: {e}")
-                
-                thread = Thread(target=migrate_to_gdrive, daemon=True)
-                thread.start()
+            # НЕ запускаем фоновую миграцию здесь!
+            # Миграция выполняется cron job (management command) для масштабируемости.
+            # При 1000 одновременных загрузках threading.Thread создаст 1000 потоков.
+            # Вместо этого файлы остаются в storage=LOCAL и migrate_homework_files
+            # обрабатывает их пачками с rate limiting.
             
             return Response({
                 'status': 'success',
@@ -1251,98 +1244,6 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
-
-
-# ============================================================
-# Helper function для фоновой миграции файлов на Google Drive
-# ============================================================
-
-def _migrate_file_to_gdrive(file_id: str):
-    """
-    Фоновая миграция файла с локального хранилища на Google Drive.
-    Вызывается асинхронно после upload.
-    """
-    import logging
-    import os
-    from django.conf import settings as django_settings
-    from django.core.cache import cache
-    from django.utils import timezone as tz
-    from .models import HomeworkFile
-    
-    logger = logging.getLogger(__name__)
-    
-    try:
-        hw_file = HomeworkFile.objects.get(id=file_id)
-    except HomeworkFile.DoesNotExist:
-        logger.warning(f"HomeworkFile {file_id} not found for migration")
-        return
-    
-    if hw_file.storage != HomeworkFile.STORAGE_LOCAL:
-        logger.info(f"HomeworkFile {file_id} already migrated")
-        return
-    
-    if not hw_file.local_path or not os.path.exists(hw_file.local_path):
-        logger.warning(f"HomeworkFile {file_id} local file not found: {hw_file.local_path}")
-        return
-    
-    try:
-        from schedule.gdrive_utils import get_gdrive_manager
-        
-        gdrive = get_gdrive_manager()
-        teacher_folders = gdrive.get_or_create_teacher_folder(hw_file.teacher)
-        homework_root_folder_id = teacher_folders.get('homework')
-        
-        # Кешируем uploads folder ID
-        uploads_cache_key = f"gdrive_uploads_folder_{hw_file.teacher.id}"
-        uploads_folder_id = cache.get(uploads_cache_key)
-        
-        if not uploads_folder_id:
-            # Создаём подпапку Uploads
-            try:
-                query = (
-                    f"name='Uploads' and mimeType='application/vnd.google-apps.folder' "
-                    f"and trashed=false and '{homework_root_folder_id}' in parents"
-                )
-                results = gdrive.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
-                items = results.get('files', [])
-                if items:
-                    uploads_folder_id = items[0]['id']
-                else:
-                    uploads_folder_id = gdrive.create_folder('Uploads', homework_root_folder_id)
-            except Exception:
-                uploads_folder_id = gdrive.create_folder('Uploads', homework_root_folder_id)
-            
-            cache.set(uploads_cache_key, uploads_folder_id, 86400)
-        
-        # Загружаем файл на GDrive
-        storage_name = f"hw_{file_id}_{hw_file.original_name}"
-        
-        with open(hw_file.local_path, 'rb') as f:
-            result = gdrive.upload_file(
-                f,
-                storage_name,
-                folder_id=uploads_folder_id,
-                mime_type=hw_file.mime_type,
-                teacher=hw_file.teacher
-            )
-        
-        gdrive_file_id = result['file_id']
-        gdrive_url = gdrive.get_direct_download_link(gdrive_file_id)
-        
-        # Обновляем запись в БД
-        hw_file.storage = HomeworkFile.STORAGE_GDRIVE
-        hw_file.gdrive_file_id = gdrive_file_id
-        hw_file.gdrive_url = gdrive_url
-        hw_file.migrated_at = tz.now()
-        hw_file.save(update_fields=['storage', 'gdrive_file_id', 'gdrive_url', 'migrated_at'])
-        
-        # Удаляем локальный файл
-        hw_file.delete_local_file()
-        
-        logger.info(f"HomeworkFile {file_id} migrated to GDrive: {gdrive_file_id}")
-        
-    except Exception as e:
-        logger.error(f"Failed to migrate HomeworkFile {file_id} to GDrive: {e}", exc_info=True)
 
 
 # ============================================================

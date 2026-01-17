@@ -1,0 +1,17 @@
+[Unit]
+Description=Run homework file migration to Google Drive every 2 minutes
+Requires=homework-migration.service
+
+[Timer]
+# Запуск каждые 2 минуты
+OnBootSec=1min
+OnUnitActiveSec=2min
+
+# Разброс случайной задержки до 30 сек (избежать thundering herd)
+RandomizedDelaySec=30
+
+# Продолжать даже если прошлый запуск был пропущен
+Persistent=true
+
+[Install]
+WantedBy=timers.target

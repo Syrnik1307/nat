@@ -69,13 +69,7 @@ class Command(BaseCommand):
             self.stdout.write(f"   - {hw_file.id}: {hw_file.original_name} ({status})")
             
             if force_migrate and exists and not dry_run:
-                self.stdout.write(f"     -> Attempting migration...")
-                try:
-                    from homework.views import _migrate_file_to_gdrive
-                    _migrate_file_to_gdrive(hw_file.id)
-                    self.stdout.write(self.style.SUCCESS(f"     -> Migrated!"))
-                except Exception as e:
-                    self.stdout.write(self.style.ERROR(f"     -> Failed: {e}"))
+                self.stdout.write(f"     -> Use 'python manage.py migrate_homework_files' instead")
         
         # 3. Проверить orphaned файлы в папке (файлы без записи в БД)
         homework_media_dir = os.path.join(settings.MEDIA_ROOT, 'homework_files')

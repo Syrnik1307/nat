@@ -1,0 +1,18 @@
+[Unit]
+Description=Migrate homework files to Google Drive
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="PATH=/var/www/teaching_panel/venv/bin:/usr/bin"
+ExecStart=/var/www/teaching_panel/venv/bin/python manage.py migrate_homework_files --batch=20 --delay=0.5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=homework-migration
+
+[Install]
+WantedBy=multi-user.target
