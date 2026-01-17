@@ -23,21 +23,14 @@ export const useRecaptcha = () => {
     // Проверяем, не загружен ли уже скрипт
     const existingScript = document.querySelector('script[src*="recaptcha"]');
     if (existingScript) {
-      console.log('reCAPTCHA скрипт уже загружен');
       return;
     }
-    
-    console.log('Загрузка reCAPTCHA скрипта с ключом:', siteKey);
     
     // Загружаем reCAPTCHA скрипт
     const script = document.createElement('script');
     script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
     script.async = true;
     script.defer = true;
-    
-    script.onload = () => {
-      console.log('reCAPTCHA скрипт загружен успешно');
-    };
     
     script.onerror = () => {
       console.error('Ошибка загрузки reCAPTCHA скрипта');
@@ -62,27 +55,19 @@ export const useRecaptcha = () => {
    * @returns {Promise<string>} reCAPTCHA токен
    */
   const executeRecaptcha = async (action) => {
-    console.log(`Попытка получить reCAPTCHA токен для действия: ${action}`);
-    
     return new Promise((resolve, reject) => {
       if (!window.grecaptcha) {
-        console.error('grecaptcha не найден в window');
         reject(new Error('reCAPTCHA не загружена'));
         return;
       }
       
-      console.log('grecaptcha найден, ожидание ready...');
-      
       window.grecaptcha.ready(() => {
-        console.log('grecaptcha ready, выполнение...');
         window.grecaptcha.execute(siteKey, { action })
           .then(token => {
-            console.log(`✅ reCAPTCHA токен получен для действия: ${action}`);
-            console.log('Токен (первые 20 символов):', token.substring(0, 20) + '...');
             resolve(token);
           })
           .catch(error => {
-            console.error('❌ Ошибка выполнения reCAPTCHA:', error);
+            console.error('Ошибка reCAPTCHA:', error);
             reject(error);
           });
       });

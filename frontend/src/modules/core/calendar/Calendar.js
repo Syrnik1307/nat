@@ -178,7 +178,6 @@ const Calendar = () => {
         start_time: info.event.start.toISOString(),
         end_time: info.event.end.toISOString(),
       });
-      console.log('Занятие перенесено');
     } catch (error) {
       console.error('Ошибка переноса занятия:', error);
       info.revert(); // Откатить изменения при ошибке
@@ -191,7 +190,6 @@ const Calendar = () => {
       await apiService.patch(`/schedule/lessons/${info.event.id}/`, {
         end_time: info.event.end.toISOString(),
       });
-      console.log('Длительность занятия изменена');
     } catch (error) {
       console.error('Ошибка изменения длительности:', error);
       info.revert();

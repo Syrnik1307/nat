@@ -141,22 +141,11 @@ const useHomeworkSession = (homeworkId, injectedService) => {
     if (!homeworkId) return;
     setLoading(true);
     try {
-      // debug: log that we're calling fetchHomework
-      // eslint-disable-next-line no-console
-      console.log('[useHomeworkSession] calling fetchHomework', homeworkId, 'svc.fetchHomework type:', typeof (svc && svc.fetchHomework));
-      // eslint-disable-next-line no-console
-      try { console.log('isMockFunction:', typeof jest !== 'undefined' && jest.isMockFunction && jest.isMockFunction(svc.fetchHomework)); } catch (e) {}
       const rawHomework = await svc.fetchHomework(homeworkId);
-      // eslint-disable-next-line no-console
-      console.log('[useHomeworkSession] rawHomework response:', rawHomework);
       const homeworkData = rawHomework && rawHomework.data ? rawHomework.data : rawHomework;
-      // eslint-disable-next-line no-console
-      console.log('[useHomeworkSession] fetched homework', homeworkData && homeworkData.questions ? homeworkData.questions.length : typeof homeworkData);
       setHomework(homeworkData);
       // Восстановить черновик из localStorage, если есть
       let initialAnswers = buildInitialAnswers(homeworkData);
-      // eslint-disable-next-line no-console
-      console.log('[useHomeworkSession] initialAnswers built', initialAnswers);
       if (localDraftKey) {
         try {
           const saved = localStorage.getItem(localDraftKey);
@@ -174,14 +163,10 @@ const useHomeworkSession = (homeworkId, injectedService) => {
         const matchingSubmissions = submissions.filter((sub) => Number(sub.homework) === hwId);
         if (matchingSubmissions.length > 0) {
           submissionData = matchingSubmissions[0];
-          // eslint-disable-next-line no-console
-          console.log('[useHomeworkSession] found existing submission:', submissionData.status);
           // Восстановим answers из submission (для любого статуса)
           // Backend возвращает answers как массив объектов [{question: id, text_answer, selected_choices, ...}]
           if (Array.isArray(submissionData.answers) && submissionData.answers.length > 0) {
             const restoredAnswers = convertAnswersArrayToMap(submissionData.answers, homeworkData?.questions);
-            // eslint-disable-next-line no-console
-            console.log('[useHomeworkSession] restored answers from submission:', restoredAnswers);
             initialAnswers = { ...initialAnswers, ...restoredAnswers };
           }
         }
@@ -193,13 +178,9 @@ const useHomeworkSession = (homeworkId, injectedService) => {
       if (!submissionData) {
         const rawSubmission = await svc.startSubmission(homeworkId);
         submissionData = rawSubmission && rawSubmission.data ? rawSubmission.data : rawSubmission;
-        // eslint-disable-next-line no-console
-        console.log('[useHomeworkSession] created new submission');
       }
       
       setAnswers(initialAnswers);
-      // eslint-disable-next-line no-console
-      console.log('[useHomeworkSession] answers set');
       setSubmission(submissionData);
     } catch (requestError) {
       console.error('[useHomeworkSession] load failed:', requestError);
