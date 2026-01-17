@@ -761,11 +761,17 @@ class HomeworkFile(models.Model):
     def delete_local_file(self):
         """Удалить локальный файл после миграции на GDrive."""
         import os
+        import logging
+        logger = logging.getLogger(__name__)
+        
         if self.local_path and os.path.exists(self.local_path):
             try:
                 os.remove(self.local_path)
+                logger.info(f"HomeworkFile {self.id}: deleted local file {self.local_path}")
                 self.local_path = ''
                 self.save(update_fields=['local_path'])
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"HomeworkFile {self.id}: failed to delete local file {self.local_path}: {e}")
+        elif self.local_path:
+            logger.warning(f"HomeworkFile {self.id}: local file not found for deletion: {self.local_path}")
 
