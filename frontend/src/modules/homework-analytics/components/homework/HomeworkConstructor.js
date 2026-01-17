@@ -1099,6 +1099,96 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                               }}
                               placeholder="Ученик увидит это после проверки (например: Правильный ответ: went, т.к. Past Simple...)"
                             />
+                            
+                            {/* Изображение для пояснения */}
+                            <div className="hc-explanation-image">
+                              {!question.config?.explanationImageUrl ? (
+                                <label className="hc-explanation-image-btn">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      
+                                      const localUrl = URL.createObjectURL(file);
+                                      blobUrlsRef.current.add(localUrl);
+                                      
+                                      // Мгновенный preview
+                                      setQuestions((prev) => {
+                                        const updated = [...prev];
+                                        updated[index] = {
+                                          ...updated[index],
+                                          config: {
+                                            ...updated[index].config,
+                                            explanationImageUrl: localUrl,
+                                            explanationImageFileId: null,
+                                          }
+                                        };
+                                        return updated;
+                                      });
+                                      
+                                      try {
+                                        const response = await uploadHomeworkFile(file, 'image');
+                                        if (response.data?.url) {
+                                          setQuestions((prev) => {
+                                            const updated = [...prev];
+                                            const previousUrl = updated[index]?.config?.explanationImageUrl;
+                                            if (previousUrl?.startsWith('blob:')) {
+                                              URL.revokeObjectURL(previousUrl);
+                                              blobUrlsRef.current.delete(previousUrl);
+                                            }
+                                            updated[index] = {
+                                              ...updated[index],
+                                              config: {
+                                                ...updated[index].config,
+                                                explanationImageUrl: response.data.url,
+                                                explanationImageFileId: response.data.file_id || null,
+                                              }
+                                            };
+                                            return updated;
+                                          });
+                                        }
+                                      } catch (err) {
+                                        setFeedback({ type: 'error', message: 'Ошибка загрузки: ' + (err.message || '') });
+                                      }
+                                      e.target.value = '';
+                                    }}
+                                  />
+                                  + Добавить фото к пояснению
+                                </label>
+                              ) : (
+                                <div className="hc-explanation-image-preview">
+                                  <img src={normalizeUrl(question.config.explanationImageUrl)} alt="Пояснение" />
+                                  <button
+                                    type="button"
+                                    className="hc-explanation-image-remove"
+                                    onClick={() => {
+                                      setQuestions((prev) => {
+                                        const updated = [...prev];
+                                        const previousUrl = updated[index]?.config?.explanationImageUrl;
+                                        if (previousUrl?.startsWith('blob:')) {
+                                          URL.revokeObjectURL(previousUrl);
+                                          blobUrlsRef.current.delete(previousUrl);
+                                        }
+                                        updated[index] = {
+                                          ...updated[index],
+                                          config: {
+                                            ...updated[index].config,
+                                            explanationImageUrl: null,
+                                            explanationImageFileId: null,
+                                          }
+                                        };
+                                        return updated;
+                                      });
+                                    }}
+                                  >
+                                    Удалить
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
 
                           <HomeworkQuestionEditor

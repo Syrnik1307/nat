@@ -278,10 +278,15 @@ const HomeworkTake = () => {
               )}
 
               {/* Пояснение с правильным ответом - показываем ТОЛЬКО после сдачи */}
-              {isLocked && currentQuestion.explanation && (
+              {isLocked && (currentQuestion.explanation || currentQuestion.config?.explanationImageUrl) && (
                 <div className="ht-question-explanation">
                   <span className="ht-explanation-label">Пояснение:</span>
-                  <p>{currentQuestion.explanation}</p>
+                  {currentQuestion.explanation && <p>{currentQuestion.explanation}</p>}
+                  {currentQuestion.config?.explanationImageUrl && (
+                    <div className="ht-explanation-image">
+                      <img src={currentQuestion.config.explanationImageUrl} alt="Пояснение" />
+                    </div>
+                  )}
                 </div>
               )}
 

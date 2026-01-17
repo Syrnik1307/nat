@@ -383,6 +383,18 @@
   border-top: 1px solid var(--border-light, #e2e8f0);
 }
 
+.hav-explanation-image {
+  margin-top: 0.75rem;
+}
+
+.hav-explanation-image img {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid #c8e6c9;
+}
+
 .hav-footer {
   margin-top: 1.5rem;
   text-align: center;

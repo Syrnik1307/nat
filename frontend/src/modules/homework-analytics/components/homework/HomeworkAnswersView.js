@@ -279,10 +279,17 @@ const HomeworkAnswersView = () => {
               )}
 
               {/* Пояснение с правильным ответом */}
-              {currentQuestion.explanation && (
+              {(currentQuestion.explanation || currentQuestion.config?.explanationImageUrl) && (
                 <div className="hav-explanation">
                   <div className="hav-explanation-label">Пояснение:</div>
-                  <div className="hav-explanation-text">{currentQuestion.explanation}</div>
+                  {currentQuestion.explanation && (
+                    <div className="hav-explanation-text">{currentQuestion.explanation}</div>
+                  )}
+                  {currentQuestion.config?.explanationImageUrl && (
+                    <div className="hav-explanation-image">
+                      <img src={currentQuestion.config.explanationImageUrl} alt="Пояснение" />
+                    </div>
+                  )}
                 </div>
               )}
 

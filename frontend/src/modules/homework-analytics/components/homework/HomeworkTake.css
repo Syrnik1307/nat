@@ -249,6 +249,18 @@
   margin: 0;
 }
 
+.ht-explanation-image {
+  margin-top: 0.75rem;
+}
+
+.ht-explanation-image img {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid #c8e6c9;
+}
+
 /* Изображение вопроса */
 .ht-question-image {
   margin-bottom: 1rem;
