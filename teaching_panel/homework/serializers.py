@@ -83,10 +83,11 @@ class QuestionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Question
-        fields = ['id', 'prompt', 'question_type', 'points', 'order', 'choices', 'config']
+        fields = ['id', 'prompt', 'question_type', 'points', 'order', 'choices', 'config', 'explanation']
         extra_kwargs = {
             'config': {'default': dict},
             'prompt': {'required': False, 'allow_blank': True, 'default': ''},
+            'explanation': {'required': False, 'allow_blank': True, 'default': ''},
         }
 
     def create(self, validated_data):
@@ -116,7 +117,7 @@ class QuestionStudentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Question
-        fields = ['id', 'prompt', 'question_type', 'points', 'order', 'choices', 'config']
+        fields = ['id', 'prompt', 'question_type', 'points', 'order', 'choices', 'config', 'explanation']
 
     def get_question_type(self, obj):
         # Возвращаем фронтовое именование для multi choice

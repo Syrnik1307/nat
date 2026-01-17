@@ -59,6 +59,7 @@ const mapQuestionToPayload = (question, order) => {
     points: Number.isFinite(question.points) ? question.points : 0,
     order,
     config: (question.config && typeof question.config === 'object') ? question.config : {},
+    explanation: question.explanation?.trim() || '',
   };
 
   if (question.question_type === 'SINGLE_CHOICE' || question.question_type === 'MULTIPLE_CHOICE') {

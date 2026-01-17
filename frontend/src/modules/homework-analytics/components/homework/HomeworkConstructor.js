@@ -778,13 +778,13 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
               </div>
 
               <div className="form-group">
-                <label className="form-label">Пояснение для ученика (опционально)</label>
+                <label className="form-label">Общие инструкции для ДЗ (опционально)</label>
                 <textarea
                   className="form-textarea"
                   rows={2}
                   value={assignmentMeta.studentInstructions}
                   onChange={(event) => handleMetaChange('studentInstructions', event.target.value)}
-                  placeholder="Дополнительные инструкции, которые увидит ученик перед началом"
+                  placeholder="Общие инструкции, которые увидит ученик перед началом выполнения всего ДЗ"
                 />
               </div>
 
@@ -1081,6 +1081,24 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                                 onChange={(event) => handleQuestionPointsChange(index, event.target.value)}
                               />
                             </div>
+                          </div>
+
+                          <div className="form-group hc-explanation-field">
+                            <label className="form-label">Пояснение для ученика (опционально)</label>
+                            <textarea
+                              className="form-textarea"
+                              rows={2}
+                              value={question.explanation || ''}
+                              onChange={(event) => {
+                                const newValue = event.target.value;
+                                setQuestions((prev) => {
+                                  const updated = [...prev];
+                                  updated[index] = { ...updated[index], explanation: newValue };
+                                  return updated;
+                                });
+                              }}
+                              placeholder="Дополнительные инструкции, которые увидит ученик под этим вопросом"
+                            />
                           </div>
 
                           <HomeworkQuestionEditor

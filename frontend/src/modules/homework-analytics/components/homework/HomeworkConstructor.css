@@ -566,6 +566,20 @@
   text-align: center;
 }
 
+.hc-explanation-field {
+  margin-top: 0.75rem;
+}
+
+.hc-explanation-field .form-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #5f6368);
+}
+
+.hc-explanation-field .form-textarea {
+  font-size: 0.9rem;
+  min-height: 60px;
+}
+
 .hc-question-card {
   position: relative;
 }

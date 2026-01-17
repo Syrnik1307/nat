@@ -277,6 +277,11 @@ const HomeworkTake = () => {
                 <h2 className="ht-question-text">{currentQuestion.question_text || currentQuestion.prompt}</h2>
               )}
 
+              {/* Пояснение для ученика (если есть) */}
+              {currentQuestion.explanation && (
+                <p className="ht-question-explanation">{currentQuestion.explanation}</p>
+              )}
+
               {/* Изображение вопроса (если есть) */}
               {currentQuestion.config?.imageUrl && (
                 <div 

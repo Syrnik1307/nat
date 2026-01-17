@@ -153,6 +153,11 @@ class Question(models.Model):
     points = models.IntegerField(default=1)
     order = models.IntegerField(default=0)
     config = models.JSONField(default=dict, blank=True)
+    explanation = models.TextField(
+        blank=True,
+        default='',
+        help_text='Пояснение для ученика (показывается под вопросом перед ответом)'
+    )
 
     class Meta:
         ordering = ['order']
