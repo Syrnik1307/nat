@@ -267,8 +267,8 @@ const HomeworkTake = () => {
               </div>
 
               {/* Текст вопроса (если есть) - показываем ПЕРЕД картинкой */}
-              {currentQuestion.question_text && (
-                <h2 className="ht-question-text">{currentQuestion.question_text}</h2>
+              {(currentQuestion.question_text || currentQuestion.prompt) && (
+                <h2 className="ht-question-text">{currentQuestion.question_text || currentQuestion.prompt}</h2>
               )}
 
               {/* Изображение вопроса (если есть) */}
