@@ -92,6 +92,48 @@ const SubmissionReview = () => {
     return answer.teacher_score ?? answer.auto_score ?? 0;
   };
 
+  const formatTimeSpent = (seconds) => {
+    if (!seconds) return '—';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hours > 0) {
+      return `${hours} ч ${minutes} мин`;
+    }
+    if (minutes > 0) {
+      return `${minutes} мин ${secs} сек`;
+    }
+    return `${secs} сек`;
+  };
+
+  // Объединяем answers и questions: если есть answer - берём его, иначе создаём пустой из question
+  const getReviewItems = () => {
+    const questions = submission.questions || [];
+    const answersMap = {};
+    (submission.answers || []).forEach(a => {
+      answersMap[a.question] = a;
+    });
+    
+    return questions.map((q, index) => {
+      const answer = answersMap[q.id];
+      return {
+        id: answer?.id || `q-${q.id}`,
+        questionId: q.id,
+        question_text: q.prompt || '',
+        question_type: q.question_type,
+        question_points: q.points,
+        config: q.config || {},
+        text_answer: answer?.text_answer || null,
+        selected_choices: answer?.selected_choices || [],
+        auto_score: answer?.auto_score ?? null,
+        teacher_score: answer?.teacher_score ?? null,
+        teacher_feedback: answer?.teacher_feedback || '',
+        hasAnswer: !!answer,
+        index,
+      };
+    });
+  };
+
   const completeReview = async () => {
     try {
       setSaving(true);
@@ -152,51 +194,72 @@ const SubmissionReview = () => {
               <strong>Отправлено:</strong> {new Date(submission.submitted_at).toLocaleString('ru-RU')}
             </span>
             <span className="sr-meta-item">
-              <strong>Общий балл:</strong> {submission.total_score || 0}
+              <strong>Время выполнения:</strong> {formatTimeSpent(submission.time_spent_seconds)}
+            </span>
+            <span className="sr-meta-item">
+              <strong>Общий балл:</strong> {submission.total_score || 0} / {submission.max_score || 0}
             </span>
           </div>
         </div>
       </div>
 
       <div className="sr-answers-list">
-        {submission.answers && submission.answers.length > 0 ? (
-          submission.answers.map((answer, index) => (
-            <div key={answer.id} className="sr-answer-card">
+        {(() => {
+          const reviewItems = getReviewItems();
+          if (reviewItems.length === 0) {
+            return <div className="sr-empty">Нет вопросов в этом задании</div>;
+          }
+          return reviewItems.map((item) => (
+            <div key={item.id} className={`sr-answer-card ${!item.hasAnswer ? 'sr-no-answer' : ''}`}>
               <div className="sr-answer-header">
-                <div className="sr-question-number">Вопрос {index + 1}</div>
+                <div className="sr-question-number">Вопрос {item.index + 1}</div>
                 <div className="sr-question-type-badge">
-                  {answer.question_type === 'TEXT' && 'Текстовый ответ'}
-                  {answer.question_type === 'SINGLE_CHOICE' && 'Один вариант'}
-                  {answer.question_type === 'MULTI_CHOICE' && 'Несколько вариантов'}
+                  {item.question_type === 'TEXT' && 'Текстовый ответ'}
+                  {item.question_type === 'SINGLE_CHOICE' && 'Один вариант'}
+                  {item.question_type === 'MULTI_CHOICE' && 'Несколько вариантов'}
+                  {item.question_type === 'MULTIPLE_CHOICE' && 'Несколько вариантов'}
+                  {item.question_type === 'LISTENING' && 'Аудирование'}
+                  {item.question_type === 'MATCHING' && 'Сопоставление'}
+                  {item.question_type === 'FILL_BLANKS' && 'Заполнение пропусков'}
+                  {item.question_type === 'CODE' && 'Код'}
                 </div>
                 <div className="sr-points">
-                  {getCurrentScore(answer)} / {answer.question_points} баллов
+                  {getCurrentScore(item)} / {item.question_points} баллов
                 </div>
               </div>
 
-              <div className="sr-question-text">{answer.question_text}</div>
+              <div className="sr-question-text">{item.question_text || '(Без текста вопроса)'}</div>
 
-              <div className="sr-student-answer">
-                <strong>Ответ ученика:</strong>
-                <div className="sr-answer-content">{getAnswerDisplay(answer)}</div>
-              </div>
-
-              {answer.auto_score !== null && (
-                <div className="sr-auto-score-info">
-                  Автоматическая оценка: {answer.auto_score} баллов
+              {/* Изображение вопроса, если есть */}
+              {item.config?.imageUrl && (
+                <div className="sr-question-image">
+                  <img src={item.config.imageUrl} alt="Изображение вопроса" />
                 </div>
               )}
 
-              {editingAnswerId === answer.id ? (
+              <div className="sr-student-answer">
+                <strong>Ответ ученика:</strong>
+                <div className="sr-answer-content">
+                  {item.hasAnswer ? getAnswerDisplay(item) : '(Ученик не ответил на этот вопрос)'}
+                </div>
+              </div>
+
+              {item.auto_score !== null && (
+                <div className="sr-auto-score-info">
+                  Автоматическая оценка: {item.auto_score} баллов
+                </div>
+              )}
+
+              {item.hasAnswer && editingAnswerId === item.id ? (
                 <div className="sr-edit-form">
                   <div className="sr-form-group">
                     <label className="sr-label">
-                      Оценка (макс. {answer.question_points}):
+                      Оценка (макс. {item.question_points}):
                     </label>
                     <input
                       type="number"
                       min="0"
-                      max={answer.question_points}
+                      max={item.question_points}
                       className="sr-input"
                       value={editValues.teacher_score}
                       onChange={(e) => setEditValues({
@@ -223,7 +286,7 @@ const SubmissionReview = () => {
                   <div className="sr-edit-actions">
                     <button
                       className="sr-btn-primary"
-                      onClick={() => saveAnswer(answer.id)}
+                      onClick={() => saveAnswer(item.id)}
                       disabled={saving}
                     >
                       {saving ? 'Сохранение...' : 'Сохранить'}
@@ -237,28 +300,30 @@ const SubmissionReview = () => {
                     </button>
                   </div>
                 </div>
-              ) : (
+              ) : item.hasAnswer ? (
                 <div className="sr-feedback-section">
-                  {answer.teacher_feedback && (
+                  {item.teacher_feedback && (
                     <div className="sr-teacher-feedback">
                       <strong>Комментарий учителя:</strong>
-                      <p>{answer.teacher_feedback}</p>
+                      <p>{item.teacher_feedback}</p>
                     </div>
                   )}
                   
                   <button
                     className="sr-btn-edit"
-                    onClick={() => startEditing(answer)}
+                    onClick={() => startEditing(item)}
                   >
-                    {answer.teacher_score !== null ? 'Изменить оценку' : 'Выставить оценку'}
+                    {item.teacher_score !== null ? 'Изменить оценку' : 'Выставить оценку'}
                   </button>
+                </div>
+              ) : (
+                <div className="sr-no-answer-hint">
+                  Ответ не был сохранён (возможно, старая работа)
                 </div>
               )}
             </div>
-          ))
-        ) : (
-          <div className="sr-empty">Нет ответов для проверки</div>
-        )}
+          ));
+        })()}
       </div>
 
       <div className="sr-footer">

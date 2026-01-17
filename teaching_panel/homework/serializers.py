@@ -386,12 +386,15 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
     group_id = serializers.SerializerMethodField()
     group_name = serializers.SerializerMethodField()
     is_individual = serializers.SerializerMethodField()
+    time_spent_seconds = serializers.SerializerMethodField()
+    questions = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentSubmission
         fields = ['id', 'homework', 'homework_title', 'student', 'student_email', 'student_name',
               'status', 'total_score', 'max_score', 'group_id', 'group_name', 'is_individual',
-              'answers', 'teacher_feedback_summary', 'created_at', 'submitted_at', 'graded_at']
+              'answers', 'questions', 'time_spent_seconds', 'teacher_feedback_summary', 
+              'created_at', 'submitted_at', 'graded_at']
         # Статус и даты жизненного цикла управляются сервером через отдельные endpoints
         # (answer/saveProgress, submit, feedback) и не должны приходить от клиента.
         read_only_fields = [
@@ -407,6 +410,28 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
     
     def get_student_name(self, obj):
         return f"{obj.student.first_name} {obj.student.last_name}".strip() or obj.student.email
+    
+    def get_time_spent_seconds(self, obj):
+        """Вычисляем время выполнения в секундах (от создания до отправки)."""
+        if obj.submitted_at and obj.created_at:
+            delta = obj.submitted_at - obj.created_at
+            return int(delta.total_seconds())
+        return None
+    
+    def get_questions(self, obj):
+        """Возвращаем список вопросов домашки для отображения в проверке."""
+        questions = obj.homework.questions.all().order_by('order')
+        return [
+            {
+                'id': q.id,
+                'prompt': q.prompt,
+                'question_type': 'MULTIPLE_CHOICE' if q.question_type == 'MULTI_CHOICE' else q.question_type,
+                'points': q.points,
+                'order': q.order,
+                'config': q.config or {},
+            }
+            for q in questions
+        ]
     
     def get_max_score(self, obj):
         """Вычисляем максимальный балл для домашки"""
