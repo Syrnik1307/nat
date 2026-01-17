@@ -277,9 +277,12 @@ const HomeworkTake = () => {
                 <h2 className="ht-question-text">{currentQuestion.question_text || currentQuestion.prompt}</h2>
               )}
 
-              {/* Пояснение для ученика (если есть) */}
-              {currentQuestion.explanation && (
-                <p className="ht-question-explanation">{currentQuestion.explanation}</p>
+              {/* Пояснение с правильным ответом - показываем ТОЛЬКО после сдачи */}
+              {isLocked && currentQuestion.explanation && (
+                <div className="ht-question-explanation">
+                  <span className="ht-explanation-label">Пояснение:</span>
+                  <p>{currentQuestion.explanation}</p>
+                </div>
               )}
 
               {/* Изображение вопроса (если есть) */}

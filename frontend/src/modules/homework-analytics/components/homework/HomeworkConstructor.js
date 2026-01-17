@@ -1084,7 +1084,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                           </div>
 
                           <div className="form-group hc-explanation-field">
-                            <label className="form-label">Пояснение для ученика (опционально)</label>
+                            <label className="form-label">Пояснение / правильный ответ (опционально)</label>
                             <textarea
                               className="form-textarea"
                               rows={2}
@@ -1097,7 +1097,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                                   return updated;
                                 });
                               }}
-                              placeholder="Дополнительные инструкции, которые увидит ученик под этим вопросом"
+                              placeholder="Ученик увидит это после проверки (например: Правильный ответ: went, т.к. Past Simple...)"
                             />
                           </div>
 

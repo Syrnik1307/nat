@@ -350,6 +350,30 @@
   line-height: 1.5;
 }
 
+/* Explanation (correct answer) */
+.hav-explanation {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+  border-left: 4px solid #4caf50;
+  border-radius: 0 8px 8px 0;
+}
+
+.hav-explanation-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2e7d32;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.5rem;
+}
+
+.hav-explanation-text {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
 /* Controls */
 .hav-controls {
   display: flex;

@@ -278,6 +278,14 @@ const HomeworkAnswersView = () => {
                 </div>
               )}
 
+              {/* Пояснение с правильным ответом */}
+              {currentQuestion.explanation && (
+                <div className="hav-explanation">
+                  <div className="hav-explanation-label">Пояснение:</div>
+                  <div className="hav-explanation-text">{currentQuestion.explanation}</div>
+                </div>
+              )}
+
               <div className="hav-controls">
                 <Button
                   variant="secondary"

@@ -223,16 +223,30 @@
   line-height: 1.6;
 }
 
-/* Пояснение для ученика */
+/* Пояснение с правильным ответом (показывается после проверки) */
 .ht-question-explanation {
-  margin: 0.5rem 0 1rem;
-  padding: 0.75rem 1rem;
+  margin: 0.75rem 0 1rem;
+  padding: 1rem;
   font-size: 0.9rem;
-  color: var(--text-secondary, #5f6368);
-  background: var(--bg-secondary, #f8f9fa);
-  border-left: 3px solid var(--primary, #5865f2);
+  color: var(--text-main, #1a1a2e);
+  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+  border-left: 4px solid #4caf50;
   border-radius: 0 8px 8px 0;
   line-height: 1.5;
+}
+
+.ht-explanation-label {
+  display: block;
+  font-weight: 600;
+  color: #2e7d32;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ht-question-explanation p {
+  margin: 0;
 }
 
 /* Изображение вопроса */
