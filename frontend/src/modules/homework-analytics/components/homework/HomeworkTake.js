@@ -229,6 +229,12 @@ const HomeworkTake = () => {
         <div className="ht-header-primary">
           <h1 className="ht-title">{homework.title}</h1>
           <p className="ht-subtitle">{homework.description || 'Выполните все вопросы, затем отправьте работу.'}</p>
+          {homework.student_instructions && (
+            <div className="ht-instructions">
+              <strong>Пояснение от преподавателя:</strong>
+              <p>{homework.student_instructions}</p>
+            </div>
+          )}
         </div>
         <div className="ht-header-meta">
           <ProgressBar percent={progress} />

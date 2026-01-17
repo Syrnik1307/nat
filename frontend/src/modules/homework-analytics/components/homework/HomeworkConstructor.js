@@ -32,6 +32,8 @@ const initialMeta = {
   deadline: '',
   maxScore: 100,
   gamificationEnabled: true,
+  studentInstructions: '',
+  allowViewAnswers: true,
 };
 
 const QUESTION_COMPONENTS = {
@@ -246,6 +248,8 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
         deadline: editingHomework.deadline ? editingHomework.deadline.slice(0, 16) : '',
         maxScore: editingHomework.max_score || 100,
         gamificationEnabled: editingHomework.gamification_enabled !== false,
+        studentInstructions: editingHomework.student_instructions || '',
+        allowViewAnswers: editingHomework.allow_view_answers !== false,
       };
       
       setAssignmentMeta(meta);
@@ -766,6 +770,29 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                   onChange={(event) => handleMetaChange('description', event.target.value)}
                   placeholder="Инструкции для учеников"
                 />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Пояснение для ученика (опционально)</label>
+                <textarea
+                  className="form-textarea"
+                  rows={2}
+                  value={assignmentMeta.studentInstructions}
+                  onChange={(event) => handleMetaChange('studentInstructions', event.target.value)}
+                  placeholder="Дополнительные инструкции, которые увидит ученик перед началом"
+                />
+              </div>
+
+              <div className="form-group hc-checkbox-group">
+                <label className="hc-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={assignmentMeta.allowViewAnswers}
+                    onChange={(event) => handleMetaChange('allowViewAnswers', event.target.checked)}
+                  />
+                  <span>Разрешить просмотр ответов после сдачи</span>
+                </label>
+                <span className="hc-checkbox-hint">Отключите для контрольных работ, чтобы ученики не могли делиться ответами</span>
               </div>
 
               <div className="hc-params-row">

@@ -158,7 +158,9 @@ class HomeworkSerializer(serializers.ModelSerializer):
             'questions_count', 'submissions_count', 'assigned_groups',
             'group_assignments', 'assigned_students',
             # AI grading fields
-            'ai_grading_enabled', 'ai_provider', 'ai_grading_prompt'
+            'ai_grading_enabled', 'ai_provider', 'ai_grading_prompt',
+            # Student-facing settings
+            'student_instructions', 'allow_view_answers',
         ]
         read_only_fields = ['teacher']
 
@@ -334,7 +336,9 @@ class HomeworkStudentSerializer(serializers.ModelSerializer):
             'id', 'title', 'description', 'teacher', 'teacher_email', 'lesson',
             'deadline', 'max_score',
             'group_id', 'group_name',
-            'questions', 'created_at'
+            'questions', 'created_at',
+            # Student-facing settings
+            'student_instructions', 'allow_view_answers',
         ]
         read_only_fields = fields
 
@@ -388,13 +392,14 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
     is_individual = serializers.SerializerMethodField()
     time_spent_seconds = serializers.SerializerMethodField()
     questions = serializers.SerializerMethodField()
+    showAnswers = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentSubmission
         fields = ['id', 'homework', 'homework_title', 'student', 'student_email', 'student_name',
               'status', 'total_score', 'max_score', 'group_id', 'group_name', 'is_individual',
               'answers', 'questions', 'time_spent_seconds', 'teacher_feedback_summary', 
-              'created_at', 'submitted_at', 'graded_at']
+              'created_at', 'submitted_at', 'graded_at', 'showAnswers']
         # Статус и даты жизненного цикла управляются сервером через отдельные endpoints
         # (answer/saveProgress, submit, feedback) и не должны приходить от клиента.
         read_only_fields = [
@@ -436,6 +441,10 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
     def get_max_score(self, obj):
         """Вычисляем максимальный балл для домашки"""
         return sum(q.points for q in obj.homework.questions.all())
+    
+    def get_showAnswers(self, obj):
+        """Разрешено ли ученику смотреть свои ответы после сдачи."""
+        return getattr(obj.homework, 'allow_view_answers', True)
     
     def get_group_id(self, obj):
         """Получаем ID группы: урок → группа студента у этого преподавателя → None"""

@@ -99,6 +99,10 @@ export const buildHomeworkPayload = (meta, questions) => {
     payload.max_score = Number(meta.maxScore);
   }
 
+  // Передаём настройки для ученика
+  payload.student_instructions = meta.studentInstructions?.trim() || '';
+  payload.allow_view_answers = meta.allowViewAnswers !== false;
+
   return payload;
 };
 

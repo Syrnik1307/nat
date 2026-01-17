@@ -114,6 +114,17 @@ class Homework(models.Model):
     ai_grading_enabled = models.BooleanField(default=False, help_text='Включить AI проверку текстовых ответов')
     ai_provider = models.CharField(max_length=20, choices=AI_PROVIDER_CHOICES, default='deepseek', help_text='Провайдер AI для проверки')
     ai_grading_prompt = models.TextField(blank=True, help_text='Дополнительные инструкции для AI при проверке (контекст темы, критерии оценки)')
+    
+    # Настройки отображения для ученика
+    student_instructions = models.TextField(
+        blank=True,
+        default='',
+        help_text='Пояснение/инструкции для ученика (показывается перед началом выполнения)'
+    )
+    allow_view_answers = models.BooleanField(
+        default=True,
+        help_text='Разрешить ученику просматривать свои ответы после сдачи (для КР лучше отключить)'
+    )
 
     class Meta:
         ordering = ['-created_at']

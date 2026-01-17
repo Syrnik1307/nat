@@ -89,6 +89,7 @@ const RecordingsPage = lazy(() => import('./modules/Recordings/RecordingsPage'))
 const StudentMaterialsPage = lazy(() => import('./modules/Recordings/StudentMaterialsPage'));
 const HomeworkList = lazy(() => import('./components/HomeworkList'));
 const HomeworkTake = lazy(() => import('./modules/homework-analytics/components/homework/HomeworkTake'));
+const HomeworkAnswersView = lazy(() => import('./modules/homework-analytics/components/homework/HomeworkAnswersView'));
 
 // Admin pages
 const AdminHomePage = lazy(() => import('./components/AdminHomePage'));
@@ -190,6 +191,7 @@ const AppRoutes = () => {
           <Route path="/student/materials" element={<Protected allowRoles={['student']}><StudentMaterialsPage /></Protected>} />
           <Route path="/homework" element={<Protected allowRoles={['student']}><HomeworkList /></Protected>} />
           <Route path="/student/homework/:id" element={<Protected allowRoles={['student']}><HomeworkTake /></Protected>} />
+          <Route path="/homework/:id/answers" element={<Protected allowRoles={['student']}><HomeworkAnswersView /></Protected>} />
         
           {/* Admin */}
           <Route path="/admin-home" element={<Protected allowRoles={['admin']}><AdminHomePage /></Protected>} />

@@ -37,6 +37,31 @@
   font-size: 0.95rem;
 }
 
+.ht-instructions {
+  margin-top: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: rgba(79, 70, 229, 0.05);
+  border-left: 3px solid var(--color-primary, #4F46E5);
+  border-radius: 0 8px 8px 0;
+}
+
+.ht-instructions strong {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--color-primary, #4F46E5);
+  margin-bottom: 0.375rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.ht-instructions p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 .ht-header-meta {
   display: flex;
   align-items: center;

@@ -710,6 +710,98 @@ class HomeworkViewSet(viewsets.ModelViewSet):
             'individual_students': individual_students,
         })
 
+    @action(detail=True, methods=['get'], url_path='my-answers', permission_classes=[IsAuthenticated])
+    def my_answers(self, request, pk=None):
+        """
+        Получить свои ответы на ДЗ (для студента).
+        GET /api/homework/{id}/my-answers/
+        
+        Возвращает ответы только если:
+        1. У ученика есть сабмит
+        2. Сабмит в статусе submitted или graded  
+        3. allow_view_answers=True на ДЗ
+        """
+        homework = self.get_object()
+        user = request.user
+        
+        # Проверяем что это студент
+        if getattr(user, 'role', None) != 'student':
+            return Response({'error': 'Доступно только для учеников'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Проверяем allow_view_answers
+        if not getattr(homework, 'allow_view_answers', True):
+            return Response({'error': 'Преподаватель запретил просмотр ответов для этого задания'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Находим submission ученика
+        try:
+            submission = StudentSubmission.objects.get(homework=homework, student=user)
+        except StudentSubmission.DoesNotExist:
+            return Response({'error': 'У вас нет попытки для этого задания'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Проверяем статус - можно смотреть только после сдачи
+        if submission.status == 'in_progress':
+            return Response({'error': 'Сначала завершите и сдайте работу'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Собираем вопросы
+        questions = []
+        for q in homework.questions.all().order_by('order'):
+            questions.append({
+                'id': q.id,
+                'prompt': q.prompt,
+                'question_type': 'MULTIPLE_CHOICE' if q.question_type == 'MULTI_CHOICE' else q.question_type,
+                'points': q.points,
+                'order': q.order,
+                'config': q.config or {},
+            })
+        
+        # Собираем ответы
+        answers = []
+        for answer in submission.answers.select_related('question').prefetch_related('selected_choices'):
+            # Определяем правильность
+            q = answer.question
+            is_correct = None
+            score = answer.auto_score if answer.auto_score is not None else answer.teacher_score
+            
+            # Для авто-проверяемых вопросов определяем правильность
+            if q.question_type in ('SINGLE_CHOICE', 'MULTI_CHOICE'):
+                if score is not None and q.points > 0:
+                    is_correct = score >= q.points
+            elif answer.teacher_score is not None:
+                # Если есть оценка учителя
+                is_correct = answer.teacher_score >= q.points if q.points > 0 else None
+            
+            # Получаем текст выбранных вариантов
+            selected_choices_text = [c.text for c in answer.selected_choices.all()]
+            
+            answers.append({
+                'question_id': q.id,
+                'text_answer': answer.text_answer,
+                'selected_choices': list(answer.selected_choices.values_list('id', flat=True)),
+                'selected_choices_text': selected_choices_text,
+                'score': score,
+                'is_correct': is_correct,
+                'teacher_feedback': answer.teacher_feedback,
+            })
+        
+        # Вычисляем время
+        time_spent_seconds = None
+        if submission.submitted_at and submission.created_at:
+            delta = submission.submitted_at - submission.created_at
+            time_spent_seconds = int(delta.total_seconds())
+        
+        return Response({
+            'homework_id': homework.id,
+            'homework_title': homework.title,
+            'status': submission.status,
+            'total_score': submission.total_score,
+            'max_score': sum(q.points for q in homework.questions.all()),
+            'time_spent_seconds': time_spent_seconds,
+            'submitted_at': submission.submitted_at.isoformat() if submission.submitted_at else None,
+            'graded_at': submission.graded_at.isoformat() if submission.graded_at else None,
+            'questions': questions,
+            'answers': answers,
+        })
+
 
 class StudentSubmissionViewSet(viewsets.ModelViewSet):
     queryset = StudentSubmission.objects.all().select_related(
