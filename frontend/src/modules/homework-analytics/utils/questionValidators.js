@@ -140,8 +140,11 @@ export const validateAssignmentMeta = (meta, options = {}) => {
   if (!meta.title?.trim()) {
     issues.push('Название задания обязательно');
   }
-  if (requireGroup && !meta.groupId) {
-    issues.push('Выберите группу');
+  // Проверяем наличие назначенных групп/учеников
+  const hasGroupAssignments = meta.groupAssignments && meta.groupAssignments.length > 0;
+  const hasLegacyGroupId = !!meta.groupId;
+  if (requireGroup && !hasGroupAssignments && !hasLegacyGroupId) {
+    issues.push('Выберите хотя бы одну группу или ученика');
   }
   if (!Number.isFinite(meta.maxScore) || meta.maxScore <= 0) {
     issues.push('Максимальный балл должен быть больше нуля');

@@ -350,6 +350,63 @@
   border-top: 1px solid var(--border-color, #e2e8f0);
 }
 
+/* Режим переключатель (дублировать/перенести) */
+.reassign-mode-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-secondary, #f1f5f9);
+  border-radius: var(--radius-md, 8px);
+}
+
+.reassign-mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs, 6px);
+  padding: var(--spacing-sm, 10px) var(--spacing-md, 16px);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth);
+}
+
+.reassign-mode-btn:hover:not(.active) {
+  color: var(--text-primary, #1e293b);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.reassign-mode-btn.active {
+  background: var(--bg-card, #ffffff);
+  color: var(--text-primary, #1e293b);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.reassign-mode-btn svg {
+  flex-shrink: 0;
+}
+
+/* Чекбокс лейбл */
+.reassign-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text-primary, #1e293b);
+}
+
+.reassign-checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary, #6366f1);
+}
+
 /* Адаптив */
 @media (max-width: 768px) {
   .myhw-grid {
@@ -371,6 +428,10 @@
   }
   
   .myhw-action-btn span {
+    display: none;
+  }
+  
+  .reassign-mode-btn span {
     display: none;
   }
 }

@@ -35,11 +35,23 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                 # Студенты видят только опубликованные ДЗ из своих групп
                 # .distinct() нужен т.к. студент может быть в нескольких группах,
                 # что приводит к дубликатам при JOIN
+                # 
+                # Логика видимости:
+                # 1. lesson__group__students=user - старый способ через урок
+                # 2. assigned_groups__students=user - назначено всей группе
+                # 3. assigned_students=user - назначено индивидуально
+                # 4. group_assignments__group__students=user + нет ограничения по ученикам
+                # 5. group_assignments__students=user - назначено конкретному ученику в группе
+                # 6. submissions__student=user - уже есть попытка (для истории)
                 return (
                     qs.filter(status='published', is_template=False).filter(
                         Q(lesson__group__students=user) |
                         Q(assigned_groups__students=user) |
                         Q(assigned_students=user) |
+                        # Новая логика: через HomeworkGroupAssignment
+                        # Ученик в группе И (нет ограничений ИЛИ ученик в списке students)
+                        Q(group_assignments__group__students=user, group_assignments__students__isnull=True) |
+                        Q(group_assignments__students=user) |
                         Q(submissions__student=user)
                     )
                 ).distinct()
@@ -479,6 +491,224 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                 self._notify_students_about_new_homework(new_hw)
 
         return Response({'status': 'success', 'homework_id': new_hw.id}, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='duplicate-and-assign')
+    def duplicate_and_assign(self, request, pk=None):
+        """
+        Дублировать или перенести ДЗ в другие группы/ученикам.
+        
+        POST /api/homework/{id}/duplicate-and-assign/
+        Body:
+        {
+            "mode": "duplicate" | "move",  // дублировать или перенести
+            "group_assignments": [
+                {
+                    "group_id": 1,
+                    "student_ids": [5, 7],  // [] = все ученики группы
+                    "deadline": "2025-02-01T23:59:00Z"  // опционально
+                }
+            ],
+            "individual_student_ids": [10, 11],  // индивидуальные ученики без группы
+            "deadline": "2025-02-01T23:59:00Z",  // общий дедлайн (если не указан персональный)
+            "publish": true  // опубликовать сразу
+        }
+        """
+        from django.db import transaction
+        import copy as pycopy
+        from django.conf import settings
+        from .models import HomeworkGroupAssignment
+
+        source = self.get_object()
+        if source.is_template:
+            return Response(
+                {'detail': 'Для шаблонов используйте /instantiate/'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        mode = request.data.get('mode', 'duplicate')
+        group_assignments_data = request.data.get('group_assignments', [])
+        individual_student_ids = request.data.get('individual_student_ids', [])
+        global_deadline = request.data.get('deadline')
+        publish_now = bool(request.data.get('publish', False))
+
+        from django.utils.dateparse import parse_datetime
+        parsed_deadline = parse_datetime(global_deadline) if global_deadline else source.deadline
+
+        with transaction.atomic():
+            if mode == 'move':
+                # Перенос: обновляем существующее ДЗ
+                homework = source
+                # Очищаем старые назначения
+                homework.assigned_groups.clear()
+                homework.assigned_students.clear()
+                homework.group_assignments.all().delete()
+                
+                if parsed_deadline:
+                    homework.deadline = parsed_deadline
+                    homework.save(update_fields=['deadline'])
+            else:
+                # Дублирование: создаём копию
+                homework = Homework.objects.create(
+                    teacher=request.user,
+                    lesson=None,
+                    title=source.title,
+                    description=source.description,
+                    status='draft',
+                    deadline=parsed_deadline,
+                    max_score=source.max_score,
+                    is_template=False,
+                    ai_grading_enabled=source.ai_grading_enabled,
+                    ai_provider=source.ai_provider,
+                    ai_grading_prompt=source.ai_grading_prompt,
+                )
+
+                # Копируем вопросы с вложениями
+                gdrive = None
+                assets_folder_id = None
+                if getattr(settings, 'USE_GDRIVE_STORAGE', False):
+                    try:
+                        from schedule.gdrive_utils import get_gdrive_manager
+                        gdrive = get_gdrive_manager()
+                        teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
+                        homework_root = teacher_folders.get('homework')
+
+                        def get_or_create_subfolder(folder_name, parent_id):
+                            query = (
+                                f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' "
+                                f"and trashed=false and '{parent_id}' in parents"
+                            )
+                            res = gdrive.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+                            items = res.get('files', [])
+                            if items:
+                                return items[0]['id']
+                            return gdrive.create_folder(folder_name, parent_id)
+
+                        assignments_root = get_or_create_subfolder('Assignments', homework_root)
+                        hw_folder = gdrive.create_folder(f"HW_{homework.id}", assignments_root)
+                        assets_folder_id = get_or_create_subfolder('Assets', hw_folder)
+                        homework.gdrive_folder_id = hw_folder
+                        homework.save(update_fields=['gdrive_folder_id'])
+                    except Exception:
+                        gdrive = None
+                        assets_folder_id = None
+
+                from .models import Question as QModel, Choice as CModel
+                for q in source.questions.all().prefetch_related('choices'):
+                    cfg = pycopy.deepcopy(q.config) if isinstance(q.config, dict) else {}
+                    if gdrive and assets_folder_id:
+                        for key_url, key_id in (('imageUrl', 'imageFileId'), ('audioUrl', 'audioFileId')):
+                            file_id = cfg.get(key_id)
+                            if file_id:
+                                try:
+                                    copied = gdrive.copy_file(file_id, parent_folder_id=assets_folder_id)
+                                    new_id = copied.get('file_id')
+                                    if new_id:
+                                        cfg[key_id] = new_id
+                                        cfg[key_url] = gdrive.get_direct_download_link(new_id)
+                                except Exception:
+                                    pass
+                    created_q = QModel.objects.create(
+                        homework=homework,
+                        prompt=q.prompt,
+                        question_type=q.question_type,
+                        points=q.points,
+                        order=q.order,
+                        config=cfg,
+                    )
+                    for c in q.choices.all():
+                        CModel.objects.create(question=created_q, text=c.text, is_correct=c.is_correct)
+
+            # Создаём назначения группам с конкретными учениками
+            for ga_data in group_assignments_data:
+                group_id = ga_data.get('group_id')
+                student_ids = ga_data.get('student_ids', [])
+                ga_deadline = ga_data.get('deadline')
+                
+                if not group_id:
+                    continue
+                
+                parsed_ga_deadline = parse_datetime(ga_deadline) if ga_deadline else None
+                
+                assignment = HomeworkGroupAssignment.objects.create(
+                    homework=homework,
+                    group_id=group_id,
+                    deadline=parsed_ga_deadline
+                )
+                if student_ids:
+                    assignment.students.set(student_ids)
+                
+                # Также добавляем группу в assigned_groups для обратной совместимости
+                homework.assigned_groups.add(group_id)
+
+            # Добавляем индивидуальных учеников
+            if individual_student_ids:
+                homework.assigned_students.set(individual_student_ids)
+
+            if publish_now:
+                homework.status = 'published'
+                homework.published_at = timezone.now()
+                homework.save(update_fields=['status', 'published_at'])
+                self._notify_students_about_new_homework(homework)
+
+        action_label = 'перенесено' if mode == 'move' else 'продублировано'
+        return Response({
+            'status': 'success',
+            'message': f'ДЗ успешно {action_label}',
+            'homework_id': homework.id,
+            'mode': mode,
+            'groups_assigned': len(group_assignments_data),
+            'individual_students': len(individual_student_ids),
+        }, status=status.HTTP_200_OK if mode == 'move' else status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'], url_path='assignment-details')
+    def assignment_details(self, request, pk=None):
+        """
+        Получить детали назначений ДЗ: группы с учениками.
+        GET /api/homework/{id}/assignment-details/
+        """
+        from .models import HomeworkGroupAssignment
+        
+        homework = self.get_object()
+        
+        # Собираем информацию о назначениях
+        group_assignments = []
+        for ga in homework.group_assignments.select_related('group').prefetch_related('students', 'group__students'):
+            assigned_students = list(ga.students.values('id', 'email', 'first_name', 'last_name'))
+            all_group_students = list(ga.group.students.filter(is_active=True).values('id', 'email', 'first_name', 'last_name'))
+            
+            group_assignments.append({
+                'group_id': ga.group.id,
+                'group_name': ga.group.name,
+                'deadline': ga.deadline.isoformat() if ga.deadline else None,
+                'all_students': len(assigned_students) == 0,  # True если назначено всем
+                'assigned_students': assigned_students if assigned_students else all_group_students,
+                'students_in_group': all_group_students,
+            })
+        
+        # Группы через старый механизм (assigned_groups без HomeworkGroupAssignment)
+        existing_ga_group_ids = set(ga['group_id'] for ga in group_assignments)
+        for group in homework.assigned_groups.prefetch_related('students'):
+            if group.id not in existing_ga_group_ids:
+                all_students = list(group.students.filter(is_active=True).values('id', 'email', 'first_name', 'last_name'))
+                group_assignments.append({
+                    'group_id': group.id,
+                    'group_name': group.name,
+                    'deadline': homework.deadline.isoformat() if homework.deadline else None,
+                    'all_students': True,
+                    'assigned_students': all_students,
+                    'students_in_group': all_students,
+                })
+        
+        # Индивидуальные ученики
+        individual_students = list(homework.assigned_students.values('id', 'email', 'first_name', 'last_name'))
+        
+        return Response({
+            'homework_id': homework.id,
+            'title': homework.title,
+            'deadline': homework.deadline.isoformat() if homework.deadline else None,
+            'group_assignments': group_assignments,
+            'individual_students': individual_students,
+        })
 
 
 class StudentSubmissionViewSet(viewsets.ModelViewSet):

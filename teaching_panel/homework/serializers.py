@@ -131,11 +131,20 @@ class HomeworkSerializer(serializers.ModelSerializer):
     questions = QuestionSerializer(many=True, required=False)
     assigned_group_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
     assigned_student_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+    # Новый формат: группы с конкретными учениками
+    group_assignments_data = serializers.ListField(
+        child=serializers.DictField(),
+        write_only=True,
+        required=False,
+        help_text='[{"group_id": 1, "student_ids": [5, 7], "deadline": "..."}, ...]'
+    )
     group_id = serializers.SerializerMethodField(read_only=True)
     group_name = serializers.SerializerMethodField(read_only=True)
     questions_count = serializers.SerializerMethodField(read_only=True)
     submissions_count = serializers.SerializerMethodField(read_only=True)
     assigned_groups = serializers.SerializerMethodField(read_only=True)
+    group_assignments = serializers.SerializerMethodField(read_only=True)
+    assigned_students = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Homework
@@ -144,9 +153,10 @@ class HomeworkSerializer(serializers.ModelSerializer):
             'questions', 'created_at', 'updated_at',
             'status', 'deadline', 'published_at', 'max_score',
             'is_template', 'gdrive_folder_id',
-            'assigned_group_ids', 'assigned_student_ids',
+            'assigned_group_ids', 'assigned_student_ids', 'group_assignments_data',
             'group_id', 'group_name',
             'questions_count', 'submissions_count', 'assigned_groups',
+            'group_assignments', 'assigned_students',
             # AI grading fields
             'ai_grading_enabled', 'ai_provider', 'ai_grading_prompt'
         ]
@@ -159,8 +169,45 @@ class HomeworkSerializer(serializers.ModelSerializer):
         return obj.submissions.count()
 
     def get_assigned_groups(self, obj):
-        """Возвращает список групп для переназначения."""
+        """Возвращает список групп для переназначения (обратная совместимость)."""
         return [{'id': g.id, 'name': g.name} for g in obj.assigned_groups.all()]
+
+    def get_group_assignments(self, obj):
+        """Возвращает детальную информацию о назначениях групп с учениками."""
+        from .models import HomeworkGroupAssignment
+        
+        result = []
+        # Сначала собираем назначения через новую модель
+        ga_group_ids = set()
+        for ga in obj.group_assignments.select_related('group').prefetch_related('students'):
+            ga_group_ids.add(ga.group_id)
+            students = list(ga.students.values('id', 'email', 'first_name', 'last_name'))
+            result.append({
+                'group_id': ga.group.id,
+                'group_name': ga.group.name,
+                'student_ids': [s['id'] for s in students],
+                'students': students,
+                'all_students': len(students) == 0,
+                'deadline': ga.deadline.isoformat() if ga.deadline else None,
+            })
+        
+        # Добавляем группы через старый механизм (assigned_groups) без HomeworkGroupAssignment
+        for group in obj.assigned_groups.all():
+            if group.id not in ga_group_ids:
+                result.append({
+                    'group_id': group.id,
+                    'group_name': group.name,
+                    'student_ids': [],
+                    'students': [],
+                    'all_students': True,
+                    'deadline': None,
+                })
+        
+        return result
+
+    def get_assigned_students(self, obj):
+        """Возвращает список индивидуально назначенных учеников."""
+        return list(obj.assigned_students.values('id', 'email', 'first_name', 'last_name'))
 
     def get_group_id(self, obj: Homework):
         # Для совместимости со старым UI: если назначено ровно на 1 группу — возвращаем её.
@@ -187,15 +234,50 @@ class HomeworkSerializer(serializers.ModelSerializer):
             return obj.lesson.group.name
         return 'Без группы'
 
+    def _process_group_assignments(self, homework, group_assignments_data):
+        """Обработка назначений групп с конкретными учениками."""
+        from .models import HomeworkGroupAssignment
+        from django.utils.dateparse import parse_datetime
+        
+        # Удаляем старые назначения
+        homework.group_assignments.all().delete()
+        
+        for ga_data in group_assignments_data:
+            group_id = ga_data.get('group_id')
+            student_ids = ga_data.get('student_ids', [])
+            deadline = ga_data.get('deadline')
+            
+            if not group_id:
+                continue
+            
+            parsed_deadline = parse_datetime(deadline) if deadline else None
+            
+            assignment = HomeworkGroupAssignment.objects.create(
+                homework=homework,
+                group_id=group_id,
+                deadline=parsed_deadline
+            )
+            if student_ids:
+                assignment.students.set(student_ids)
+            
+            # Для обратной совместимости также добавляем в assigned_groups
+            homework.assigned_groups.add(group_id)
+
     def create(self, validated_data):
         assigned_group_ids = validated_data.pop('assigned_group_ids', [])
         assigned_student_ids = validated_data.pop('assigned_student_ids', [])
+        group_assignments_data = validated_data.pop('group_assignments_data', [])
         questions_data = validated_data.pop('questions', [])
         validated_data['teacher'] = self.context['request'].user
         homework = Homework.objects.create(**validated_data)
 
-        if assigned_group_ids:
+        # Новый формат: group_assignments_data с конкретными учениками
+        if group_assignments_data:
+            self._process_group_assignments(homework, group_assignments_data)
+        elif assigned_group_ids:
+            # Старый формат: просто список group_ids
             homework.assigned_groups.set(assigned_group_ids)
+        
         if assigned_student_ids:
             homework.assigned_students.set(assigned_student_ids)
 
@@ -209,14 +291,22 @@ class HomeworkSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         assigned_group_ids = validated_data.pop('assigned_group_ids', None)
         assigned_student_ids = validated_data.pop('assigned_student_ids', None)
+        group_assignments_data = validated_data.pop('group_assignments_data', None)
         questions_data = validated_data.pop('questions', None)
 
         for attr, val in validated_data.items():
             setattr(instance, attr, val)
         instance.save()
 
-        if assigned_group_ids is not None:
+        # Новый формат: group_assignments_data с конкретными учениками
+        if group_assignments_data is not None:
+            self._process_group_assignments(instance, group_assignments_data)
+        elif assigned_group_ids is not None:
+            # Старый формат: просто список group_ids
             instance.assigned_groups.set(assigned_group_ids)
+            # Очищаем детальные назначения при использовании старого формата
+            instance.group_assignments.all().delete()
+        
         if assigned_student_ids is not None:
             instance.assigned_students.set(assigned_student_ids)
 

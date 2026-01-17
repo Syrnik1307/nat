@@ -4,6 +4,59 @@ from schedule.models import Lesson
 from schedule.models import Group
 
 
+class HomeworkGroupAssignment(models.Model):
+    """
+    Промежуточная модель для назначения ДЗ группе с опциональным ограничением 
+    по конкретным ученикам внутри группы.
+    
+    Если students пустой - ДЗ видят все ученики группы.
+    Если students заполнен - ДЗ видят только указанные ученики.
+    """
+    homework = models.ForeignKey(
+        'Homework',
+        on_delete=models.CASCADE,
+        related_name='group_assignments'
+    )
+    group = models.ForeignKey(
+        Group,
+        on_delete=models.CASCADE,
+        related_name='homework_assignments'
+    )
+    # Если пусто - все ученики группы. Если заполнено - только выбранные.
+    students = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name='homework_group_assignments',
+        limit_choices_to={'role': 'student'},
+        help_text='Конкретные ученики в группе (если пусто - все ученики)'
+    )
+    # Дедлайн может быть разным для разных групп
+    deadline = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Персональный дедлайн для этой группы (если отличается от общего)'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['homework', 'group']
+        verbose_name = 'назначение ДЗ группе'
+        verbose_name_plural = 'назначения ДЗ группам'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        student_count = self.students.count()
+        if student_count:
+            return f"{self.homework.title} -> {self.group.name} ({student_count} уч.)"
+        return f"{self.homework.title} -> {self.group.name} (все)"
+
+    def get_target_students(self):
+        """Получить список учеников, которым назначено это ДЗ."""
+        if self.students.exists():
+            return self.students.all()
+        return self.group.students.filter(is_active=True)
+
+
 class Homework(models.Model):
     STATUS_CHOICES = (
         ('draft', 'Черновик'),

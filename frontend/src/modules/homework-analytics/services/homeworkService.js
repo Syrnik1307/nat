@@ -78,9 +78,15 @@ export const buildHomeworkPayload = (meta, questions) => {
     questions: orderedQuestions.map((question, index) => mapQuestionToPayload(question, index)),
   };
 
-  // Передаём выбранную группу в assigned_group_ids
-  if (meta.groupId) {
-    payload.assigned_group_ids = [Number(meta.groupId)];
+  // Передаём назначения группам с опциональными ограничениями по ученикам
+  if (meta.groupAssignments && meta.groupAssignments.length > 0) {
+    payload.group_assignments_data = meta.groupAssignments.map(ga => ({
+      group_id: Number(ga.groupId),
+      student_ids: ga.allStudents ? null : ga.studentIds.map(id => Number(id)),
+    }));
+  } else if (meta.groupId) {
+    // Совместимость со старым форматом (один groupId)
+    payload.group_assignments_data = [{ group_id: Number(meta.groupId), student_ids: null }];
   }
 
   // Передаём дедлайн

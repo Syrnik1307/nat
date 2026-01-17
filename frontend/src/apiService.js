@@ -342,6 +342,32 @@ export const getHomeworkTemplates = () => apiClient.get('homework/', { params: {
 export const saveAsTemplate = (homeworkId) => apiClient.post(`homework/${homeworkId}/save-as-template/`);
 export const instantiateTemplate = (templateId, data) => apiClient.post(`homework/${templateId}/instantiate/`, data);
 
+// Homework Assignment (duplicate/move, get assignment details)
+/**
+ * Дублировать или перенести ДЗ в другие группы/ученикам
+ * @param {number} homeworkId - ID домашнего задания
+ * @param {Object} data - Данные для назначения:
+ *   - mode: 'duplicate' | 'move'
+ *   - group_assignments: [{group_id, student_ids[], deadline?}]
+ *   - individual_student_ids: number[]
+ *   - deadline: string (ISO)
+ *   - publish: boolean
+ */
+export const duplicateAndAssignHomework = (homeworkId, data) => 
+  apiClient.post(`homework/${homeworkId}/duplicate-and-assign/`, data);
+
+/**
+ * Получить детали назначений ДЗ (группы + ученики)
+ */
+export const getHomeworkAssignmentDetails = (homeworkId) => 
+  apiClient.get(`homework/${homeworkId}/assignment-details/`);
+
+/**
+ * Получить учеников группы
+ */
+export const getGroupStudents = (groupId) => 
+  apiClient.get(`schedule/groups/${groupId}/students/`);
+
 // Импорт компрессора для изображений (lazy)
 let _compressImage = null;
 const getCompressor = async () => {

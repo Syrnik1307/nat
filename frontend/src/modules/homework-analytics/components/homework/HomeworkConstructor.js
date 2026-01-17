@@ -22,12 +22,13 @@ import CodeQuestion from '../questions/CodeQuestion';
 import '../questions/CodeQuestion.css';
 import './HomeworkConstructor.css';
 import DateTimePicker from './DateTimePicker';
-import GroupSelect from './GroupSelect';
+import StudentPicker from './StudentPicker';
 
 const initialMeta = {
   title: '',
   description: '',
   groupId: '',
+  groupAssignments: [], // [{groupId, studentIds: [], allStudents: bool}]
   deadline: '',
   maxScore: 100,
   gamificationEnabled: true,
@@ -190,10 +191,8 @@ const HomeworkQuestionEditor = ({ question, index, onUpdateQuestion }) => {
 const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, onClearEditing = null }) => {
   const navigate = useNavigate();
   const {
-    groupOptions,
+    groups,
     loadingGroups,
-    groupError,
-    reloadGroups,
     computeSuggestedMaxScore,
     saveDraft,
   } = useHomeworkConstructor();
@@ -221,10 +220,29 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
       // Если дублирование - создаём копию без ID
       // Если редактирование - загружаем с ID
       
+      // Конвертация назначений в новый формат
+      let groupAssignments = [];
+      if (editingHomework.group_assignments && editingHomework.group_assignments.length > 0) {
+        // Новый формат с детализацией по ученикам
+        groupAssignments = editingHomework.group_assignments.map(ga => ({
+          groupId: ga.group_id,
+          studentIds: ga.student_ids || [],
+          allStudents: ga.all_students !== false,
+        }));
+      } else if (editingHomework.assigned_groups && editingHomework.assigned_groups.length > 0) {
+        // Старый формат - только группы
+        groupAssignments = editingHomework.assigned_groups.map(g => ({
+          groupId: g.id || g,
+          studentIds: [],
+          allStudents: true,
+        }));
+      }
+      
       const meta = {
         title: isDuplicating ? `${editingHomework.title} (копия)` : editingHomework.title || '',
         description: editingHomework.description || '',
         groupId: editingHomework.assigned_groups?.[0]?.id || editingHomework.assigned_groups?.[0] || '',
+        groupAssignments,
         deadline: editingHomework.deadline ? editingHomework.deadline.slice(0, 16) : '',
         maxScore: editingHomework.max_score || 100,
         gamificationEnabled: editingHomework.gamification_enabled !== false,
@@ -751,15 +769,11 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
               </div>
 
               <div className="hc-params-row">
-                <GroupSelect
-                  value={assignmentMeta.groupId}
-                  options={groupOptions}
-                  onChange={(nextValue) => handleMetaChange('groupId', nextValue)}
+                <StudentPicker
+                  value={assignmentMeta.groupAssignments}
+                  onChange={(assignments) => handleMetaChange('groupAssignments', assignments)}
+                  groups={groups}
                   disabled={loadingGroups}
-                  loading={loadingGroups}
-                  error={groupError}
-                  onRetry={reloadGroups}
-                  placeholder="Выберите группу"
                 />
               </div>
 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getHomeworkList, deleteHomework, updateHomework, getGroups, getHomework } from '../../../../apiService';
+import { getHomeworkList, deleteHomework, updateHomework, getGroups, getHomework, duplicateAndAssignHomework } from '../../../../apiService';
 import { Button, Modal, Select } from '../../../../shared/components';
 import { useNotifications } from '../../../../shared/context/NotificationContext';
+import StudentPicker from '../homework/StudentPicker';
 import './MyHomeworksList.css';
 
 // SVG Icons
@@ -69,67 +70,130 @@ const IconFile = ({ size = 18 }) => (
   </svg>
 );
 
+const IconMove = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="5,9 2,12 5,15"/>
+    <polyline points="9,5 12,2 15,5"/>
+    <polyline points="15,19 12,22 9,19"/>
+    <polyline points="19,9 22,12 19,15"/>
+    <line x1="2" y1="12" x2="22" y2="12"/>
+    <line x1="12" y1="2" x2="12" y2="22"/>
+  </svg>
+);
+
 /**
- * Модальное окно переназначения ДЗ
+ * Модальное окно переназначения/дублирования ДЗ с выбором учеников
  */
-const ReassignModal = ({ homework, groups, onClose, onSave }) => {
-  const [selectedGroups, setSelectedGroups] = useState(
-    homework.assigned_groups?.map(g => g.id || g) || []
-  );
+const ReassignModal = ({ homework, groups, onClose, onSave, toast }) => {
+  // Режим: 'move' (перенести) или 'duplicate' (создать копию)
+  const [mode, setMode] = useState('duplicate');
+  
+  // Назначения: [{groupId, studentIds: [], allStudents: bool}]
+  const [groupAssignments, setGroupAssignments] = useState(() => {
+    // Инициализация из текущих назначений
+    const initial = [];
+    if (homework.group_assignments) {
+      homework.group_assignments.forEach(ga => {
+        initial.push({
+          groupId: ga.group_id,
+          studentIds: ga.student_ids || [],
+          allStudents: ga.all_students !== false,
+        });
+      });
+    } else if (homework.assigned_groups) {
+      homework.assigned_groups.forEach(g => {
+        const gId = g.id || g;
+        initial.push({ groupId: gId, studentIds: [], allStudents: true });
+      });
+    }
+    return initial;
+  });
+  
   const [deadline, setDeadline] = useState(
     homework.deadline ? homework.deadline.slice(0, 16) : ''
   );
+  const [publishNow, setPublishNow] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    if (groupAssignments.length === 0) {
+      toast?.error?.('Выберите хотя бы одну группу');
+      return;
+    }
+    
     setSaving(true);
     try {
-      await onSave({
-        assigned_groups: selectedGroups,
+      // Формируем данные для API
+      const apiData = {
+        mode,
+        group_assignments: groupAssignments.map(ga => ({
+          group_id: ga.groupId,
+          student_ids: ga.allStudents ? [] : ga.studentIds,
+          deadline: deadline ? new Date(deadline).toISOString() : null,
+        })),
+        individual_student_ids: [],
         deadline: deadline ? new Date(deadline).toISOString() : null,
-      });
+        publish: publishNow,
+      };
+      
+      await duplicateAndAssignHomework(homework.id, apiData);
+      
+      const actionLabel = mode === 'move' ? 'перенесено' : 'продублировано';
+      toast?.success?.(`ДЗ успешно ${actionLabel}`);
+      
+      onSave?.();
       onClose();
     } catch (err) {
       console.error('Failed to reassign:', err);
+      toast?.error?.(err.response?.data?.detail || 'Ошибка при назначении');
     } finally {
       setSaving(false);
     }
   };
 
-  const toggleGroup = (groupId) => {
-    setSelectedGroups(prev => 
-      prev.includes(groupId)
-        ? prev.filter(id => id !== groupId)
-        : [...prev, groupId]
-    );
-  };
-
   return (
-    <Modal onClose={onClose} title="Переназначить ДЗ">
+    <Modal onClose={onClose} title="Назначить ДЗ">
       <div className="reassign-modal-content">
+        {/* Выбор режима */}
         <div className="reassign-field">
-          <label className="reassign-label">Назначить группам</label>
-          <div className="reassign-groups-list">
-            {groups.length === 0 ? (
-              <p className="reassign-no-groups">Нет доступных групп</p>
-            ) : (
-              groups.map(group => (
-                <label key={group.id} className="reassign-group-item">
-                  <input
-                    type="checkbox"
-                    checked={selectedGroups.includes(group.id)}
-                    onChange={() => toggleGroup(group.id)}
-                  />
-                  <span className="reassign-group-name">{group.name}</span>
-                  <span className="reassign-group-count">
-                    {group.students_count || 0} уч.
-                  </span>
-                </label>
-              ))
-            )}
+          <label className="reassign-label">Режим</label>
+          <div className="reassign-mode-toggle">
+            <button
+              type="button"
+              className={`reassign-mode-btn ${mode === 'duplicate' ? 'active' : ''}`}
+              onClick={() => setMode('duplicate')}
+            >
+              <IconCopy size={16} />
+              <span>Дублировать</span>
+            </button>
+            <button
+              type="button"
+              className={`reassign-mode-btn ${mode === 'move' ? 'active' : ''}`}
+              onClick={() => setMode('move')}
+            >
+              <IconMove size={16} />
+              <span>Перенести</span>
+            </button>
           </div>
+          <p className="reassign-hint">
+            {mode === 'duplicate' 
+              ? 'Создаст копию ДЗ для выбранных групп/учеников'
+              : 'Переназначит существующее ДЗ (старые назначения будут заменены)'
+            }
+          </p>
         </div>
 
+        {/* Выбор групп и учеников */}
+        <div className="reassign-field">
+          <label className="reassign-label">Назначить</label>
+          <StudentPicker
+            value={groupAssignments}
+            onChange={setGroupAssignments}
+            groups={groups}
+          />
+        </div>
+
+        {/* Дедлайн */}
         <div className="reassign-field">
           <label className="reassign-label">Дедлайн</label>
           <input
@@ -141,12 +205,29 @@ const ReassignModal = ({ homework, groups, onClose, onSave }) => {
           <p className="reassign-hint">Оставьте пустым, если срок не ограничен</p>
         </div>
 
+        {/* Опубликовать сразу */}
+        <div className="reassign-field">
+          <label className="reassign-checkbox-label">
+            <input
+              type="checkbox"
+              checked={publishNow}
+              onChange={(e) => setPublishNow(e.target.checked)}
+            />
+            <span>Опубликовать сразу</span>
+          </label>
+        </div>
+
         <div className="reassign-actions">
           <Button variant="secondary" onClick={onClose} disabled={saving}>
             Отмена
           </Button>
-          <Button variant="primary" onClick={handleSave} loading={saving}>
-            Сохранить
+          <Button 
+            variant="primary" 
+            onClick={handleSave} 
+            loading={saving}
+            disabled={groupAssignments.length === 0}
+          >
+            {mode === 'duplicate' ? 'Дублировать' : 'Перенести'}
           </Button>
         </div>
       </div>
@@ -423,18 +504,10 @@ const MyHomeworksList = ({ onEditHomework }) => {
                 <button 
                   className="myhw-action-btn reassign"
                   onClick={() => setReassignHomework(homework)}
-                  title="Переназначить"
+                  title="Назначить"
                 >
                   <IconUsers size={16} />
-                  <span>Переназначить</span>
-                </button>
-                
-                <button 
-                  className="myhw-action-btn duplicate"
-                  onClick={() => handleDuplicate(homework)}
-                  title="Дублировать"
-                >
-                  <IconCopy size={16} />
+                  <span>Назначить</span>
                 </button>
 
                 {homework.status !== 'archived' && (
@@ -460,13 +533,14 @@ const MyHomeworksList = ({ onEditHomework }) => {
         </div>
       )}
 
-      {/* Модальное окно переназначения */}
+      {/* Модальное окно назначения/дублирования */}
       {reassignHomework && (
         <ReassignModal
           homework={reassignHomework}
           groups={groups}
           onClose={() => setReassignHomework(null)}
-          onSave={(data) => handleReassign(reassignHomework.id, data)}
+          onSave={() => loadData()}
+          toast={toast}
         />
       )}
     </div>

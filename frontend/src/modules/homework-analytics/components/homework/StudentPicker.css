@@ -1,0 +1,312 @@
+/* StudentPicker.css - Компонент выбора учеников из групп */
+
+.student-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 12px);
+  max-height: 400px;
+}
+
+.student-picker.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.student-picker.loading {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl, 24px);
+  color: var(--color-text-tertiary, #8c8c8c);
+}
+
+.student-picker-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-border, #e5e5e5);
+  border-top-color: var(--color-primary, #000);
+  border-radius: 50%;
+  animation: sp-spin 0.8s linear infinite;
+  margin-right: var(--spacing-sm, 8px);
+}
+
+@keyframes sp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Поиск */
+.student-picker-search {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+  background: var(--color-surface-secondary, #f5f5f5);
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid transparent;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+}
+
+.student-picker-search:focus-within {
+  border-color: var(--color-primary, #000);
+  background: var(--color-surface, #fff);
+}
+
+.student-picker-search svg {
+  color: var(--color-text-tertiary, #8c8c8c);
+  flex-shrink: 0;
+}
+
+.student-picker-search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  outline: none;
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+.student-picker-search input::placeholder {
+  color: var(--color-text-tertiary, #8c8c8c);
+}
+
+/* Статистика */
+.student-picker-stats {
+  display: flex;
+  gap: var(--spacing-sm, 8px);
+  flex-wrap: wrap;
+}
+
+.stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--color-surface-secondary, #f5f5f5);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 12px;
+  color: var(--color-text-secondary, #666);
+}
+
+.stat-badge svg {
+  opacity: 0.7;
+}
+
+/* Список групп */
+.student-picker-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs, 4px);
+  overflow-y: auto;
+  flex: 1;
+  padding-right: var(--spacing-xs, 4px);
+}
+
+.student-picker-empty {
+  padding: var(--spacing-lg, 16px);
+  text-align: center;
+  color: var(--color-text-tertiary, #8c8c8c);
+  font-size: 14px;
+}
+
+/* Группа */
+.sp-group {
+  border: 1px solid var(--color-border, #e5e5e5);
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+}
+
+.sp-group:hover {
+  border-color: var(--color-border-hover, #ccc);
+}
+
+.sp-group.selected {
+  border-color: var(--color-primary, #000);
+  background: var(--color-surface-secondary, #fafafa);
+}
+
+/* Заголовок группы */
+.sp-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+}
+
+.sp-group-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+  cursor: pointer;
+  flex: 1;
+}
+
+.sp-group-checkbox input[type="checkbox"] {
+  display: none;
+}
+
+.sp-checkbox-custom {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-border, #ccc);
+  border-radius: var(--radius-sm, 4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  background: var(--color-surface, #fff);
+}
+
+.sp-checkbox-custom.small {
+  width: 16px;
+  height: 16px;
+}
+
+.sp-group-checkbox input:checked + .sp-checkbox-custom {
+  background: var(--color-primary, #000);
+  border-color: var(--color-primary, #000);
+  color: var(--color-text-on-primary, #fff);
+}
+
+.sp-group-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+.sp-group-count {
+  font-size: 12px;
+  color: var(--color-text-tertiary, #8c8c8c);
+  margin-left: auto;
+  padding-right: var(--spacing-sm, 8px);
+}
+
+.sp-expand-btn {
+  padding: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-secondary, #666);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm, 4px);
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+}
+
+.sp-expand-btn:hover {
+  background: var(--color-surface-hover, #eee);
+}
+
+.sp-expand-btn span {
+  display: flex;
+  transition: transform var(--duration-fast, 180ms) var(--ease-smooth, ease);
+}
+
+.sp-expand-btn span.rotated {
+  transform: rotate(180deg);
+}
+
+/* Содержимое группы (ученики) */
+.sp-group-students {
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+  padding-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm, 8px);
+  animation: sp-expand 0.2s ease-out;
+}
+
+@keyframes sp-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Переключатель режима */
+.sp-mode-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--color-surface-secondary, #f0f0f0);
+  border-radius: var(--radius-md, 8px);
+}
+
+.sp-mode-btn {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  color: var(--color-text-secondary, #666);
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+}
+
+.sp-mode-btn:hover:not(.active) {
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+.sp-mode-btn.active {
+  background: var(--color-surface, #fff);
+  color: var(--color-text-primary, #1a1a1a);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Список учеников */
+.sp-students-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: var(--spacing-xs, 4px);
+  background: var(--color-surface, #fff);
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--color-border-light, #eee);
+}
+
+.sp-loading-students,
+.sp-no-students {
+  padding: var(--spacing-md, 12px);
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-tertiary, #8c8c8c);
+}
+
+.sp-student-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+  padding: 6px 8px;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  transition: background var(--duration-fast, 180ms) var(--ease-smooth, ease);
+}
+
+.sp-student-item:hover {
+  background: var(--color-surface-secondary, #f5f5f5);
+}
+
+.sp-student-item input[type="checkbox"] {
+  display: none;
+}
+
+.sp-student-item input:checked + .sp-checkbox-custom {
+  background: var(--color-primary, #000);
+  border-color: var(--color-primary, #000);
+  color: var(--color-text-on-primary, #fff);
+}
+
+.sp-student-name {
+  font-size: 13px;
+  color: var(--color-text-primary, #1a1a1a);
+}
