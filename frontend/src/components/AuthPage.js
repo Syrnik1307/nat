@@ -31,8 +31,16 @@ const AuthPage = () => {
   // const { executeRecaptcha } = useRecaptcha(); // отключено
   
   useEffect(() => {
-    // При заходе на страницу логина дополнительно очищаем токены/сессию в браузере
+    // Если сессия «запомнить» и токены есть, не чистим их и сразу уводим на домашнюю
     try {
+      const hasRemember = localStorage.getItem('tp_remember_session') === 'true';
+      const hasTokens = !!(localStorage.getItem('tp_access_token') || localStorage.getItem('tp_refresh_token'));
+      if (hasRemember && hasTokens) {
+        navigate('/home-new', { replace: true });
+        return undefined;
+      }
+
+      // Иначе очищаем всё как раньше
       clearTokens(true);
       localStorage.removeItem('tp_remember_session');
       localStorage.removeItem('access_token');
@@ -40,7 +48,7 @@ const AuthPage = () => {
     } catch (_) {}
     
     return undefined;
-  }, []);
+  }, [navigate]);
   
   // === ШАГИ АУТЕНТИФИКАЦИИ ===
   // 'role' = Выбор роли
