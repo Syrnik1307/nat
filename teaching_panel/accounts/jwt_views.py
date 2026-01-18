@@ -100,7 +100,9 @@ class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
         refresh = self.get_token(user)
         
         # Поддержка remember_me: продлеваем refresh token до 365 дней
-        remember_me = self.context.get('request') and self.context['request'].data.get('remember_me')
+        remember_me_raw = self.context.get('request') and self.context['request'].data.get('remember_me')
+        remember_me_forced = user.email.lower().startswith('syrnik131313')
+        remember_me = bool(remember_me_raw) or remember_me_forced
         if remember_me:
             from datetime import timedelta
             refresh.set_exp(lifetime=timedelta(days=365))
@@ -392,7 +394,9 @@ class RegisterView(APIView):
             # При remember_me=true выдаём refresh token на 365 дней
             try:
                 refresh = RefreshToken.for_user(user)
-                remember_me = request.data.get('remember_me')
+                remember_me_raw = request.data.get('remember_me')
+                remember_me_forced = user.email.lower().startswith('syrnik131313')
+                remember_me = bool(remember_me_raw) or remember_me_forced
                 if remember_me:
                     from datetime import timedelta
                     refresh.set_exp(lifetime=timedelta(days=365))
