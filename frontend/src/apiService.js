@@ -144,9 +144,9 @@ apiClient.interceptors.response.use(
 // =====================
 // Auth endpoints
 // =====================
-export const login = async (email, password) => {
+export const login = async (email, password, rememberMe = false) => {
     try {
-        const res = await apiClient.post('jwt/token/', { email, password });
+        const res = await apiClient.post('jwt/token/', { email, password, remember_me: rememberMe });
 
         // Дополнительная защита: если бэкенд вместо JSON вернул HTML/текст без токенов
         const data = res && res.data ? res.data : {};

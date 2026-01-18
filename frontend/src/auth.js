@@ -180,7 +180,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
 
-    await apiLogin(email, password);
+    await apiLogin(email, password, rememberMe);
 
     // Если пользователь выбрал "Запомнить меня", сохраняем флаг для будущих сессий
     if (rememberMe) {
@@ -197,8 +197,8 @@ export const AuthProvider = ({ children }) => {
     return resolvedRole;
   }, [loadUser]);
 
-  const register = useCallback(async ({ email, password, firstName, lastName, phone, role: initialRole, birthDate }) => {
-    // 1. Регистрация пользователя
+  const register = useCallback(async ({ email, password, firstName, lastName, phone, role: initialRole, birthDate, rememberMe = true }) => {
+    // 1. Регистрация пользователя (при регистрации всегда запоминаем устройство)
     const regRes = await apiClient.post('jwt/register/', {
       email,
       password,
@@ -208,6 +208,7 @@ export const AuthProvider = ({ children }) => {
       role: initialRole,
       birth_date: birthDate || null,
       recaptcha_token: null,
+      remember_me: rememberMe,
       // Реферальные поля
       referral_code: localStorage.getItem('tp_referral_code') || '',
       utm_source: localStorage.getItem('tp_utm_source') || '',
@@ -218,6 +219,11 @@ export const AuthProvider = ({ children }) => {
       cookie_id: localStorage.getItem('tp_cookie_id') || '',
     });
 
+    // Сохраняем флаг запомнить устройство
+    if (rememberMe) {
+      localStorage.setItem('tp_remember_session', 'true');
+    }
+
     // 2. Очистим устаревшие ключи (совместимость со старым кодом)
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
@@ -225,9 +231,9 @@ export const AuthProvider = ({ children }) => {
     // 3. Сохраняем первичные токены регистрации (может отличаться по срокам) 
     setTokens({ access: regRes.data.access, refresh: regRes.data.refresh });
 
-    // 4. Дополнительно вызываем login для гарантии корректного формата токена
+    // 4. Дополнительно вызываем login для гарантии корректного формата токена (с remember_me)
     try {
-      const loginRes = await apiLogin(email, password); // перезапишет токены
+      const loginRes = await apiLogin(email, password, rememberMe); // перезапишет токены
       if (loginRes?.access) {
         // Перезапись уже сделана внутри apiLogin через setTokens
       }

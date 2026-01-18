@@ -30,7 +30,10 @@ User = get_user_model()
 
 
 class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
-    """Сериализатор выдачи JWT с строгой проверкой пароля и case-insensitive email."""
+    """Сериализатор выдачи JWT с строгой проверкой пароля и case-insensitive email.
+    
+    Поддерживает remember_me: при True выдаёт refresh token на 365 дней.
+    """
 
     def validate(self, attrs):
         # Явная ручная проверка: исключаем любые сторонние сбои authenticate()
@@ -95,6 +98,13 @@ class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
         # Успешная авторизация: сбрасываем счётчик
         reset_failures(raw_email)
         refresh = self.get_token(user)
+        
+        # Поддержка remember_me: продлеваем refresh token до 365 дней
+        remember_me = self.context.get('request') and self.context['request'].data.get('remember_me')
+        if remember_me:
+            from datetime import timedelta
+            refresh.set_exp(lifetime=timedelta(days=365))
+        
         data = {
             'refresh': str(refresh),
             'access': str(refresh.access_token),
@@ -379,8 +389,13 @@ class RegisterView(APIView):
             record_registration(fingerprint)
             
             # Генерация JWT токенов сразу после регистрации (соответствие фронтенду)
+            # При remember_me=true выдаём refresh token на 365 дней
             try:
                 refresh = RefreshToken.for_user(user)
+                remember_me = request.data.get('remember_me')
+                if remember_me:
+                    from datetime import timedelta
+                    refresh.set_exp(lifetime=timedelta(days=365))
                 access_token = str(refresh.access_token)
                 refresh_token = str(refresh)
             except Exception as token_err:
