@@ -250,13 +250,96 @@ class TeacherStatsViewSet(viewsets.ViewSet):
             } for l in upcoming
         ]
         
+        # === HOMEWORK ANALYTICS (за 30 дней) ===
+        from homework.models import Homework, StudentSubmission, Answer
+        from django.db.models import Avg, Count, Q, F
+        
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        
+        # Все ДЗ учителя
+        teacher_homeworks = Homework.objects.filter(teacher=user)
+        homework_ids = teacher_homeworks.values_list('id', flat=True)
+        
+        # Все сабмиты за 30 дней
+        submissions_30d = StudentSubmission.objects.filter(
+            homework_id__in=homework_ids,
+            submitted_at__gte=thirty_days_ago
+        )
+        
+        # 1. Среднее время проверки (дни)
+        # Включаем и проверенные, и непроверенные (непроверенные считаем до now)
+        graded_submissions = submissions_30d.filter(status='graded', graded_at__isnull=False)
+        pending_submissions = submissions_30d.filter(status='submitted', graded_at__isnull=True)
+        
+        grading_times = []
+        for sub in graded_submissions:
+            if sub.submitted_at and sub.graded_at:
+                delta = (sub.graded_at - sub.submitted_at).total_seconds() / 86400  # в днях
+                grading_times.append(delta)
+        
+        # Добавляем непроверенные как "время до сейчас"
+        now = timezone.now()
+        for sub in pending_submissions:
+            if sub.submitted_at:
+                delta = (now - sub.submitted_at).total_seconds() / 86400
+                grading_times.append(delta)
+        
+        avg_grading_days = round(sum(grading_times) / len(grading_times), 1) if grading_times else 0
+        
+        # 2. Количество непроверенных работ
+        pending_count = pending_submissions.count()
+        
+        # 3. Проверено ДЗ за 30 дней
+        graded_count_30d = graded_submissions.count()
+        
+        # 4. Автопроверено вопросов (те, где auto_score != null и teacher_score IS null)
+        auto_graded_answers = Answer.objects.filter(
+            submission__homework_id__in=homework_ids,
+            submission__submitted_at__gte=thirty_days_ago,
+            auto_score__isnull=False,
+            teacher_score__isnull=True
+        ).count()
+        
+        # Время сэкономлено: 2 минуты на вопрос
+        time_saved_minutes = auto_graded_answers * 2
+        
+        # 5. % учеников, сдающих ДЗ вовремя
+        # Считаем по ДЗ с дедлайном за последние 30 дней
+        homeworks_with_deadline = teacher_homeworks.filter(
+            deadline__gte=thirty_days_ago,
+            deadline__lte=now
+        )
+        
+        on_time_count = 0
+        total_with_deadline = 0
+        
+        for hw in homeworks_with_deadline:
+            if hw.deadline:
+                subs = StudentSubmission.objects.filter(
+                    homework=hw,
+                    submitted_at__isnull=False
+                )
+                for sub in subs:
+                    total_with_deadline += 1
+                    if sub.submitted_at <= hw.deadline:
+                        on_time_count += 1
+        
+        on_time_percent = round((on_time_count / total_with_deadline) * 100) if total_with_deadline else 0
+        
         return Response({
             'total_lessons': total_completed,
             'teaching_minutes': teaching_minutes,
             'portal_minutes': portal_minutes,
             'total_groups': total_groups,
             'total_students': total_students,
-            'upcoming_lessons': upcoming_serialized
+            'upcoming_lessons': upcoming_serialized,
+            # Новые поля для homework-аналитики
+            'avg_grading_days': avg_grading_days,
+            'pending_submissions': pending_count,
+            'graded_count_30d': graded_count_30d,
+            'auto_graded_answers': auto_graded_answers,
+            'time_saved_minutes': time_saved_minutes,
+            'on_time_percent': on_time_percent,
         })
 
     @action(detail=False, methods=['get'])

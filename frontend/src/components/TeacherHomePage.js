@@ -951,59 +951,18 @@ const TeacherHomePage = () => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN - New Year Animation + Stats */}
+        {/* RIGHT COLUMN - Extended Stats */}
         <div className="dashboard-right">
-          {/* New Year Animation Card */}
-          <div className="newyear-card">
-            <div className="newyear-scene">
-              {/* Снежинки */}
-              <div className="snowflakes">
-                {[...Array(20)].map((_, i) => (
-                  <div key={i} className="snowflake" style={{
-                    left: `${Math.random() * 100}%`,
-                    animationDelay: `${Math.random() * 5}s`,
-                    animationDuration: `${3 + Math.random() * 4}s`,
-                    opacity: 0.4 + Math.random() * 0.6,
-                    fontSize: `${8 + Math.random() * 12}px`
-                  }}>❄</div>
-                ))}
-              </div>
-              {/* Ёлка */}
-              <div className="newyear-tree">
-                <div className="tree-star">⭐</div>
-                <div className="tree-layer tree-top"></div>
-                <div className="tree-layer tree-mid"></div>
-                <div className="tree-layer tree-bottom"></div>
-                <div className="tree-trunk"></div>
-                {/* Гирлянда */}
-                <div className="tree-lights">
-                  <span className="light red"></span>
-                  <span className="light yellow"></span>
-                  <span className="light blue"></span>
-                  <span className="light green"></span>
-                </div>
-              </div>
-              {/* Подарки */}
-              <div className="newyear-gifts">
-                <div className="gift gift-1">🎁</div>
-                <div className="gift gift-2">🎁</div>
-              </div>
-            </div>
-            <div className="newyear-text">
-              <span className="newyear-greeting">С Новым Годом!</span>
-              <span className="newyear-year">2026</span>
-            </div>
-          </div>
-
-          {/* Statistics Card - Below Animation */}
-          <div className="stats-card">
+          {/* Statistics Card - Extended */}
+          <div className="stats-card stats-card-extended">
             <div className="stats-header">
               <div className="stats-icon-wrapper">
                 <IconBarChart size={20} />
               </div>
               <h3 className="stats-title">Статистика</h3>
             </div>
-            <div className="stats-grid">
+            <div className="stats-grid stats-grid-extended">
+              {/* Row 1: Основные */}
               <div className="stat-tile">
                 <div className="stat-icon">
                   <IconBook size={20} />
@@ -1038,6 +997,61 @@ const TeacherHomePage = () => {
                 <div className="stat-content">
                   <div className="stat-value">{stats?.upcoming_lessons?.length || 0}</div>
                   <div className="stat-label">Ближайшие</div>
+                </div>
+              </div>
+              
+              {/* Row 2: Homework Analytics */}
+              <div className={`stat-tile ${(stats?.avg_grading_days || 0) > 7 ? 'stat-tile-warning' : ''}`}>
+                <div className="stat-icon">
+                  <IconClock size={20} />
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">{stats?.avg_grading_days || 0} дн.</div>
+                  <div className="stat-label">Среднее время проверки</div>
+                </div>
+              </div>
+              <div className="stat-tile">
+                <div className="stat-icon">
+                  <IconTarget size={20} />
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">{stats?.pending_submissions || 0}</div>
+                  <div className="stat-label">Ждут проверки</div>
+                </div>
+              </div>
+              <div className="stat-tile">
+                <div className="stat-icon">
+                  <IconCheck size={20} />
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">{stats?.graded_count_30d || 0}</div>
+                  <div className="stat-label">Проверено за 30 дней</div>
+                </div>
+              </div>
+              <div className="stat-tile stat-tile-with-tooltip" title={`Сэкономлено времени: ${stats?.time_saved_minutes || 0} мин. (${Math.round((stats?.time_saved_minutes || 0) / 60 * 10) / 10} ч.)`}>
+                <div className="stat-icon stat-icon-auto">
+                  <IconTrendingUp size={20} />
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">{stats?.auto_graded_answers || 0}</div>
+                  <div className="stat-label">Автопроверка</div>
+                </div>
+                <div className="stat-tooltip-hint">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 16v-4M12 8h.01"/>
+                  </svg>
+                </div>
+              </div>
+              
+              {/* Row 3: Additional */}
+              <div className="stat-tile stat-tile-wide">
+                <div className="stat-icon">
+                  <IconGraduationCap size={20} />
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">{stats?.on_time_percent || 0}%</div>
+                  <div className="stat-label">Учеников сдают ДЗ вовремя</div>
                 </div>
               </div>
             </div>
@@ -2393,202 +2407,113 @@ const globalStyles = `
   }
 
   /* =====================================================
-     NEW YEAR ANIMATION CARD
+     EXTENDED STATISTICS CARD STYLES
      ===================================================== */
-  .newyear-card {
-    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 50%, #1e1b4b 100%);
-    border-radius: var(--radius-xl);
-    padding: 1.5rem;
-    position: relative;
-    overflow: hidden;
-    min-height: 200px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  .stats-card-extended {
+    min-height: auto;
   }
 
-  .newyear-scene {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
+  .stats-grid-extended {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.625rem;
   }
 
-  /* Snowflakes */
-  .snowflakes {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
+  /* Warning state for tiles (> 7 days grading time) */
+  .stat-tile-warning {
+    background: rgba(254, 202, 202, 0.4) !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
   }
 
-  .snowflake {
-    position: absolute;
-    top: -20px;
-    color: #fff;
-    animation: snowfallAnimation linear infinite;
-    text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+  .stat-tile-warning:hover {
+    background: rgba(254, 202, 202, 0.6) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
   }
 
-  @keyframes snowfallAnimation {
-    0% {
-      transform: translateY(-10px) rotate(0deg);
-      opacity: 0;
-    }
-    10% {
-      opacity: 1;
-    }
-    100% {
-      transform: translateY(220px) rotate(360deg);
-      opacity: 0.3;
-    }
+  .stat-tile-warning .stat-icon {
+    background: rgba(239, 68, 68, 0.15);
+    color: #dc2626;
   }
 
-  /* Tree */
-  .newyear-tree {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80px;
-    height: 120px;
+  /* Wide tile (spans 2 columns) */
+  .stat-tile-wide {
+    grid-column: span 2;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 1rem;
+    padding: 0.875rem 1rem;
+    min-height: 60px;
   }
 
-  .tree-star {
-    position: absolute;
-    top: -5px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 20px;
-    animation: starGlow 1.5s ease-in-out infinite alternate;
-    filter: drop-shadow(0 0 8px #fbbf24);
+  .stat-tile-wide .stat-content {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
   }
 
-  @keyframes starGlow {
-    0% { transform: translateX(-50%) scale(1); filter: drop-shadow(0 0 8px #fbbf24); }
-    100% { transform: translateX(-50%) scale(1.2); filter: drop-shadow(0 0 15px #fbbf24); }
-  }
-
-  .tree-layer {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-style: solid;
-  }
-
-  .tree-top {
-    top: 15px;
-    border-width: 0 25px 35px 25px;
-    border-color: transparent transparent #166534 transparent;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-  }
-
-  .tree-mid {
-    top: 40px;
-    border-width: 0 32px 40px 32px;
-    border-color: transparent transparent #15803d transparent;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-  }
-
-  .tree-bottom {
-    top: 65px;
-    border-width: 0 40px 45px 40px;
-    border-color: transparent transparent #14532d transparent;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-  }
-
-  .tree-trunk {
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 16px;
-    height: 18px;
-    background: linear-gradient(90deg, #78350f, #92400e, #78350f);
-    border-radius: 2px;
-  }
-
-  .tree-lights {
-    position: absolute;
-    top: 50px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 8px;
-    z-index: 10;
-  }
-
-  .tree-lights .light {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    animation: lightBlink 1s ease-in-out infinite;
-  }
-
-  .tree-lights .light.red { background: #ef4444; box-shadow: 0 0 10px #ef4444; animation-delay: 0s; }
-  .tree-lights .light.yellow { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; animation-delay: 0.25s; }
-  .tree-lights .light.blue { background: #3b82f6; box-shadow: 0 0 10px #3b82f6; animation-delay: 0.5s; }
-  .tree-lights .light.green { background: #22c55e; box-shadow: 0 0 10px #22c55e; animation-delay: 0.75s; }
-
-  @keyframes lightBlink {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.8); }
-  }
-
-  /* Gifts */
-  .newyear-gifts {
-    position: absolute;
-    bottom: 15px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 50px;
-  }
-
-  .gift {
-    font-size: 24px;
-    animation: giftBounce 2s ease-in-out infinite;
-  }
-
-  .gift-1 { animation-delay: 0s; }
-  .gift-2 { animation-delay: 0.5s; }
-
-  @keyframes giftBounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
-  }
-
-  /* Text overlay */
-  .newyear-text {
-    position: relative;
-    z-index: 10;
-    text-align: center;
-    padding-top: 1rem;
-  }
-
-  .newyear-greeting {
-    display: block;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+  .stat-tile-wide .stat-value {
     font-size: 1.25rem;
-    font-weight: 700;
-    color: #fff;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-    margin-bottom: 0.25rem;
+    margin-bottom: 0;
   }
 
-  .newyear-year {
-    display: block;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-size: 2rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #fbbf24, #f59e0b, #fbbf24);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: none;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  .stat-tile-wide .stat-label {
+    text-transform: none;
+    font-size: 0.8rem;
+  }
+
+  /* Tooltip hint icon */
+  .stat-tile-with-tooltip {
+    position: relative;
+    cursor: help;
+  }
+
+  .stat-tooltip-hint {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    color: var(--color-text-muted);
+    opacity: 0.5;
+    transition: opacity 0.2s;
+  }
+
+  .stat-tile-with-tooltip:hover .stat-tooltip-hint {
+    opacity: 1;
+    color: var(--indigo-500);
+  }
+
+  /* Auto-grading icon special color */
+  .stat-icon-auto {
+    background: linear-gradient(135deg, var(--indigo-100), #dbeafe);
+    color: var(--indigo-600);
+  }
+
+  /* Responsive adjustments for extended stats */
+  @media (max-width: 1400px) {
+    .stats-grid-extended {
+      gap: 0.5rem;
+    }
+    
+    .stat-tile {
+      padding: 0.75rem 0.5rem;
+      min-height: 80px;
+    }
+    
+    .stat-value {
+      font-size: 1.25rem;
+    }
+    
+    .stat-label {
+      font-size: 0.7rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .stats-grid-extended {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .stat-tile-wide {
+      grid-column: span 2;
+    }
   }
 `;
 
