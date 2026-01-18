@@ -1372,12 +1372,14 @@ const globalStyles = `
     background: var(--slate-50);
     border-radius: var(--radius-md);
     border: 1px solid transparent;
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .schedule-item:hover {
-    border-color: var(--indigo-200);
-    background: var(--indigo-50);
+    background: #fff;
+    border-color: rgba(79, 70, 229, 0.12);
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.1), 0 2px 6px rgba(0, 0, 0, 0.04);
+    transform: translateY(-2px);
   }
 
   .schedule-time-badge {
@@ -1608,13 +1610,14 @@ const globalStyles = `
     border-radius: var(--radius-md);
     text-decoration: none;
     border: 1px solid rgba(226, 232, 240, 0.8);
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .group-card-minimal:hover {
-    background: rgba(255, 255, 255, 0.9);
-    border-color: var(--indigo-200);
-    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.08);
+    background: #fff;
+    border-color: rgba(79, 70, 229, 0.12);
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.1), 0 2px 6px rgba(0, 0, 0, 0.04);
+    transform: translateY(-2px);
   }
 
   .group-icon-wrapper {
@@ -1778,13 +1781,15 @@ const globalStyles = `
     border-radius: var(--radius-md);
     padding: 1rem 0.75rem;
     border: 1px solid var(--color-border);
-    transition: all 0.2s;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     min-height: 90px;
   }
 
   .stat-tile:hover {
-    border-color: var(--indigo-200);
-    background: var(--indigo-50);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
+    border-color: rgba(79, 70, 229, 0.15);
+    background: #fff;
   }
 
   .stat-icon {
@@ -1806,8 +1811,8 @@ const globalStyles = `
   }
 
   .stat-value {
-    font-size: 1.5rem;
-    font-weight: 800;
+    font-size: 1.35rem;
+    font-weight: 700;
     color: var(--color-text-primary);
     line-height: 1;
     margin-bottom: 0.125rem;
@@ -1815,7 +1820,7 @@ const globalStyles = `
   }
 
   .stat-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--color-text-secondary);
     font-weight: 600;
     text-transform: uppercase;
@@ -1886,12 +1891,14 @@ const globalStyles = `
     border-radius: var(--radius-md);
     text-decoration: none;
     border: 1px solid transparent;
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .quick-action-item:hover {
-    background: var(--indigo-50);
-    border-color: var(--indigo-200);
+    background: #fff;
+    border-color: rgba(79, 70, 229, 0.12);
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.1), 0 2px 6px rgba(0, 0, 0, 0.04);
+    transform: translateY(-2px);
   }
 
   .quick-action-item:hover .quick-action-arrow {

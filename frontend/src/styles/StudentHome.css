@@ -321,27 +321,11 @@
   flex-direction: column;
 }
 
-.student-course-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.3s ease;
-}
-
 .student-course-card:hover {
-  box-shadow: 0 10px 25px rgba(79, 70, 229, 0.1);
+  box-shadow: 0 12px 28px rgba(79, 70, 229, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
   transform: translateY(-4px);
-  border-color: var(--color-primary-subtle);
-}
-
-.student-course-card:hover::before {
-  transform: scaleX(1);
+  border-color: rgba(79, 70, 229, 0.15);
+  background: #fff;
 }
 
 /* Course Card Header */
@@ -629,9 +613,10 @@
 }
 
 .student-lesson-card:hover {
-  border-color: var(--color-primary);
-  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.1);
-  transform: translateY(-2px);
+  border-color: rgba(79, 70, 229, 0.15);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
+  transform: translateY(-3px);
+  background: #fff;
 }
 
 .student-lesson-time {
