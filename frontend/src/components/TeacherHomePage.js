@@ -256,6 +256,7 @@ const TeacherHomePage = () => {
           const [statsData, lessonsData, groupsData] = await Promise.all([
             getCached('teacher:stats', async () => {
               const res = await getTeacherStatsSummary();
+              console.log('[TeacherHomePage] Stats fetched (for cache):', res.data);
               return res.data;
             }, cacheTTL),
             getCached(`teacher:lessons:${today}`, async () => {
@@ -268,6 +269,7 @@ const TeacherHomePage = () => {
             }, cacheTTL),
           ]);
           
+          console.log('[TeacherHomePage] Stats from cache:', statsData);
           setStats(statsData);
           setLessons(lessonsData);
           setGroups(groupsData);
@@ -281,6 +283,7 @@ const TeacherHomePage = () => {
           getGroups(),
         ]);
 
+        console.log('[TeacherHomePage] Stats received:', statsRes.data);
         setStats(statsRes.data);
         const lessonList = Array.isArray(lessonsRes.data) ? lessonsRes.data : lessonsRes.data.results || [];
         // Показываем все уроки на сегодня (без ограничения)
