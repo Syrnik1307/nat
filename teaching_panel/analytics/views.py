@@ -204,16 +204,22 @@ class TeacherStatsViewSet(viewsets.ViewSet):
     def summary(self, request):
         """Сводная статистика преподавателя для главной страницы."""
         user = request.user
-        if getattr(user, 'role', None) != 'teacher':
+        role = getattr(user, 'role', None)
+        # На главную "учителя" также может заходить админ (Protected allowRoles=['teacher','admin']).
+        # Если админ ведёт группы/уроки, статистика должна работать.
+        if role not in ('teacher', 'admin'):
             return Response({'detail': 'Только для преподавателей'}, status=403)
-        from schedule.models import Lesson, LessonRecording, Group
+
+        from schedule.models import Lesson, Group
         from datetime import timedelta
         
+        now = timezone.now()
+
         # Все уроки преподавателя
         lessons = Lesson.objects.filter(teacher=user)
-        
-        # Проведенные уроки (в прошлом)
-        completed_lessons = lessons.filter(start_time__lt=timezone.now())
+
+        # Проведенные уроки (у которых уже прошло время окончания)
+        completed_lessons = lessons.filter(end_time__lt=now)
         total_completed = completed_lessons.count()
         
         # Подсчет реальных минут преподавания (сумма длительности проведенных уроков)
@@ -236,11 +242,13 @@ class TeacherStatsViewSet(viewsets.ViewSet):
         total_groups = groups.count()
         
         # Уникальные студенты (из всех групп)
-        student_ids = groups.values_list('students__id', flat=True).distinct()
-        total_students = len([s for s in student_ids if s])
+        total_students = CustomUser.objects.filter(
+            role='student',
+            enrolled_groups__in=groups
+        ).distinct().count()
         
         # Предстоящие уроки
-        upcoming = lessons.filter(start_time__gte=timezone.now()).order_by('start_time')[:5]
+        upcoming = lessons.filter(start_time__gte=now).order_by('start_time')[:5]
         upcoming_serialized = [
             {
                 'id': l.id,
@@ -252,79 +260,69 @@ class TeacherStatsViewSet(viewsets.ViewSet):
         
         # === HOMEWORK ANALYTICS (за 30 дней) ===
         from homework.models import Homework, StudentSubmission, Answer
-        from django.db.models import Avg, Count, Q, F
         
-        thirty_days_ago = timezone.now() - timedelta(days=30)
-        
-        # Все ДЗ учителя
-        teacher_homeworks = Homework.objects.filter(teacher=user)
+        thirty_days_ago = now - timedelta(days=30)
+
+        # Все ДЗ учителя (исключаем шаблоны)
+        teacher_homeworks = Homework.objects.filter(teacher=user, is_template=False)
         homework_ids = teacher_homeworks.values_list('id', flat=True)
         
-        # Все сабмиты за 30 дней
+        # Все сабмиты за 30 дней (для метрик с явным окном)
         submissions_30d = StudentSubmission.objects.filter(
             homework_id__in=homework_ids,
-            submitted_at__gte=thirty_days_ago
+            submitted_at__isnull=False,
+            submitted_at__gte=thirty_days_ago,
         )
         
-        # 1. Среднее время проверки (дни)
-        # Включаем и проверенные, и непроверенные (непроверенные считаем до now)
-        graded_submissions = submissions_30d.filter(status='graded', graded_at__isnull=False)
-        pending_submissions = submissions_30d.filter(status='submitted', graded_at__isnull=True)
-        
-        grading_times = []
-        for sub in graded_submissions:
-            if sub.submitted_at and sub.graded_at:
-                delta = (sub.graded_at - sub.submitted_at).total_seconds() / 86400  # в днях
-                grading_times.append(delta)
-        
-        # Добавляем непроверенные как "время до сейчас"
-        now = timezone.now()
-        for sub in pending_submissions:
-            if sub.submitted_at:
-                delta = (now - sub.submitted_at).total_seconds() / 86400
-                grading_times.append(delta)
-        
-        avg_grading_days = round(sum(grading_times) / len(grading_times), 1) if grading_times else 0
-        
-        # 2. Количество непроверенных работ
-        pending_count = pending_submissions.count()
+        # 1. Среднее время проверки (дни) — по проверенным сдачам за последние 30 дней
+        graded_submissions_30d = submissions_30d.filter(status='graded', graded_at__isnull=False)
+        grading_duration = ExpressionWrapper(F('graded_at') - F('submitted_at'), output_field=DurationField())
+        avg_duration = graded_submissions_30d.aggregate(avg=Avg(grading_duration)).get('avg')
+        avg_grading_days = round(avg_duration.total_seconds() / 86400, 1) if avg_duration else 0
+
+        # 2. Количество непроверенных работ (все актуальные, без ограничения по 30 дням)
+        pending_count = StudentSubmission.objects.filter(
+            homework_id__in=homework_ids,
+            status='submitted',
+            graded_at__isnull=True,
+        ).count()
         
         # 3. Проверено ДЗ за 30 дней
-        graded_count_30d = graded_submissions.count()
+        graded_count_30d = graded_submissions_30d.count()
         
-        # 4. Автопроверено вопросов (те, где auto_score != null и teacher_score IS null)
+        # 4. Автопроверено вопросов (все время): auto_score выставлен системой
         auto_graded_answers = Answer.objects.filter(
             submission__homework_id__in=homework_ids,
-            submission__submitted_at__gte=thirty_days_ago,
+            submission__submitted_at__isnull=False,
             auto_score__isnull=False,
-            teacher_score__isnull=True
         ).count()
         
         # Время сэкономлено: 2 минуты на вопрос
         time_saved_minutes = auto_graded_answers * 2
         
         # 5. % учеников, сдающих ДЗ вовремя
-        # Считаем по ДЗ с дедлайном за последние 30 дней
-        homeworks_with_deadline = teacher_homeworks.filter(
+        # Берём ДЗ с дедлайном за последние 30 дней и считаем долю учеников,
+        # которые не просрочили ни одной сдачи в этом окне.
+        deadline_window_homeworks = teacher_homeworks.filter(
+            deadline__isnull=False,
             deadline__gte=thirty_days_ago,
-            deadline__lte=now
+            deadline__lte=now,
         )
-        
-        on_time_count = 0
-        total_with_deadline = 0
-        
-        for hw in homeworks_with_deadline:
-            if hw.deadline:
-                subs = StudentSubmission.objects.filter(
-                    homework=hw,
-                    submitted_at__isnull=False
-                )
-                for sub in subs:
-                    total_with_deadline += 1
-                    if sub.submitted_at <= hw.deadline:
-                        on_time_count += 1
-        
-        on_time_percent = round((on_time_count / total_with_deadline) * 100) if total_with_deadline else 0
+        deadline_submissions = StudentSubmission.objects.filter(
+            homework__in=deadline_window_homeworks,
+            submitted_at__isnull=False,
+        )
+        student_deadline_stats = list(
+            deadline_submissions.values('student').annotate(
+                total=Count('id'),
+                on_time=Count('id', filter=Q(submitted_at__lte=F('homework__deadline'))),
+            )
+        )
+        if student_deadline_stats:
+            on_time_students = sum(1 for row in student_deadline_stats if row.get('on_time') == row.get('total'))
+            on_time_percent = round((on_time_students / len(student_deadline_stats)) * 100)
+        else:
+            on_time_percent = 0
         
         return Response({
             'total_lessons': total_completed,
