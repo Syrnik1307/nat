@@ -237,6 +237,20 @@ const SubmissionReview = () => {
                 </div>
               )}
 
+              {/* Прикреплённый документ, если есть */}
+              {item.config?.attachmentUrl && (
+                <div className="sr-question-attachment">
+                  <a
+                    href={item.config.attachmentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="sr-attachment-link"
+                  >
+                    {item.config.attachmentName || 'Документ'}
+                  </a>
+                </div>
+              )}
+
               <div className="sr-student-answer">
                 <strong>Ответ ученика:</strong>
                 <div className="sr-answer-content">

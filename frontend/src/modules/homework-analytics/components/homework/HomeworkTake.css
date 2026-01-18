@@ -637,3 +637,53 @@
   }
 }
 
+/* Прикреплённый документ в вопросе */
+.ht-question-attachment {
+  margin: 1rem 0;
+}
+
+.ht-attachment-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: var(--bg-secondary, #f8f9fa);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 8px;
+  color: var(--text-primary, #1a1a2e);
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: all 0.15s ease;
+}
+
+.ht-attachment-link:hover {
+  background: #e8eef3;
+  border-color: var(--color-primary, #4F46E5);
+}
+
+.ht-attachment-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.ht-attachment-name {
+  font-weight: 500;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ht-attachment-size {
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.75rem;
+}

@@ -231,6 +231,189 @@ class HomeworkViewSet(viewsets.ModelViewSet):
             logger.error(f"Failed to upload homework file: {e}", exc_info=True)
             return Response({'detail': f'Ошибка загрузки файла: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=['post'], url_path='upload-document-direct')
+    def upload_document_direct(self, request):
+        """
+        Прямая загрузка документа на Google Drive.
+        
+        Для документов (PDF, DOCX, и т.д.) загрузка идёт сразу на GDrive,
+        чтобы не занимать место на сервере и не создавать нагрузку при
+        массовых загрузках.
+        
+        POST /api/homework/homeworks/upload-document-direct/
+        Body (multipart/form-data):
+            - file: файл документа
+        
+        Returns:
+            {
+                'url': 'https://drive.google.com/...',
+                'file_id': 'unique_file_id',
+                'file_name': 'document.pdf',
+                'mime_type': 'application/pdf',
+                'size': 12345
+            }
+        """
+        import logging
+        import os
+        import uuid
+        import tempfile
+        from django.conf import settings as django_settings
+        from django.core.cache import cache
+        from .models import HomeworkFile
+        
+        logger = logging.getLogger(__name__)
+        
+        # Проверка прав: только учителя
+        if not request.user.is_authenticated or getattr(request.user, 'role', None) != 'teacher':
+            return Response(
+                {'detail': 'Только учителя могут загружать файлы'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Получаем файл из request
+        uploaded_file = request.FILES.get('file')
+        if not uploaded_file:
+            return Response(
+                {'detail': 'Файл не найден в запросе'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        mime_type = uploaded_file.content_type
+        
+        # Разрешённые типы документов
+        allowed_document_types = [
+            # PDF
+            'application/pdf',
+            # Word
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            # Excel
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            # PowerPoint
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            # Text
+            'text/plain',
+            'text/csv',
+            # Archives (для материалов)
+            'application/zip',
+            'application/x-rar-compressed',
+            'application/x-7z-compressed',
+        ]
+        
+        if mime_type not in allowed_document_types:
+            return Response(
+                {'detail': f'Неподдерживаемый тип документа: {mime_type}. '
+                           f'Разрешены: PDF, Word, Excel, PowerPoint, TXT, CSV, ZIP'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Проверка размера файла (макс 100 MB для документов)
+        max_size = 100 * 1024 * 1024
+        if uploaded_file.size > max_size:
+            return Response(
+                {'detail': 'Файл слишком большой. Максимум: 100 MB'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            from schedule.gdrive_utils import get_gdrive_manager
+            
+            # Генерируем уникальный ID
+            file_id = uuid.uuid4().hex
+            
+            # Получаем GDrive manager
+            gdrive = get_gdrive_manager()
+            
+            # Получаем/создаём папку Uploads учителя
+            teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
+            homework_root_folder_id = teacher_folders.get('homework')
+            
+            # Кешируем uploads folder ID
+            uploads_cache_key = f"gdrive_uploads_folder_{request.user.id}"
+            uploads_folder_id = cache.get(uploads_cache_key)
+            
+            if not uploads_folder_id:
+                try:
+                    query = (
+                        f"name='Uploads' and mimeType='application/vnd.google-apps.folder' "
+                        f"and trashed=false and '{homework_root_folder_id}' in parents"
+                    )
+                    results = gdrive.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+                    items = results.get('files', [])
+                    if items:
+                        uploads_folder_id = items[0]['id']
+                    else:
+                        uploads_folder_id = gdrive.create_folder('Uploads', homework_root_folder_id)
+                except Exception:
+                    uploads_folder_id = gdrive.create_folder('Uploads', homework_root_folder_id)
+                
+                cache.set(uploads_cache_key, uploads_folder_id, 86400)
+            
+            # Сохраняем во временный файл для загрузки
+            ext = os.path.splitext(uploaded_file.name)[1].lower() or '.bin'
+            storage_name = f"hw_{file_id}_{uploaded_file.name}"
+            
+            with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+                for chunk in uploaded_file.chunks():
+                    tmp.write(chunk)
+                tmp_path = tmp.name
+            
+            try:
+                # Загружаем на GDrive
+                with open(tmp_path, 'rb') as f:
+                    result = gdrive.upload_file(
+                        f,
+                        storage_name,
+                        folder_id=uploads_folder_id,
+                        mime_type=mime_type,
+                        teacher=request.user
+                    )
+                
+                gdrive_file_id = result['file_id']
+                gdrive_url = gdrive.get_direct_download_link(gdrive_file_id)
+                
+                # Создаём запись в БД (сразу на GDrive)
+                hw_file = HomeworkFile.objects.create(
+                    id=file_id,
+                    teacher=request.user,
+                    original_name=uploaded_file.name,
+                    mime_type=mime_type,
+                    size=uploaded_file.size,
+                    storage=HomeworkFile.STORAGE_GDRIVE,
+                    gdrive_file_id=gdrive_file_id,
+                    gdrive_url=gdrive_url,
+                )
+                
+                logger.info(
+                    f"Teacher {request.user.email} uploaded document directly to GDrive: "
+                    f"{uploaded_file.name} -> {gdrive_file_id} ({uploaded_file.size} bytes)"
+                )
+                
+                return Response({
+                    'status': 'success',
+                    'url': gdrive_url,
+                    'download_url': gdrive_url,
+                    'file_id': file_id,
+                    'gdrive_file_id': gdrive_file_id,
+                    'file_name': uploaded_file.name,
+                    'mime_type': mime_type,
+                    'size': uploaded_file.size
+                }, status=status.HTTP_201_CREATED)
+                
+            finally:
+                # Удаляем временный файл
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+        
+        except Exception as e:
+            logger.error(f"Failed to upload document to GDrive: {e}", exc_info=True)
+            return Response(
+                {'detail': f'Ошибка загрузки документа: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     def _notify_students_about_new_homework(self, homework: Homework):
         # Получатели: группы (assigned_groups) + индивидуальные ученики (assigned_students)
         students = set()

@@ -426,6 +426,28 @@ export const uploadHomeworkFile = async (file, fileType, onProgress) => {
   });
 };
 
+/**
+ * Загрузка документа напрямую на Google Drive
+ * Используется для PDF, Word, Excel и других документов
+ * 
+ * @param {File} file - Файл для загрузки
+ * @param {Function} onProgress - Callback для прогресса загрузки (0-100)
+ */
+export const uploadHomeworkDocument = async (file, onProgress) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  // Документы загружаются напрямую на GDrive (дольше, но не нагружает сервер)
+  return apiClient.post('homework/upload-document-direct/', formData, {
+    headers: { 'Content-Type': undefined },
+    timeout: 300000, // 5 минут для больших документов
+    onUploadProgress: onProgress ? (progressEvent) => {
+      const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+      onProgress(percent);
+    } : undefined,
+  });
+};
+
 // Submissions
 export const getSubmissions = (params = {}) => apiClient.get('submissions/', { params });
 export const getSubmission = (id) => apiClient.get(`submissions/${id}/`);

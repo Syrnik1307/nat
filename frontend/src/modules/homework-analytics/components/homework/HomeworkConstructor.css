@@ -1728,3 +1728,128 @@ input[type="datetime-local"]:invalid {
 .hc-ai-info span:first-child {
   flex-shrink: 0;
 }
+/* ================================
+   Секция загрузки файлов (фото + документы)
+   ================================ */
+.hc-attachment-section {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hc-attachment-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.hc-attachment-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--border-light, #e2e8f0);
+  border-radius: 6px;
+  background: var(--bg-surface, #fff);
+  color: var(--text-muted, #6b7280);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.hc-attachment-upload-btn:hover {
+  border-color: var(--color-primary, #3b82f6);
+  color: var(--color-primary, #3b82f6);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.hc-attachment-image {
+  border-color: var(--border-light, #e2e8f0);
+}
+
+.hc-attachment-document {
+  border-color: var(--border-light, #e2e8f0);
+}
+
+.hc-attachment-document:hover {
+  border-color: #10b981;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+/* Превью прикреплённого документа */
+.hc-attachment-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-secondary, #f8f9fa);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 6px;
+  max-width: fit-content;
+}
+
+.hc-attachment-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hc-attachment-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+/* Цвета иконок по типам */
+.hc-attachment-icon[data-type="PDF"],
+.hc-attachment-preview:has(.hc-attachment-link[href*=".pdf"]) .hc-attachment-icon {
+  background: #fecaca;
+  color: #b91c1c;
+}
+
+.hc-attachment-link {
+  color: var(--text-main, #1a1a2e);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hc-attachment-link:hover {
+  color: var(--color-primary, #3b82f6);
+  text-decoration: underline;
+}
+
+.hc-attachment-size {
+  font-size: 0.75rem;
+  color: var(--text-light, #9ca3af);
+}
+
+.hc-attachment-remove-btn {
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-error, #ef4444);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.hc-attachment-remove-btn:hover {
+  background: #fef2f2;
+}

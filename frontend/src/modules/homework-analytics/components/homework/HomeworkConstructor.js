@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { apiClient, uploadHomeworkFile, saveAsTemplate, preloadImageCompressor } from '../../../../apiService';
+import { apiClient, uploadHomeworkFile, uploadHomeworkDocument, saveAsTemplate, preloadImageCompressor } from '../../../../apiService';
 import { Modal, Button } from '../../../../shared/components';
 import useHomeworkConstructor from '../../hooks/useHomeworkConstructor';
 import {
@@ -83,6 +83,43 @@ const normalizeUrl = (url) => {
   }
   
   return `/media/${url}`;
+};
+
+// Иконка для типа файла
+const getFileIcon = (filename) => {
+  if (!filename) return 'file';
+  const ext = filename.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'pdf':
+      return 'PDF';
+    case 'doc':
+    case 'docx':
+      return 'DOC';
+    case 'xls':
+    case 'xlsx':
+      return 'XLS';
+    case 'ppt':
+    case 'pptx':
+      return 'PPT';
+    case 'zip':
+    case 'rar':
+    case '7z':
+      return 'ZIP';
+    case 'txt':
+      return 'TXT';
+    case 'csv':
+      return 'CSV';
+    default:
+      return 'FILE';
+  }
+};
+
+// Форматирование размера файла
+const formatFileSize = (bytes) => {
+  if (!bytes || bytes === 0) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 };
 
 const HomeworkPreviewSection = ({ questions, previewQuestion, onChangePreviewQuestion }) => {
@@ -955,11 +992,12 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                             />
                           </div>
 
-                          {/* Кнопка добавления изображения */}
-                          <div className="hc-image-section">
+                          {/* Секция загрузки файлов (изображения + документы) */}
+                          <div className="hc-attachment-section">
+                            {/* Изображение */}
                             {!question.config?.imageUrl ? (
-                              <div className="hc-image-actions">
-                                <label className="hc-image-upload-btn">
+                              <div className="hc-attachment-actions">
+                                <label className="hc-attachment-upload-btn hc-attachment-image">
                                   <input
                                     type="file"
                                     accept="image/*"
@@ -1034,9 +1072,64 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                                     }
                                   }}
                                 />
-                                {uploadingImageFor === index ? (uploadProgress > 0 ? `${uploadProgress}%` : 'Загрузка...') : '+ Выбрать файл'}
-                              </label>
-                                <span className="hc-paste-hint">или Ctrl+V</span>
+                                  {uploadingImageFor === index ? (uploadProgress > 0 ? `${uploadProgress}%` : 'Загрузка...') : '+ Фото'}
+                                </label>
+                                
+                                {/* Документ */}
+                                {!question.config?.attachmentUrl && (
+                                  <label className="hc-attachment-upload-btn hc-attachment-document">
+                                    <input
+                                      type="file"
+                                      accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z"
+                                      style={{ display: 'none' }}
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+                                        
+                                        // Проверка размера (100 MB max)
+                                        if (file.size > 100 * 1024 * 1024) {
+                                          setFeedback({ type: 'error', message: 'Файл слишком большой. Максимум: 100 MB' });
+                                          e.target.value = '';
+                                          return;
+                                        }
+
+                                        setUploadingImageFor(index);
+                                        setUploadProgress(0);
+                                        try {
+                                          const response = await uploadHomeworkDocument(file, (percent) => {
+                                            setUploadProgress(percent);
+                                          });
+                                          if (response.data?.url) {
+                                            setQuestions((prev) => {
+                                              const updated = [...prev];
+                                              updated[index] = {
+                                                ...updated[index],
+                                                config: {
+                                                  ...updated[index].config,
+                                                  attachmentUrl: response.data.url,
+                                                  attachmentFileId: response.data.file_id || null,
+                                                  attachmentName: response.data.file_name || file.name,
+                                                  attachmentSize: response.data.size || file.size,
+                                                }
+                                              };
+                                              return updated;
+                                            });
+                                            setFeedback({ type: 'success', message: `Файл "${file.name}" загружен` });
+                                          }
+                                        } catch (err) {
+                                          const errMsg = err.response?.data?.detail || err.message || 'Попробуйте ещё раз';
+                                          setFeedback({ type: 'error', message: 'Ошибка загрузки: ' + errMsg });
+                                        } finally {
+                                          setUploadingImageFor(null);
+                                          setUploadProgress(0);
+                                          e.target.value = '';
+                                        }
+                                      }}
+                                    />
+                                    {uploadingImageFor === index ? (uploadProgress > 0 ? `${uploadProgress}%` : 'Загрузка...') : '+ Файл'}
+                                  </label>
+                                )}
+                                <span className="hc-paste-hint">или Ctrl+V для фото</span>
                               </div>
                             ) : (
                               <div className="hc-image-preview-inline">
@@ -1065,6 +1158,50 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                                   }}
                                 >
                                   Удалить фото
+                                </button>
+                              </div>
+                            )}
+                            
+                            {/* Прикреплённый документ */}
+                            {question.config?.attachmentUrl && (
+                              <div className="hc-attachment-preview">
+                                <div className="hc-attachment-info">
+                                  <span className="hc-attachment-icon">
+                                    {getFileIcon(question.config.attachmentName)}
+                                  </span>
+                                  <a
+                                    href={question.config.attachmentUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hc-attachment-link"
+                                  >
+                                    {question.config.attachmentName || 'Документ'}
+                                  </a>
+                                  <span className="hc-attachment-size">
+                                    {formatFileSize(question.config.attachmentSize)}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="hc-attachment-remove-btn"
+                                  onClick={() => {
+                                    setQuestions((prev) => {
+                                      const updated = [...prev];
+                                      updated[index] = {
+                                        ...updated[index],
+                                        config: {
+                                          ...updated[index].config,
+                                          attachmentUrl: null,
+                                          attachmentFileId: null,
+                                          attachmentName: null,
+                                          attachmentSize: null,
+                                        }
+                                      };
+                                      return updated;
+                                    });
+                                  }}
+                                >
+                                  Удалить
                                 </button>
                               </div>
                             )}

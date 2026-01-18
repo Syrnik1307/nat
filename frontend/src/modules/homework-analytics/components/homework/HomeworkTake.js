@@ -44,6 +44,43 @@ const normalizeUrl = (url) => {
   return `/media/${url}`;
 };
 
+// Иконка для типа файла
+const getFileIcon = (filename) => {
+  if (!filename) return 'FILE';
+  const ext = filename.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'pdf':
+      return 'PDF';
+    case 'doc':
+    case 'docx':
+      return 'DOC';
+    case 'xls':
+    case 'xlsx':
+      return 'XLS';
+    case 'ppt':
+    case 'pptx':
+      return 'PPT';
+    case 'zip':
+    case 'rar':
+    case '7z':
+      return 'ZIP';
+    case 'txt':
+      return 'TXT';
+    case 'csv':
+      return 'CSV';
+    default:
+      return 'FILE';
+  }
+};
+
+// Форматирование размера файла
+const formatFileSize = (bytes) => {
+  if (!bytes || bytes === 0) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+};
+
 const HomeworkTake = () => {
   const { notification, confirm, closeNotification, showConfirm, closeConfirm } = useNotification();
   const { id } = useParams();
@@ -301,6 +338,30 @@ const HomeworkTake = () => {
                     src={currentQuestion.config.imageUrl} 
                     alt="Изображение к вопросу"
                   />
+                </div>
+              )}
+
+              {/* Прикреплённый документ (если есть) */}
+              {currentQuestion.config?.attachmentUrl && (
+                <div className="ht-question-attachment">
+                  <a
+                    href={currentQuestion.config.attachmentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ht-attachment-link"
+                  >
+                    <span className="ht-attachment-icon">
+                      {getFileIcon(currentQuestion.config.attachmentName)}
+                    </span>
+                    <span className="ht-attachment-name">
+                      {currentQuestion.config.attachmentName || 'Документ'}
+                    </span>
+                    {currentQuestion.config.attachmentSize && (
+                      <span className="ht-attachment-size">
+                        ({formatFileSize(currentQuestion.config.attachmentSize)})
+                      </span>
+                    )}
+                  </a>
                 </div>
               )}
 
