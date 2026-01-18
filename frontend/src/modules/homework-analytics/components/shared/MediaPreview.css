@@ -19,13 +19,17 @@
 }
 
 .media-preview-icon {
-  font-size: 3rem;
+  width: 44px;
+  height: 44px;
   margin-bottom: 0.5rem;
+  color: var(--text-muted);
 }
 
 .error-icon {
-  font-size: 3rem;
+  width: 44px;
+  height: 44px;
   margin-bottom: 0.5rem;
+  color: var(--text-muted);
 }
 
 .media-preview-empty p,
@@ -60,12 +64,20 @@
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .btn-retry:hover {
   background: #E5501C;
   transform: translateY(-2px);
+}
+
+.btn-retry:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
 }
 
 /* Изображение */
