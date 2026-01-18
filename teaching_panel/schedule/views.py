@@ -2588,6 +2588,10 @@ def teacher_recordings_list(request):
     """
     Список всех записей уроков преподавателя
     GET /schedule/api/recordings/teacher/
+    
+    Просмотр списка доступен без активной подписки — учитель должен видеть
+    свои записи (пусть даже пустой список), чтобы понимать что происходит.
+    Загрузка новых записей требует подписку (проверка в add_recording).
     """
     user = request.user
     
@@ -2596,11 +2600,6 @@ def teacher_recordings_list(request):
         return Response({
             'error': 'Доступ только для преподавателей'
         }, status=status.HTTP_403_FORBIDDEN)
-    # Требуем активную подписку
-    try:
-        require_active_subscription(user)
-    except Exception as e:
-        return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
     
     try:
         # Подтягиваем записи напрямую из Zoom, если вебхук не сработал
