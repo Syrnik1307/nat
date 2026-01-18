@@ -244,28 +244,12 @@
   overflow: hidden;
 }
 
-.group-card::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform var(--transition-base);
-}
-
 .group-card:hover {
   box-shadow: 0 30px 60px -14px rgba(79, 70, 229, 0.18),
               0 0 25px rgba(79, 70, 229, 0.15);
-  transform: translateY(-4px) scale(1.02);
-  border-color: rgba(79, 70, 229, 0.2);
-}
-
-.group-card:hover::after {
-  transform: scaleX(1);
+  transform: translateY(-4px);
+  border-color: rgba(79, 70, 229, 0.15);
+  background: #fff;
 }
 
 .group-card-header {

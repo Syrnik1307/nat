@@ -1001,7 +1001,12 @@ const TeacherHomePage = () => {
               </div>
               
               {/* Row 2: Homework Analytics */}
-              <div className={`stat-tile ${(stats?.avg_grading_days || 0) > 7 ? 'stat-tile-warning' : ''}`}>
+              <div className={`stat-tile ${
+                (stats?.avg_grading_days || 0) > 14 ? 'stat-tile-danger' :
+                (stats?.avg_grading_days || 0) > 7 ? 'stat-tile-warning' :
+                (stats?.avg_grading_days || 0) > 3 ? 'stat-tile-lime' :
+                (stats?.avg_grading_days || 0) > 0 ? 'stat-tile-success' : ''
+              }`}>
                 <div className="stat-icon">
                   <IconClock size={20} />
                 </div>
@@ -2425,7 +2430,41 @@ const globalStyles = `
     gap: 0.625rem;
   }
 
-  /* Warning state for tiles (> 7 days grading time) */
+  /* Success state (< 3 days) - Green */
+  .stat-tile-success {
+    background: rgba(34, 197, 94, 0.12) !important;
+    border-color: rgba(34, 197, 94, 0.25) !important;
+  }
+
+  .stat-tile-success:hover {
+    background: rgba(34, 197, 94, 0.18) !important;
+    border-color: rgba(34, 197, 94, 0.35) !important;
+    transform: translateY(-3px);
+  }
+
+  .stat-tile-success .stat-icon {
+    background: rgba(34, 197, 94, 0.2);
+    color: #16a34a;
+  }
+
+  /* Lime state (3-7 days) - Lime/Yellow-Green */
+  .stat-tile-lime {
+    background: rgba(163, 230, 53, 0.15) !important;
+    border-color: rgba(132, 204, 22, 0.25) !important;
+  }
+
+  .stat-tile-lime:hover {
+    background: rgba(163, 230, 53, 0.22) !important;
+    border-color: rgba(132, 204, 22, 0.35) !important;
+    transform: translateY(-3px);
+  }
+
+  .stat-tile-lime .stat-icon {
+    background: rgba(132, 204, 22, 0.2);
+    color: #65a30d;
+  }
+
+  /* Warning state (7-14 days) - Light Red/Coral */
   .stat-tile-warning {
     background: rgba(254, 202, 202, 0.4) !important;
     border-color: rgba(239, 68, 68, 0.3) !important;
@@ -2434,11 +2473,33 @@ const globalStyles = `
   .stat-tile-warning:hover {
     background: rgba(254, 202, 202, 0.6) !important;
     border-color: rgba(239, 68, 68, 0.4) !important;
+    transform: translateY(-3px);
   }
 
   .stat-tile-warning .stat-icon {
     background: rgba(239, 68, 68, 0.15);
     color: #dc2626;
+  }
+
+  /* Danger state (> 14 days) - Bright Red */
+  .stat-tile-danger {
+    background: rgba(239, 68, 68, 0.2) !important;
+    border-color: rgba(220, 38, 38, 0.4) !important;
+  }
+
+  .stat-tile-danger:hover {
+    background: rgba(239, 68, 68, 0.3) !important;
+    border-color: rgba(220, 38, 38, 0.5) !important;
+    transform: translateY(-3px);
+  }
+
+  .stat-tile-danger .stat-icon {
+    background: rgba(220, 38, 38, 0.25);
+    color: #b91c1c;
+  }
+
+  .stat-tile-danger .stat-value {
+    color: #b91c1c;
   }
 
   /* Wide tile (spans 2 columns) */

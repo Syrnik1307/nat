@@ -262,27 +262,11 @@
   box-shadow: var(--shadow-xs);
 }
 
-.course-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--color-primary);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform var(--transition-base);
-}
-
-.course-card:hover::before {
-  transform: scaleX(1);
-}
-
 .course-card:hover {
   transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--border-medium);
+  box-shadow: 0 12px 28px rgba(79, 70, 229, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
+  border-color: rgba(79, 70, 229, 0.15);
+  background: #fff;
 }
 
 .course-card h3 {
