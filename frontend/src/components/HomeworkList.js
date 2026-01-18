@@ -407,7 +407,7 @@ const HomeworkList = () => {
                         {hw.maxScore && (
                           <span className="hw-meta-item hw-meta-score">
                             <IconStar size={14} />
-                            {hw.score !== undefined ? `${hw.score}/${hw.maxScore}` : `Макс: ${hw.maxScore}`}
+                            {hw.score != null ? `${hw.score}/${hw.maxScore}` : `Макс: ${hw.maxScore}`}
                           </span>
                         )}
                       </div>
