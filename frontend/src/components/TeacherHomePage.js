@@ -1036,7 +1036,7 @@ const TeacherHomePage = () => {
                   <div className="stat-label">Проверено за 30 дней</div>
                 </div>
               </div>
-              <div className="stat-tile stat-tile-with-tooltip" title={`Сэкономлено времени: ${stats?.time_saved_minutes || 0} мин. (${Math.round((stats?.time_saved_minutes || 0) / 60 * 10) / 10} ч.)`}>
+              <div className="stat-tile stat-tile-with-tooltip">
                 <div className="stat-icon stat-icon-auto">
                   <IconTrendingUp size={20} />
                 </div>
@@ -1044,11 +1044,23 @@ const TeacherHomePage = () => {
                   <div className="stat-value">{stats?.auto_graded_answers || 0}</div>
                   <div className="stat-label">Автопроверка</div>
                 </div>
-                <div className="stat-tooltip-hint">
+                <button
+                  type="button"
+                  className="stat-tooltip-hint"
+                  aria-label={`Сэкономлено времени: ${stats?.time_saved_minutes || 0} мин.`}
+                >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="10"/>
                     <path d="M12 16v-4M12 8h.01"/>
                   </svg>
+                </button>
+                <div className="stat-tooltip" role="tooltip">
+                  <div className="stat-tooltip-title">Сэкономлено времени</div>
+                  <div className="stat-tooltip-value">
+                    {stats?.time_saved_minutes || 0} мин.
+                    <span className="stat-tooltip-sep">•</span>
+                    {Math.round(((stats?.time_saved_minutes || 0) / 60) * 10) / 10} ч.
+                  </div>
                 </div>
               </div>
               
@@ -2534,21 +2546,92 @@ const globalStyles = `
   /* Tooltip hint icon */
   .stat-tile-with-tooltip {
     position: relative;
-    cursor: help;
   }
 
   .stat-tooltip-hint {
     position: absolute;
     top: 0.5rem;
     right: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    border: 1px solid rgba(99, 102, 241, 0.18);
+    background: rgba(255, 255, 255, 0.7);
     color: var(--color-text-muted);
     opacity: 0.5;
-    transition: opacity 0.2s;
+    transition:
+      opacity var(--duration-fast, 180ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)),
+      transform var(--duration-fast, 180ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)),
+      background var(--duration-fast, 180ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1));
+    cursor: help;
+  }
+
+  .stat-tooltip-hint:hover {
+    transform: translateY(-1px);
+  }
+
+  .stat-tooltip-hint:focus {
+    outline: none;
+  }
+
+  .stat-tooltip-hint:focus-visible {
+    opacity: 1;
+    color: var(--indigo-500);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
   }
 
   .stat-tile-with-tooltip:hover .stat-tooltip-hint {
     opacity: 1;
     color: var(--indigo-500);
+  }
+
+  .stat-tooltip {
+    position: absolute;
+    top: 2.4rem;
+    right: 0.5rem;
+    width: 220px;
+    padding: 0.6rem 0.75rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(99, 102, 241, 0.14);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.14);
+    z-index: var(--z-tooltip, 1070);
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    pointer-events: none;
+    transition:
+      opacity var(--duration-normal, 280ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)),
+      transform var(--duration-normal, 280ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  }
+
+  .stat-tooltip-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--color-text, #0f172a);
+    margin-bottom: 0.15rem;
+  }
+
+  .stat-tooltip-value {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+
+  .stat-tooltip-sep {
+    opacity: 0.6;
+  }
+
+  .stat-tile-with-tooltip:hover .stat-tooltip,
+  .stat-tile-with-tooltip:focus-within .stat-tooltip {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 
   /* Auto-grading icon special color */
