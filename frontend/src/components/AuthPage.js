@@ -66,8 +66,9 @@ const AuthPage = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => {
-    // Инициализируем из localStorage
-    return localStorage.getItem('remember_me') === 'true';
+    // По умолчанию включено, если явно не отключено
+    const stored = localStorage.getItem('remember_me');
+    return stored === null ? true : stored === 'true';
   });
   
   // === УВЕДОМЛЕНИЯ ===
@@ -355,7 +356,8 @@ const AuthPage = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         phone: formData.phone,
-        role
+        role,
+        rememberMe
       });
       const resolvedRole = await register({
         email: formData.email.trim().toLowerCase(),
@@ -365,6 +367,7 @@ const AuthPage = () => {
         phone: formData.phone.trim(),
         role,
         birthDate: null,
+        rememberMe,
       });
       console.log('✅ Регистрация завершена. Роль из токена:', resolvedRole);
       showNotification('success', 'Регистрация выполнена', 'Добро пожаловать!');
@@ -701,6 +704,20 @@ const AuthPage = () => {
                 >
                   Забыли пароль?
                 </button>
+              </div>
+            )}
+
+            {mode === 'register' && (
+              <div className="form-options">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    disabled={loading || blocked}
+                  />
+                  <span>Запомнить меня</span>
+                </label>
               </div>
             )}
 
