@@ -246,6 +246,63 @@
   cursor: not-allowed;
 }
 
+/* Notes */
+.sm-note-excerpt {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sm-note-description {
+  margin-bottom: 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+}
+
+.sm-note-content {
+  color: var(--text-main);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.sm-note-content h2 {
+  font-size: 20px;
+  margin: 0.6em 0 0.4em;
+}
+
+.sm-note-content h3 {
+  font-size: 17px;
+  margin: 0.6em 0 0.35em;
+}
+
+.sm-note-content blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+  color: var(--text-secondary);
+  margin: 0.75rem 0;
+}
+
+.sm-note-content img {
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  margin: 0.75rem 0;
+}
+
+.sm-note-content a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.sm-note-content a:hover {
+  text-decoration: underline;
+}
+
 /* Empty State */
 .sm-empty-state {
   display: flex;

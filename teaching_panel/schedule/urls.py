@@ -84,6 +84,7 @@ urlpatterns = [
     
     # Notes & Documents API
     path('api/materials/add-notes/', views.add_notes, name='add_notes'),
+    path('api/materials/upload-asset/', views.upload_material_asset, name='upload_material_asset'),
     path('api/materials/add-document/', views.add_document, name='add_document'),    
     # Calendar export / subscription (iCal) для Google, Яндекс, Apple Calendar
     path('api/calendar/export/ics/', calendar_views.export_calendar_ics, name='calendar_export_ics'),

@@ -2383,7 +2383,8 @@ def zoom_webhook_receiver(request):
 # API ENDPOINTS ДЛЯ ЗАПИСЕЙ УРОКОВ
 # ============================================================================
 
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.parsers import MultiPartParser, FormParser
 from .serializers import LessonRecordingSerializer
 
 
@@ -3230,6 +3231,9 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
         lesson_id = self.request.query_params.get('lesson_id')
         if lesson_id:
             qs = qs.filter(lesson_id=lesson_id)
+
+        # Документы/ссылки/отдельные изображения убраны из продукта
+        qs = qs.exclude(material_type__in=['document', 'link', 'image'])
         
         return qs.order_by('order', '-uploaded_at')
     
@@ -3242,6 +3246,12 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
             )
         
         data = request.data.copy()
+
+        if data.get('material_type') in ('document', 'link', 'image'):
+            return Response(
+                {'error': 'Раздел "Документы" отключен. Используйте конспекты и Miro.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -3257,6 +3267,12 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error': 'Нельзя редактировать чужие материалы'},
                 status=status.HTTP_403_FORBIDDEN
+            )
+
+        if request.data.get('material_type') in ('document', 'link', 'image'):
+            return Response(
+                {'error': 'Раздел "Документы" отключен. Используйте конспекты и Miro.'},
+                status=status.HTTP_400_BAD_REQUEST
             )
         
         return super().update(request, *args, **kwargs)
@@ -3290,15 +3306,14 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        materials = LessonMaterial.objects.filter(uploaded_by=request.user).order_by('order', '-uploaded_at')
+        materials = LessonMaterial.objects.filter(uploaded_by=request.user).exclude(
+            material_type__in=['document', 'link', 'image']
+        ).order_by('order', '-uploaded_at')
         
         # Группируем по типу
         grouped = {
             'miro': [],
             'notes': [],
-            'document': [],
-            'link': [],
-            'image': [],
         }
         
         for material in materials:
@@ -3311,8 +3326,6 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
             'total': materials.count(),
             'miro_count': len(grouped['miro']),
             'notes_count': len(grouped['notes']),
-            'documents_count': len(grouped['document']),
-            'links_count': len(grouped['link']),
         }
         
         return Response({
@@ -3338,15 +3351,14 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
             Q(visibility='all_teacher_groups', lesson__group__in=student_groups) |
             Q(visibility='custom_groups', allowed_groups__in=student_groups) |
             Q(visibility='custom_students', allowed_students=request.user)
+        ).exclude(
+            material_type__in=['document', 'link', 'image']
         ).select_related('lesson', 'uploaded_by', 'lesson__group').distinct().order_by('-uploaded_at')
         
         # Группируем по типу
         grouped = {
             'miro': [],
             'notes': [],
-            'document': [],
-            'link': [],
-            'image': [],
         }
         
         for material in materials:
@@ -3364,8 +3376,6 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
             'total': materials.count(),
             'miro_count': len(grouped['miro']),
             'notes_count': len(grouped['notes']),
-            'documents_count': len(grouped['document']),
-            'links_count': len(grouped['link']),
         }
         
         return Response({
@@ -3666,15 +3676,101 @@ def add_notes(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def upload_material_asset(request):
+    """Загрузка картинок/файлов для конспектов (RichTextEditor).
+
+    POST /schedule/api/materials/upload-asset/
+    multipart/form-data:
+      - file: File
+      - asset_type: 'image' | 'file' (optional)
+    """
+    if request.user.role != 'teacher':
+        return Response(
+            {'error': 'Только учителя могут загружать файлы'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    uploaded = request.FILES.get('file')
+    if not uploaded:
+        return Response({'error': 'Файл не найден в запросе'}, status=status.HTTP_400_BAD_REQUEST)
+
+    asset_type = (request.data.get('asset_type') or '').strip().lower()
+    mime_type = getattr(uploaded, 'content_type', '') or 'application/octet-stream'
+    if asset_type not in ('image', 'file'):
+        asset_type = 'image' if mime_type.startswith('image/') else 'file'
+
+    max_size = 50 * 1024 * 1024
+    if uploaded.size and uploaded.size > max_size:
+        return Response({'error': 'Файл слишком большой. Максимум: 50 MB'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from django.conf import settings
+    from django.utils.text import get_valid_filename
+    import uuid
+
+    original_name = os.path.basename(getattr(uploaded, 'name', '') or 'file')
+    safe_original = get_valid_filename(original_name)
+    file_id = uuid.uuid4().hex
+    safe_name = f"{file_id}_{safe_original}"
+
+    # Пытаемся загрузить в Google Drive (если включено), иначе в MEDIA_ROOT
+    if getattr(settings, 'USE_GDRIVE_STORAGE', False):
+        try:
+            from .gdrive_utils import get_gdrive_manager
+            gdrive = get_gdrive_manager()
+            teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
+            materials_folder_id = teacher_folders.get('materials', teacher_folders.get('root'))
+
+            result = gdrive.upload_file(
+                file_path_or_object=uploaded,
+                file_name=safe_name,
+                folder_id=materials_folder_id,
+                mime_type=mime_type,
+                teacher=request.user
+            )
+
+            gdrive_file_id = result.get('file_id')
+            if not gdrive_file_id:
+                raise ValueError('Google Drive upload did not return file_id')
+
+            if asset_type == 'image':
+                url = f"https://drive.google.com/uc?export=view&id={gdrive_file_id}"
+            else:
+                url = gdrive.get_direct_download_link(gdrive_file_id)
+
+            return Response({
+                'url': url,
+                'file_name': original_name,
+                'size_bytes': int(uploaded.size or 0),
+                'mime_type': mime_type,
+                'gdrive_file_id': gdrive_file_id,
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.exception(f"Failed to upload material asset to GDrive, falling back to local: {e}")
+
+    from django.core.files.storage import default_storage
+    upload_dir = 'materials_assets'
+    stored_path = default_storage.save(f"{upload_dir}/{safe_name}", uploaded)
+    url = f"{settings.MEDIA_URL}{stored_path}"
+
+    return Response({
+        'url': url,
+        'file_name': original_name,
+        'size_bytes': int(uploaded.size or 0),
+        'mime_type': mime_type,
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def add_document(request):
     """
     Добавить документ/ссылку как материал урока.
     """
-    if request.user.role != 'teacher':
-        return Response(
-            {'error': 'Только учителя могут добавлять документы'},
-            status=status.HTTP_403_FORBIDDEN
-        )
+    return Response(
+        {'error': 'Раздел "Документы" отключен. Используйте конспекты и Miro.'},
+        status=status.HTTP_410_GONE
+    )
     
     title = request.data.get('title', '').strip()
     file_url = request.data.get('file_url', '').strip()

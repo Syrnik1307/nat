@@ -10,6 +10,7 @@ export { default as Select } from './Select';
 export { default as TimePicker } from './TimePicker';
 export { default as DatePicker } from './DatePicker';
 export { default as Toast, ToastContainer } from './Toast';
+export { default as RichTextEditor } from './RichTextEditor';
 
 // Skeleton loaders
 export { 

@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './StudentMaterialsPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
-import { ToastContainer } from '../../shared/components';
+import { ToastContainer, Modal } from '../../shared/components';
+import DOMPurify from 'dompurify';
 
 /**
  * StudentMaterialsPage - Страница материалов для ученика
- * Miro доски, конспекты и документы от учителя
+ * Miro доски и конспекты от учителя
  */
 function StudentMaterialsPage() {
   const [activeTab, setActiveTab] = useState('miro');
   
   // Данные
-  const [materials, setMaterials] = useState({ miro: [], notes: [], document: [], link: [] });
+  const [materials, setMaterials] = useState({ miro: [], notes: [] });
+
+  // Notes preview
+  const [selectedNote, setSelectedNote] = useState(null);
   
   // UI State
   const [loading, setLoading] = useState(true);
@@ -21,16 +25,16 @@ function StudentMaterialsPage() {
   // Toasts
   const [toasts, setToasts] = useState([]);
 
+  const removeToast = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   const addToast = useCallback((toast) => {
     const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, ...toast }]);
     setTimeout(() => removeToast(id), 5000);
     return id;
-  }, []);
-
-  const removeToast = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
+  }, [removeToast]);
 
   useEffect(() => {
     loadMaterials();
@@ -41,29 +45,48 @@ function StudentMaterialsPage() {
     try {
       const response = await api.get('lesson-materials/student_materials/', withScheduleApiBase());
       if (response.data.materials) {
-        setMaterials(response.data.materials);
+        const m = response.data.materials;
+        setMaterials({
+          miro: m.miro || [],
+          notes: m.notes || [],
+        });
       }
     } catch (err) {
       console.error('Error loading materials:', err);
       setError('Не удалось загрузить материалы');
+      addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось загрузить материалы' });
     } finally {
       setLoading(false);
     }
   };
 
   const handleViewMaterial = async (material) => {
-    // Открыть материал
-    const url = material.miro_board_url || material.file_url || material.miro_embed_url;
-    if (url) {
-      window.open(url, '_blank');
+    const isMiro = material.material_type === 'miro';
+    if (isMiro) {
+      const url = material.miro_board_url || material.miro_embed_url;
+      if (url) window.open(url, '_blank');
+      try {
+        await api.post(`lesson-materials/${material.id}/view/`, {}, withScheduleApiBase());
+      } catch (err) {
+        console.error('Error tracking view:', err);
+      }
+      return;
     }
-    
-    // Трекинг просмотра
+
+    // Notes: открываем внутри модалки
+    setSelectedNote(material);
     try {
       await api.post(`lesson-materials/${material.id}/view/`, {}, withScheduleApiBase());
     } catch (err) {
       console.error('Error tracking view:', err);
     }
+  };
+
+  const stripHtml = (html) => {
+    if (!html) return '';
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return (div.textContent || div.innerText || '').trim();
   };
 
   const getFilteredMaterials = (list) => {
@@ -78,15 +101,13 @@ function StudentMaterialsPage() {
   };
 
   const tabItems = [
-    { key: 'miro', label: 'Miro доски', count: materials.miro?.length || 0 },
+    { key: 'miro', label: 'Miro', count: materials.miro?.length || 0 },
     { key: 'notes', label: 'Конспекты', count: materials.notes?.length || 0 },
-    { key: 'document', label: 'Документы', count: materials.document?.length || 0 },
-    { key: 'link', label: 'Ссылки', count: materials.link?.length || 0 },
   ];
 
   const renderMaterialCard = (material) => {
     const isMiro = material.material_type === 'miro';
-    const url = material.miro_board_url || material.file_url;
+    const url = material.miro_board_url || material.miro_embed_url;
     
     return (
       <div key={material.id} className="sm-material-card">
@@ -136,11 +157,18 @@ function StudentMaterialsPage() {
               </span>
             )}
           </div>
+
+          {!isMiro && material.content && (
+            <div className="sm-note-excerpt">
+              {stripHtml(material.content).substring(0, 220)}
+              {stripHtml(material.content).length > 220 ? '…' : ''}
+            </div>
+          )}
           
           <button 
             className="sm-open-btn"
             onClick={() => handleViewMaterial(material)}
-            disabled={!url}
+            disabled={isMiro && !url}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
@@ -196,9 +224,7 @@ function StudentMaterialsPage() {
   }
 
   const totalCount = (materials.miro?.length || 0) + 
-                     (materials.notes?.length || 0) + 
-                     (materials.document?.length || 0) + 
-                     (materials.link?.length || 0);
+                     (materials.notes?.length || 0);
 
   return (
     <div className="sm-page">
@@ -257,6 +283,23 @@ function StudentMaterialsPage() {
       </div>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {selectedNote && (
+        <Modal
+          isOpen={true}
+          onClose={() => setSelectedNote(null)}
+          title={selectedNote.title}
+          size="large"
+        >
+          {selectedNote.description && (
+            <div className="sm-note-description">{selectedNote.description}</div>
+          )}
+          <div
+            className="sm-note-content"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedNote.content || '') }}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

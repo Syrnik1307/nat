@@ -1,31 +1,31 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './TeacherMaterialsPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
-import { ConfirmModal, Select, ToastContainer, Modal } from '../../shared/components';
+import { ConfirmModal, Select, ToastContainer, Modal, RichTextEditor } from '../../shared/components';
 
 /**
  * TeacherMaterialsPage - Страница материалов урока
- * Записи, доски Miro, конспекты и документы
+ * Доски Miro и конспекты
  */
 function TeacherMaterialsPage() {
   const [activeTab, setActiveTab] = useState('miro');
   
   // Данные
-  const [materials, setMaterials] = useState({ miro: [], notes: [], document: [], link: [] });
+  const [materials, setMaterials] = useState({ miro: [], notes: [] });
   const [lessons, setLessons] = useState([]);
   const [groups, setGroups] = useState([]);
   const [students, setStudents] = useState([]);
   
   // UI State
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
   
   // Модальные окна
   const [showAddMiroModal, setShowAddMiroModal] = useState(false);
   const [showAddNotesModal, setShowAddNotesModal] = useState(false);
-  const [showAddDocModal, setShowAddDocModal] = useState(false);
+  const [previewNote, setPreviewNote] = useState(null);
+  const [editingNoteId, setEditingNoteId] = useState(null);
   
   // Формы
   const [miroForm, setMiroForm] = useState({
@@ -47,17 +47,6 @@ function TeacherMaterialsPage() {
     allowed_groups: [],
     allowed_students: []
   });
-  
-  const [docForm, setDocForm] = useState({
-    title: '',
-    file_url: '',
-    description: '',
-    lesson_id: '',
-    material_type: 'document',
-    visibility: 'all_teacher_groups',
-    allowed_groups: [],
-    allowed_students: []
-  });
 
   // Toasts & Confirm
   const [toasts, setToasts] = useState([]);
@@ -67,16 +56,16 @@ function TeacherMaterialsPage() {
   const [miroStatus, setMiroStatus] = useState(null);
   const [miroBoards, setMiroBoards] = useState([]);
 
+  const removeToast = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   const addToast = useCallback((toast) => {
     const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, ...toast }]);
     setTimeout(() => removeToast(id), 5000);
     return id;
-  }, []);
-
-  const removeToast = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
+  }, [removeToast]);
 
   useEffect(() => {
     loadAllData();
@@ -107,7 +96,7 @@ function TeacherMaterialsPage() {
       ]);
     } catch (err) {
       console.error('Error loading data:', err);
-      setError('Не удалось загрузить данные');
+      addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось загрузить данные' });
     } finally {
       setLoading(false);
     }
@@ -117,10 +106,47 @@ function TeacherMaterialsPage() {
     try {
       const response = await api.get('lesson-materials/teacher_materials/', withScheduleApiBase());
       if (response.data.materials) {
-        setMaterials(response.data.materials);
+        const m = response.data.materials;
+        setMaterials({
+          miro: m.miro || [],
+          notes: m.notes || [],
+        });
       }
     } catch (err) {
       console.error('Error loading materials:', err);
+    }
+  };
+
+  const uploadAsset = async (file, assetType) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('asset_type', assetType);
+
+    const response = await api.post('materials/upload-asset/', formData, {
+      ...withScheduleApiBase(),
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+
+    return response.data;
+  };
+
+  const uploadImage = async (file) => {
+    try {
+      const data = await uploadAsset(file, 'image');
+      return { url: data?.url, name: data?.file_name };
+    } catch (err) {
+      addToast({ type: 'error', title: 'Ошибка', message: err.response?.data?.error || err.response?.data?.detail || 'Не удалось загрузить изображение' });
+      return null;
+    }
+  };
+
+  const uploadFile = async (file) => {
+    try {
+      const data = await uploadAsset(file, 'file');
+      return { url: data?.url, name: data?.file_name };
+    } catch (err) {
+      addToast({ type: 'error', title: 'Ошибка', message: err.response?.data?.error || err.response?.data?.detail || 'Не удалось загрузить файл' });
+      return null;
     }
   };
 
@@ -253,38 +279,66 @@ function TeacherMaterialsPage() {
     }
   };
 
-  const handleAddNotes = async (e) => {
+  const resetNotesForm = () => {
+    setNotesForm({ title: '', content: '', description: '', lesson_id: '', visibility: 'all_teacher_groups', allowed_groups: [], allowed_students: [] });
+    setEditingNoteId(null);
+  };
+
+  const handleSaveNotes = async (e) => {
     e.preventDefault();
     if (!notesForm.title) {
       addToast({ type: 'warning', title: 'Внимание', message: 'Введите название' });
       return;
     }
     try {
-      await api.post('materials/add-notes/', notesForm, withScheduleApiBase());
-      addToast({ type: 'success', title: 'Готово', message: 'Конспект добавлен' });
+      if (editingNoteId) {
+        await api.patch(`lesson-materials/${editingNoteId}/`, {
+          title: notesForm.title,
+          description: notesForm.description,
+          content: notesForm.content,
+          lesson: notesForm.lesson_id || null,
+          visibility: notesForm.visibility,
+          allowed_groups: notesForm.allowed_groups,
+          allowed_students: notesForm.allowed_students,
+        }, withScheduleApiBase());
+        addToast({ type: 'success', title: 'Готово', message: 'Конспект обновлен' });
+      } else {
+        await api.post('materials/add-notes/', notesForm, withScheduleApiBase());
+        addToast({ type: 'success', title: 'Готово', message: 'Конспект добавлен' });
+      }
       setShowAddNotesModal(false);
-      setNotesForm({ title: '', content: '', description: '', lesson_id: '', visibility: 'all_teacher_groups', allowed_groups: [], allowed_students: [] });
+      resetNotesForm();
       loadMaterials();
     } catch (err) {
       addToast({ type: 'error', title: 'Ошибка', message: err.response?.data?.error || 'Не удалось добавить' });
     }
   };
 
-  const handleAddDocument = async (e) => {
-    e.preventDefault();
-    if (!docForm.title || !docForm.file_url) {
-      addToast({ type: 'warning', title: 'Внимание', message: 'Заполните название и ссылку' });
-      return;
-    }
-    try {
-      await api.post('materials/add-document/', docForm, withScheduleApiBase());
-      addToast({ type: 'success', title: 'Готово', message: 'Документ добавлен' });
-      setShowAddDocModal(false);
-      setDocForm({ title: '', file_url: '', description: '', lesson_id: '', material_type: 'document', visibility: 'all_teacher_groups', allowed_groups: [], allowed_students: [] });
-      loadMaterials();
-    } catch (err) {
-      addToast({ type: 'error', title: 'Ошибка', message: err.response?.data?.error || 'Не удалось добавить' });
-    }
+  const openCreateNotes = () => {
+    setEditingNoteId(null);
+    resetNotesForm();
+    setShowAddNotesModal(true);
+  };
+
+  const openEditNotes = (note) => {
+    setEditingNoteId(note.id);
+    setNotesForm({
+      title: note.title || '',
+      content: note.content || '',
+      description: note.description || '',
+      lesson_id: note.lesson_info?.id ? String(note.lesson_info.id) : '',
+      visibility: note.visibility || 'all_teacher_groups',
+      allowed_groups: (note.access_groups || []).map(g => g.id),
+      allowed_students: (note.access_students || []).map(s => s.id),
+    });
+    setShowAddNotesModal(true);
+  };
+
+  const stripHtml = (html) => {
+    if (!html) return '';
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return (div.textContent || div.innerText || '').trim();
   };
 
   const handleDeleteMaterial = async (materialId) => {
@@ -349,8 +403,7 @@ function TeacherMaterialsPage() {
 
   const tabs = [
     { id: 'miro', label: 'Miro', count: materials.miro?.length || 0 },
-    { id: 'notes', label: 'Конспекты', count: materials.notes?.length || 0 },
-    { id: 'documents', label: 'Документы', count: (materials.document?.length || 0) + (materials.link?.length || 0) }
+    { id: 'notes', label: 'Конспекты', count: materials.notes?.length || 0 }
   ];
 
   if (loading) {
@@ -372,18 +425,15 @@ function TeacherMaterialsPage() {
       <header className="materials-header">
         <div className="header-left">
           <h1>Материалы</h1>
-          <p className="subtitle">Доски Miro, конспекты и документы</p>
+          <p className="subtitle">Доски Miro и конспекты</p>
         </div>
         
         <div className="header-actions">
           <button className="btn btn-secondary" onClick={() => setShowAddMiroModal(true)}>
             Добавить Miro
           </button>
-          <button className="btn btn-secondary" onClick={() => setShowAddNotesModal(true)}>
+          <button className="btn btn-secondary" onClick={openCreateNotes}>
             Добавить конспект
-          </button>
-          <button className="btn btn-secondary" onClick={() => setShowAddDocModal(true)}>
-            Добавить документ
           </button>
         </div>
       </header>
@@ -549,7 +599,7 @@ function TeacherMaterialsPage() {
               <div className="empty-state">
                 <h3>Нет конспектов</h3>
                 <p>Создайте конспект урока для учеников</p>
-                <button className="btn btn-primary" onClick={() => setShowAddNotesModal(true)}>
+                <button className="btn btn-primary" onClick={openCreateNotes}>
                   Создать конспект
                 </button>
               </div>
@@ -561,7 +611,7 @@ function TeacherMaterialsPage() {
                     {note.description && <p className="card-desc">{note.description}</p>}
                     {note.content && (
                       <div className="note-preview">
-                        {note.content.substring(0, 150)}...
+                        {stripHtml(note.content).substring(0, 150)}...
                       </div>
                     )}
                     <div className="card-meta">
@@ -571,46 +621,13 @@ function TeacherMaterialsPage() {
                     </div>
                   </div>
                   <div className="card-actions">
-                    <button className="btn btn-sm btn-secondary">Редактировать</button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteMaterial(note.id)}>
-                      Удалить
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* Documents Tab */}
-        {activeTab === 'documents' && (
-          <div className="materials-grid">
-            {filterBySearch([...(materials.document || []), ...(materials.link || [])]).length === 0 ? (
-              <div className="empty-state">
-                <h3>Нет документов</h3>
-                <p>Добавьте ссылки на документы или презентации</p>
-                <button className="btn btn-primary" onClick={() => setShowAddDocModal(true)}>
-                  Добавить документ
-                </button>
-              </div>
-            ) : (
-              filterBySearch([...(materials.document || []), ...(materials.link || [])]).map(doc => (
-                <div key={doc.id} className="material-card">
-                  <div className="card-body">
-                    <div className="card-type">{doc.material_type === 'link' ? 'Ссылка' : 'Документ'}</div>
-                    <h4>{doc.title}</h4>
-                    {doc.description && <p className="card-desc">{doc.description}</p>}
-                    <div className="card-meta">
-                      {doc.file_size_mb && <span>{doc.file_size_mb} MB</span>}
-                      {doc.lesson_info && <span>{doc.lesson_info.title}</span>}
-                      <span>{doc.views_count || 0} просмотров</span>
-                    </div>
-                  </div>
-                  <div className="card-actions">
-                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-secondary">
+                    <button className="btn btn-sm btn-secondary" onClick={() => setPreviewNote(note)}>
                       Открыть
-                    </a>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteMaterial(doc.id)}>
+                    </button>
+                    <button className="btn btn-sm btn-secondary" onClick={() => openEditNotes(note)}>
+                      Редактировать
+                    </button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteMaterial(note.id)}>
                       Удалить
                     </button>
                   </div>
@@ -735,8 +752,16 @@ function TeacherMaterialsPage() {
 
       {/* Add Notes Modal */}
       {showAddNotesModal && (
-        <Modal isOpen={true} onClose={() => setShowAddNotesModal(false)} title="Создать конспект" size="large">
-          <form onSubmit={handleAddNotes} className="modal-form">
+        <Modal
+          isOpen={true}
+          onClose={() => {
+            setShowAddNotesModal(false);
+            resetNotesForm();
+          }}
+          title={editingNoteId ? 'Редактировать конспект' : 'Создать конспект'}
+          size="large"
+        >
+          <form onSubmit={handleSaveNotes} className="modal-form">
             <div className="form-group">
               <label>Название *</label>
               <input
@@ -760,12 +785,14 @@ function TeacherMaterialsPage() {
             
             <div className="form-group">
               <label>Содержание</label>
-              <textarea
+              <RichTextEditor
                 value={notesForm.content}
-                onChange={(e) => setNotesForm({...notesForm, content: e.target.value})}
-                placeholder="Текст конспекта (поддерживается Markdown)"
-                rows={10}
+                onChange={(html) => setNotesForm({ ...notesForm, content: html })}
+                placeholder="Напишите конспект…"
+                onUploadImage={uploadImage}
+                onUploadFile={uploadFile}
               />
+              <small>Можно вставлять изображения и прикреплять файлы прямо в текст</small>
             </div>
             
             <div className="form-row">
@@ -834,141 +861,32 @@ function TeacherMaterialsPage() {
             )}
             
             <div className="modal-footer">
-              <button type="button" onClick={() => setShowAddNotesModal(false)} className="btn btn-secondary">
+              <button type="button" onClick={() => {
+                setShowAddNotesModal(false);
+                resetNotesForm();
+              }} className="btn btn-secondary">
                 Отмена
               </button>
               <button type="submit" className="btn btn-primary">
-                Сохранить
+                {editingNoteId ? 'Сохранить изменения' : 'Сохранить'}
               </button>
             </div>
           </form>
         </Modal>
       )}
 
-      {/* Add Document Modal */}
-      {showAddDocModal && (
-        <Modal isOpen={true} onClose={() => setShowAddDocModal(false)} title="Добавить документ">
-          <form onSubmit={handleAddDocument} className="modal-form">
-            <div className="form-group">
-              <label>Название *</label>
-              <input
-                type="text"
-                value={docForm.title}
-                onChange={(e) => setDocForm({...docForm, title: e.target.value})}
-                placeholder="Название документа"
-                required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>Ссылка *</label>
-              <input
-                type="url"
-                value={docForm.file_url}
-                onChange={(e) => setDocForm({...docForm, file_url: e.target.value})}
-                placeholder="https://..."
-                required
-              />
-              <small>Google Drive, Dropbox или любая другая ссылка</small>
-            </div>
-            
-            <div className="form-group">
-              <label>Описание</label>
-              <textarea
-                value={docForm.description}
-                onChange={(e) => setDocForm({...docForm, description: e.target.value})}
-                placeholder="Краткое описание"
-                rows={2}
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>Тип</label>
-              <Select
-                value={docForm.material_type}
-                onChange={(e) => setDocForm({...docForm, material_type: e.target.value})}
-                options={[
-                  { value: 'document', label: 'Документ' },
-                  { value: 'link', label: 'Ссылка' },
-                  { value: 'image', label: 'Изображение' }
-                ]}
-              />
-            </div>
-            
-            <div className="form-row">
-              <div className="form-group">
-                <label>Привязать к уроку</label>
-                <Select
-                  value={docForm.lesson_id}
-                  onChange={(e) => setDocForm({...docForm, lesson_id: e.target.value})}
-                  options={lessonOptions}
-                />
-              </div>
-              <div className="form-group">
-                <label>Видимость</label>
-                <Select
-                  value={docForm.visibility}
-                  onChange={(e) => setDocForm({...docForm, visibility: e.target.value, allowed_groups: [], allowed_students: []})}
-                  options={visibilityOptions}
-                />
-              </div>
-            </div>
-            
-            {docForm.visibility === 'custom_groups' && (
-              <div className="form-group">
-                <label>Выберите группы</label>
-                <div className="checkbox-list">
-                  {groupOptions.map(g => (
-                    <label key={g.value} className="checkbox-item">
-                      <input
-                        type="checkbox"
-                        checked={docForm.allowed_groups.includes(g.value)}
-                        onChange={(e) => {
-                          const newGroups = e.target.checked
-                            ? [...docForm.allowed_groups, g.value]
-                            : docForm.allowed_groups.filter(id => id !== g.value);
-                          setDocForm({...docForm, allowed_groups: newGroups});
-                        }}
-                      />
-                      <span>{g.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {docForm.visibility === 'custom_students' && (
-              <div className="form-group">
-                <label>Выберите учеников</label>
-                <div className="checkbox-list">
-                  {studentOptions.map(s => (
-                    <label key={s.value} className="checkbox-item">
-                      <input
-                        type="checkbox"
-                        checked={docForm.allowed_students.includes(s.value)}
-                        onChange={(e) => {
-                          const newStudents = e.target.checked
-                            ? [...docForm.allowed_students, s.value]
-                            : docForm.allowed_students.filter(id => id !== s.value);
-                          setDocForm({...docForm, allowed_students: newStudents});
-                        }}
-                      />
-                      <span>{s.label} {s.group && <small>({s.group})</small>}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            <div className="modal-footer">
-              <button type="button" onClick={() => setShowAddDocModal(false)} className="btn btn-secondary">
-                Отмена
-              </button>
-              <button type="submit" className="btn btn-primary">
-                Добавить
-              </button>
-            </div>
-          </form>
+      {/* Preview Notes Modal */}
+      {previewNote && (
+        <Modal
+          isOpen={true}
+          onClose={() => setPreviewNote(null)}
+          title={previewNote.title}
+          size="large"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {previewNote.description && <div style={{ color: 'var(--text-secondary)' }}>{previewNote.description}</div>}
+            <RichTextEditor value={previewNote.content || ''} readOnly={true} />
+          </div>
         </Modal>
       )}
 
