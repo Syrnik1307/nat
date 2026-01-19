@@ -2453,7 +2453,7 @@ def sync_missing_zoom_recordings_for_teacher(teacher):
             zoom_meeting_id__isnull=False,
             start_time__lte=now,
             start_time__gte=recent_from,
-        ).filter(lessonrecording__isnull=True).distinct()
+        ).filter(recordings__isnull=True).distinct()
 
         if not lessons_to_sync:
             return 0
