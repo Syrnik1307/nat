@@ -454,7 +454,7 @@ def process_zoom_recording(recording_id):
             return
         
         # 1. Скачиваем файл с Zoom
-        temp_file_path = _download_from_zoom(recording)
+        temp_file_path = _download_from_zoom(recording, teacher)
         
         if not temp_file_path:
             logger.error(f"Failed to download recording {recording_id} from Zoom")
@@ -573,7 +573,7 @@ def process_zoom_recording(recording_id):
         _cleanup_temp_file(upload_file_path)
         
         # 6. Удаляем запись с Zoom (освобождаем место)
-        _delete_from_zoom(recording)
+        _delete_from_zoom(recording, teacher)
         
         # 7. Отправляем уведомление ученикам (опционально)
         _notify_students_about_recording(recording)
@@ -590,8 +590,13 @@ def process_zoom_recording(recording_id):
             pass
 
 
-def _download_from_zoom(recording):
-    """Скачивает файл записи с Zoom"""
+def _download_from_zoom(recording, teacher):
+    """Скачивает файл записи с Zoom
+    
+    Args:
+        recording: Объект LessonRecording
+        teacher: Объект учителя с Zoom credentials
+    """
     import os
     import requests
     import logging
@@ -719,12 +724,16 @@ def _upload_to_gdrive(recording, file_path):
         return None
 
 
-def _delete_from_zoom(recording):
+def _delete_from_zoom(recording, teacher):
     """
     Удаляет запись с Zoom после успешной загрузки в Drive.
     
     Zoom API: DELETE /meetings/{meetingId}/recordings/{recordingId}
     Docs: https://developers.zoom.us/docs/api/rest/reference/zoom-api/methods/#operation/recordingDelete
+    
+    Args:
+        recording: Объект LessonRecording
+        teacher: Объект учителя с Zoom credentials
     """
     import requests
     import logging
@@ -752,7 +761,7 @@ def _delete_from_zoom(recording):
         meeting_id = recording.lesson.zoom_meeting_id
         
         # Получаем Zoom access token
-        zoom_token = _get_zoom_access_token()
+        zoom_token = _get_zoom_access_token(teacher)
         
         if not zoom_token:
             logger.error("Failed to get Zoom access token for deletion")
@@ -802,33 +811,37 @@ def _delete_from_zoom(recording):
         return False
 
 
-def _get_zoom_access_token():
-    """Получает Zoom access token для API запросов"""
+def _get_zoom_access_token(teacher=None):
+    """
+    Получает Zoom access token для API запросов.
+    Использует credentials учителя через ZoomAPIClient.
+    
+    Args:
+        teacher: Объект учителя с zoom_account_id, zoom_client_id, zoom_client_secret
+    """
     import logging
+    from .zoom_client import ZoomAPIClient
     
     logger = logging.getLogger(__name__)
     
     try:
-        # Используем существующую систему zoom_pool
-        from zoom_pool.models import ZoomAccount
+        if not teacher:
+            logger.error("No teacher provided for Zoom token")
+            return None
         
-        # Получаем активный аккаунт с токеном
-        zoom_account = ZoomAccount.objects.filter(
-            is_active=True,
-            access_token__isnull=False
-        ).first()
+        # Проверяем что у учителя есть Zoom credentials
+        if not (teacher.zoom_account_id and teacher.zoom_client_id and teacher.zoom_client_secret):
+            logger.error(f"Teacher {teacher.id} has no Zoom credentials")
+            return None
         
-        if zoom_account:
-            # Проверяем что токен не истек
-            if zoom_account.token_expires_at and zoom_account.token_expires_at > timezone.now():
-                return zoom_account.access_token
-            else:
-                # Токен истек — обновляем
-                zoom_account.refresh_access_token()
-                return zoom_account.access_token
+        # Создаем клиент и получаем токен
+        client = ZoomAPIClient(
+            account_id=teacher.zoom_account_id,
+            client_id=teacher.zoom_client_id,
+            client_secret=teacher.zoom_client_secret
+        )
         
-        logger.error("No active Zoom account found")
-        return None
+        return client._get_access_token()
     
     except Exception as e:
         logger.exception(f"Error getting Zoom access token: {e}")
