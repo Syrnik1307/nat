@@ -570,6 +570,9 @@ TELEGRAM_BOT_WEBHOOK_SECRET = os.environ.get(
 # HTTPS/SSL Redirect
 SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False').lower() in ('true', '1', 'yes')
 
+# Exempt healthcheck from SSL redirect (for internal monitoring)
+SECURE_REDIRECT_EXEMPT = [r'^api/health/$']
+
 # HTTP Strict Transport Security (HSTS)
 SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '0'))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'False').lower() in ('true', '1', 'yes')
