@@ -598,6 +598,241 @@
 				"-File",
 				"check_teachers.ps1"
 			]
+		},
+		{
+			"label": "tmp-ssh-query-prototype",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"bash -lc \"cd /var/www/teaching_panel/teaching_panel && ../venv/bin/python - <<'PY'\nfrom schedule.models import LessonRecording\nqs=LessonRecording.objects.filter(title__icontains='прототип')\nprint('count', qs.count())\nfor r in qs:\n    print(r.id, r.title, r.created_at, r.status, r.duration, r.file_size, r.gdrive_file_id, r.zoom_recording_id, r.archive_key, r.updated_at)\nPY\n\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-ssh-query-prototype-oneliner",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel/teaching_panel && ../venv/bin/python -c \"from schedule.models import LessonRecording; qs=LessonRecording.objects.filter(title__icontains='прототип'); print('count', qs.count()); [print(r.id, r.title, r.created_at, r.status, r.duration, r.file_size, r.gdrive_file_id, r.zoom_recording_id, r.archive_key, r.updated_at) for r in qs]\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-ssh-check",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel/teaching_panel && set -x; ../venv/bin/python -c \"print('ok')\"; echo RC:$?"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-ssh-query-prototype-heredoc2",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel/teaching_panel && ../venv/bin/python - <<PY\nfrom schedule.models import LessonRecording\nqs=LessonRecording.objects.filter(title__icontains=\"прототип\")\nprint(\"count\", qs.count())\nfor r in qs:\n    print(r.id, r.title, r.created_at, r.status, r.duration, r.file_size, r.gdrive_file_id, r.zoom_recording_id, r.archive_key, r.updated_at)\nPY"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-ssh-query-pwsh-controlled",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoLogo",
+				"-NoProfile",
+				"-Command",
+				"'ssh tp \"cd /var/www/teaching_panel/teaching_panel && ../venv/bin/python -c ''from schedule.models import LessonRecording; qs=LessonRecording.objects.filter(title__icontains=\"прототип\"); print(\"count\", qs.count()); [print(r.id, r.title, r.created_at, r.status, r.duration, r.file_size, r.gdrive_file_id, r.zoom_recording_id, r.archive_key, r.updated_at) for r in qs]''\"'"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-ssh-query-pwsh2",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoLogo",
+				"-NoProfile",
+				"-Command",
+				"ssh tp \"cd /var/www/teaching_panel/teaching_panel && ../venv/bin/python -c 'from schedule.models import LessonRecording; qs=LessonRecording.objects.filter(title__icontains=\\\"прототип\\\"); print(\\\"count\\\", qs.count()); [print(r.id, r.title, r.created_at, r.status, r.duration, r.file_size, r.gdrive_file_id, r.zoom_recording_id, r.archive_key, r.updated_at) for r in qs]'\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-echo",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"echo hello\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-query",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"cd /var/www/teaching_panel/teaching_panel && ../venv/bin/python -c \\\"from schedule.models import LessonRecording; qs=LessonRecording.objects.filter(title__icontains='прототип'); print('count', qs.count()); [print(r.id, r.title, r.created_at, r.status, r.duration, r.file_size, r.gdrive_file_id, r.zoom_recording_id, r.archive_key, r.updated_at) for r in qs]\\\"\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-pipe",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"type temp_query.py | ssh tp \"cd /var/www/teaching_panel/teaching_panel && ../venv/bin/python -\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-dir",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"pwd\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-ls",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"ls /var/www/teaching_panel/teaching_panel\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-ls2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"ls /var/www\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-ls3",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"ls /var/www/teaching_panel\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-find-manage",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"find /var/www -maxdepth 4 -name manage.py\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-manage",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"cd /var/www/teaching_panel/teaching_panel && ../venv/bin/python manage.py shell -c \\\"from schedule.models import LessonRecording; qs=LessonRecording.objects.filter(title__icontains='прототип'); print('count', qs.count()); [print(r.id, r.title, r.created_at, r.status, r.duration, r.file_size, r.gdrive_file_id, r.zoom_recording_id, r.archive_key, r.updated_at) for r in qs]\\\"\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-manage2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"cd /var/www/teaching_panel/teaching_panel && ../venv/bin/python manage.py shell -c 'from schedule.models import LessonRecording; qs=LessonRecording.objects.filter(title__icontains=\\\"прототип\\\"); print(\\\"count\\\", qs.count()); [print(r.id, r.title, r.created_at, r.status, r.duration, r.file_size, r.gdrive_file_id, r.zoom_recording_id, r.archive_key, r.updated_at) for r in qs]'\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-script",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"type remotecmd.sh | ssh tp \"bash -s\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-grep",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"grep -n 'recording 13' /var/www/teaching_panel/zoom_logs.txt\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-grep2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"ssh tp \"grep -n \\\"recording 13\\\" /var/www/teaching_panel/zoom_logs.txt\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-grep-script",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"type remotegrep.sh | ssh tp \"bash -s\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "tmp-cmd-ssh-tail",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"type remotetail.sh | ssh tp \"bash -s\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
 		}
 	]
 }

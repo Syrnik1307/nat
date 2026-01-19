@@ -527,11 +527,13 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
         if not obj.lesson:
             return None
         lesson = obj.lesson
+        # Приоритет для названия: recording.title > lesson.title > group.name
+        display_title = obj.title or lesson.title or (lesson.group.name if lesson.group else 'Урок')
         return {
             'id': lesson.id,
-            'title': lesson.title,
+            'title': display_title,
             # Frontend expects subject/group_name/group_id fields for filtering
-            'subject': lesson.title,
+            'subject': display_title,
             'group': lesson.group.name if lesson.group else None,
             'group_name': lesson.group.name if lesson.group else None,
             'group_id': lesson.group.id if lesson.group else None,

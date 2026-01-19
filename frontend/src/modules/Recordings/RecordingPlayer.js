@@ -10,7 +10,8 @@ function RecordingPlayer({ recording, onClose }) {
   const [copyState, setCopyState] = useState('idle');
   const copyTimeoutRef = useRef(null);
   const lessonInfo = recording.lesson_info || {};
-  const subject = lessonInfo.subject || 'Запись урока';
+  // Приоритет: recording.title > lesson_info.subject > 'Запись урока'
+  const subject = recording.title || lessonInfo.subject || 'Запись урока';
   const accessGroups = Array.isArray(recording.access_groups) && recording.access_groups.length > 0
     ? recording.access_groups
     : (lessonInfo.group || lessonInfo.group_name
