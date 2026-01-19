@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth';
-import { apiClient, getTeacherSlaDetails, getTeacherStudentRisks } from '../apiService';
+import { apiClient, getTeacherEarlyWarnings, getTeacherSlaDetails, getTeacherStudentRisks } from '../apiService';
 import { Link, useSearchParams } from 'react-router-dom';
 import StudentDetailAnalytics from './StudentDetailAnalytics';
 import GroupDetailAnalytics from './GroupDetailAnalytics';
@@ -95,7 +95,6 @@ const AnalyticsPage = () => {
     const { role } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
-    const [summary, setSummary] = useState(null);
     const [groups, setGroups] = useState([]);
     const [students, setStudents] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -105,19 +104,20 @@ const AnalyticsPage = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [slaDetails, setSlaDetails] = useState(null);
     const [studentRisks, setStudentRisks] = useState(null);
+    const [earlyWarnings, setEarlyWarnings] = useState(null);
 
     const loadData = useCallback(async () => {
         try {
             setLoading(true);
-            const [summaryRes, groupsRes, slaRes, risksRes] = await Promise.all([
-                apiClient.get('/dashboard/summary/').catch(() => ({ data: {} })),
+            const [groupsRes, slaRes, risksRes, ewsRes] = await Promise.all([
                 apiClient.get('/groups/'),
                 getTeacherSlaDetails().catch(() => ({ data: null })),
                 getTeacherStudentRisks().catch(() => ({ data: null })),
+                getTeacherEarlyWarnings({ lessons: 5 }).catch(() => ({ data: null })),
             ]);
-            setSummary(summaryRes.data);
             setSlaDetails(slaRes.data);
             setStudentRisks(risksRes.data);
+            setEarlyWarnings(ewsRes.data);
             const groupsList = groupsRes.data.results || groupsRes.data || [];
             setGroups(groupsList);
             const allStudents = [];
@@ -193,6 +193,15 @@ const AnalyticsPage = () => {
         );
     });
 
+    const isIndividualGroup = (g) => {
+        const name = (g?.name || '').trim().toLowerCase();
+        const studentsCount = g?.students_count ?? g?.students?.length ?? 0;
+        return studentsCount <= 1 || name.startsWith('индивидуально');
+    };
+
+    const groupCount = groups.filter(g => !isIndividualGroup(g)).length;
+    const individualCount = groups.length - groupCount;
+
     const renderOverviewTab = () => (
         <div className="analytics-overview">
             <div className="stats-row">
@@ -203,7 +212,10 @@ const AnalyticsPage = () => {
                         </span>
                         <span className="stat-card-label">Группы</span>
                     </div>
-                    <div className="stat-card-value">{summary?.groups_count || groups.length}</div>
+                    <div className="stat-card-value">{groupCount}</div>
+                    {individualCount > 0 && (
+                        <div className="stat-card-subvalue">Индивидуальные: {individualCount}</div>
+                    )}
                 </div>
                 <div className="stat-card">
                     <div className="stat-card-header">
@@ -212,7 +224,7 @@ const AnalyticsPage = () => {
                         </span>
                         <span className="stat-card-label">Ученики</span>
                     </div>
-                    <div className="stat-card-value">{summary?.students_count || students.length}</div>
+                    <div className="stat-card-value">{students.length}</div>
                 </div>
                 <div className={`stat-card ${alerts.length > 0 ? 'stat-card--warning' : ''}`}>
                     <div className="stat-card-header">
@@ -311,38 +323,103 @@ const AnalyticsPage = () => {
                 </section>
             )}
 
-            {/* SLA Health Section */}
-            {slaDetails && (
-                <section className="analytics-section">
-                    <div className="section-header">
-                        <h2>SLA проверки ДЗ</h2>
-                        <span className={`sla-health-badge sla-health-badge--${slaDetails.health?.status || 'good'}`}>
-                            {slaDetails.health?.score || 100}%
-                        </span>
+            <section className="analytics-section">
+                <div className="section-header">
+                    <h2>Ранние предупреждения (7-14 дней)</h2>
+                    {earlyWarnings?.count > 0 && (
+                        <span className="section-count section-count--warning">{earlyWarnings.count}</span>
+                    )}
+                </div>
+                {!earlyWarnings ? (
+                    <p className="section-empty-text">Загрузка данных...</p>
+                ) : earlyWarnings.count === 0 ? (
+                    <p className="section-empty-text">Рисков не обнаружено по последним {earlyWarnings.window_lessons} урокам</p>
+                ) : (
+                    <div className="risk-students-list">
+                        {earlyWarnings.students.slice(0, 5).map(w => (
+                            <div key={w.student_id} className="risk-student-card">
+                                <div className="risk-student-info">
+                                    <span className="risk-student-name">{w.student_name}</span>
+                                    <span className="risk-student-group">{w.group_name}</span>
+                                </div>
+                                <div className="risk-factors">
+                                    {(w.factors || []).slice(0, 2).map((f, idx) => {
+                                        const typeClasses = {
+                                            attendance: 'risk-factor--attendance',
+                                            homework: 'risk-factor--homework',
+                                            grades: 'risk-factor--grade',
+                                            activity: 'risk-factor--grade',
+                                        };
+                                        return (
+                                            <span key={idx} className={`risk-factor ${typeClasses[f.type] || ''}`} title={f.message}>
+                                                {f.message}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                                <div className="risk-actions">
+                                    {(w.actions || []).slice(0, 2).map((a, idx) => (
+                                        <div key={idx} className="risk-action-item">{a}</div>
+                                    ))}
+                                </div>
+                                <button
+                                    className="risk-student-action"
+                                    onClick={() => {
+                                        const student = students.find(s => s.id === w.student_id);
+                                        if (student) {
+                                            setSelectedStudent(student);
+                                            setActiveTab('students');
+                                        }
+                                    }}
+                                >
+                                    Открыть
+                                </button>
+                            </div>
+                        ))}
                     </div>
+                )}
+            </section>
+
+            {/* SLA Health Section */}
+            <section className="analytics-section">
+                <div className="section-header">
+                    <h2>SLA проверки ДЗ</h2>
+                    {slaDetails?.health && (
+                        <span className={`sla-health-badge sla-health-badge--${slaDetails.health.status || 'good'}`}>
+                            {slaDetails.health.score ?? 100}%
+                        </span>
+                    )}
+                </div>
+                {!slaDetails ? (
+                    <p className="section-empty-text">Загрузка данных SLA...</p>
+                ) : slaDetails.total_graded_30d === 0 && (!slaDetails.backlog || slaDetails.backlog.total === 0) ? (
+                    <p className="section-empty-text">Нет проверенных работ за последние 30 дней</p>
+                ) : (
                     <div className="sla-overview">
-                        <div className="sla-distribution">
-                            {slaDetails.sla_distribution?.ideal > 0 && (
-                                <div className="sla-bar sla-bar--ideal" style={{ flex: slaDetails.sla_distribution.ideal }}>
-                                    <span className="sla-bar-label">{slaDetails.sla_distribution.ideal}</span>
-                                </div>
-                            )}
-                            {slaDetails.sla_distribution?.good > 0 && (
-                                <div className="sla-bar sla-bar--good" style={{ flex: slaDetails.sla_distribution.good }}>
-                                    <span className="sla-bar-label">{slaDetails.sla_distribution.good}</span>
-                                </div>
-                            )}
-                            {slaDetails.sla_distribution?.slow > 0 && (
-                                <div className="sla-bar sla-bar--slow" style={{ flex: slaDetails.sla_distribution.slow }}>
-                                    <span className="sla-bar-label">{slaDetails.sla_distribution.slow}</span>
-                                </div>
-                            )}
-                            {slaDetails.sla_distribution?.critical > 0 && (
-                                <div className="sla-bar sla-bar--critical" style={{ flex: slaDetails.sla_distribution.critical }}>
-                                    <span className="sla-bar-label">{slaDetails.sla_distribution.critical}</span>
-                                </div>
-                            )}
-                        </div>
+                        {slaDetails.total_graded_30d > 0 && (
+                            <div className="sla-distribution">
+                                {slaDetails.sla_distribution?.ideal > 0 && (
+                                    <div className="sla-bar sla-bar--ideal" style={{ flex: slaDetails.sla_distribution.ideal }}>
+                                        <span className="sla-bar-label">{slaDetails.sla_distribution.ideal}</span>
+                                    </div>
+                                )}
+                                {slaDetails.sla_distribution?.good > 0 && (
+                                    <div className="sla-bar sla-bar--good" style={{ flex: slaDetails.sla_distribution.good }}>
+                                        <span className="sla-bar-label">{slaDetails.sla_distribution.good}</span>
+                                    </div>
+                                )}
+                                {slaDetails.sla_distribution?.slow > 0 && (
+                                    <div className="sla-bar sla-bar--slow" style={{ flex: slaDetails.sla_distribution.slow }}>
+                                        <span className="sla-bar-label">{slaDetails.sla_distribution.slow}</span>
+                                    </div>
+                                )}
+                                {slaDetails.sla_distribution?.critical > 0 && (
+                                    <div className="sla-bar sla-bar--critical" style={{ flex: slaDetails.sla_distribution.critical }}>
+                                        <span className="sla-bar-label">{slaDetails.sla_distribution.critical}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <div className="sla-legend">
                             <span className="sla-legend-item"><span className="sla-dot sla-dot--ideal"></span> До 3 дней</span>
                             <span className="sla-legend-item"><span className="sla-dot sla-dot--good"></span> 4-7 дней</span>
@@ -361,16 +438,22 @@ const AnalyticsPage = () => {
                             </div>
                         )}
                     </div>
-                </section>
-            )}
+                )}
+            </section>
 
             {/* At-Risk Students Section */}
-            {studentRisks && studentRisks.students?.length > 0 && (
-                <section className="analytics-section analytics-section--warning">
-                    <div className="section-header">
-                        <h2>Требуют внимания</h2>
+            <section className={`analytics-section ${studentRisks?.students?.length > 0 ? 'analytics-section--warning' : ''}`}>
+                <div className="section-header">
+                    <h2>Ученики в зоне риска</h2>
+                    {studentRisks?.at_risk_count > 0 && (
                         <span className="section-count section-count--warning">{studentRisks.at_risk_count}</span>
-                    </div>
+                    )}
+                </div>
+                {!studentRisks ? (
+                    <p className="section-empty-text">Загрузка данных...</p>
+                ) : !studentRisks.students || studentRisks.students.length === 0 ? (
+                    <p className="section-empty-text">Нет учеников в зоне риска</p>
+                ) : (
                     <div className="risk-students-list">
                         {studentRisks.students.slice(0, 5).map(risk => (
                             <div key={risk.student_id} className="risk-student-card">
@@ -419,8 +502,8 @@ const AnalyticsPage = () => {
                             </button>
                         )}
                     </div>
-                </section>
-            )}
+                )}
+            </section>
         </div>
     );
 

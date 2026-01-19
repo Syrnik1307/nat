@@ -738,6 +738,163 @@ class TeacherStatsViewSet(viewsets.ViewSet):
             'students': at_risk_students[:20],  # Топ-20 рисковых
         })
 
+    @action(detail=False, methods=['get'])
+    def early_warnings(self, request):
+        """Раннее предупреждение (7–14 дней вперёд) на базе последних 3–5 уроков.
+
+        Минимальная версия без тяжелого ML:
+        - Посещаемость по последним урокам
+        - Просрочки/несдачи ДЗ по урокам
+        - Падение "активности" через клики join (LessonJoinLog)
+
+        Возвращает витрину "кого трогать" + "что делать".
+        """
+        user = request.user
+        role = getattr(user, 'role', None)
+        if role not in ('teacher', 'admin'):
+            return Response({'detail': 'Только для преподавателей'}, status=403)
+
+        from datetime import timedelta
+        from django.db.models import Q
+        from schedule.models import Group, Lesson, LessonJoinLog
+        from accounts.models import AttendanceRecord
+        from homework.models import Homework, StudentSubmission
+
+        try:
+            last_lessons = int(request.query_params.get('lessons', 5))
+        except Exception:
+            last_lessons = 5
+        last_lessons = max(3, min(8, last_lessons))
+
+        now = timezone.now()
+        fourteen_days_ago = now - timedelta(days=14)
+
+        groups = Group.objects.filter(teacher=user).prefetch_related('students')
+        warnings = []
+
+        for group in groups:
+            lessons = list(
+                Lesson.objects.filter(group=group, end_time__lt=now)
+                .order_by('-end_time')[:last_lessons]
+            )
+            if not lessons:
+                continue
+
+            lesson_ids = [l.id for l in lessons]
+            # ДЗ только по этим урокам
+            homeworks = list(
+                Homework.objects.filter(
+                    teacher=user,
+                    is_template=False,
+                    lesson_id__in=lesson_ids,
+                ).select_related('lesson')
+            )
+            homeworks_by_lesson = {}
+            for hw in homeworks:
+                homeworks_by_lesson.setdefault(hw.lesson_id, []).append(hw)
+
+            for student in group.students.all():
+                risk_score = 0
+                factors = []
+                actions = []
+
+                # 1) Посещаемость: absences по последним урокам
+                att = AttendanceRecord.objects.filter(
+                    lesson_id__in=lesson_ids,
+                    student=student,
+                ).values_list('lesson_id', 'status')
+                att_map = {lid: status for (lid, status) in att}
+
+                absent_lessons = 0
+                attended_lessons = 0
+                unknown_lessons = 0
+                for l in lessons:
+                    st = att_map.get(l.id)
+                    if st == AttendanceRecord.STATUS_ABSENT:
+                        absent_lessons += 1
+                    elif st in (AttendanceRecord.STATUS_ATTENDED, AttendanceRecord.STATUS_WATCHED_RECORDING):
+                        attended_lessons += 1
+                    else:
+                        unknown_lessons += 1
+
+                if absent_lessons >= 2:
+                    risk_score += 35
+                    factors.append({'type': 'attendance', 'severity': 'critical', 'message': f'Пропуски: {absent_lessons} из {len(lessons)} последних уроков'})
+                    actions.append('Написать ученику и уточнить причину пропусков')
+                    actions.append('Дать план догонки: запись + короткое задание')
+                elif absent_lessons == 1 and unknown_lessons == 0:
+                    risk_score += 15
+                    factors.append({'type': 'attendance', 'severity': 'warning', 'message': 'Есть пропуск среди последних уроков'})
+                    actions.append('Напомнить про следующий урок')
+
+                # 2) ДЗ: несдачи/просрочки по урокам (последние 14 дней)
+                hw_not_submitted = 0
+                hw_late = 0
+                relevant_homeworks = [hw for hw in homeworks if hw.deadline and hw.deadline >= fourteen_days_ago and hw.deadline <= now]
+                for hw in relevant_homeworks:
+                    sub = StudentSubmission.objects.filter(homework=hw, student=student).only('submitted_at').first()
+                    if not sub or not sub.submitted_at:
+                        hw_not_submitted += 1
+                    elif hw.deadline and sub.submitted_at > hw.deadline:
+                        hw_late += 1
+
+                if hw_not_submitted >= 2:
+                    risk_score += 30
+                    factors.append({'type': 'homework', 'severity': 'critical', 'message': f'Не сдал {hw_not_submitted} ДЗ за 14 дней'})
+                    actions.append('Уточнить причину невыполнения ДЗ')
+                elif hw_not_submitted == 1 or hw_late >= 2:
+                    risk_score += 15
+                    factors.append({'type': 'homework', 'severity': 'warning', 'message': f'Проблемы с ДЗ (не сдано: {hw_not_submitted}, просрочено: {hw_late})'})
+
+                # 3) Активность join: ученик вообще нажимает "Присоединиться"?
+                joins = LessonJoinLog.objects.filter(
+                    lesson_id__in=lesson_ids,
+                    student=student,
+                ).values_list('lesson_id', flat=True)
+                join_set = set(joins)
+                missing_joins = sum(1 for l in lessons[:3] if l.id not in join_set)  # последние 3 урока
+                if missing_joins >= 2:
+                    risk_score += 15
+                    factors.append({'type': 'activity', 'severity': 'warning', 'message': 'Падает активность: редко нажимает «Присоединиться»'})
+                    actions.append('Проверить, нет ли технических проблем со входом')
+
+                # Итог
+                if risk_score <= 0:
+                    continue
+
+                if risk_score >= 60:
+                    level = 'high'
+                elif risk_score >= 30:
+                    level = 'medium'
+                else:
+                    level = 'low'
+
+                # Убираем дубли рекомендаций
+                actions = list(dict.fromkeys(actions))
+
+                warnings.append({
+                    'student_id': student.id,
+                    'student_name': student.get_full_name(),
+                    'student_email': student.email,
+                    'group_id': group.id,
+                    'group_name': group.name,
+                    'risk_score': risk_score,
+                    'risk_level': level,
+                    'window_lessons': len(lessons),
+                    'factors': factors,
+                    'actions': actions,
+                })
+
+        warnings.sort(key=lambda x: -x['risk_score'])
+        return Response({
+            'window_lessons': last_lessons,
+            'horizon_days': 14,
+            'count': len(warnings),
+            'high': sum(1 for w in warnings if w['risk_level'] == 'high'),
+            'medium': sum(1 for w in warnings if w['risk_level'] == 'medium'),
+            'students': warnings[:30],
+        })
+
 
 class StudentStatsViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
