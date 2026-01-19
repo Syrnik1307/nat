@@ -2434,8 +2434,12 @@ def student_recordings_list(request):
 
 
 def sync_missing_zoom_recordings_for_teacher(teacher):
-    """Подтягивает облачные записи Zoom, если вебхук не пришел."""
+    """Подтягивает облачные записи Zoom, если вебхук не пришел.
+    
+    При наличии нескольких MP4 частей для одного урока - создаёт bundle и запускает склейку.
+    """
     from .zoom_client import ZoomAPIClient
+    from .tasks import process_zoom_recording_bundle
     
     # Проверяем что у учителя настроены Zoom credentials
     if not (teacher.zoom_account_id and teacher.zoom_client_id and teacher.zoom_client_secret):
@@ -2491,21 +2495,94 @@ def sync_missing_zoom_recordings_for_teacher(teacher):
                     return url
                 separator = '&' if '?' in url else '?'
                 return f"{url}{separator}pwd={pwd}"
+
+            def parse_dt(val):
+                if not val:
+                    return None
+                try:
+                    return datetime.fromisoformat(val.replace('Z', '+00:00'))
+                except Exception:
+                    return None
+
+            # Собираем все MP4 файлы для этого урока
+            mp4_files = []
             for rec_file in recording_files:
                 file_type = str(rec_file.get('file_type', '')).lower()
-                # Только MP4 видео, пропускаем аудио и timeline JSON
-                if file_type not in ['mp4']:
+                if file_type != 'mp4':
                     continue
+                if not rec_file.get('download_url'):
+                    continue
+                mp4_files.append(rec_file)
 
-                # Время записи из Zoom
-                def parse_dt(val):
-                    if not val:
-                        return None
-                    try:
-                        return datetime.fromisoformat(val.replace('Z', '+00:00'))
-                    except Exception:
-                        return None
+            if not mp4_files:
+                continue
 
+            # Сортируем по времени начала записи
+            mp4_files.sort(key=lambda f: f.get('recording_start') or f.get('start_time') or '')
+
+            # Если несколько частей - создаём bundle и запускаем склейку
+            if len(mp4_files) > 1:
+                bundle_zoom_id = f"bundle_{lesson.zoom_meeting_id}"
+                
+                # Вычисляем общую длительность и размер
+                total_size = sum(int(f.get('file_size', 0) or 0) for f in mp4_files)
+                first_start = parse_dt(mp4_files[0].get('recording_start'))
+                last_end = parse_dt(mp4_files[-1].get('recording_end'))
+                total_duration = None
+                if first_start and last_end:
+                    total_duration = int((last_end - first_start).total_seconds())
+                
+                first = mp4_files[0]
+                play_url = apply_passcode(first.get('play_url', ''), passcode)
+                download_url = apply_passcode(first.get('download_url', ''), passcode)
+                
+                # Собираем части для Celery task
+                parts = []
+                for idx, f in enumerate(mp4_files):
+                    parts.append({
+                        'id': f.get('id') or f"part_{idx}",
+                        'download_url': apply_passcode(f.get('download_url', ''), passcode),
+                        'recording_start': f.get('recording_start')
+                    })
+                
+                lr, created = LessonRecording.objects.get_or_create(
+                    lesson=lesson,
+                    zoom_recording_id=bundle_zoom_id,
+                    defaults={
+                        'download_url': download_url,
+                        'play_url': play_url,
+                        'recording_type': first.get('recording_type', ''),
+                        'file_size': total_size,
+                        'status': 'processing',
+                        'visibility': LessonRecording.Visibility.LESSON_GROUP,
+                        'storage_provider': 'gdrive',
+                        'recording_start': first_start,
+                        'recording_end': last_end,
+                        'duration': total_duration,
+                    }
+                )
+                
+                if not created:
+                    lr.file_size = total_size
+                    lr.status = 'processing'
+                    lr.recording_start = first_start or lr.recording_start
+                    lr.recording_end = last_end or lr.recording_end
+                    lr.duration = total_duration or lr.duration
+                    lr.save()
+                
+                lr.apply_privacy(
+                    privacy_type=LessonRecording.Visibility.LESSON_GROUP,
+                    teacher=lesson.teacher,
+                )
+                
+                # Запускаем Celery task для склейки
+                logger.info(f"Starting bundle merge for lesson {lesson.id}: {len(parts)} parts")
+                process_zoom_recording_bundle.delay(lr.id, parts)
+                synced += 1
+            
+            else:
+                # Одиночный файл - обычная обработка
+                rec_file = mp4_files[0]
                 rec_start = parse_dt(rec_file.get('recording_start'))
                 rec_end = parse_dt(rec_file.get('recording_end'))
                 rec_duration = None
@@ -4062,3 +4139,156 @@ def miro_status(request):
             'create_new': 'Для создания новых досок через API настройте MIRO_ACCESS_TOKEN'
         }
     })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def resync_recording(request, recording_id):
+    """
+    Пересинхронизировать и переклеить запись урока.
+    Загружает все части записи с Zoom и склеивает их заново.
+    
+    POST /schedule/api/recordings/{id}/resync/
+    """
+    from .tasks import process_zoom_recording_bundle
+    from .zoom_client import ZoomAPIClient
+    
+    user = request.user
+    
+    if getattr(user, 'role', None) != 'teacher':
+        return Response({'error': 'Только для преподавателей'}, status=status.HTTP_403_FORBIDDEN)
+    
+    try:
+        recording = LessonRecording.objects.select_related('lesson', 'lesson__teacher').get(id=recording_id)
+    except LessonRecording.DoesNotExist:
+        return Response({'error': 'Запись не найдена'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Проверка владельца
+    is_owner = False
+    if recording.lesson_id and recording.lesson:
+        is_owner = recording.lesson.teacher_id == user.id
+    elif recording.teacher_id:
+        is_owner = recording.teacher_id == user.id
+    
+    if not is_owner:
+        return Response({'error': 'Нет прав на эту запись'}, status=status.HTTP_403_FORBIDDEN)
+    
+    lesson = recording.lesson
+    if not lesson or not lesson.zoom_meeting_id:
+        return Response({'error': 'Запись не связана с Zoom уроком'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    teacher = lesson.teacher
+    if not (teacher.zoom_account_id and teacher.zoom_client_id and teacher.zoom_client_secret):
+        return Response({'error': 'Не настроены Zoom credentials'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Получаем записи с Zoom API
+        zoom_client = ZoomAPIClient(
+            account_id=teacher.zoom_account_id,
+            client_id=teacher.zoom_client_id,
+            client_secret=teacher.zoom_client_secret
+        )
+        
+        # Получаем записи для конкретного митинга
+        from datetime import timedelta
+        from_date = (lesson.start_time - timedelta(days=1)).date().isoformat()
+        to_date = (lesson.start_time + timedelta(days=1)).date().isoformat()
+        
+        recordings_response = zoom_client.list_user_recordings(
+            user_id=teacher.zoom_user_id or 'me',
+            from_date=from_date,
+            to_date=to_date,
+        )
+        
+        meetings = recordings_response.get('meetings', [])
+        meeting_data = None
+        for m in meetings:
+            if str(m.get('id')) == str(lesson.zoom_meeting_id):
+                meeting_data = m
+                break
+        
+        if not meeting_data:
+            return Response({'error': 'Запись не найдена в Zoom'}, status=status.HTTP_404_NOT_FOUND)
+        
+        recording_files = meeting_data.get('recording_files', [])
+        passcode = meeting_data.get('recording_play_passcode') or meeting_data.get('password')
+        
+        def apply_passcode(url, pwd):
+            if not url or not pwd:
+                return url
+            if 'pwd=' in url:
+                return url
+            separator = '&' if '?' in url else '?'
+            return f"{url}{separator}pwd={pwd}"
+        
+        # Собираем MP4 файлы
+        mp4_files = []
+        for rec_file in recording_files:
+            file_type = str(rec_file.get('file_type', '')).lower()
+            if file_type != 'mp4':
+                continue
+            if not rec_file.get('download_url'):
+                continue
+            mp4_files.append(rec_file)
+        
+        if not mp4_files:
+            return Response({'error': 'MP4 файлы не найдены в Zoom'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Сортируем по времени
+        mp4_files.sort(key=lambda f: f.get('recording_start') or f.get('start_time') or '')
+        
+        # Собираем части для склейки
+        parts = []
+        total_size = 0
+        for idx, f in enumerate(mp4_files):
+            parts.append({
+                'id': f.get('id') or f"part_{idx}",
+                'download_url': apply_passcode(f.get('download_url', ''), passcode),
+                'recording_start': f.get('recording_start')
+            })
+            total_size += int(f.get('file_size', 0) or 0)
+        
+        # Вычисляем общую длительность
+        def parse_dt(val):
+            if not val:
+                return None
+            try:
+                return datetime.fromisoformat(val.replace('Z', '+00:00'))
+            except Exception:
+                return None
+        
+        first_start = parse_dt(mp4_files[0].get('recording_start'))
+        last_end = parse_dt(mp4_files[-1].get('recording_end'))
+        total_duration = None
+        if first_start and last_end:
+            total_duration = int((last_end - first_start).total_seconds())
+        
+        # Обновляем запись
+        recording.zoom_recording_id = f"bundle_{lesson.zoom_meeting_id}"
+        recording.file_size = total_size
+        recording.status = 'processing'
+        recording.storage_provider = 'gdrive'
+        if first_start:
+            recording.recording_start = first_start
+        if last_end:
+            recording.recording_end = last_end
+        if total_duration:
+            recording.duration = total_duration
+        recording.save()
+        
+        # Запускаем склейку
+        logger.info(f"Starting resync for recording {recording_id}: {len(parts)} parts")
+        process_zoom_recording_bundle.delay(recording.id, parts)
+        
+        return Response({
+            'status': 'processing',
+            'recording_id': recording.id,
+            'parts_count': len(parts),
+            'total_size': total_size,
+            'total_duration': total_duration,
+            'message': f'Запущена пересклейка {len(parts)} частей записи'
+        })
+        
+    except Exception as e:
+        logger.exception(f"Error resyncing recording {recording_id}: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

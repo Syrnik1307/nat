@@ -44,6 +44,7 @@ urlpatterns = [
     path('api/recordings/<int:recording_id>/view/', views.recording_track_view, name='recording_track_view'),
     path('api/recordings/<int:recording_id>/stream/', views.stream_recording, name='stream_recording'),
     path('api/recordings/<int:recording_id>/delete/', views.delete_recording, name='delete_recording'),
+    path('api/recordings/<int:recording_id>/resync/', views.resync_recording, name='resync_recording'),
     path('api/lessons/<int:lesson_id>/recording/', views.lesson_recording, name='lesson_recording'),
     
     # API endpoints для управления квотами хранилища (только для админа)
