@@ -892,11 +892,13 @@ class LessonViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset.none()
         
-        # Быстрые уроки показываем только если они активны (чтобы студенты могли присоединиться)
+        # Быстрые уроки показываем только если они запущены (есть zoom_join_url или google_meet_link)
         # Обычные уроки показываем всегда
-        # Используем Q для комбинации условий: (НЕ быстрый урок) ИЛИ (быстрый урок И активен)
+        # Условие: (НЕ быстрый урок) ИЛИ (быстрый урок И есть ссылка для подключения)
         queryset = queryset.filter(
-            Q(is_quick_lesson=False) | Q(is_quick_lesson=True, is_active=True)
+            Q(is_quick_lesson=False) | 
+            Q(is_quick_lesson=True, zoom_join_url__isnull=False) |
+            Q(is_quick_lesson=True, google_meet_link__gt='')
         )
         
         if getattr(user, 'role', None) == 'teacher':
