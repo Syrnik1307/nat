@@ -386,7 +386,7 @@ const AnalyticsPage = () => {
                     <h2>Время проверки ДЗ</h2>
                     {slaDetails?.health && (
                         <span className={`sla-health-badge sla-health-badge--${slaDetails.health.status || 'good'}`}>
-                            {slaDetails.health.score ?? 100}%
+                            Скорость: {slaDetails.health.score ?? 100}%
                         </span>
                     )}
                 </div>
