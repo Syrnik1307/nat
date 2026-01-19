@@ -892,13 +892,13 @@ class LessonViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset.none()
         
-        # Быстрые уроки показываем только если они запущены (есть zoom_join_url или google_meet_link)
+        # Быстрые уроки показываем только если они запущены (есть ссылка для подключения)
         # Обычные уроки показываем всегда
-        # Условие: (НЕ быстрый урок) ИЛИ (быстрый урок И есть ссылка для подключения)
+        # Условие: (НЕ быстрый урок) ИЛИ (быстрый урок И есть ссылка)
         queryset = queryset.filter(
-            Q(is_quick_lesson=False) | 
-            Q(is_quick_lesson=True, zoom_join_url__isnull=False) |
-            Q(is_quick_lesson=True, google_meet_link__gt='')
+            Q(is_quick_lesson=False)
+            | Q(is_quick_lesson=True, zoom_join_url__gt='')
+            | Q(is_quick_lesson=True, google_meet_link__gt='')
         )
         
         if getattr(user, 'role', None) == 'teacher':
@@ -926,18 +926,20 @@ class LessonViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(start_time__date=parsed_date)
         
         # Фильтр по датам (для календаря)
+        # ВАЖНО: фильтруем по пересечению интервалов, иначе урок, начавшийся ДО start,
+        # но ещё идущий, будет скрыт (это и ломает “начал урок, ученики не видят карточку”).
         start_date = self.request.query_params.get('start')
         end_date = self.request.query_params.get('end')
-        
-        if start_date:
-            start_dt = parse_datetime(start_date)
-            if start_dt:
-                queryset = queryset.filter(start_time__gte=start_dt)
-        
-        if end_date:
-            end_dt = parse_datetime(end_date)
-            if end_dt:
-                queryset = queryset.filter(end_time__lte=end_dt)
+
+        start_dt = parse_datetime(start_date) if start_date else None
+        end_dt = parse_datetime(end_date) if end_date else None
+
+        if start_dt and end_dt:
+            queryset = queryset.filter(start_time__lte=end_dt, end_time__gte=start_dt)
+        elif start_dt:
+            queryset = queryset.filter(end_time__gte=start_dt)
+        elif end_dt:
+            queryset = queryset.filter(start_time__lte=end_dt)
         
         return queryset
     
