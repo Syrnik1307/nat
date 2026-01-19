@@ -2585,6 +2585,19 @@ def teacher_recordings_list(request):
         }, status=status.HTTP_403_FORBIDDEN)
     
     try:
+        # Авто-ремонт: если запись уже заархивирована (Drive), но получила status=deleted
+        # из-за события Zoom recording.trashed (например, когда мы сами чистим Zoom после upload),
+        # возвращаем её в ready. Обновление ограничено только записями текущего преподавателя.
+        try:
+            has_archive = (~Q(gdrive_file_id='')) | (~Q(archive_key='')) | (~Q(archive_url=''))
+            LessonRecording.objects.filter(
+                Q(lesson__teacher=user) | Q(lesson__isnull=True, teacher=user),
+                status='deleted',
+            ).filter(has_archive).update(status='ready')
+        except Exception:
+            # Не блокируем выдачу списка, если авто-ремонт не удался
+            pass
+
         # Подтягиваем записи напрямую из Zoom, если вебхук не сработал
         try:
             sync_missing_zoom_recordings_for_teacher(user)
