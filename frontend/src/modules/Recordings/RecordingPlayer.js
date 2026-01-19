@@ -98,27 +98,63 @@ function RecordingPlayer({ recording, onClose }) {
     }
   };
 
+  // Проверяем тип URL для выбора способа воспроизведения
+  const isGoogleDriveUrl = recording.play_url && (
+    recording.play_url.includes('drive.google.com') ||
+    recording.play_url.includes('docs.google.com')
+  );
+
+  // Для Google Drive используем наш streaming endpoint с токеном
+  const getStreamingUrl = () => {
+    if (!recording.id) return null;
+    const token = getAccessToken();
+    return `/schedule/api/recordings/${recording.id}/stream/?token=${encodeURIComponent(token)}`;
+  };
+
+  // Для Google Drive получаем прямую ссылку на просмотр (fallback)
+  const getDirectViewUrl = (url) => {
+    if (!url) return null;
+
+    const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+    if (driveMatch) {
+      const fileId = driveMatch[1];
+      return `https://drive.google.com/file/d/${fileId}/view`;
+    }
+
+    return url;
+  };
+
+  const streamingUrl = getStreamingUrl();
+  const directViewUrl = getDirectViewUrl(recording.play_url);
+
   const handleOpenInNewTab = () => {
-    if (!recording.play_url || typeof window === 'undefined') {
+    if (typeof window === 'undefined') {
       return;
     }
-    window.open(recording.play_url, '_blank', 'noopener,noreferrer');
+
+    const urlToOpen = isGoogleDriveUrl ? directViewUrl : recording.play_url;
+    if (!urlToOpen) {
+      return;
+    }
+
+    window.open(urlToOpen, '_blank', 'noopener,noreferrer');
   };
 
   const handleCopyLink = async () => {
-    if (!recording.play_url) {
+    const urlToCopy = isGoogleDriveUrl ? directViewUrl : recording.play_url;
+    if (!urlToCopy) {
       return;
     }
 
     try {
       if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(recording.play_url);
+        await navigator.clipboard.writeText(urlToCopy);
       } else {
         throw new Error('Clipboard API unavailable');
       }
       setCopyState('copied');
     } catch (error) {
-      window.prompt('Скопируйте ссылку на запись', recording.play_url);
+      window.prompt('Скопируйте ссылку на запись', urlToCopy);
       setCopyState('copied');
     }
 
@@ -131,46 +167,7 @@ function RecordingPlayer({ recording, onClose }) {
   const heroSubtitle = formattedFullDate
     ? `Запись от ${formattedFullDate}`
     : 'Плеер Lectio Space';
-
-  // Проверяем тип URL для выбора способа воспроизведения
-  const isGoogleDriveUrl = recording.play_url && (
-    recording.play_url.includes('drive.google.com') ||
-    recording.play_url.includes('docs.google.com')
-  );
   
-  // Для Google Drive используем наш streaming endpoint с токеном
-  const getStreamingUrl = () => {
-    if (!recording.id) return null;
-    const token = getAccessToken();
-    // Используем наш backend endpoint для стриминга
-    return `/schedule/api/recordings/${recording.id}/stream/?token=${encodeURIComponent(token)}`;
-  };
-  
-  // Для Google Drive получаем прямую ссылку на просмотр (fallback)
-  const getDirectViewUrl = (url) => {
-    if (!url) return null;
-    
-    // Извлекаем file ID из Google Drive URL
-    const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-    if (driveMatch) {
-      const fileId = driveMatch[1];
-      // Прямая ссылка для просмотра в новой вкладке
-      return `https://drive.google.com/file/d/${fileId}/view`;
-    }
-    
-    return url;
-  };
-  
-  const streamingUrl = getStreamingUrl();
-  const directViewUrl = getDirectViewUrl(recording.play_url);
-  
-  // Функция скачивания
-  const handleDownload = () => {
-    if (recording.download_url) {
-      window.open(recording.download_url, '_blank');
-    }
-  };
-
   const mediaStats = [
     {
       label: 'Просмотров',
@@ -187,7 +184,7 @@ function RecordingPlayer({ recording, onClose }) {
       <div className="recording-player-shell">
         <button className="recording-player-close" onClick={onClose}>
           <span>Esc</span>
-          ✕
+          <span className="recording-player-close-text">Закрыть</span>
         </button>
 
         <header className="recording-player-hero">

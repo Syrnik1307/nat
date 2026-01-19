@@ -85,6 +85,10 @@
   transform: translateY(-1px);
 }
 
+.recording-player-close-text {
+  font-weight: 600;
+}
+
 .recording-player-hero {
   position: relative;
   z-index: 1;

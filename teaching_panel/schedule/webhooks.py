@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from .models import Lesson, LessonRecording
-from .tasks import process_zoom_recording
+from .tasks import process_zoom_recording, process_zoom_recording_bundle
 
 logger = logging.getLogger(__name__)
 
@@ -166,27 +166,114 @@ def handle_recording_completed(payload):
             logger.info(f"Recording disabled for lesson {lesson.id}, skipping")
             return JsonResponse({'status': 'recording_disabled'}, status=200)
         
-        # Обрабатываем каждый файл записи
-        processed_count = 0
-        
+        # Применяем настройки приватности из урока (один раз)
+        privacy_type = LessonRecording.Visibility.LESSON_GROUP
+        allowed_groups = []
+        allowed_students = []
+
+        if lesson.notes and 'Privacy:' in lesson.notes:
+            import json
+            try:
+                privacy_json = lesson.notes.split('Privacy: ', 1)[1].strip()
+                privacy_settings = json.loads(privacy_json)
+
+                privacy_type_str = privacy_settings.get('privacy_type', 'all')
+                if privacy_type_str == 'groups':
+                    privacy_type = LessonRecording.Visibility.CUSTOM_GROUPS
+                    allowed_groups = privacy_settings.get('allowed_groups', [])
+                elif privacy_type_str == 'students':
+                    privacy_type = LessonRecording.Visibility.CUSTOM_STUDENTS
+                    allowed_students = privacy_settings.get('allowed_students', [])
+                elif privacy_type_str == 'all':
+                    privacy_type = LessonRecording.Visibility.ALL_TEACHER_GROUPS
+            except (json.JSONDecodeError, IndexError) as e:
+                logger.warning(f"Failed to parse privacy settings from lesson notes: {e}")
+
+        # 1) Собираем MP4 файлы и, если их несколько, делаем bundle (склейка)
+        mp4_files = []
         for file_data in recording_files:
-            file_type = file_data.get('file_type', '').lower()
-            
-            # Пропускаем chat, timeline и другие не-видео/не-транскрипт файлы
+            if (file_data.get('file_type', '') or '').lower() != 'mp4':
+                continue
+            if not file_data.get('download_url'):
+                continue
+            mp4_files.append(file_data)
+
+        # Сортируем части по времени старта (если есть)
+        def _sort_key(fd):
+            return fd.get('recording_start') or fd.get('start_time') or ''
+
+        mp4_files.sort(key=_sort_key)
+
+        merged_mp4_ids = set()
+        processed_count = 0
+
+        if len(mp4_files) > 1:
+            bundle_zoom_id = f"bundle_{meeting_id}"
+            parts = []
+            total_size = 0
+            for idx, fd in enumerate(mp4_files):
+                rid = fd.get('id') or f"part_{idx}"
+                merged_mp4_ids.add(rid)
+                parts.append({
+                    'id': rid,
+                    'download_url': fd.get('download_url'),
+                    'recording_start': fd.get('recording_start')
+                })
+                total_size += int(fd.get('file_size', 0) or 0)
+
+            first = mp4_files[0]
+            lesson_recording, created = LessonRecording.objects.get_or_create(
+                lesson=lesson,
+                zoom_recording_id=bundle_zoom_id,
+                defaults={
+                    'download_url': first.get('download_url'),
+                    'play_url': (first.get('play_url') or ''),
+                    'file_size': total_size,
+                    'recording_type': first.get('recording_type', ''),
+                    'status': 'processing',
+                    'storage_provider': 'gdrive'
+                }
+            )
+
+            if not created:
+                lesson_recording.download_url = first.get('download_url')
+                lesson_recording.play_url = (first.get('play_url') or '')
+                lesson_recording.file_size = total_size
+                lesson_recording.status = 'processing'
+                lesson_recording.save()
+
+            lesson_recording.apply_privacy(
+                privacy_type=privacy_type,
+                group_ids=allowed_groups,
+                student_ids=allowed_students,
+                teacher=lesson.teacher
+            )
+
+            logger.info(f"{'Created' if created else 'Updated'} bundle LessonRecording {lesson_recording.id} ({len(parts)} parts)")
+            process_zoom_recording_bundle.delay(lesson_recording.id, parts)
+            processed_count += 1
+
+        # 2) Остальные файлы (m4a/transcript) + одиночный mp4 идут по старому пути
+        for file_data in recording_files:
+            file_type = (file_data.get('file_type', '') or '').lower()
             if file_type not in ['mp4', 'm4a', 'transcript']:
                 continue
-            
+
             recording_id = file_data.get('id')
+
+            # Если mp4 уже вошёл в bundle — пропускаем, чтобы не плодить записи
+            if file_type == 'mp4' and recording_id in merged_mp4_ids:
+                continue
+
             download_url = file_data.get('download_url')
             play_url = file_data.get('play_url')
             file_size = file_data.get('file_size', 0)
-            recording_type = file_data.get('recording_type', '')  # shared_screen_with_speaker_view, etc
-            
+            recording_type = file_data.get('recording_type', '')
+
             if not download_url:
                 logger.warning(f"No download URL for recording file {recording_id}")
                 continue
-            
-            # Создаем или обновляем запись LessonRecording
+
             lesson_recording, created = LessonRecording.objects.get_or_create(
                 lesson=lesson,
                 zoom_recording_id=recording_id,
@@ -199,39 +286,13 @@ def handle_recording_completed(payload):
                     'storage_provider': 'gdrive'
                 }
             )
-            
+
             if not created:
-                # Обновляем существующую запись
                 lesson_recording.download_url = download_url
                 lesson_recording.play_url = play_url or ''
                 lesson_recording.file_size = file_size
                 lesson_recording.status = 'processing'
                 lesson_recording.save()
-
-            # Применяем настройки приватности из урока если они есть
-            privacy_type = LessonRecording.Visibility.LESSON_GROUP
-            allowed_groups = []
-            allowed_students = []
-            
-            # Пытаемся извлечь настройки приватности из notes урока
-            if lesson.notes and 'Privacy:' in lesson.notes:
-                import json
-                try:
-                    # Извлекаем JSON строку из notes
-                    privacy_json = lesson.notes.split('Privacy: ', 1)[1].strip()
-                    privacy_settings = json.loads(privacy_json)
-                    
-                    privacy_type_str = privacy_settings.get('privacy_type', 'all')
-                    if privacy_type_str == 'groups':
-                        privacy_type = LessonRecording.Visibility.CUSTOM_GROUPS
-                        allowed_groups = privacy_settings.get('allowed_groups', [])
-                    elif privacy_type_str == 'students':
-                        privacy_type = LessonRecording.Visibility.CUSTOM_STUDENTS
-                        allowed_students = privacy_settings.get('allowed_students', [])
-                    elif privacy_type_str == 'all':
-                        privacy_type = LessonRecording.Visibility.ALL_TEACHER_GROUPS
-                except (json.JSONDecodeError, IndexError) as e:
-                    logger.warning(f"Failed to parse privacy settings from lesson notes: {e}")
 
             lesson_recording.apply_privacy(
                 privacy_type=privacy_type,
@@ -239,12 +300,9 @@ def handle_recording_completed(payload):
                 student_ids=allowed_students,
                 teacher=lesson.teacher
             )
-            
+
             logger.info(f"{'Created' if created else 'Updated'} LessonRecording {lesson_recording.id}")
-            
-            # Запускаем фоновую задачу для обработки
             process_zoom_recording.delay(lesson_recording.id)
-            
             processed_count += 1
         
         logger.info(f"Queued {processed_count} recording(s) for processing")

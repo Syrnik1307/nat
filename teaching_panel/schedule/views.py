@@ -2862,11 +2862,11 @@ def stream_recording(request, recording_id):
     Поддерживает Range requests для перемотки видео.
     Токен передается в query string потому что <video> тег не поддерживает кастомные headers.
     """
-    from django.http import StreamingHttpResponse, HttpResponse
+    from django.http import StreamingHttpResponse
     from rest_framework_simplejwt.tokens import AccessToken
     from rest_framework_simplejwt.exceptions import TokenError
     from django.contrib.auth import get_user_model
-    import io
+    from google.auth.transport.requests import AuthorizedSession
     
     User = get_user_model()
     
@@ -2923,74 +2923,52 @@ def stream_recording(request, recording_id):
                 'error': 'Не удалось получить информацию о файле'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        # Обрабатываем Range header для поддержки перемотки
-        range_header = request.META.get('HTTP_RANGE', '')
-        start = 0
-        end = file_size - 1
-        
+        # Проксируем скачивание через AuthorizedSession, поддерживаем Range (перемотка)
+        range_header = request.META.get('HTTP_RANGE')
+
+        creds = getattr(getattr(gdrive.service, '_http', None), 'credentials', None)
+        if not creds:
+            logger.error('Google Drive credentials not available on service client')
+            return Response({'error': 'Хранилище недоступно'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        session = AuthorizedSession(creds)
+        drive_url = f"https://www.googleapis.com/drive/v3/files/{recording.gdrive_file_id}?alt=media"
+
+        headers = {}
         if range_header:
-            # Парсим Range: bytes=0-1000
-            try:
-                range_match = range_header.replace('bytes=', '').split('-')
-                start = int(range_match[0]) if range_match[0] else 0
-                end = int(range_match[1]) if range_match[1] else file_size - 1
-            except:
-                pass
-        
-        # Ограничиваем чанк размером (5MB за раз для оптимальной производительности)
-        chunk_size = min(5 * 1024 * 1024, end - start + 1)
-        end = min(start + chunk_size - 1, file_size - 1)
-        
-        # Загружаем чанк из Google Drive
+            headers['Range'] = range_header
+
         try:
-            from googleapiclient.http import MediaIoBaseDownload
-            
-            request_drive = gdrive.service.files().get_media(fileId=recording.gdrive_file_id)
-            
-            # Устанавливаем Range header для Google Drive API
-            if start > 0 or end < file_size - 1:
-                request_drive.headers['Range'] = f'bytes={start}-{end}'
-            
-            fh = io.BytesIO()
-            downloader = MediaIoBaseDownload(fh, request_drive)
-            
-            done = False
-            while not done:
-                status_download, done = downloader.next_chunk()
-            
-            fh.seek(0)
-            content = fh.read()
-            
+            upstream = session.get(drive_url, headers=headers, stream=True, timeout=300)
         except Exception as e:
-            logger.error(f"Failed to download video chunk from GDrive: {e}")
-            return Response({
-                'error': 'Не удалось загрузить видео'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        # Формируем ответ
-        if range_header:
-            response = HttpResponse(
-                content,
-                status=206,  # Partial Content
-                content_type=mime_type
-            )
-            response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
-        else:
-            response = HttpResponse(
-                content,
-                status=200,
-                content_type=mime_type
-            )
-        
-        response['Content-Length'] = len(content)
+            logger.error(f"Failed to open upstream stream from GDrive: {e}")
+            return Response({'error': 'Не удалось открыть видео'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        if upstream.status_code not in (200, 206):
+            logger.warning(f"GDrive stream returned {upstream.status_code}: {upstream.text[:200]}")
+            return Response({'error': 'Не удалось загрузить видео'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        response = StreamingHttpResponse(
+            upstream.iter_content(chunk_size=1024 * 1024),
+            status=upstream.status_code,
+            content_type=mime_type,
+        )
+
+        # Пробрасываем важные заголовки для HTML5 video
         response['Accept-Ranges'] = 'bytes'
         response['Content-Disposition'] = f'inline; filename="{recording_id}.mp4"'
-        
-        # CORS headers для video player
-        response['Access-Control-Allow-Origin'] = '*'
-        response['Access-Control-Allow-Headers'] = 'Range'
-        response['Access-Control-Expose-Headers'] = 'Content-Range, Accept-Ranges, Content-Length'
-        
+
+        content_length = upstream.headers.get('Content-Length')
+        if content_length:
+            response['Content-Length'] = content_length
+
+        content_range = upstream.headers.get('Content-Range')
+        if content_range:
+            response['Content-Range'] = content_range
+
+        # Без кэша, чтобы не сохранять видео в прокси
+        response['Cache-Control'] = 'no-store'
+
         return response
         
     except LessonRecording.DoesNotExist:

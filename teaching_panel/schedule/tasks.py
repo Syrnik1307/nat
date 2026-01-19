@@ -593,6 +593,343 @@ def process_zoom_recording(recording_id):
             pass
 
 
+@shared_task
+def process_zoom_recording_bundle(recording_id, parts):
+    """Обрабатывает запись-"bundle" (несколько MP4 частей одного урока).
+
+    parts: list[dict] с ключами: id, download_url, recording_start (опционально)
+    """
+    import logging
+    import os
+
+    logger = logging.getLogger(__name__)
+
+    from django.conf import settings
+    from .models import LessonRecording, TeacherStorageQuota
+
+    temp_paths = []
+    upload_file_path = None
+
+    try:
+        recording = LessonRecording.objects.select_related('lesson__group__teacher').get(id=recording_id)
+
+        if recording.status == 'ready':
+            logger.info(f"Recording bundle {recording_id} already processed")
+            return
+
+        teacher = recording.lesson.group.teacher
+
+        # Проверяем квоту хранилища преподавателя
+        try:
+            quota = teacher.storage_quota
+        except TeacherStorageQuota.DoesNotExist:
+            quota = TeacherStorageQuota.objects.create(
+                teacher=teacher,
+                total_quota_bytes=5 * 1024 ** 3
+            )
+            logger.info(f"Created storage quota for teacher {teacher.id}")
+
+        if quota.quota_exceeded:
+            logger.warning(f"Teacher {teacher.id} quota exceeded. Skipping bundle {recording_id}")
+            recording.status = 'failed'
+            recording.save()
+            _notify_teacher_quota_exceeded(teacher, quota)
+            return
+
+        if not parts or not isinstance(parts, list):
+            logger.error(f"Bundle {recording_id} has no parts")
+            recording.status = 'failed'
+            recording.save()
+            return
+
+        # Сортируем части по recording_start, чтобы склейка была в правильном порядке
+        def _part_key(p):
+            return (p or {}).get('recording_start') or ''
+
+        parts_sorted = sorted(parts, key=_part_key)
+
+        logger.info(f"Downloading {len(parts_sorted)} parts for bundle recording {recording_id}")
+
+        # 1) Скачиваем все части
+        for idx, part in enumerate(parts_sorted, start=1):
+            part_id = (part or {}).get('id') or f"part_{idx}"
+            part_url = (part or {}).get('download_url')
+            if not part_url:
+                logger.warning(f"Missing download_url for bundle {recording_id} part {part_id}")
+                continue
+
+            temp_path = _download_from_zoom_url(
+                download_url=part_url,
+                teacher=teacher,
+                lesson_id=recording.lesson.id,
+                zoom_recording_id=part_id,
+                file_extension='mp4'
+            )
+            if not temp_path:
+                raise RuntimeError(f"Failed to download bundle part {part_id}")
+            temp_paths.append(temp_path)
+
+        if len(temp_paths) < 1:
+            raise RuntimeError("No parts downloaded")
+
+        if len(temp_paths) == 1:
+            merged_path = temp_paths[0]
+        else:
+            # 2) Склеиваем части
+            merged_path = _concat_videos_ffmpeg(temp_paths)
+            if not merged_path:
+                raise RuntimeError("Failed to concat video parts")
+
+        original_size = os.path.getsize(merged_path)
+        logger.info(f"Bundle merged size: {original_size / (1024**2):.1f} MB")
+
+        # 3) Сжатие через FFmpeg (если включено)
+        upload_file_path = merged_path
+        compression_enabled = getattr(settings, 'VIDEO_COMPRESSION_ENABLED', True)
+
+        if compression_enabled and upload_file_path.endswith('.mp4'):
+            import tempfile
+            from .gdrive_utils import compress_video
+
+            fd, compressed_path = tempfile.mkstemp(suffix='_compressed.mp4')
+            os.close(fd)
+
+            logger.info(f"Starting FFmpeg compression for bundle {recording_id}...")
+            if compress_video(upload_file_path, compressed_path):
+                compressed_size = os.path.getsize(compressed_path)
+                compression_ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
+                logger.info(
+                    f"Bundle compression successful: {original_size / (1024**2):.1f} MB → {compressed_size / (1024**2):.1f} MB ({compression_ratio:.1f}% reduction)"
+                )
+
+                # Если merged_path был временным (concat), его можно удалить
+                if merged_path not in temp_paths:
+                    _cleanup_temp_file(merged_path)
+                upload_file_path = compressed_path
+            else:
+                logger.warning(f"FFmpeg compression failed for bundle {recording_id}, using merged")
+                _cleanup_temp_file(compressed_path)
+
+        # Проверяем итоговый размер файла для загрузки
+        final_size = os.path.getsize(upload_file_path)
+        recording.file_size = final_size
+        recording.save()
+
+        if not quota.can_upload(final_size):
+            logger.warning(
+                f"Teacher {teacher.id} insufficient space for bundle. Need {final_size} bytes, available {quota.total_quota_bytes - quota.used_bytes}"
+            )
+            recording.status = 'failed'
+            recording.save()
+            _cleanup_temp_file(upload_file_path)
+            _notify_teacher_quota_exceeded(teacher, quota)
+            return
+
+        # 4) Загружаем в Google Drive
+        gdrive_file = _upload_to_gdrive(recording, upload_file_path)
+        if not gdrive_file:
+            logger.error(f"Failed to upload bundle {recording_id} to Google Drive")
+            recording.status = 'failed'
+            recording.save()
+            _cleanup_temp_file(upload_file_path)
+            return
+
+        # 5) Обновляем запись в БД
+        recording.gdrive_file_id = gdrive_file['file_id']
+        recording.gdrive_folder_id = gdrive_file['folder_id']
+        recording.play_url = gdrive_file.get('embed_link', '')
+        recording.download_url = gdrive_file.get('download_link', '')
+        recording.thumbnail_url = gdrive_file.get('thumbnail_link', '')
+        recording.status = 'ready'
+
+        days_available = recording.lesson.recording_available_for_days
+        if days_available and days_available > 0:
+            recording.available_until = timezone.now() + timedelta(days=days_available)
+        else:
+            recording.available_until = None
+
+        recording.save()
+
+        # 6) Обновляем квоту
+        quota.add_recording(final_size)
+        logger.info(f"Updated quota for teacher {teacher.id}: {quota.used_gb:.2f}/{quota.total_gb:.2f} GB")
+
+        if quota.usage_percent >= 80 and quota.warning_sent:
+            _notify_teacher_quota_warning(teacher, quota)
+
+        # 7) Чистим временные файлы
+        _cleanup_temp_file(upload_file_path)
+        for p in temp_paths:
+            if p != upload_file_path:
+                _cleanup_temp_file(p)
+
+        # 8) Удаляем исходные части с Zoom
+        # Важно: удаление завязано на recording.zoom_recording_id; временно подставляем part_id
+        original_zoom_id = recording.zoom_recording_id
+        try:
+            for part in parts_sorted:
+                part_id = (part or {}).get('id')
+                if not part_id:
+                    continue
+                recording.zoom_recording_id = part_id
+                _delete_from_zoom(recording, teacher)
+        finally:
+            recording.zoom_recording_id = original_zoom_id
+
+        # 9) Уведомления
+        _notify_students_about_recording(recording)
+
+        logger.info(f"Successfully processed bundle recording {recording_id}")
+
+    except LessonRecording.DoesNotExist:
+        logger.error(f"Recording bundle {recording_id} not found")
+    except Exception as e:
+        logger.exception(f"Error processing bundle recording {recording_id}: {e}")
+        try:
+            rec = LessonRecording.objects.get(id=recording_id)
+            rec.status = 'failed'
+            rec.save()
+        except Exception:
+            pass
+        # best-effort cleanup
+        try:
+            if upload_file_path:
+                _cleanup_temp_file(upload_file_path)
+        except Exception:
+            pass
+        for p in temp_paths:
+            try:
+                _cleanup_temp_file(p)
+            except Exception:
+                pass
+
+
+def _download_from_zoom_url(download_url, teacher, lesson_id, zoom_recording_id, file_extension='mp4'):
+    """Скачивает файл с Zoom по конкретному download_url (для bundle частей)."""
+    import os
+    import requests
+    import logging
+    from django.conf import settings
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        if not download_url:
+            return None
+
+        zoom_token = _get_zoom_access_token(teacher)
+        if not zoom_token:
+            logger.error("Failed to get Zoom access token")
+            return None
+
+        headers = {
+            'Authorization': f'Bearer {zoom_token}',
+            'User-Agent': 'TeachingPanel/1.0'
+        }
+
+        temp_dir = os.path.join(settings.BASE_DIR, 'temp_recordings')
+        os.makedirs(temp_dir, exist_ok=True)
+
+        filename = f"lesson_{lesson_id}_{zoom_recording_id}.{file_extension}"
+        temp_file_path = os.path.join(temp_dir, filename)
+
+        logger.info(f"Downloading Zoom part to {temp_file_path}")
+
+        response = requests.get(download_url, headers=headers, stream=True, timeout=300)
+        response.raise_for_status()
+
+        total_size = int(response.headers.get('content-length', 0))
+        downloaded = 0
+
+        with open(temp_file_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if downloaded % (10 * 1024 * 1024) == 0:
+                        progress = (downloaded / total_size * 100) if total_size > 0 else 0
+                        logger.info(f"Download progress: {progress:.1f}% ({downloaded}/{total_size} bytes)")
+
+        logger.info(f"Successfully downloaded {downloaded} bytes to {temp_file_path}")
+        return temp_file_path
+
+    except requests.RequestException as e:
+        logger.exception(f"Error downloading from Zoom: {e}")
+        return None
+    except Exception as e:
+        logger.exception(f"Unexpected error during download: {e}")
+        return None
+
+
+def _concat_videos_ffmpeg(input_paths):
+    """Склеивает несколько mp4 в один файл через ffmpeg concat demuxer."""
+    import os
+    import tempfile
+    import subprocess
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if not input_paths or len(input_paths) < 2:
+        return input_paths[0] if input_paths else None
+
+    # Создаём файл списка для concat
+    list_fd, list_path = tempfile.mkstemp(suffix='_concat.txt')
+    os.close(list_fd)
+
+    out_fd, out_path = tempfile.mkstemp(suffix='_merged.mp4')
+    os.close(out_fd)
+
+    try:
+        with open(list_path, 'w', encoding='utf-8') as f:
+            for p in input_paths:
+                # ffmpeg concat требует: file 'path'
+                safe_path = str(p).replace("'", "'\\''")
+                f.write(f"file '{safe_path}'\n")
+
+        cmd_copy = [
+            'ffmpeg',
+            '-hide_banner',
+            '-loglevel', 'error',
+            '-f', 'concat',
+            '-safe', '0',
+            '-i', list_path,
+            '-c', 'copy',
+            out_path
+        ]
+
+        logger.info(f"Concatenating {len(input_paths)} parts via ffmpeg")
+        result = subprocess.run(cmd_copy, capture_output=True, text=True)
+        if result.returncode != 0:
+            logger.warning(f"ffmpeg concat (copy) failed, retrying with re-encode: {result.stderr}")
+
+            cmd_encode = [
+                'ffmpeg',
+                '-hide_banner',
+                '-loglevel', 'error',
+                '-f', 'concat',
+                '-safe', '0',
+                '-i', list_path,
+                '-c:v', 'libx264',
+                '-preset', 'veryfast',
+                '-crf', '23',
+                '-c:a', 'aac',
+                '-b:a', '128k',
+                '-movflags', '+faststart',
+                out_path
+            ]
+
+            result2 = subprocess.run(cmd_encode, capture_output=True, text=True)
+            if result2.returncode != 0:
+                logger.error(f"ffmpeg concat (encode) failed: {result2.stderr}")
+                _cleanup_temp_file(out_path)
+                return None
+
+        return out_path
+    finally:
+        _cleanup_temp_file(list_path)
+
+
 def _download_from_zoom(recording, teacher):
     """Скачивает файл записи с Zoom
     
