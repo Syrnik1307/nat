@@ -560,7 +560,7 @@ def process_zoom_recording(recording_id):
         recording.save()
         
         # 4. Обновляем квоту преподавателя
-        quota.add_recording(file_size)
+        quota.add_recording(final_size)
         logger.info(f"Updated quota for teacher {teacher.id}: {quota.used_gb:.2f}/{quota.total_gb:.2f} GB")
         
         # Проверяем порог предупреждения
@@ -720,11 +720,22 @@ def _upload_to_gdrive(recording, file_path):
 
 
 def _delete_from_zoom(recording):
-    """Удаляет запись с Zoom после успешной загрузки в Drive"""
+    """
+    Удаляет запись с Zoom после успешной загрузки в Drive.
+    
+    Zoom API: DELETE /meetings/{meetingId}/recordings/{recordingId}
+    Docs: https://developers.zoom.us/docs/api/rest/reference/zoom-api/methods/#operation/recordingDelete
+    """
     import requests
     import logging
+    from django.conf import settings
     
     logger = logging.getLogger(__name__)
+    
+    # Проверяем что удаление из Zoom включено (можно отключить для отладки)
+    if not getattr(settings, 'ZOOM_DELETE_AFTER_UPLOAD', True):
+        logger.info(f"ZOOM_DELETE_AFTER_UPLOAD is disabled, skipping deletion for recording {recording.id}")
+        return
     
     try:
         zoom_recording_id = recording.zoom_recording_id
@@ -733,6 +744,13 @@ def _delete_from_zoom(recording):
             logger.warning(f"No Zoom recording ID for recording {recording.id}")
             return
         
+        # Получаем meeting_id из связанного урока
+        if not recording.lesson or not recording.lesson.zoom_meeting_id:
+            logger.warning(f"Recording {recording.id} has no associated meeting ID")
+            return
+        
+        meeting_id = recording.lesson.zoom_meeting_id
+        
         # Получаем Zoom access token
         zoom_token = _get_zoom_access_token()
         
@@ -740,25 +758,48 @@ def _delete_from_zoom(recording):
             logger.error("Failed to get Zoom access token for deletion")
             return
         
-        # DELETE запрос к Zoom API
-        url = f"https://api.zoom.us/v2/recordings/{zoom_recording_id}"
-        
         headers = {
             'Authorization': f'Bearer {zoom_token}',
             'Content-Type': 'application/json'
         }
         
+        # Сначала пробуем удалить конкретный файл записи
+        # DELETE /meetings/{meetingId}/recordings/{recordingId}
+        url = f"https://api.zoom.us/v2/meetings/{meeting_id}/recordings/{zoom_recording_id}"
+        
+        logger.info(f"Deleting recording file {zoom_recording_id} from Zoom meeting {meeting_id}")
+        
         response = requests.delete(url, headers=headers, timeout=30)
         
         if response.status_code == 204:
-            logger.info(f"Successfully deleted recording {zoom_recording_id} from Zoom")
+            logger.info(f"Successfully deleted recording file {zoom_recording_id} from Zoom")
+            return True
         elif response.status_code == 404:
             logger.info(f"Recording {zoom_recording_id} already deleted from Zoom")
+            return True
+        elif response.status_code == 400:
+            # Возможно файл уже удален или невалидный ID
+            logger.info(f"Recording {zoom_recording_id} may already be deleted (400)")
+            return True
         else:
-            logger.warning(f"Failed to delete from Zoom (status {response.status_code}): {response.text}")
+            logger.warning(f"Failed to delete file from Zoom (status {response.status_code}): {response.text}")
+            
+            # Попробуем удалить всю запись митинга если одиночное удаление не сработало
+            # DELETE /meetings/{meetingId}/recordings?action=trash
+            url_all = f"https://api.zoom.us/v2/meetings/{meeting_id}/recordings?action=trash"
+            response_all = requests.delete(url_all, headers=headers, timeout=30)
+            
+            if response_all.status_code in [204, 404]:
+                logger.info(f"Moved all recordings for meeting {meeting_id} to trash")
+                return True
+            else:
+                logger.warning(f"Failed to trash recordings for meeting {meeting_id}: {response_all.status_code}")
+            
+            return False
     
     except Exception as e:
         logger.exception(f"Error deleting from Zoom: {e}")
+        return False
 
 
 def _get_zoom_access_token():

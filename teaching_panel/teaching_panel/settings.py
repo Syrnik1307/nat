@@ -351,6 +351,9 @@ VIDEO_CRF = int(os.environ.get('VIDEO_CRF', '23'))  # 18-28, чем ниже = �
 VIDEO_PRESET = os.environ.get('VIDEO_PRESET', 'medium')  # ultrafast/fast/medium/slow
 AUDIO_BITRATE = os.environ.get('AUDIO_BITRATE', '128k')
 
+# Zoom recording cleanup after upload to Google Drive
+ZOOM_DELETE_AFTER_UPLOAD = os.environ.get('ZOOM_DELETE_AFTER_UPLOAD', '1') == '1'
+
 # Authentication settings
 LOGIN_URL = '/api/jwt/login/'  # SPA login, не Django admin
 LOGIN_REDIRECT_URL = 'schedule:teacher_schedule'  # По умолчанию
