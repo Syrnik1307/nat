@@ -2637,15 +2637,79 @@ def teacher_recordings_list(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET', 'DELETE'])
+@api_view(['GET', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def recording_detail(request, recording_id):
     """
     Детальная информация о записи урока
     GET /schedule/api/recordings/<id>/
+    PATCH /schedule/api/recordings/<id>/ - обновление названия
     DELETE /schedule/api/recordings/<id>/
     """
     user = request.user
+    
+    if request.method == 'PATCH':
+        # Обновление записи (только преподаватель-владелец)
+        if getattr(user, 'role', None) != 'teacher':
+            return Response({
+                'error': 'Только преподаватели могут редактировать записи'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            require_active_subscription(user)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            recording = LessonRecording.objects.select_related(
+                'lesson', 'lesson__group', 'teacher'
+            ).get(id=recording_id)
+            
+            # Проверка владельца
+            is_owner = False
+            if recording.lesson_id and recording.lesson:
+                is_owner = recording.lesson.teacher_id == user.id
+            elif recording.teacher_id:
+                is_owner = recording.teacher_id == user.id
+            
+            if not is_owner:
+                return Response({
+                    'error': 'У вас нет прав на редактирование этой записи'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Обновляем название
+            new_title = request.data.get('title', '').strip()
+            if not new_title:
+                return Response({
+                    'error': 'Название не может быть пустым'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if len(new_title) > 255:
+                return Response({
+                    'error': 'Название слишком длинное (максимум 255 символов)'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            old_title = recording.title
+            recording.title = new_title
+            recording.save(update_fields=['title', 'updated_at'])
+            
+            logger.info(f"Teacher {user.id} renamed recording {recording_id}: '{old_title}' -> '{new_title}'")
+            
+            return Response({
+                'id': recording.id,
+                'title': recording.title,
+                'message': 'Название успешно обновлено'
+            })
+        
+        except LessonRecording.DoesNotExist:
+            return Response({
+                'error': 'Запись не найдена'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(f"Error updating recording: {e}")
+            return Response({
+                'error': 'Ошибка обновления записи'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     if request.method == 'DELETE':
         # Удаление записи (только преподаватель-владелец)

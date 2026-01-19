@@ -1,0 +1,3 @@
+# Check Zoom settings
+ssh tp "cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && python -c \"import django; import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'teaching_panel.settings'); django.setup(); from django.conf import settings; print('ZOOM_ACCOUNT_ID:', bool(getattr(settings, 'ZOOM_ACCOUNT_ID', ''))); print('ZOOM_CLIENT_ID:', bool(getattr(settings, 'ZOOM_CLIENT_ID', ''))); print('ZOOM_CLIENT_SECRET:', bool(getattr(settings, 'ZOOM_CLIENT_SECRET', ''))); print('ZOOM_WEBHOOK_SECRET:', bool(getattr(settings, 'ZOOM_WEBHOOK_SECRET', '')))\"" > webhook_test.txt 2>&1
+Get-Content ./webhook_test.txt

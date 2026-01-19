@@ -1,0 +1,34 @@
+/var/www/teaching_panel/teaching_panel/teaching_panel/settings.py:534: RuntimeWarning: WARNING: Using reCAPTCHA test keys in production! Get real keys from https://www.google.com/recaptcha/admin
+  warnings.warn(
+INFO 2026-01-19 18:08:04,833 views 2634901 140096772556608 Synced 1 Zoom recording(s) for teacher 4
+Lesson 64:
+  teacher_id: 4
+  teacher_email: syrnik131313@gmail.com
+  record_lesson: True
+  zoom_meeting_id: 86441833969
+  group: ╨ÿ╨╜╤ä╨╛╤Ç╨╝╨░╤é╨╕╨║╨░ 1.1
+  start_time: 2026-01-19 15:22:33.482800+00:00
+  end_time: 2026-01-19 16:22:33.482800+00:00
+  teacher has_zoom_creds: True
+
+Lesson 65:
+  teacher_id: 4
+  teacher_email: syrnik131313@gmail.com
+  record_lesson: True
+  zoom_meeting_id: 86538363219
+  group: ╨ÿ╨╜╤ä╨╛╤Ç╨╝╨░╤é╨╕╨║╨░ 1.2
+  start_time: 2026-01-19 16:28:19.718895+00:00
+  end_time: 2026-01-19 17:28:19.718895+00:00
+  teacher has_zoom_creds: True
+
+==================================================
+Attempting sync for teacher ID=4...
+Synced 1 recordings
+
+==================================================
+Recordings after sync:
+  ID=12 lesson=64 status=ready storage=zoom
+  ID=11 lesson=None status=ready storage=gdrive
+  ID=10 lesson=None status=ready storage=gdrive
+  ID=9 lesson=None status=ready storage=gdrive
+  ID=8 lesson=None status=ready storage=local

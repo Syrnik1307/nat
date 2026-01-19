@@ -1,0 +1,27 @@
+/var/www/teaching_panel/teaching_panel/teaching_panel/settings.py:534: RuntimeWarning: WARNING: Using reCAPTCHA test keys in production! Get real keys from https://www.google.com/recaptcha/admin
+  warnings.warn(
+=== QUICK LESSONS WITH ZOOM ===
+Count: 9
+  ID=18 group='Материалы • Сыромятников Никита' zoom=https://us06web.zoom.us/j/89014827414?pwd=UTFvV2Kb
+    Students in this group: ['syrnik1307@gmail.com']
+  ID=19 group='Материалы • Сыромятников Никита' zoom=https://us06web.zoom.us/j/89580284616?pwd=17H5zfoi
+    Students in this group: ['syrnik1307@gmail.com']
+  ID=20 group='Материалы • Сыромятников Никита' zoom=https://us06web.zoom.us/j/88364367078?pwd=5iZNx3k9
+    Students in this group: ['syrnik1307@gmail.com']
+  ID=36 group='Материалы • Сыромятников Никита' zoom=https://us06web.zoom.us/j/87853049659?pwd=9F3XypLF
+    Students in this group: ['syrnik1307@gmail.com']
+  ID=41 group='Материалы • Сыромятников Никита' zoom=https://us06web.zoom.us/j/84595979257?pwd=VXAXikdO
+    Students in this group: ['syrnik1307@gmail.com']
+  ID=47 group='Без расписания • Суслова Татьяна' zoom=https://us06web.zoom.us/j/86165384309?pwd=cO7mKsxF
+    Students in this group: []
+  ID=48 group='Материалы • Сыромятников Никита' zoom=https://us06web.zoom.us/j/86098247676?pwd=kjDERD6Z
+    Students in this group: ['syrnik1307@gmail.com']
+  ID=59 group='Индивидуально • Слава' zoom=https://us06web.zoom.us/j/82165663156?pwd=02lQFGFh
+    Students in this group: ['yugay.slava.2023@inbox.ru']
+  ID=64 group='Информатика 1.1' zoom=https://us06web.zoom.us/j/86441833969?pwd=M0IIFsSr
+    Students in this group: ['komlenok.vladimir@gmail.com', 'sona1a2a3a4a@gmail.com', 'gornostaevaleks2009@gmail.com', 'serebrennikova.dary@gmail.com', '0303ula0303@gmail.com']
+
+=== GROUP 1.1 INFO ===
+Group ID=19, name=Информатика 1.1
+Students: ['komlenok.vladimir@gmail.com', 'sona1a2a3a4a@gmail.com', 'gornostaevaleks2009@gmail.com', 'serebrennikova.dary@gmail.com', '0303ula0303@gmail.com', 'syrnik1307@gmail.com']
+DONE

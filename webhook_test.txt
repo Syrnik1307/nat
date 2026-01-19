@@ -1,0 +1,17 @@
+HTTP/2 405 
+server: nginx/1.18.0 (Ubuntu)
+date: Mon, 19 Jan 2026 17:52:40 GMT
+content-type: text/html; charset=utf-8
+content-length: 0
+allow: GET, POST
+x-request-duration: 0.002
+x-frame-options: DENY
+vary: origin, Cookie
+x-content-type-options: nosniff
+referrer-policy: same-origin
+cross-origin-opener-policy: same-origin
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-xss-protection: 1; mode=block
+referrer-policy: strict-origin-when-cross-origin
+

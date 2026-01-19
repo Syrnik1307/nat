@@ -1,0 +1,7 @@
+/var/www/teaching_panel/teaching_panel/teaching_panel/settings.py:534: RuntimeWarning: WARNING: Using reCAPTCHA test keys in production! Get real keys from https://www.google.com/recaptcha/admin
+  warnings.warn(
+Student: komlenok.vladimir@gmail.com
+Now: 2026-01-19T16:17:12.860454+00:00
+End: 2026-02-18T16:17:12.860454+00:00
+Lessons overlapping window: 1
+ID=64 | group=Информатика 1.1 | quick=True | start=2026-01-19 15:22:33.482800+00:00 | end=2026-01-19 16:22:33.482800+00:00 | zoom=True | meet=False

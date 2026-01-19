@@ -1,0 +1,12 @@
+● celery-worker.service - Teaching Panel Celery Worker
+     Loaded: loaded (/etc/systemd/system/celery-worker.service; enabled; vendor preset: enabled)
+     Active: active (running) since Sat 2026-01-10 20:00:15 UTC; 1 weeks 1 days ago
+   Main PID: 2289257 (python3)
+      Tasks: 3 (limit: 2388)
+     Memory: 35.8M
+     CGroup: /system.slice/celery-worker.service
+             ├─2289257 /var/www/teaching_panel/venv/bin/python3 -m celery -A teaching_panel worker --pidfile=/var/run/celery/celery-worker.service.pid --logfile=/var/log/celery/celery-worker.service.log --loglevel=info --concurrency=2 -n worker@5997103-sj469886 --executable=/var/www/teaching_panel/venv/bin/python3
+             ├─2289264 /var/www/teaching_panel/venv/bin/python3 -m celery -A teaching_panel worker --pidfile=/var/run/celery/celery-worker.service.pid --logfile=/var/log/celery/celery-worker.service.log --loglevel=info --concurrency=2 -n worker@5997103-sj469886 --executable=/var/www/teaching_panel/venv/bin/python3
+             └─2289265 /var/www/teaching_panel/venv/bin/python3 -m celery -A teaching_panel worker --pidfile=/var/run/celery/celery-worker.service.pid --logfile=/var/log/celery/celery-worker.service.log --loglevel=info --concurrency=2 -n worker@5997103-sj469886 --executable=/var/www/teaching_panel/venv/bin/python3
+
+Warning: journal has been rotated since unit was started, output may be incomplete.

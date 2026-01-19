@@ -200,6 +200,30 @@ function TeacherRecordingsPage() {
     });
   };
 
+  const handleRename = async (recordingId, newTitle) => {
+    try {
+      const response = await api.patch(`recordings/${recordingId}/`, { title: newTitle }, withScheduleApiBase());
+      // Обновляем локальное состояние
+      setRecordings(recordings.map(r => 
+        r.id === recordingId ? { ...r, title: response.data.title || newTitle } : r
+      ));
+      addToast({
+        type: 'success',
+        title: 'Название изменено',
+        message: 'Название записи успешно обновлено'
+      });
+    } catch (err) {
+      console.error('Error renaming recording:', err);
+      const errorMsg = err.response?.data?.error || 'Не удалось изменить название';
+      addToast({
+        type: 'error',
+        title: 'Ошибка',
+        message: errorMsg
+      });
+      throw err; // Чтобы RecordingCard знал об ошибке
+    }
+  };
+
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
     
@@ -602,7 +626,9 @@ function TeacherRecordingsPage() {
                 recording={recording}
                 onPlay={openPlayer}
                 onDelete={handleDelete}
+                onRename={handleRename}
                 showDelete={true}
+                showEdit={true}
               />
             ))}
           </div>

@@ -430,6 +430,174 @@
 				"tail -50 /tmp/cleanup.log"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "pwsh force reset",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
+		},
+		{
+			"label": "pwsh sync after fix",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
+		},
+		{
+			"label": "pwsh grep lessonrecording",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
+		},
+		{
+			"label": "pwsh fix on server",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
+		},
+		{
+			"label": "pwsh sync recs final",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
+		},
+		{
+			"label": "pwsh deploy migration",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
+		},
+		{
+			"label": "pwsh show migrations",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
+		},
+		{
+			"label": "pwsh check 0029",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
+		},
+		{
+			"label": "pwsh git log",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
+		},
+		{
+			"label": "pwsh show commit",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
+		},
+		{
+			"label": "pwsh check nested",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
+		},
+		{
+			"label": "pwsh find 0029",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
+		},
+		{
+			"label": "pwsh copy and migrate",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
+		},
+		{
+			"label": "pwsh restart and sync",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"check_teachers.ps1"
+			]
 		}
 	]
 }

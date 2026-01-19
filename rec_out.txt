@@ -1,0 +1,16 @@
+/var/www/teaching_panel/teaching_panel/teaching_panel/settings.py:534: RuntimeWarning: WARNING: Using reCAPTCHA test keys in production! Get real keys from https://www.google.com/recaptcha/admin
+  warnings.warn(
+=== RECENT LESSONS WITH RECORDING ENABLED ===
+ID=64 group=Информатика 1.1 start=2026-01-19 15:22:33.482800+00:00 zoom_id=86441833969 recs=0
+ID=48 group=Материалы • Сыромятников Никита start=2025-12-30 07:49:51.140848+00:00 zoom_id=86098247676 recs=0
+
+=== LESSON 64 (quick lesson) ===
+record_lesson=True
+zoom_meeting_id=86441833969
+recordings count=0
+
+=== LAST 5 RECORDINGS ===
+ID=11 lesson=None status=ready provider=gdrive created=2026-01-13 11:05:17.705595+00:00
+ID=10 lesson=None status=ready provider=gdrive created=2026-01-13 10:30:44.015829+00:00
+ID=9 lesson=None status=ready provider=gdrive created=2026-01-13 09:35:15.904439+00:00
+ID=8 lesson=None status=ready provider=local created=2025-12-09 14:27:08.361000+00:00

@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import './RecordingCard.css';
 
-function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
+function RecordingCard({ recording, onPlay, onDelete, onRename, showDelete, showEdit }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -43,6 +46,31 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
     }
   };
 
+  const handleStartEdit = () => {
+    setEditTitle(recording.title || recording.lesson_info?.subject || 'Урок');
+    setIsEditing(true);
+  };
+
+  const handleSaveTitle = async () => {
+    const newTitle = editTitle.trim();
+    if (!newTitle || newTitle === (recording.title || recording.lesson_info?.subject || 'Урок')) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      if (onRename) {
+        await onRename(recording.id, newTitle);
+      }
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Error renaming recording:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const accessGroups = Array.isArray(recording.access_groups) && recording.access_groups.length > 0
     ? recording.access_groups
     : (recording.lesson_info?.group
@@ -72,9 +100,63 @@ function RecordingCard({ recording, onPlay, onDelete, showDelete }) {
 
       {/* Информация */}
       <div className="recording-info">
-        <div className="recording-title">
-          {recording.title || recording.lesson_info?.subject || 'Урок'}
-        </div>
+        {/* Название с возможностью редактирования */}
+        {isEditing ? (
+          <div className="recording-title-edit">
+            <input
+              type="text"
+              className="title-edit-input"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSaveTitle();
+                } else if (e.key === 'Escape') {
+                  setIsEditing(false);
+                }
+              }}
+              autoFocus
+              maxLength={255}
+              disabled={isSaving}
+            />
+            <div className="title-edit-actions">
+              <button 
+                className="title-edit-save"
+                onClick={handleSaveTitle}
+                disabled={isSaving || !editTitle.trim()}
+                title="Сохранить"
+              >
+                {isSaving ? '...' : 'OK'}
+              </button>
+              <button 
+                className="title-edit-cancel"
+                onClick={() => setIsEditing(false)}
+                disabled={isSaving}
+                title="Отмена"
+              >
+                X
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="recording-title-wrapper">
+            <div className="recording-title">
+              {recording.title || recording.lesson_info?.subject || 'Урок'}
+            </div>
+            {showEdit && (
+              <button 
+                className="title-edit-button"
+                onClick={handleStartEdit}
+                title="Редактировать название"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Группы - показываем в одну строку */}
         {accessGroups.length > 0 && (

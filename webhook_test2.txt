@@ -1,0 +1,6 @@
+ParserError: C:\Users\User\Desktop\nat\run_check_recs.ps1:2:212
+Line |
+   2 |  . O_SETTINGS_MODULE', 'teaching_panel.settings'); django.setup(); from  .
+     |                                                                 ~
+     | An
+     | expression was expected after '('.

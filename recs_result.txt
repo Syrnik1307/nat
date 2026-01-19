@@ -1,0 +1,14 @@
+/var/www/teaching_panel/teaching_panel/teaching_panel/settings.py:534: RuntimeWarning: WARNING: Using reCAPTCHA test keys in production! Get real keys from https://www.google.com/recaptcha/admin
+  warnings.warn(
+=== RECORDINGS (last 3h) ===
+Count: 0
+
+=== LESSONS with record_lesson=True (last 3h) ===
+Count: 2
+  ID=64 group=Информатика 1.1 zoom_meeting_id=86441833969
+  ID=65 group=Информатика 1.2 zoom_meeting_id=86538363219
+
+=== ALL LESSONS (last 3h) ===
+Count: 2
+  ID=64 group=Информатика 1.1 record=True zoom_id=86441833969
+  ID=65 group=Информатика 1.2 record=True zoom_id=86538363219

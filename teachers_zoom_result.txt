@@ -1,0 +1,81 @@
+/var/www/teaching_panel/teaching_panel/teaching_panel/settings.py:534: RuntimeWarning: WARNING: Using reCAPTCHA test keys in production! Get real keys from https://www.google.com/recaptcha/admin
+  warnings.warn(
+Total teachers: 11
+
+ID=50 email=syrnik130@gmail.com
+  zoom_account_id: False
+  zoom_client_id: False
+  zoom_client_secret: False
+  zoom_user_id: 
+  HAS COMPLETE ZOOM CREDS: False
+
+ID=39 email=smoke_hw_teacher_b@test.local
+  zoom_account_id: False
+  zoom_client_id: False
+  zoom_client_secret: False
+  zoom_user_id: 
+  HAS COMPLETE ZOOM CREDS: False
+
+ID=37 email=smoke_hw_teacher@test.local
+  zoom_account_id: False
+  zoom_client_id: False
+  zoom_client_secret: False
+  zoom_user_id: 
+  HAS COMPLETE ZOOM CREDS: False
+
+ID=32 email=test_teacher_20260110_ad3a9a@test.local
+  zoom_account_id: False
+  zoom_client_id: False
+  zoom_client_secret: False
+  zoom_user_id: 
+  HAS COMPLETE ZOOM CREDS: False
+
+ID=31 email=katyagreece@gmail.com
+  zoom_account_id: False
+  zoom_client_id: False
+  zoom_client_secret: False
+  zoom_user_id: 
+  HAS COMPLETE ZOOM CREDS: False
+
+ID=30 email=syrnik1333333333307@gmail.com
+  zoom_account_id: False
+  zoom_client_id: False
+  zoom_client_secret: False
+  zoom_user_id: 
+  HAS COMPLETE ZOOM CREDS: False
+
+ID=29 email=syromyatnikovnk@gmail.com
+  zoom_account_id: False
+  zoom_client_id: False
+  zoom_client_secret: False
+  zoom_user_id: 
+  HAS COMPLETE ZOOM CREDS: False
+
+ID=28 email=brazilia06@mail.ru
+  zoom_account_id: False
+  zoom_client_id: False
+  zoom_client_secret: False
+  zoom_user_id: 
+  HAS COMPLETE ZOOM CREDS: False
+
+ID=27 email=lina@adamauskas.com
+  zoom_account_id: False
+  zoom_client_id: False
+  zoom_client_secret: False
+  zoom_user_id: 
+  HAS COMPLETE ZOOM CREDS: False
+
+ID=24 email=syrn07@gmail.com
+  zoom_account_id: False
+  zoom_client_id: False
+  zoom_client_secret: False
+  zoom_user_id: 
+  HAS COMPLETE ZOOM CREDS: False
+
+ID=4 email=syrnik131313@gmail.com
+  zoom_account_id: True
+  zoom_client_id: True
+  zoom_client_secret: True
+  zoom_user_id: me
+  HAS COMPLETE ZOOM CREDS: True
+

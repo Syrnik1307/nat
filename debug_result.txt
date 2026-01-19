@@ -1,0 +1,39 @@
+/var/www/teaching_panel/teaching_panel/teaching_panel/settings.py:534: RuntimeWarning: WARNING: Using reCAPTCHA test keys in production! Get real keys from https://www.google.com/recaptcha/admin
+  warnings.warn(
+=== ACTIVE LESSONS ===
+Traceback (most recent call last):
+  File "manage.py", line 32, in <module>
+    main()
+  File "manage.py", line 28, in main
+    execute_from_command_line(sys.argv)
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+    utility.execute()
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/core/management/__init__.py", line 436, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/core/management/base.py", line 412, in run_from_argv
+    self.execute(*args, **cmd_options)
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/core/management/base.py", line 458, in execute
+    output = self.handle(*args, **options)
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/core/management/commands/shell.py", line 127, in handle
+    exec(sys.stdin.read(), globals())
+  File "<string>", line 4, in <module>
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/db/models/query.py", line 1438, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/db/models/query.py", line 1456, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/db/models/query.py", line 1466, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/db/models/sql/query.py", line 1546, in add_q
+    clause, _ = self._add_q(q_object, self.used_aliases)
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/db/models/sql/query.py", line 1577, in _add_q
+    child_clause, needed_inner = self.build_filter(
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/db/models/sql/query.py", line 1427, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/db/models/sql/query.py", line 1237, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+  File "/var/www/teaching_panel/venv/lib/python3.8/site-packages/django/db/models/sql/query.py", line 1726, in names_to_path
+    raise FieldError(
+django.core.exceptions.FieldError: Cannot resolve keyword 'is_active' into field. Choices are: active_zoom_account, attendance_records, attendances, control_points, created_at, end_time, google_calendar_event_id, google_meet_link, group, group_id, homeworks, id, is_quick_lesson, join_logs, location, materials, notes, record_lesson, recording_available_for_days, recordings, start_time, student_questions, teacher, teacher_id, title, topics, transcript_stats, updated_at, zoom_account, zoom_account_id, zoom_account_used, zoom_account_used_id, zoom_join_url, zoom_meeting_id, zoom_password, zoom_start_url
+SCRIPT DONE
