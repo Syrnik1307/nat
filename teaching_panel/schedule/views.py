@@ -2276,98 +2276,71 @@ def zoom_webhook_receiver(request):
         
         # Обрабатываем событие готовности записи
         elif event_type == 'recording.completed':
+            from .tasks import process_zoom_recording
             recording_data = payload.get('payload', {}).get('object', {})
             meeting_id = str(recording_data.get('id', ''))  # Zoom meeting ID
-            host_email = recording_data.get('host_email', '')
-            topic = recording_data.get('topic', '')
             recording_files = recording_data.get('recording_files', [])
-            
-            logger.info(f"[Webhook] Получено событие recording.completed для встречи {meeting_id}")
-            
+
+            logger.info(f"[Webhook] recording.completed for meeting {meeting_id}, files={len(recording_files)}")
+
             if not meeting_id:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Meeting ID not found in recording payload'
-                }, status=400)
-            
-            # Ищем урок по Zoom meeting ID
+                return JsonResponse({'status': 'error', 'message': 'Meeting ID missing'}, status=400)
+
             try:
-                lesson = Lesson.objects.select_related('group', 'teacher').get(
-                    zoom_meeting_id=meeting_id
-                )
-                
-                # Проверяем, был ли включен флаг записи для этого урока
-                if not lesson.record_lesson:
-                    logger.info(f"[Webhook] Урок {lesson.id} не требует записи (record_lesson=False), пропускаем")
-                    return JsonResponse({
-                        'status': 'skipped',
-                        'message': 'Recording not enabled for this lesson',
-                        'lesson_id': lesson.id
-                    })
-                
-                # Обрабатываем файлы записи
-                created_recordings = []
-                for rec_file in recording_files:
-                    file_type = rec_file.get('file_type', '')
-                    recording_type = rec_file.get('recording_type', '')
-                    
-                    # Обрабатываем только видео файлы (MP4)
-                    if file_type.lower() not in ['mp4', 'video']:
-                        continue
-                    
-                    download_url = rec_file.get('download_url', '')
-                    play_url = rec_file.get('play_url', '')
-                    recording_start = rec_file.get('recording_start', '')
-                    recording_end = rec_file.get('recording_end', '')
-                    file_size = rec_file.get('file_size', 0)
-                    
-                    # Создаём запись в БД со статусом "processing"
-                    recording = LessonRecording.objects.create(
-                        lesson=lesson,
-                        zoom_recording_id=rec_file.get('id', ''),
-                        download_url=download_url,
-                        play_url=play_url,
-                        recording_type=recording_type,
-                        file_size=file_size,
-                        status='ready',  # Сразу готова к просмотру
-                        visibility=LessonRecording.Visibility.LESSON_GROUP,  # Доступна группе урока
-                        storage_provider='zoom',  # Изначально в Zoom Cloud
-                    )
-                    
-                    # Устанавливаем доступность записи
-                    if lesson.recording_available_for_days > 0:
-                        from datetime import timedelta
-                        recording.available_until = timezone.now() + timedelta(days=lesson.recording_available_for_days)
-                        recording.save()
-                    
-                    created_recordings.append({
-                        'id': recording.id,
-                        'recording_type': recording_type,
-                        'file_size': file_size
-                    })
-                    
-                    logger.info(f"[Webhook] Создана запись {recording.id} для урока {lesson.id} ({lesson.title})")
-                
-                if created_recordings:
-                    return JsonResponse({
-                        'status': 'success',
-                        'message': f'Created {len(created_recordings)} recording(s)',
-                        'lesson_id': lesson.id,
-                        'recordings': created_recordings
-                    })
-                else:
-                    return JsonResponse({
-                        'status': 'no_recordings',
-                        'message': 'No video files found in recording',
-                        'lesson_id': lesson.id
-                    })
-                    
+                lesson = Lesson.objects.select_related('group', 'teacher').get(zoom_meeting_id=meeting_id)
             except Lesson.DoesNotExist:
-                logger.warning(f"[Webhook] Урок с meeting_id={meeting_id} не найден при обработке записи")
-                return JsonResponse({
-                    'status': 'not_found',
-                    'message': f'Lesson with meeting_id {meeting_id} not found'
-                }, status=404)
+                logger.warning(f"[Webhook] Lesson with meeting_id={meeting_id} not found")
+                return JsonResponse({'status': 'not_found'}, status=404)
+
+            if not lesson.record_lesson:
+                logger.info(f"[Webhook] Lesson {lesson.id} has record_lesson=False, skip")
+                return JsonResponse({'status': 'skipped', 'lesson_id': lesson.id})
+
+            processed = 0
+            for rec_file in recording_files:
+                file_type = (rec_file.get('file_type') or '').lower()
+                if file_type not in ['mp4', 'm4a', 'video', 'transcript']:
+                    continue
+
+                zoom_rec_id = rec_file.get('id') or ''
+                download_url = rec_file.get('download_url') or ''
+                if not download_url:
+                    continue
+
+                rec_obj, created = LessonRecording.objects.get_or_create(
+                    lesson=lesson,
+                    zoom_recording_id=zoom_rec_id,
+                    defaults={
+                        'download_url': download_url,
+                        'play_url': rec_file.get('play_url', '') or '',
+                        'file_size': rec_file.get('file_size', 0) or 0,
+                        'recording_type': rec_file.get('recording_type', '') or '',
+                        'status': 'processing',
+                        'storage_provider': 'gdrive',
+                        'visibility': LessonRecording.Visibility.LESSON_GROUP,
+                    }
+                )
+
+                if not created:
+                    rec_obj.download_url = download_url
+                    rec_obj.play_url = rec_file.get('play_url', '') or ''
+                    rec_obj.file_size = rec_file.get('file_size', 0) or 0
+                    rec_obj.recording_type = rec_file.get('recording_type', '') or ''
+                    rec_obj.status = 'processing'
+                    rec_obj.save(update_fields=['download_url', 'play_url', 'file_size', 'recording_type', 'status'])
+
+                # Учитываем TTL доступности, если задано на уроке
+                if lesson.recording_available_for_days > 0:
+                    from datetime import timedelta
+                    rec_obj.available_until = timezone.now() + timedelta(days=lesson.recording_available_for_days)
+                    rec_obj.save(update_fields=['available_until'])
+
+                process_zoom_recording.delay(rec_obj.id)
+                processed += 1
+
+            if processed == 0:
+                return JsonResponse({'status': 'no_video_files', 'lesson_id': lesson.id})
+            return JsonResponse({'status': 'queued', 'lesson_id': lesson.id, 'files': processed})
         
         # Другие события - просто логируем и отвечаем 200
         logger.info(f"[Webhook] Получено событие {event_type}, игнорируем")
