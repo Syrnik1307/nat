@@ -1,0 +1,14 @@
+[Unit]
+Description=Teaching Panel Healthcheck Watchdog
+After=teaching_panel.service
+Requires=teaching_panel.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/var/www/teaching_panel/venv/bin/python3 /var/www/teaching_panel/teaching_panel/healthcheck_watchdog.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

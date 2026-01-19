@@ -93,8 +93,38 @@ def health(request):
         'message': 'Backend running. React frontend is on port 3000.',
     })
 
+def health_check(request):
+    """Deep healthcheck with DB validation for monitoring."""
+    import time
+    from django.db import connection
+    
+    start = time.time()
+    checks = {'database': False, 'response_time_ms': 0}
+    status = 'ok'
+    http_status = 200
+    
+    # Check database connection
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+            checks['database'] = True
+    except Exception as e:
+        checks['database'] = False
+        checks['database_error'] = str(e)
+        status = 'unhealthy'
+        http_status = 503
+    
+    checks['response_time_ms'] = round((time.time() - start) * 1000, 2)
+    
+    return JsonResponse({
+        'status': status,
+        'service': 'teaching_panel',
+        'checks': checks,
+    }, status=http_status)
+
 urlpatterns = [
     path('', health, name='root'),
+    path('api/health/', health_check, name='health-check'),
     path('admin/', admin.site.urls),  # Django admin для управления БД
     
     # Debug endpoint (remove in production)
