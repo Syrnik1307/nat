@@ -42,6 +42,7 @@ urlpatterns = [
     path('api/recordings/teacher/', views.teacher_recordings_list, name='teacher_recordings_list'),
     path('api/recordings/<int:recording_id>/', views.recording_detail, name='recording_detail'),
     path('api/recordings/<int:recording_id>/view/', views.recording_track_view, name='recording_track_view'),
+    path('api/recordings/<int:recording_id>/stream/', views.stream_recording, name='stream_recording'),
     path('api/recordings/<int:recording_id>/delete/', views.delete_recording, name='delete_recording'),
     path('api/lessons/<int:lesson_id>/recording/', views.lesson_recording, name='lesson_recording'),
     

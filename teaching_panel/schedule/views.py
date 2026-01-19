@@ -2852,6 +2852,158 @@ def recording_track_view(request, recording_id):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['GET'])
+@permission_classes([])  # Отключаем стандартную проверку - токен передается в query
+def stream_recording(request, recording_id):
+    """
+    Стриминг видео записи через сервер (прокси для Google Drive)
+    GET /schedule/api/recordings/<id>/stream/?token=<jwt_token>
+    
+    Поддерживает Range requests для перемотки видео.
+    Токен передается в query string потому что <video> тег не поддерживает кастомные headers.
+    """
+    from django.http import StreamingHttpResponse, HttpResponse
+    from rest_framework_simplejwt.tokens import AccessToken
+    from rest_framework_simplejwt.exceptions import TokenError
+    from django.contrib.auth import get_user_model
+    import io
+    
+    User = get_user_model()
+    
+    # Проверяем токен из query string
+    token = request.GET.get('token')
+    if not token:
+        return Response({
+            'error': 'Токен авторизации не предоставлен'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    
+    try:
+        # Декодируем JWT токен
+        access_token = AccessToken(token)
+        user_id = access_token.get('user_id')
+        user = User.objects.get(id=user_id)
+    except (TokenError, User.DoesNotExist) as e:
+        logger.warning(f"Invalid token for stream_recording: {e}")
+        return Response({
+            'error': 'Недействительный токен'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    
+    try:
+        recording = LessonRecording.objects.select_related(
+            'lesson', 'lesson__group'
+        ).prefetch_related('allowed_groups', 'allowed_students').get(id=recording_id)
+        
+        # Проверяем доступ пользователя к записи
+        if not _user_has_recording_access(user, recording):
+            return Response({
+                'error': 'У вас нет доступа к этой записи'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Проверяем что есть file_id в Google Drive
+        if not recording.gdrive_file_id:
+            return Response({
+                'error': 'Файл записи не найден в хранилище'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Получаем Google Drive manager
+        from .gdrive_utils import get_gdrive_manager
+        gdrive = get_gdrive_manager()
+        
+        # Получаем метаданные файла для определения размера
+        try:
+            file_metadata = gdrive.service.files().get(
+                fileId=recording.gdrive_file_id,
+                fields='size,mimeType,name'
+            ).execute()
+            file_size = int(file_metadata.get('size', 0))
+            mime_type = file_metadata.get('mimeType', 'video/mp4')
+        except Exception as e:
+            logger.error(f"Failed to get file metadata from GDrive: {e}")
+            return Response({
+                'error': 'Не удалось получить информацию о файле'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # Обрабатываем Range header для поддержки перемотки
+        range_header = request.META.get('HTTP_RANGE', '')
+        start = 0
+        end = file_size - 1
+        
+        if range_header:
+            # Парсим Range: bytes=0-1000
+            try:
+                range_match = range_header.replace('bytes=', '').split('-')
+                start = int(range_match[0]) if range_match[0] else 0
+                end = int(range_match[1]) if range_match[1] else file_size - 1
+            except:
+                pass
+        
+        # Ограничиваем чанк размером (5MB за раз для оптимальной производительности)
+        chunk_size = min(5 * 1024 * 1024, end - start + 1)
+        end = min(start + chunk_size - 1, file_size - 1)
+        
+        # Загружаем чанк из Google Drive
+        try:
+            from googleapiclient.http import MediaIoBaseDownload
+            
+            request_drive = gdrive.service.files().get_media(fileId=recording.gdrive_file_id)
+            
+            # Устанавливаем Range header для Google Drive API
+            if start > 0 or end < file_size - 1:
+                request_drive.headers['Range'] = f'bytes={start}-{end}'
+            
+            fh = io.BytesIO()
+            downloader = MediaIoBaseDownload(fh, request_drive)
+            
+            done = False
+            while not done:
+                status_download, done = downloader.next_chunk()
+            
+            fh.seek(0)
+            content = fh.read()
+            
+        except Exception as e:
+            logger.error(f"Failed to download video chunk from GDrive: {e}")
+            return Response({
+                'error': 'Не удалось загрузить видео'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # Формируем ответ
+        if range_header:
+            response = HttpResponse(
+                content,
+                status=206,  # Partial Content
+                content_type=mime_type
+            )
+            response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+        else:
+            response = HttpResponse(
+                content,
+                status=200,
+                content_type=mime_type
+            )
+        
+        response['Content-Length'] = len(content)
+        response['Accept-Ranges'] = 'bytes'
+        response['Content-Disposition'] = f'inline; filename="{recording_id}.mp4"'
+        
+        # CORS headers для video player
+        response['Access-Control-Allow-Origin'] = '*'
+        response['Access-Control-Allow-Headers'] = 'Range'
+        response['Access-Control-Expose-Headers'] = 'Content-Range, Accept-Ranges, Content-Length'
+        
+        return response
+        
+    except LessonRecording.DoesNotExist:
+        return Response({
+            'error': 'Запись не найдена'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.exception(f"Error streaming recording {recording_id}: {e}")
+        return Response({
+            'error': 'Ошибка воспроизведения'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_recording(request, recording_id):
