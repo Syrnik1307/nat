@@ -612,7 +612,7 @@ def _download_from_zoom(recording, teacher):
             return None
         
         # Получаем Zoom access token
-        zoom_token = _get_zoom_access_token()
+        zoom_token = _get_zoom_access_token(teacher)
         
         if not zoom_token:
             logger.error("Failed to get Zoom access token")
