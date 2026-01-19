@@ -553,9 +553,12 @@ def process_zoom_recording(recording_id):
         recording.thumbnail_url = gdrive_file.get('thumbnail_link', '')
         recording.status = 'ready'
         
-        # Устанавливаем дату удаления
-        days_available = recording.lesson.recording_available_for_days or 90
-        recording.available_until = timezone.now() + timedelta(days=days_available)
+        # Устанавливаем дату удаления ТОЛЬКО если явно задано на уроке
+        days_available = recording.lesson.recording_available_for_days
+        if days_available and days_available > 0:
+            recording.available_until = timezone.now() + timedelta(days=days_available)
+        else:
+            recording.available_until = None  # Бессрочное хранение
         
         recording.save()
         

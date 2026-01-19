@@ -133,22 +133,29 @@ function RecordingPlayer({ recording, onClose }) {
     recording.play_url.includes('docs.google.com')
   );
   
-  // Для Google Drive конвертируем URL в embed формат
-  const getEmbedUrl = (url) => {
+  // Для Google Drive получаем прямую ссылку на просмотр
+  const getDirectViewUrl = (url) => {
     if (!url) return null;
     
-    // Если это Google Drive preview URL, конвертируем в embed
+    // Извлекаем file ID из Google Drive URL
     const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
     if (driveMatch) {
       const fileId = driveMatch[1];
-      // Используем embed формат который работает в iframe
-      return `https://drive.google.com/file/d/${fileId}/preview`;
+      // Прямая ссылка для просмотра в новой вкладке
+      return `https://drive.google.com/file/d/${fileId}/view`;
     }
     
     return url;
   };
   
-  const embedUrl = getEmbedUrl(recording.play_url);
+  const directViewUrl = getDirectViewUrl(recording.play_url);
+  
+  // Функция скачивания
+  const handleDownload = () => {
+    if (recording.download_url) {
+      window.open(recording.download_url, '_blank');
+    }
+  };
 
   const mediaStats = [
     {
@@ -199,15 +206,48 @@ function RecordingPlayer({ recording, onClose }) {
           <div className="player-media-column">
             <div className="player-video-wrapper">
               {recording.play_url ? (
-                <iframe
-                  src={embedUrl}
-                  title={subject}
-                  frameBorder="0"
-                  allow="autoplay; encrypted-media"
-                  allowFullScreen
-                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                  referrerPolicy="no-referrer"
-                />
+                isGoogleDriveUrl ? (
+                  <div className="player-gdrive-notice">
+                    <div className="gdrive-notice-icon">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+                        <line x1="12" y1="22" x2="12" y2="15.5"/>
+                        <polyline points="22 8.5 12 15.5 2 8.5"/>
+                        <polyline points="2 15.5 12 8.5 22 15.5"/>
+                        <line x1="12" y1="2" x2="12" y2="8.5"/>
+                      </svg>
+                    </div>
+                    <p className="gdrive-notice-text">
+                      Видео хранится в Google Drive
+                    </p>
+                    <p className="gdrive-notice-hint">
+                      Нажмите кнопку ниже для просмотра или скачайте файл
+                    </p>
+                    <div className="gdrive-notice-actions">
+                      <button 
+                        className="gdrive-btn primary"
+                        onClick={() => window.open(directViewUrl, '_blank')}
+                      >
+                        Смотреть в Google Drive
+                      </button>
+                      {recording.download_url && (
+                        <button 
+                          className="gdrive-btn secondary"
+                          onClick={handleDownload}
+                        >
+                          Скачать
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <video
+                    src={recording.play_url}
+                    controls
+                    autoPlay={false}
+                    style={{ width: '100%', height: '100%', backgroundColor: '#000' }}
+                  />
+                )
               ) : (
                 <div className="player-video-placeholder">
                   <span className="placeholder-icon"></span>
