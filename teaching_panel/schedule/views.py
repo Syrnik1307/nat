@@ -2615,6 +2615,10 @@ def teacher_recordings_list(request):
         status_filter = request.query_params.get('status')
         if status_filter:
             recordings = recordings.filter(status=status_filter)
+        else:
+            # По умолчанию не показываем удалённые записи (иначе UI видит их как
+            # «Недоступно», хотя это ожидаемый статус после cleanup или действий в Zoom).
+            recordings = recordings.exclude(status='deleted')
         
         # Поиск
         search = request.query_params.get('search')

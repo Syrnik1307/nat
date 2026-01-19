@@ -6,6 +6,7 @@ import hmac
 import json
 import logging
 from django.conf import settings
+from django.db.models import Q
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -326,17 +327,25 @@ def handle_recording_trashed(payload):
     try:
         recording_data = payload.get('payload', {}).get('object', {})
         meeting_id = recording_data.get('id')
-        
-        # Обновляем статус всех записей этой встречи
-        updated = LessonRecording.objects.filter(
-            lesson__zoom_meeting_id=meeting_id
-        ).update(status='deleted')
-        
-        logger.info(f"Marked {updated} recording(s) as deleted for meeting {meeting_id}")
+
+        # Важно: мы можем сами удалять облачную запись из Zoom после успешной
+        # загрузки в Google Drive. Zoom при этом присылает recording.trashed.
+        # Это НЕ должно делать запись «Недоступной» на сайте.
+        qs = LessonRecording.objects.filter(lesson__zoom_meeting_id=meeting_id)
+        has_archive = (~Q(gdrive_file_id='')) | (~Q(archive_key='')) | (~Q(archive_url=''))
+
+        # Помечаем deleted только те, у которых нет архива в нашем хранилище.
+        updated = qs.exclude(has_archive).update(status='deleted')
+        kept = qs.filter(has_archive).count()
+
+        logger.info(
+            f"recording.trashed for meeting {meeting_id}: marked deleted={updated}, kept archived={kept}"
+        )
         
         return JsonResponse({
             'status': 'success',
-            'updated_count': updated
+            'updated_count': updated,
+            'kept_count': kept,
         })
     
     except Exception as e:
