@@ -347,8 +347,8 @@ class LessonRecording(models.Model):
     )
     
     zoom_recording_id = models.CharField(_('ID записи Zoom'), max_length=100, blank=True, default='')
-    download_url = models.URLField(_('ссылка для скачивания'), blank=True)
-    play_url = models.URLField(_('ссылка для просмотра'), blank=True)
+    download_url = models.URLField(_('ссылка для скачивания'), blank=True, max_length=1024)
+    play_url = models.URLField(_('ссылка для просмотра'), blank=True, max_length=1024)
     recording_type = models.CharField(
         _('тип записи'),
         max_length=50,
