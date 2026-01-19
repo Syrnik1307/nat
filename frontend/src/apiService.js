@@ -462,6 +462,7 @@ export const getTeacherStatsBreakdown = () => apiClient.get('teacher-stats/break
 export const getTeacherSlaDetails = () => apiClient.get('teacher-stats/sla_details/');
 export const getTeacherStudentRisks = () => apiClient.get('teacher-stats/student_risks/');
 export const getTeacherEarlyWarnings = (params = {}) => apiClient.get('teacher-stats/early_warnings/', { params });
+export const getTeacherMonthlyDynamics = (params = {}) => apiClient.get('teacher-stats/monthly_dynamics/', { params });
 
 // Student stats
 export const getStudentStatsSummary = () => apiClient.get('student-stats/summary/');

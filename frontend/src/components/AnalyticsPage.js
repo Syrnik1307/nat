@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth';
-import { apiClient, getTeacherEarlyWarnings, getTeacherSlaDetails, getTeacherStudentRisks } from '../apiService';
+import { apiClient, getTeacherEarlyWarnings, getTeacherMonthlyDynamics, getTeacherSlaDetails, getTeacherStudentRisks } from '../apiService';
 import { Link, useSearchParams } from 'react-router-dom';
 import StudentDetailAnalytics from './StudentDetailAnalytics';
 import GroupDetailAnalytics from './GroupDetailAnalytics';
@@ -105,6 +105,7 @@ const AnalyticsPage = () => {
     const [slaDetails, setSlaDetails] = useState(null);
     const [studentRisks, setStudentRisks] = useState(null);
     const [earlyWarnings, setEarlyWarnings] = useState(null);
+    const [monthlyDynamics, setMonthlyDynamics] = useState(null);
 
     const loadData = useCallback(async () => {
         try {
@@ -118,6 +119,10 @@ const AnalyticsPage = () => {
             setSlaDetails(slaRes.data);
             setStudentRisks(risksRes.data);
             setEarlyWarnings(ewsRes.data);
+            // Динамика — не критично, грузим отдельным запросом и не валим весь экран
+            getTeacherMonthlyDynamics({ months: 3 })
+                .then((res) => setMonthlyDynamics(res.data))
+                .catch(() => setMonthlyDynamics(null));
             const groupsList = groupsRes.data.results || groupsRes.data || [];
             setGroups(groupsList);
             const allStudents = [];
@@ -243,6 +248,58 @@ const AnalyticsPage = () => {
                         </button>
                     )}
                 </div>
+            </div>
+
+            <div className="analytics-section">
+                <div className="section-header">
+                    <h2>Динамика (последние 3 месяца)</h2>
+                </div>
+
+                {monthlyDynamics?.months?.length ? (
+                    <div className="monthly-dynamics-table">
+                        <div className="monthly-dynamics-head">
+                            <div className="monthly-dynamics-cell monthly-dynamics-cell--month">Месяц</div>
+                            <div className="monthly-dynamics-cell">Уроки</div>
+                            <div className="monthly-dynamics-cell">Посещаемость</div>
+                            <div className="monthly-dynamics-cell">Сдано ДЗ</div>
+                            <div className="monthly-dynamics-cell">Проверено ДЗ</div>
+                            <div className="monthly-dynamics-cell">Средний результат</div>
+                            <div className="monthly-dynamics-cell">Ниже 60%</div>
+                        </div>
+
+                        {monthlyDynamics.months.map((m) => {
+                            const [y, mon] = (m.month || '').split('-').map((x) => parseInt(x, 10));
+                            const monthLabel = (y && mon)
+                                ? new Date(y, mon - 1, 1).toLocaleDateString('ru-RU', { month: 'short', year: 'numeric' })
+                                : (m.month || '');
+
+                            const attendance = (m.attendance_percent === null || m.attendance_percent === undefined)
+                                ? '—'
+                                : `${m.attendance_percent}%`;
+                            const avgScore = (m.avg_score_percent === null || m.avg_score_percent === undefined)
+                                ? '—'
+                                : `${m.avg_score_percent}%`;
+
+                            return (
+                                <div key={m.month} className="monthly-dynamics-row">
+                                    <div className="monthly-dynamics-cell monthly-dynamics-cell--month">{monthLabel}</div>
+                                    <div className="monthly-dynamics-cell">{m.lessons_count ?? 0}</div>
+                                    <div className="monthly-dynamics-cell">{attendance}</div>
+                                    <div className="monthly-dynamics-cell">{m.homework_submitted_count ?? 0}</div>
+                                    <div className="monthly-dynamics-cell">{m.homework_graded_count ?? 0}</div>
+                                    <div className="monthly-dynamics-cell">{avgScore}</div>
+                                    <div className="monthly-dynamics-cell">{m.below_60_percent_count ?? 0}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="empty-state" style={{ padding: '16px' }}>
+                        <p style={{ margin: 0 }}>
+                            Пока недостаточно данных для динамики.
+                        </p>
+                    </div>
+                )}
             </div>
 
             <section className="analytics-section">

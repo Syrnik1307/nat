@@ -276,6 +276,56 @@
 
 .data-table th {
     background: #f8fafc;
+
+/* Monthly dynamics (simple grid table) */
+.monthly-dynamics-table {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+}
+
+.monthly-dynamics-head,
+.monthly-dynamics-row {
+    display: grid;
+    grid-template-columns: 1.2fr 0.6fr 0.9fr 0.8fr 0.9fr 1fr 0.7fr;
+    gap: 0;
+}
+
+.monthly-dynamics-head {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.monthly-dynamics-row {
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.monthly-dynamics-row:last-child {
+    border-bottom: none;
+}
+
+.monthly-dynamics-cell {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+}
+
+.monthly-dynamics-head .monthly-dynamics-cell {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.monthly-dynamics-cell--month {
+    font-weight: 600;
+    color: #0f172a;
+}
     font-size: 12px;
     font-weight: 600;
     color: #64748b;

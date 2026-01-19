@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Avg, Count, Q, F, DurationField, ExpressionWrapper, Sum
+from django.db.models import Avg, Count, Q, F, DurationField, ExpressionWrapper, Sum, FloatField
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
@@ -575,6 +575,134 @@ class TeacherStatsViewSet(viewsets.ViewSet):
                 'score': health_score,
                 'status': health_status,
             },
+        })
+
+    @action(detail=False, methods=['get'])
+    def monthly_dynamics(self, request):
+        """Динамика по месяцам (простые метрики для преподавателя).
+
+        Параметры:
+        - months: количество месяцев (по умолчанию 3, максимум 12)
+
+        Метрики (по каждому месяцу):
+        - lessons_count
+        - attendance_percent
+        - homework_submitted_count
+        - homework_graded_count
+        - avg_score_percent (нормализовано к 100%)
+        - below_60_percent_count
+        - active_students_count
+        """
+        user = request.user
+        role = getattr(user, 'role', None)
+        if role not in ('teacher', 'admin'):
+            return Response({'detail': 'Только для преподавателей'}, status=403)
+
+        from datetime import timedelta
+        from schedule.models import Lesson, Attendance
+        from homework.models import StudentSubmission
+
+        now = timezone.now()
+        try:
+            months = int(request.query_params.get('months', 3))
+        except (TypeError, ValueError):
+            months = 3
+        months = max(1, min(12, months))
+
+        def _month_start(dt):
+            return dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        def _add_months(dt, delta_months):
+            year = dt.year
+            month = dt.month + delta_months
+            while month > 12:
+                month -= 12
+                year += 1
+            while month < 1:
+                month += 12
+                year -= 1
+            return dt.replace(year=year, month=month, day=1)
+
+        # Берём диапазон, включающий текущий месяц, и ещё (months-1) месяцев назад
+        current_month_start = _month_start(now)
+        oldest_month_start = _add_months(current_month_start, -(months - 1))
+
+        results = []
+        month_cursor = oldest_month_start
+        while month_cursor <= current_month_start:
+            next_month = _add_months(month_cursor, 1)
+
+            lessons_qs = Lesson.objects.filter(
+                teacher=user,
+                start_time__gte=month_cursor,
+                start_time__lt=next_month,
+            )
+            lessons_count = lessons_qs.count()
+
+            attendance_qs = Attendance.objects.filter(
+                lesson__teacher=user,
+                lesson__start_time__gte=month_cursor,
+                lesson__start_time__lt=next_month,
+            )
+            attendance_total = attendance_qs.exclude(status__isnull=True).count()
+            attendance_present = attendance_qs.filter(status='present').count()
+            attendance_percent = round((attendance_present / attendance_total) * 100, 1) if attendance_total else None
+
+            submissions_submitted_qs = StudentSubmission.objects.filter(
+                homework__teacher=user,
+                submitted_at__isnull=False,
+                submitted_at__gte=month_cursor,
+                submitted_at__lt=next_month,
+            ).exclude(status='in_progress')
+            homework_submitted_count = submissions_submitted_qs.count()
+
+            submissions_graded_qs = StudentSubmission.objects.filter(
+                homework__teacher=user,
+                status='graded',
+                graded_at__isnull=False,
+                graded_at__gte=month_cursor,
+                graded_at__lt=next_month,
+                total_score__isnull=False,
+            )
+            homework_graded_count = submissions_graded_qs.count()
+
+            score_pct_expr = ExpressionWrapper(
+                100.0 * F('total_score') / Coalesce(F('homework__max_score'), 100),
+                output_field=FloatField(),
+            )
+            avg_score_percent = submissions_graded_qs.annotate(score_pct=score_pct_expr).aggregate(
+                avg_pct=Avg('score_pct')
+            )['avg_pct']
+            avg_score_percent = round(avg_score_percent, 1) if avg_score_percent is not None else None
+
+            below_60_percent_count = submissions_graded_qs.annotate(score_pct=score_pct_expr).filter(
+                score_pct__lt=60
+            ).count()
+
+            # Активные ученики: отметки посещаемости ИЛИ сдача ДЗ
+            active_student_ids = set(attendance_qs.values_list('student_id', flat=True).distinct())
+            active_student_ids.update(submissions_submitted_qs.values_list('student_id', flat=True).distinct())
+
+            results.append({
+                'month': month_cursor.strftime('%Y-%m'),
+                'month_start': month_cursor.date().isoformat(),
+                'lessons_count': lessons_count,
+                'attendance_percent': attendance_percent,
+                'attendance_total': attendance_total,
+                'attendance_present': attendance_present,
+                'homework_submitted_count': homework_submitted_count,
+                'homework_graded_count': homework_graded_count,
+                'avg_score_percent': avg_score_percent,
+                'below_60_percent_count': below_60_percent_count,
+                'active_students_count': len(active_student_ids),
+            })
+
+            month_cursor = next_month
+
+        return Response({
+            'months': results,
+            'window_months': months,
+            'generated_at': now.isoformat(),
         })
 
     @action(detail=False, methods=['get'])
