@@ -52,6 +52,10 @@ class DummyGoogleDriveManager:
     def delete_file(self, file_id):
         return True
 
+    def file_exists(self, file_id):
+        """Dummy: всегда возвращает True"""
+        return True
+
     def calculate_folder_size(self, folder_id):
         return {'total_size': 0, 'file_count': 0, 'folder_count': 0}
 
@@ -480,6 +484,42 @@ class GoogleDriveManager:
         except Exception as e:
             logger.error(f"Failed to delete file from Google Drive: {e}")
             raise
+    
+    def file_exists(self, file_id):
+        """
+        Проверить существует ли файл в Google Drive.
+        
+        КРИТИЧЕСКИ ВАЖНО: Используется для верификации перед удалением записи с Zoom.
+        
+        Args:
+            file_id: ID файла в Google Drive
+            
+        Returns:
+            bool: True если файл существует и доступен
+        """
+        if not file_id:
+            return False
+        
+        try:
+            # Минимальный запрос - только id файла
+            file = self.service.files().get(
+                fileId=file_id,
+                fields='id'
+            ).execute()
+            
+            # Если получили ответ с id - файл существует
+            return bool(file and file.get('id'))
+            
+        except Exception as e:
+            # 404 = файл не существует или удалён
+            error_str = str(e).lower()
+            if '404' in error_str or 'not found' in error_str:
+                logger.warning(f"File {file_id} not found on Google Drive")
+                return False
+            
+            # Другие ошибки - логируем но возвращаем False для безопасности
+            logger.error(f"Error checking file existence on Google Drive: {e}")
+            return False
     
     def get_file_info(self, file_id):
         """

@@ -1066,7 +1066,12 @@ def _upload_to_gdrive(recording, file_path):
 
 def _delete_from_zoom(recording, teacher):
     """
-    Удаляет запись с Zoom после успешной загрузки в Drive.
+    Удаляет запись с Zoom ТОЛЬКО после подтверждённой загрузки в Google Drive.
+    
+    КРИТИЧЕСКИ ВАЖНО: Удаление происходит только если:
+    1. Запись имеет gdrive_file_id (файл загружен в GDrive)
+    2. Файл реально существует на Google Drive (верификация)
+    3. Статус записи = 'ready'
     
     Zoom API: DELETE /meetings/{meetingId}/recordings/{recordingId}
     Docs: https://developers.zoom.us/docs/api/rest/reference/zoom-api/methods/#operation/recordingDelete
@@ -1084,19 +1089,51 @@ def _delete_from_zoom(recording, teacher):
     # Проверяем что удаление из Zoom включено (можно отключить для отладки)
     if not getattr(settings, 'ZOOM_DELETE_AFTER_UPLOAD', True):
         logger.info(f"ZOOM_DELETE_AFTER_UPLOAD is disabled, skipping deletion for recording {recording.id}")
-        return
+        return False
+    
+    # ========== КРИТИЧЕСКИЕ ПРОВЕРКИ ==========
+    
+    # 1. Проверяем что есть gdrive_file_id
+    if not recording.gdrive_file_id:
+        logger.warning(f"SAFETY CHECK FAILED: Recording {recording.id} has no gdrive_file_id - NOT deleting from Zoom!")
+        return False
+    
+    # 2. Проверяем статус записи
+    if recording.status != 'ready':
+        logger.warning(f"SAFETY CHECK FAILED: Recording {recording.id} status is '{recording.status}' not 'ready' - NOT deleting from Zoom!")
+        return False
+    
+    # 3. Верифицируем что файл реально существует на Google Drive
+    try:
+        from .gdrive_utils import get_gdrive_manager
+        gdrive = get_gdrive_manager()
+        
+        # Проверяем существование файла
+        file_exists = gdrive.file_exists(recording.gdrive_file_id)
+        
+        if not file_exists:
+            logger.error(f"SAFETY CHECK FAILED: File {recording.gdrive_file_id} NOT FOUND on Google Drive - NOT deleting from Zoom!")
+            return False
+        
+        logger.info(f"SAFETY CHECK PASSED: File {recording.gdrive_file_id} verified on Google Drive for recording {recording.id}")
+        
+    except Exception as e:
+        logger.error(f"SAFETY CHECK FAILED: Cannot verify file on Google Drive: {e} - NOT deleting from Zoom!")
+        return False
+    
+    # ========== УДАЛЕНИЕ С ZOOM ==========
     
     try:
         zoom_recording_id = recording.zoom_recording_id
         
         if not zoom_recording_id:
-            logger.warning(f"No Zoom recording ID for recording {recording.id}")
-            return
+            logger.info(f"No Zoom recording ID for recording {recording.id} - nothing to delete")
+            return True  # Это не ошибка, просто нечего удалять
         
         # Получаем meeting_id из связанного урока
         if not recording.lesson or not recording.lesson.zoom_meeting_id:
             logger.warning(f"Recording {recording.id} has no associated meeting ID")
-            return
+            return False
         
         meeting_id = recording.lesson.zoom_meeting_id
         
@@ -1105,7 +1142,7 @@ def _delete_from_zoom(recording, teacher):
         
         if not zoom_token:
             logger.error("Failed to get Zoom access token for deletion")
-            return
+            return False
         
         headers = {
             'Authorization': f'Bearer {zoom_token}',
@@ -1116,7 +1153,7 @@ def _delete_from_zoom(recording, teacher):
         # DELETE /meetings/{meetingId}/recordings/{recordingId}
         url = f"https://api.zoom.us/v2/meetings/{meeting_id}/recordings/{zoom_recording_id}"
         
-        logger.info(f"Deleting recording file {zoom_recording_id} from Zoom meeting {meeting_id}")
+        logger.info(f"Deleting recording file {zoom_recording_id} from Zoom meeting {meeting_id} (gdrive verified: {recording.gdrive_file_id})")
         
         response = requests.delete(url, headers=headers, timeout=30)
         
