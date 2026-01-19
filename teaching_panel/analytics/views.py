@@ -420,6 +420,324 @@ class TeacherStatsViewSet(viewsets.ViewSet):
 
         return Response({'groups': group_data, 'students': student_rows})
 
+    @action(detail=False, methods=['get'])
+    def sla_details(self, request):
+        """
+        Детализация SLA проверки ДЗ.
+        
+        Возвращает:
+        - Распределение работ по времени проверки (до 3 дней, 4-7, 8-10, >10)
+        - Список работ ожидающих проверки с "возрастом"
+        - Общий "здоровье" SLA
+        """
+        user = request.user
+        role = getattr(user, 'role', None)
+        if role not in ('teacher', 'admin'):
+            return Response({'detail': 'Только для преподавателей'}, status=403)
+        
+        from homework.models import Homework, StudentSubmission
+        from datetime import timedelta
+        
+        now = timezone.now()
+        thirty_days_ago = now - timedelta(days=30)
+        
+        # Все ДЗ учителя
+        teacher_homeworks = Homework.objects.filter(teacher=user, is_template=False)
+        homework_ids = list(teacher_homeworks.values_list('id', flat=True))
+        
+        # === Распределение времени проверки за 30 дней ===
+        graded = StudentSubmission.objects.filter(
+            homework_id__in=homework_ids,
+            status='graded',
+            graded_at__isnull=False,
+            submitted_at__isnull=False,
+            graded_at__gte=thirty_days_ago,
+        )
+        
+        # Считаем время проверки для каждой работы
+        sla_distribution = {'ideal': 0, 'good': 0, 'slow': 0, 'critical': 0}
+        for sub in graded:
+            days = (sub.graded_at - sub.submitted_at).total_seconds() / 86400
+            if days <= 3:
+                sla_distribution['ideal'] += 1
+            elif days <= 7:
+                sla_distribution['good'] += 1
+            elif days <= 10:
+                sla_distribution['slow'] += 1
+            else:
+                sla_distribution['critical'] += 1
+        
+        total_graded = sum(sla_distribution.values())
+        sla_percents = {
+            k: round(v / total_graded * 100) if total_graded else 0
+            for k, v in sla_distribution.items()
+        }
+        
+        # === Бэклог: работы ожидающие проверки с "возрастом" ===
+        pending = StudentSubmission.objects.filter(
+            homework_id__in=homework_ids,
+            status='submitted',
+            graded_at__isnull=True,
+            submitted_at__isnull=False,
+        ).select_related('student', 'homework').order_by('submitted_at')
+        
+        backlog_items = []
+        backlog_counts = {'fresh': 0, 'aging': 0, 'old': 0, 'critical': 0}
+        
+        for sub in pending[:50]:  # Лимит 50 для ответа
+            days_waiting = (now - sub.submitted_at).total_seconds() / 86400
+            
+            if days_waiting <= 3:
+                severity = 'fresh'
+            elif days_waiting <= 7:
+                severity = 'aging'
+            elif days_waiting <= 10:
+                severity = 'old'
+            else:
+                severity = 'critical'
+            
+            backlog_counts[severity] += 1
+            backlog_items.append({
+                'id': sub.id,
+                'homework_id': sub.homework_id,
+                'homework_title': sub.homework.title,
+                'student_id': sub.student_id,
+                'student_name': sub.student.get_full_name(),
+                'submitted_at': sub.submitted_at.isoformat(),
+                'days_waiting': round(days_waiting, 1),
+                'severity': severity,
+            })
+        
+        # Подсчитываем общее количество по категориям для всего бэклога
+        for sub in pending[50:]:
+            days_waiting = (now - sub.submitted_at).total_seconds() / 86400
+            if days_waiting <= 3:
+                backlog_counts['fresh'] += 1
+            elif days_waiting <= 7:
+                backlog_counts['aging'] += 1
+            elif days_waiting <= 10:
+                backlog_counts['old'] += 1
+            else:
+                backlog_counts['critical'] += 1
+        
+        # Общий "здоровье" SLA: 100 если нет critical/old, минус баллы за проблемы
+        health_score = 100
+        health_score -= backlog_counts['critical'] * 10
+        health_score -= backlog_counts['old'] * 5
+        health_score -= backlog_counts['aging'] * 2
+        health_score = max(0, min(100, health_score))
+        
+        if health_score >= 80:
+            health_status = 'excellent'
+        elif health_score >= 60:
+            health_status = 'good'
+        elif health_score >= 40:
+            health_status = 'warning'
+        else:
+            health_status = 'critical'
+        
+        return Response({
+            'sla_distribution': sla_distribution,
+            'sla_percents': sla_percents,
+            'total_graded_30d': total_graded,
+            'backlog': {
+                'total': pending.count(),
+                'counts': backlog_counts,
+                'items': backlog_items,
+            },
+            'health': {
+                'score': health_score,
+                'status': health_status,
+            },
+        })
+
+    @action(detail=False, methods=['get'])
+    def student_risks(self, request):
+        """
+        Риск-скоринг учеников.
+        
+        Объединяет:
+        - Пропуски подряд
+        - Просрочки ДЗ за последние 14 дней
+        - Падение оценок ниже порога (60%)
+        
+        Возвращает список учеников с риском и рекомендациями.
+        """
+        user = request.user
+        role = getattr(user, 'role', None)
+        if role not in ('teacher', 'admin'):
+            return Response({'detail': 'Только для преподавателей'}, status=403)
+        
+        from schedule.models import Group
+        from homework.models import Homework, StudentSubmission
+        from accounts.models import AttendanceRecord
+        from accounts.attendance_service import RatingService
+        from datetime import timedelta
+        
+        now = timezone.now()
+        fourteen_days_ago = now - timedelta(days=14)
+        thirty_days_ago = now - timedelta(days=30)
+        
+        # Группы учителя
+        groups = Group.objects.filter(teacher=user).prefetch_related('students')
+        
+        # ДЗ учителя для анализа
+        teacher_homeworks = Homework.objects.filter(teacher=user, is_template=False)
+        homework_ids = list(teacher_homeworks.values_list('id', flat=True))
+        
+        # Собираем риски по всем ученикам
+        student_risks = {}
+        
+        for group in groups:
+            # 1. Пропуски подряд (используем существующий сервис)
+            try:
+                absence_alerts = RatingService.get_students_with_consecutive_absences(
+                    group_id=group.id,
+                    min_absences=2  # Более чувствительный порог
+                )
+                for alert in absence_alerts:
+                    sid = alert['student_id']
+                    if sid not in student_risks:
+                        student_risks[sid] = {
+                            'student_id': sid,
+                            'student_name': alert['student_name'],
+                            'student_email': alert.get('student_email', ''),
+                            'group_id': group.id,
+                            'group_name': group.name,
+                            'risk_score': 0,
+                            'risk_factors': [],
+                            'recommendations': [],
+                        }
+                    
+                    absences = alert['consecutive_absences']
+                    if absences >= 3:
+                        student_risks[sid]['risk_score'] += 40
+                        student_risks[sid]['risk_factors'].append({
+                            'type': 'attendance',
+                            'severity': 'critical',
+                            'message': f'Пропустил {absences} занятий подряд',
+                        })
+                        student_risks[sid]['recommendations'].append('Связаться с учеником/родителем')
+                    elif absences >= 2:
+                        student_risks[sid]['risk_score'] += 20
+                        student_risks[sid]['risk_factors'].append({
+                            'type': 'attendance',
+                            'severity': 'warning',
+                            'message': f'Пропустил {absences} занятия подряд',
+                        })
+                        student_risks[sid]['recommendations'].append('Предложить личную беседу')
+            except Exception:
+                pass  # Если сервис недоступен, продолжаем
+            
+            # 2. Просрочки ДЗ за 14 дней
+            for student in group.students.all():
+                if student.id not in student_risks:
+                    student_risks[student.id] = {
+                        'student_id': student.id,
+                        'student_name': student.get_full_name(),
+                        'student_email': student.email,
+                        'group_id': group.id,
+                        'group_name': group.name,
+                        'risk_score': 0,
+                        'risk_factors': [],
+                        'recommendations': [],
+                    }
+                
+                # Просрочки: ДЗ с дедлайном в последние 14 дней, которые не сданы или сданы после дедлайна
+                late_homeworks = teacher_homeworks.filter(
+                    lesson__group=group,
+                    deadline__isnull=False,
+                    deadline__gte=fourteen_days_ago,
+                    deadline__lte=now,
+                )
+                
+                late_count = 0
+                not_submitted_count = 0
+                
+                for hw in late_homeworks:
+                    submission = StudentSubmission.objects.filter(
+                        homework=hw,
+                        student=student,
+                    ).first()
+                    
+                    if not submission or not submission.submitted_at:
+                        not_submitted_count += 1
+                    elif submission.submitted_at > hw.deadline:
+                        late_count += 1
+                
+                if not_submitted_count >= 2:
+                    student_risks[student.id]['risk_score'] += 30
+                    student_risks[student.id]['risk_factors'].append({
+                        'type': 'homework',
+                        'severity': 'critical',
+                        'message': f'Не сдал {not_submitted_count} ДЗ за 2 недели',
+                    })
+                    student_risks[student.id]['recommendations'].append('Уточнить причину невыполнения ДЗ')
+                elif not_submitted_count == 1 or late_count >= 2:
+                    student_risks[student.id]['risk_score'] += 15
+                    student_risks[student.id]['risk_factors'].append({
+                        'type': 'homework',
+                        'severity': 'warning',
+                        'message': f'Проблемы со сдачей ДЗ ({not_submitted_count} не сдано, {late_count} просрочено)',
+                    })
+                    student_risks[student.id]['recommendations'].append('Обратить внимание на сдачу ДЗ')
+                
+                # 3. Оценки ниже порога (60%)
+                recent_submissions = StudentSubmission.objects.filter(
+                    homework_id__in=homework_ids,
+                    homework__lesson__group=group,
+                    student=student,
+                    status='graded',
+                    graded_at__gte=thirty_days_ago,
+                    total_score__isnull=False,
+                )
+                
+                below_threshold_count = 0
+                for sub in recent_submissions[:5]:  # Последние 5 работ
+                    max_score = sum(q.points for q in sub.homework.questions.all())
+                    if max_score > 0:
+                        percent = (sub.total_score / max_score) * 100
+                        if percent < 60:
+                            below_threshold_count += 1
+                
+                if below_threshold_count >= 2:
+                    student_risks[student.id]['risk_score'] += 25
+                    student_risks[student.id]['risk_factors'].append({
+                        'type': 'grades',
+                        'severity': 'warning',
+                        'message': f'{below_threshold_count} работ ниже порога 60%',
+                    })
+                    student_risks[student.id]['recommendations'].append('Дать дополнительные материалы')
+        
+        # Фильтруем только учеников с риском
+        at_risk_students = [
+            s for s in student_risks.values()
+            if s['risk_score'] > 0
+        ]
+        
+        # Сортируем по риску (высокий сверху)
+        at_risk_students.sort(key=lambda x: -x['risk_score'])
+        
+        # Определяем уровень риска
+        for student in at_risk_students:
+            score = student['risk_score']
+            if score >= 50:
+                student['risk_level'] = 'high'
+            elif score >= 25:
+                student['risk_level'] = 'medium'
+            else:
+                student['risk_level'] = 'low'
+            
+            # Убираем дубликаты рекомендаций
+            student['recommendations'] = list(dict.fromkeys(student['recommendations']))
+        
+        return Response({
+            'at_risk_count': len(at_risk_students),
+            'high_risk_count': sum(1 for s in at_risk_students if s['risk_level'] == 'high'),
+            'medium_risk_count': sum(1 for s in at_risk_students if s['risk_level'] == 'medium'),
+            'students': at_risk_students[:20],  # Топ-20 рисковых
+        })
+
 
 class StudentStatsViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]

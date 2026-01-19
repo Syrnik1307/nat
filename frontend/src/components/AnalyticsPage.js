@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth';
-import { apiClient } from '../apiService';
+import { apiClient, getTeacherSlaDetails, getTeacherStudentRisks } from '../apiService';
 import { Link, useSearchParams } from 'react-router-dom';
 import StudentDetailAnalytics from './StudentDetailAnalytics';
 import GroupDetailAnalytics from './GroupDetailAnalytics';
@@ -103,15 +103,21 @@ const AnalyticsPage = () => {
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [slaDetails, setSlaDetails] = useState(null);
+    const [studentRisks, setStudentRisks] = useState(null);
 
     const loadData = useCallback(async () => {
         try {
             setLoading(true);
-            const [summaryRes, groupsRes] = await Promise.all([
+            const [summaryRes, groupsRes, slaRes, risksRes] = await Promise.all([
                 apiClient.get('/dashboard/summary/').catch(() => ({ data: {} })),
-                apiClient.get('/groups/')
+                apiClient.get('/groups/'),
+                getTeacherSlaDetails().catch(() => ({ data: null })),
+                getTeacherStudentRisks().catch(() => ({ data: null })),
             ]);
             setSummary(summaryRes.data);
+            setSlaDetails(slaRes.data);
+            setStudentRisks(risksRes.data);
             const groupsList = groupsRes.data.results || groupsRes.data || [];
             setGroups(groupsList);
             const allStudents = [];
@@ -299,6 +305,117 @@ const AnalyticsPage = () => {
                                 onClick={() => setActiveTab('students')}
                             >
                                 +{students.length - 8}
+                            </button>
+                        )}
+                    </div>
+                </section>
+            )}
+
+            {/* SLA Health Section */}
+            {slaDetails && (
+                <section className="analytics-section">
+                    <div className="section-header">
+                        <h2>SLA проверки ДЗ</h2>
+                        <span className={`sla-health-badge sla-health-badge--${slaDetails.health?.status || 'good'}`}>
+                            {slaDetails.health?.score || 100}%
+                        </span>
+                    </div>
+                    <div className="sla-overview">
+                        <div className="sla-distribution">
+                            {slaDetails.sla_distribution?.ideal > 0 && (
+                                <div className="sla-bar sla-bar--ideal" style={{ flex: slaDetails.sla_distribution.ideal }}>
+                                    <span className="sla-bar-label">{slaDetails.sla_distribution.ideal}</span>
+                                </div>
+                            )}
+                            {slaDetails.sla_distribution?.good > 0 && (
+                                <div className="sla-bar sla-bar--good" style={{ flex: slaDetails.sla_distribution.good }}>
+                                    <span className="sla-bar-label">{slaDetails.sla_distribution.good}</span>
+                                </div>
+                            )}
+                            {slaDetails.sla_distribution?.slow > 0 && (
+                                <div className="sla-bar sla-bar--slow" style={{ flex: slaDetails.sla_distribution.slow }}>
+                                    <span className="sla-bar-label">{slaDetails.sla_distribution.slow}</span>
+                                </div>
+                            )}
+                            {slaDetails.sla_distribution?.critical > 0 && (
+                                <div className="sla-bar sla-bar--critical" style={{ flex: slaDetails.sla_distribution.critical }}>
+                                    <span className="sla-bar-label">{slaDetails.sla_distribution.critical}</span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="sla-legend">
+                            <span className="sla-legend-item"><span className="sla-dot sla-dot--ideal"></span> До 3 дней</span>
+                            <span className="sla-legend-item"><span className="sla-dot sla-dot--good"></span> 4-7 дней</span>
+                            <span className="sla-legend-item"><span className="sla-dot sla-dot--slow"></span> 8-10 дней</span>
+                            <span className="sla-legend-item"><span className="sla-dot sla-dot--critical"></span> 10+ дней</span>
+                        </div>
+                        {slaDetails.backlog?.total > 0 && (
+                            <div className="sla-backlog-warning">
+                                <span className="sla-backlog-count">{slaDetails.backlog.total}</span> 
+                                {slaDetails.backlog.total === 1 ? 'работа ждёт' : 'работ ждут'} проверки
+                                {slaDetails.backlog.counts?.critical > 0 && (
+                                    <span className="sla-backlog-critical">
+                                        ({slaDetails.backlog.counts.critical} критич.)
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </section>
+            )}
+
+            {/* At-Risk Students Section */}
+            {studentRisks && studentRisks.students?.length > 0 && (
+                <section className="analytics-section analytics-section--warning">
+                    <div className="section-header">
+                        <h2>Требуют внимания</h2>
+                        <span className="section-count section-count--warning">{studentRisks.at_risk_count}</span>
+                    </div>
+                    <div className="risk-students-list">
+                        {studentRisks.students.slice(0, 5).map(risk => (
+                            <div key={risk.student_id} className="risk-student-card">
+                                <div className="risk-student-info">
+                                    <span className="risk-student-name">{risk.student_name}</span>
+                                    <span className="risk-student-group">{risk.group_name}</span>
+                                </div>
+                                <div className="risk-factors">
+                                    {risk.risk_factors?.map((factor, idx) => {
+                                        const typeClasses = {
+                                            attendance: 'risk-factor--attendance',
+                                            homework: 'risk-factor--homework',
+                                            grades: 'risk-factor--grade',
+                                        };
+                                        return (
+                                            <span 
+                                                key={idx}
+                                                className={`risk-factor ${typeClasses[factor.type] || ''}`}
+                                                title={factor.message}
+                                            >
+                                                {factor.message}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                                <button 
+                                    className="risk-student-action"
+                                    onClick={() => {
+                                        const student = students.find(s => s.id === risk.student_id);
+                                        if (student) {
+                                            setSelectedStudent(student);
+                                            setActiveTab('students');
+                                        }
+                                    }}
+                                >
+                                    Подробнее
+                                </button>
+                            </div>
+                        ))}
+                        {studentRisks.students.length > 5 && (
+                            <button 
+                                className="risk-show-all"
+                                onClick={() => setActiveTab('alerts')}
+                            >
+                                Показать всех ({studentRisks.at_risk_count})
                             </button>
                         )}
                     </div>
