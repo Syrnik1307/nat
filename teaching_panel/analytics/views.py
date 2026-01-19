@@ -706,6 +706,123 @@ class TeacherStatsViewSet(viewsets.ViewSet):
         })
 
     @action(detail=False, methods=['get'])
+    def weekly_dynamics(self, request):
+        """Динамика по неделям (простые метрики, чтобы быстро видеть изменения).
+
+        Параметры:
+        - weeks: количество недель (по умолчанию 8, максимум 26)
+
+        Метрики (по каждой неделе):
+        - lessons_count
+        - attendance_percent
+        - homework_submitted_count
+        - homework_graded_count
+        - avg_score_percent (нормализовано к 100%)
+        - below_60_percent_count
+        - active_students_count
+        """
+        user = request.user
+        role = getattr(user, 'role', None)
+        if role not in ('teacher', 'admin'):
+            return Response({'detail': 'Только для преподавателей'}, status=403)
+
+        from datetime import timedelta
+        from schedule.models import Lesson, Attendance
+        from homework.models import StudentSubmission
+
+        now = timezone.now()
+        try:
+            weeks = int(request.query_params.get('weeks', 8))
+        except (TypeError, ValueError):
+            weeks = 8
+        weeks = max(1, min(26, weeks))
+
+        def _week_start(dt):
+            # Понедельник = начало недели
+            base = dt - timedelta(days=dt.weekday())
+            return base.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        current_week_start = _week_start(now)
+        oldest_week_start = current_week_start - timedelta(days=(weeks - 1) * 7)
+
+        results = []
+        week_cursor = oldest_week_start
+        while week_cursor <= current_week_start:
+            next_week = week_cursor + timedelta(days=7)
+
+            lessons_qs = Lesson.objects.filter(
+                teacher=user,
+                start_time__gte=week_cursor,
+                start_time__lt=next_week,
+            )
+            lessons_count = lessons_qs.count()
+
+            attendance_qs = Attendance.objects.filter(
+                lesson__teacher=user,
+                lesson__start_time__gte=week_cursor,
+                lesson__start_time__lt=next_week,
+            )
+            attendance_total = attendance_qs.exclude(status__isnull=True).count()
+            attendance_present = attendance_qs.filter(status='present').count()
+            attendance_percent = round((attendance_present / attendance_total) * 100, 1) if attendance_total else None
+
+            submissions_submitted_qs = StudentSubmission.objects.filter(
+                homework__teacher=user,
+                submitted_at__isnull=False,
+                submitted_at__gte=week_cursor,
+                submitted_at__lt=next_week,
+            ).exclude(status='in_progress')
+            homework_submitted_count = submissions_submitted_qs.count()
+
+            submissions_graded_qs = StudentSubmission.objects.filter(
+                homework__teacher=user,
+                status='graded',
+                graded_at__isnull=False,
+                graded_at__gte=week_cursor,
+                graded_at__lt=next_week,
+                total_score__isnull=False,
+            )
+            homework_graded_count = submissions_graded_qs.count()
+
+            score_pct_expr = ExpressionWrapper(
+                100.0 * F('total_score') / Coalesce(F('homework__max_score'), 100),
+                output_field=FloatField(),
+            )
+            avg_score_percent = submissions_graded_qs.annotate(score_pct=score_pct_expr).aggregate(
+                avg_pct=Avg('score_pct')
+            )['avg_pct']
+            avg_score_percent = round(avg_score_percent, 1) if avg_score_percent is not None else None
+
+            below_60_percent_count = submissions_graded_qs.annotate(score_pct=score_pct_expr).filter(
+                score_pct__lt=60
+            ).count()
+
+            active_student_ids = set(attendance_qs.values_list('student_id', flat=True).distinct())
+            active_student_ids.update(submissions_submitted_qs.values_list('student_id', flat=True).distinct())
+
+            results.append({
+                'week_start': week_cursor.date().isoformat(),
+                'week_end': (next_week.date() - timedelta(days=1)).isoformat(),
+                'lessons_count': lessons_count,
+                'attendance_percent': attendance_percent,
+                'attendance_total': attendance_total,
+                'attendance_present': attendance_present,
+                'homework_submitted_count': homework_submitted_count,
+                'homework_graded_count': homework_graded_count,
+                'avg_score_percent': avg_score_percent,
+                'below_60_percent_count': below_60_percent_count,
+                'active_students_count': len(active_student_ids),
+            })
+
+            week_cursor = next_week
+
+        return Response({
+            'weeks': results,
+            'window_weeks': weeks,
+            'generated_at': now.isoformat(),
+        })
+
+    @action(detail=False, methods=['get'])
     def student_risks(self, request):
         """
         Риск-скоринг учеников.

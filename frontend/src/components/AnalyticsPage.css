@@ -276,6 +276,13 @@
 
 .data-table th {
     background: #f8fafc;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #e2e8f0;
+}
 
 /* Monthly dynamics (simple grid table) */
 .monthly-dynamics-table {
@@ -325,13 +332,6 @@
 .monthly-dynamics-cell--month {
     font-weight: 600;
     color: #0f172a;
-}
-    font-size: 12px;
-    font-weight: 600;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid #e2e8f0;
 }
 
 .data-table td {

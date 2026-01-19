@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth';
-import { apiClient, getTeacherEarlyWarnings, getTeacherMonthlyDynamics, getTeacherSlaDetails, getTeacherStudentRisks } from '../apiService';
+import { apiClient, getTeacherEarlyWarnings, getTeacherMonthlyDynamics, getTeacherSlaDetails, getTeacherStudentRisks, getTeacherWeeklyDynamics } from '../apiService';
 import { Link, useSearchParams } from 'react-router-dom';
 import StudentDetailAnalytics from './StudentDetailAnalytics';
 import GroupDetailAnalytics from './GroupDetailAnalytics';
@@ -106,6 +106,7 @@ const AnalyticsPage = () => {
     const [studentRisks, setStudentRisks] = useState(null);
     const [earlyWarnings, setEarlyWarnings] = useState(null);
     const [monthlyDynamics, setMonthlyDynamics] = useState(null);
+    const [weeklyDynamics, setWeeklyDynamics] = useState(null);
 
     const loadData = useCallback(async () => {
         try {
@@ -123,6 +124,10 @@ const AnalyticsPage = () => {
             getTeacherMonthlyDynamics({ months: 3 })
                 .then((res) => setMonthlyDynamics(res.data))
                 .catch(() => setMonthlyDynamics(null));
+
+            getTeacherWeeklyDynamics({ weeks: 8 })
+                .then((res) => setWeeklyDynamics(res.data))
+                .catch(() => setWeeklyDynamics(null));
             const groupsList = groupsRes.data.results || groupsRes.data || [];
             setGroups(groupsList);
             const allStudents = [];
@@ -289,6 +294,59 @@ const AnalyticsPage = () => {
                                     <div className="monthly-dynamics-cell">{m.homework_graded_count ?? 0}</div>
                                     <div className="monthly-dynamics-cell">{avgScore}</div>
                                     <div className="monthly-dynamics-cell">{m.below_60_percent_count ?? 0}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="empty-state" style={{ padding: '16px' }}>
+                        <p style={{ margin: 0 }}>
+                            Пока недостаточно данных для динамики.
+                        </p>
+                    </div>
+                )}
+            </div>
+
+            <div className="analytics-section">
+                <div className="section-header">
+                    <h2>Динамика (последние 8 недель)</h2>
+                </div>
+
+                {weeklyDynamics?.weeks?.length ? (
+                    <div className="monthly-dynamics-table">
+                        <div className="monthly-dynamics-head">
+                            <div className="monthly-dynamics-cell monthly-dynamics-cell--month">Неделя</div>
+                            <div className="monthly-dynamics-cell">Уроки</div>
+                            <div className="monthly-dynamics-cell">Посещаемость</div>
+                            <div className="monthly-dynamics-cell">Сдано ДЗ</div>
+                            <div className="monthly-dynamics-cell">Проверено ДЗ</div>
+                            <div className="monthly-dynamics-cell">Средний результат</div>
+                            <div className="monthly-dynamics-cell">Ниже 60%</div>
+                        </div>
+
+                        {weeklyDynamics.weeks.map((w) => {
+                            const start = w.week_start ? new Date(w.week_start) : null;
+                            const end = w.week_end ? new Date(w.week_end) : null;
+                            const label = (start && end)
+                                ? `${start.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })} — ${end.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })}`
+                                : (w.week_start || '');
+
+                            const attendance = (w.attendance_percent === null || w.attendance_percent === undefined)
+                                ? '—'
+                                : `${w.attendance_percent}%`;
+                            const avgScore = (w.avg_score_percent === null || w.avg_score_percent === undefined)
+                                ? '—'
+                                : `${w.avg_score_percent}%`;
+
+                            return (
+                                <div key={w.week_start} className="monthly-dynamics-row">
+                                    <div className="monthly-dynamics-cell monthly-dynamics-cell--month">{label}</div>
+                                    <div className="monthly-dynamics-cell">{w.lessons_count ?? 0}</div>
+                                    <div className="monthly-dynamics-cell">{attendance}</div>
+                                    <div className="monthly-dynamics-cell">{w.homework_submitted_count ?? 0}</div>
+                                    <div className="monthly-dynamics-cell">{w.homework_graded_count ?? 0}</div>
+                                    <div className="monthly-dynamics-cell">{avgScore}</div>
+                                    <div className="monthly-dynamics-cell">{w.below_60_percent_count ?? 0}</div>
                                 </div>
                             );
                         })}
