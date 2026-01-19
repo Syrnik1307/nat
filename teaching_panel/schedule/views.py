@@ -884,15 +884,21 @@ class LessonViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Фильтрация по параметрам запроса"""
+        from django.db.models import Q
         # ОПТИМИЗАЦИЯ: select_related для избежания N+1 на group/teacher
         queryset = super().get_queryset().select_related('group', 'teacher', 'zoom_account')
-        
-        # Исключаем быстрые уроки из расписания по умолчанию
-        queryset = queryset.filter(is_quick_lesson=False)
         
         user = self.request.user
         if not user.is_authenticated:
             return queryset.none()
+        
+        # Быстрые уроки показываем только если они активны (чтобы студенты могли присоединиться)
+        # Обычные уроки показываем всегда
+        # Используем Q для комбинации условий: (НЕ быстрый урок) ИЛИ (быстрый урок И активен)
+        queryset = queryset.filter(
+            Q(is_quick_lesson=False) | Q(is_quick_lesson=True, is_active=True)
+        )
+        
         if getattr(user, 'role', None) == 'teacher':
             queryset = queryset.filter(teacher=user)
         elif getattr(user, 'role', None) == 'student':
