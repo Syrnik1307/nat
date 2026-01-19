@@ -396,6 +396,16 @@ const AnalyticsPage = () => {
                     <p className="section-empty-text">Нет проверенных работ за последние 30 дней</p>
                 ) : (
                     <div className="sla-overview">
+                        {(slaDetails.total_graded_30d > 0 && (slaDetails.grading_time_days_median != null || slaDetails.grading_time_days_p90 != null)) && (
+                            <div className="sla-summary-line">
+                                {slaDetails.grading_time_days_median != null && (
+                                    <span>Обычно проверяете за {slaDetails.grading_time_days_median} дн.</span>
+                                )}
+                                {slaDetails.grading_time_days_p90 != null && (
+                                    <span>{slaDetails.grading_time_days_median != null ? ' ' : ''}90% работ — до {slaDetails.grading_time_days_p90} дн.</span>
+                                )}
+                            </div>
+                        )}
                         {slaDetails.total_graded_30d > 0 && (
                             <div className="sla-distribution">
                                 {slaDetails.sla_distribution?.ideal > 0 && (

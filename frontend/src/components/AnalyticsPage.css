@@ -640,6 +640,12 @@
     gap: 16px;
 }
 
+.sla-summary-line {
+    font-size: 13px;
+    color: #475569;
+    font-weight: 500;
+}
+
 .sla-distribution {
     display: flex;
     height: 32px;

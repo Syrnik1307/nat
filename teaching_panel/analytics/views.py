@@ -456,8 +456,10 @@ class TeacherStatsViewSet(viewsets.ViewSet):
         
         # Считаем время проверки для каждой работы
         sla_distribution = {'ideal': 0, 'good': 0, 'slow': 0, 'critical': 0}
+        grading_days = []
         for sub in graded:
             days = (sub.graded_at - sub.submitted_at).total_seconds() / 86400
+            grading_days.append(days)
             if days <= 3:
                 sla_distribution['ideal'] += 1
             elif days <= 7:
@@ -466,6 +468,28 @@ class TeacherStatsViewSet(viewsets.ViewSet):
                 sla_distribution['slow'] += 1
             else:
                 sla_distribution['critical'] += 1
+
+        def _percentile(sorted_values, pct):
+            if not sorted_values:
+                return None
+            if pct <= 0:
+                return float(sorted_values[0])
+            if pct >= 100:
+                return float(sorted_values[-1])
+            n = len(sorted_values)
+            if n == 1:
+                return float(sorted_values[0])
+            pos = (pct / 100) * (n - 1)
+            lo = int(pos)
+            hi = min(lo + 1, n - 1)
+            if lo == hi:
+                return float(sorted_values[lo])
+            frac = pos - lo
+            return float(sorted_values[lo] * (1 - frac) + sorted_values[hi] * frac)
+
+        grading_days_sorted = sorted(grading_days)
+        grading_time_days_median = _percentile(grading_days_sorted, 50)
+        grading_time_days_p90 = _percentile(grading_days_sorted, 90)
         
         total_graded = sum(sla_distribution.values())
         sla_percents = {
@@ -540,6 +564,8 @@ class TeacherStatsViewSet(viewsets.ViewSet):
             'sla_distribution': sla_distribution,
             'sla_percents': sla_percents,
             'total_graded_30d': total_graded,
+            'grading_time_days_median': round(grading_time_days_median, 1) if grading_time_days_median is not None else None,
+            'grading_time_days_p90': round(grading_time_days_p90, 1) if grading_time_days_p90 is not None else None,
             'backlog': {
                 'total': pending.count(),
                 'counts': backlog_counts,
