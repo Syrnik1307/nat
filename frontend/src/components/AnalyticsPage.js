@@ -380,10 +380,10 @@ const AnalyticsPage = () => {
                 )}
             </section>
 
-            {/* SLA Health Section */}
+            {/* Homework Review Speed Section */}
             <section className="analytics-section">
                 <div className="section-header">
-                    <h2>SLA проверки ДЗ</h2>
+                    <h2>Время проверки ДЗ</h2>
                     {slaDetails?.health && (
                         <span className={`sla-health-badge sla-health-badge--${slaDetails.health.status || 'good'}`}>
                             {slaDetails.health.score ?? 100}%
@@ -391,7 +391,7 @@ const AnalyticsPage = () => {
                     )}
                 </div>
                 {!slaDetails ? (
-                    <p className="section-empty-text">Загрузка данных SLA...</p>
+                    <p className="section-empty-text">Загрузка данных по проверке ДЗ...</p>
                 ) : slaDetails.total_graded_30d === 0 && (!slaDetails.backlog || slaDetails.backlog.total === 0) ? (
                     <p className="section-empty-text">Нет проверенных работ за последние 30 дней</p>
                 ) : (
