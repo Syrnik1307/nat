@@ -38,7 +38,8 @@ const normalizeUrl = (url) => {
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
-  if (url.startsWith('/media')) {
+  // Абсолютные пути на нашем сервере — возвращаем как есть
+  if (url.startsWith('/')) {
     return url;
   }
   return `/media/${url}`;
