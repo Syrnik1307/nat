@@ -193,13 +193,13 @@
 
 @media (min-width: 1024px) {
   .hc-main-layout {
-    grid-template-columns: 320px minmax(0, 1fr);
+    grid-template-columns: 400px minmax(0, 1fr);
   }
 }
 
 @media (min-width: 1280px) {
   .hc-main-layout {
-    grid-template-columns: 360px minmax(0, 1fr);
+    grid-template-columns: 440px minmax(0, 1fr);
   }
 }
 
