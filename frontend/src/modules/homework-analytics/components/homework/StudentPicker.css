@@ -261,6 +261,42 @@
   line-height: 1.35;
 }
 
+/* All-students compact card (instead of inline list) */
+.sp-allstudents-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md, 12px);
+  padding: 12px 14px;
+  border-radius: var(--radius-lg, 10px);
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+}
+
+.sp-allstudents-text {
+  font-size: 13px;
+  color: var(--color-text-secondary, #666);
+}
+
+.sp-allstudents-select-btn {
+  border: none;
+  background: var(--color-primary, #4F46E5);
+  color: var(--color-text-on-primary, #fff);
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.18);
+  flex-shrink: 0;
+}
+
+.sp-allstudents-select-btn:hover {
+  filter: brightness(1.02);
+  transform: translateY(-1px);
+}
+
 @keyframes sp-expand {
   from {
     opacity: 0;

@@ -453,38 +453,25 @@ const StudentPicker = ({
                     </div>
 
                     {selection?.allStudents && (
-                      <div className="sp-students-hint">
-                        Сейчас выбраны все ученики. Переключитесь на «Выбрать», чтобы отметить конкретных.
+                      <div className="sp-allstudents-card">
+                        <div className="sp-allstudents-text">
+                          Сейчас выбраны все ученики группы.
+                        </div>
+                        <button
+                          type="button"
+                          className="sp-allstudents-select-btn"
+                          onClick={() => {
+                            toggleAllStudents(group.id);
+                            openStudentModal(group.id);
+                          }}
+                          disabled={disabled}
+                        >
+                          Выбрать конкретных
+                        </button>
                       </div>
                     )}
 
-                    {selection?.allStudents ? (
-                      <div className="sp-students-list is-readonly">
-                        {isLoadingStudents ? (
-                          <div className="sp-loading-students">Загрузка...</div>
-                        ) : students.length === 0 ? (
-                          <div className="sp-no-students">Нет учеников в группе</div>
-                        ) : (
-                          students.map(student => {
-                            const studentKey = normalizeId(student?.id);
-                            const fullName = `${student?.first_name || ''} ${student?.last_name || ''}`.trim() || student?.email;
-
-                            return (
-                              <label key={studentKey} className="sp-student-item">
-                                <input
-                                  type="checkbox"
-                                  checked={false}
-                                  onChange={() => {}}
-                                  disabled
-                                />
-                                <span className="sp-checkbox-custom small" />
-                                <span className="sp-student-name">{fullName}</span>
-                              </label>
-                            );
-                          })
-                        )}
-                      </div>
-                    ) : (
+                    {!selection?.allStudents && (
                       <div className="sp-custom-summary">
                         <div className="sp-custom-summary-text">
                           Выбрано учеников: {selection?.studentIds?.size || 0}
