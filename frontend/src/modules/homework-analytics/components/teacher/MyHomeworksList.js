@@ -254,7 +254,7 @@ const MyHomeworksList = ({ onEditHomework }) => {
     setError(null);
     try {
       const [hwRes, groupsRes] = await Promise.all([
-        getHomeworkList({ is_template: 0 }),
+        getHomeworkList(),
         getGroups()
       ]);
       
