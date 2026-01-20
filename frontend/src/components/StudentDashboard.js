@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { getStudentStatsSummary } from '../apiService';
+import { getCached } from '../utils/dataCache';
 import '../styles/dashboard.css';
 import '../styles/StudentStats.css';
 
@@ -42,9 +43,27 @@ const StudentDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const initialLoadDone = useRef(false);
 
   useEffect(() => {
-    const load = async () => {
+    const load = async (useCache = true) => {
+      const cacheTTL = 30000; // 30 секунд
+
+      if (useCache) {
+        try {
+          const cachedData = await getCached('student:stats', async () => {
+            const res = await getStudentStatsSummary();
+            return res.data;
+          }, cacheTTL);
+          setData(cachedData);
+          setLoading(false);
+          return;
+        } catch (e) {
+          console.error('Error loading cached stats:', e);
+        }
+      }
+
+      // Fallback: загружаем без кэша
       try {
         setLoading(true);
         setError(null);
@@ -56,7 +75,8 @@ const StudentDashboard = () => {
         setLoading(false);
       }
     };
-    load();
+    load(!initialLoadDone.current);
+    initialLoadDone.current = true;
   }, []);
 
   const overall = data?.overall || null;

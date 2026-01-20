@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api, { withScheduleApiBase } from '../../apiService';
+import { getCached } from '../../utils/dataCache';
 import RecordingCard from './RecordingCard';
 import RecordingPlayer from './RecordingPlayer';
 import './RecordingsPage.css';
@@ -14,43 +15,85 @@ function RecordingsPage() {
   const [groups, setGroups] = useState([]);
   const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef(null);
+  const initialLoadDone = useRef(false);
 
   useEffect(() => {
-    loadRecordings();
-    loadGroups();
+    loadData(!initialLoadDone.current);
+    initialLoadDone.current = true;
   }, []);
+
+  const loadData = async (useCache = true) => {
+    const cacheTTL = 30000; // 30 секунд
+    
+    if (useCache) {
+      try {
+        const [cachedRecordings, cachedGroups] = await Promise.all([
+          getCached('student:recordings', async () => {
+            return await fetchRecordings();
+          }, cacheTTL),
+          getCached('student:rec-groups', async () => {
+            return await fetchGroups();
+          }, cacheTTL),
+        ]);
+        setRecordings(cachedRecordings);
+        setGroups(cachedGroups);
+        setLoading(false);
+        return;
+      } catch (e) {
+        console.error('Error loading cached data:', e);
+      }
+    }
+    
+    // Fallback: загружаем без кэша
+    await loadRecordings();
+    await loadGroups();
+  };
+
+  const fetchRecordings = async () => {
+    const tryFetch = async (path) => {
+      const response = await api.get(path, withScheduleApiBase());
+      const data = response?.data;
+      const results = Array.isArray(data?.results) ? data.results : null;
+      const arr = results ?? (Array.isArray(data) ? data : []);
+      if (!results && !Array.isArray(data)) {
+        console.warn('[RecordingsPage] Unexpected recordings response shape:', data);
+      }
+      return arr;
+    };
+
+    let arr = [];
+    try {
+      arr = await tryFetch('recordings/');
+    } catch (primaryErr) {
+      if (primaryErr?.response?.status === 404) {
+        try {
+          arr = await tryFetch('recordings/teacher/');
+        } catch (fallbackErr) {
+          throw fallbackErr;
+        }
+      } else {
+        throw primaryErr;
+      }
+    }
+    return arr;
+  };
+
+  const fetchGroups = async () => {
+    const response = await api.get('groups/');
+    const data = response?.data;
+    const results = Array.isArray(data?.results) ? data.results : null;
+    const arr = results ?? (Array.isArray(data) ? data : []);
+    if (!results && !Array.isArray(data)) {
+      console.warn('[RecordingsPage] Unexpected groups response shape:', data);
+    }
+    return arr;
+  };
 
   const loadRecordings = async () => {
     try {
       setLoading(true);
       setError(null);
-      const tryFetch = async (path) => {
-        const response = await api.get(path, withScheduleApiBase());
-        const data = response?.data;
-        const results = Array.isArray(data?.results) ? data.results : null;
-        const arr = results ?? (Array.isArray(data) ? data : []);
-        if (!results && !Array.isArray(data)) {
-          console.warn('[RecordingsPage] Unexpected recordings response shape:', data);
-        }
-        return arr;
-      };
-
-      let arr = [];
-      try {
-        arr = await tryFetch('recordings/');
-      } catch (primaryErr) {
-        // fallback to teacher endpoint if main not found
-        if (primaryErr?.response?.status === 404) {
-          try {
-            arr = await tryFetch('recordings/teacher/');
-          } catch (fallbackErr) {
-            throw fallbackErr;
-          }
-        } else {
-          throw primaryErr;
-        }
-      }
-
+      const arr = await fetchRecordings();
       setRecordings(arr);
     } catch (err) {
       console.error('Failed to load recordings:', err);
@@ -62,13 +105,7 @@ function RecordingsPage() {
 
   const loadGroups = async () => {
     try {
-      const response = await api.get('groups/');
-      const data = response?.data;
-      const results = Array.isArray(data?.results) ? data.results : null;
-      const arr = results ?? (Array.isArray(data) ? data : []);
-      if (!results && !Array.isArray(data)) {
-        console.warn('[RecordingsPage] Unexpected groups response shape:', data);
-      }
+      const arr = await fetchGroups();
       setGroups(arr);
     } catch (err) {
       console.error('Failed to load groups:', err);

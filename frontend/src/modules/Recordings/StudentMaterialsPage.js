@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './StudentMaterialsPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
 import { ToastContainer, Modal } from '../../shared/components';
+import { getCached } from '../../utils/dataCache';
 import DOMPurify from 'dompurify';
 
 /**
@@ -21,6 +22,7 @@ function StudentMaterialsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const initialLoadDone = useRef(false);
 
   // Toasts
   const [toasts, setToasts] = useState([]);
@@ -37,10 +39,35 @@ function StudentMaterialsPage() {
   }, [removeToast]);
 
   useEffect(() => {
-    loadMaterials();
+    loadMaterials(!initialLoadDone.current);
+    initialLoadDone.current = true;
   }, []);
 
-  const loadMaterials = async () => {
+  const loadMaterials = async (useCache = true) => {
+    const cacheTTL = 30000; // 30 секунд
+    
+    if (useCache) {
+      try {
+        const cachedMaterials = await getCached('student:materials', async () => {
+          const response = await api.get('lesson-materials/student_materials/', withScheduleApiBase());
+          if (response.data.materials) {
+            const m = response.data.materials;
+            return {
+              miro: m.miro || [],
+              notes: m.notes || [],
+            };
+          }
+          return { miro: [], notes: [] };
+        }, cacheTTL);
+        
+        setMaterials(cachedMaterials);
+        setLoading(false);
+        return;
+      } catch (err) {
+        console.error('Error loading cached materials:', err);
+      }
+    }
+    
     setLoading(true);
     try {
       const response = await api.get('lesson-materials/student_materials/', withScheduleApiBase());
