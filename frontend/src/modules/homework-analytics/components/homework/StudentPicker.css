@@ -134,17 +134,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-md, 12px) var(--spacing-md, 14px);
-  min-height: 48px;
-  gap: var(--spacing-sm, 8px);
+  padding: var(--spacing-md, 14px) var(--spacing-lg, 16px);
+  min-height: 56px;
+  gap: var(--spacing-md, 12px);
 }
 
 .sp-group-checkbox {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm, 8px);
+  gap: var(--spacing-md, 12px);
   cursor: pointer;
   flex: 1;
+  min-width: 0;
 }
 
 .sp-group-checkbox input[type="checkbox"] {
@@ -152,10 +153,10 @@
 }
 
 .sp-checkbox-custom {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border: 2px solid var(--color-border, #d0d0d0);
-  border-radius: var(--radius-sm, 5px);
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -176,7 +177,7 @@
 }
 
 .sp-group-name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--color-text-primary, #1a1a1a);
   flex: 1;
@@ -187,16 +188,17 @@
 }
 
 .sp-group-count {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text-tertiary, #8c8c8c);
   flex-shrink: 0;
-  padding: 2px 8px;
+  padding: 4px 10px;
   background: var(--color-surface-secondary, #f5f5f5);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: 6px;
+  font-weight: 500;
 }
 
 .sp-expand-btn {
-  padding: 6px;
+  padding: 8px;
   background: var(--color-surface-secondary, #f5f5f5);
   border: none;
   cursor: pointer;
@@ -204,7 +206,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: 6px;
   transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
   flex-shrink: 0;
 }
@@ -225,11 +227,10 @@
 
 /* Содержимое группы (ученики) */
 .sp-group-students {
-  padding: 0 var(--spacing-md, 14px) var(--spacing-md, 14px);
+  padding: var(--spacing-md, 14px);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm, 10px);
-  animation: sp-expand 0.25s var(--ease-out-soft, ease-out);
   border-top: 1px solid var(--color-border-light, #f0f0f0);
   background: var(--color-surface-secondary, #fafafa);
 }
@@ -237,15 +238,9 @@
 @keyframes sp-expand {
   from {
     opacity: 0;
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
   }
   to {
     opacity: 1;
-    max-height: 500px;
-    padding-top: var(--spacing-md, 14px);
-    padding-bottom: var(--spacing-md, 14px);
   }
 }
 
