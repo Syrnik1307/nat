@@ -31,6 +31,13 @@ const IconChevronDown = ({ size = 16 }) => (
   </svg>
 );
 
+const IconX = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
 /**
  * Компонент для выбора учеников из групп.
  * Поддерживает:
@@ -64,6 +71,8 @@ const StudentPicker = ({
   const [groupStudents, setGroupStudents] = useState({}); // {groupId: [students]}
   const [loadingStudents, setLoadingStudents] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [studentModalGroupKey, setStudentModalGroupKey] = useState(null);
+  const [studentModalSearch, setStudentModalSearch] = useState('');
 
   // Загрузка групп
   useEffect(() => {
@@ -153,6 +162,18 @@ const StudentPicker = ({
     onChange(newValue);
   };
 
+  const openStudentModal = (groupId) => {
+    const groupKey = normalizeId(groupId);
+    setStudentModalSearch('');
+    setStudentModalGroupKey(groupKey);
+    loadGroupStudents(groupId);
+  };
+
+  const closeStudentModal = useCallback(() => {
+    setStudentModalGroupKey(null);
+    setStudentModalSearch('');
+  }, []);
+
   // Toggle конкретного ученика
   const toggleStudent = (groupId, studentId) => {
     const groupKey = normalizeId(groupId);
@@ -182,12 +203,32 @@ const StudentPicker = ({
     const newExpanded = new Set(expandedGroups);
     if (newExpanded.has(groupKey)) {
       newExpanded.delete(groupKey);
+      if (studentModalGroupKey === groupKey) {
+        closeStudentModal();
+      }
     } else {
       newExpanded.add(groupKey);
       loadGroupStudents(groupId);
     }
     setExpandedGroups(newExpanded);
   };
+
+  useEffect(() => {
+    if (!studentModalGroupKey) return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') closeStudentModal();
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [studentModalGroupKey, closeStudentModal]);
 
   // Фильтрация групп по поиску
   const filteredGroups = useMemo(() => {
@@ -206,6 +247,29 @@ const StudentPicker = ({
     return acc + (v.studentIds?.length || 0);
   }, 0);
 
+  const modalGroup = useMemo(() => {
+    if (!studentModalGroupKey) return null;
+    return groups.find(g => normalizeId(g.id) === studentModalGroupKey) || null;
+  }, [studentModalGroupKey, groups, normalizeId]);
+
+  const modalSelection = useMemo(() => {
+    if (!studentModalGroupKey) return null;
+    return selectionIndex[studentModalGroupKey] || null;
+  }, [studentModalGroupKey, selectionIndex]);
+
+  const modalStudents = useMemo(() => {
+    if (!studentModalGroupKey) return [];
+    const raw = groupStudents[studentModalGroupKey];
+    const all = Array.isArray(raw) ? raw : [];
+    const query = studentModalSearch.trim().toLowerCase();
+    if (!query) return all;
+    return all.filter((s) => {
+      const name = `${s?.first_name || ''} ${s?.last_name || ''}`.trim().toLowerCase();
+      const email = String(s?.email || '').toLowerCase();
+      return name.includes(query) || email.includes(query);
+    });
+  }, [studentModalGroupKey, groupStudents, studentModalSearch]);
+
   if (loadingGroups) {
     return (
       <div className="student-picker loading">
@@ -217,6 +281,69 @@ const StudentPicker = ({
 
   return (
     <div className={`student-picker ${disabled ? 'disabled' : ''}`}>
+      {studentModalGroupKey && modalGroup && modalSelection && !modalSelection.allStudents && (
+        <div className="sp-modal-backdrop" onClick={closeStudentModal} role="presentation">
+          <div className="sp-modal" role="dialog" aria-modal="true" aria-label="Выбор учеников" onClick={(e) => e.stopPropagation()}>
+            <div className="sp-modal-header">
+              <div className="sp-modal-title">
+                <div className="sp-modal-group-name">{modalGroup.name}</div>
+                <div className="sp-modal-subtitle">
+                  Выбрано: {modalSelection?.studentIds?.size || 0}
+                </div>
+              </div>
+              <button type="button" className="sp-modal-close" onClick={closeStudentModal} aria-label="Закрыть" disabled={disabled}>
+                <IconX size={18} />
+              </button>
+            </div>
+
+            <div className="sp-modal-toolbar">
+              <div className="sp-modal-search">
+                <IconSearch size={16} />
+                <input
+                  type="text"
+                  placeholder="Поиск ученика..."
+                  value={studentModalSearch}
+                  onChange={(e) => setStudentModalSearch(e.target.value)}
+                  disabled={disabled}
+                />
+              </div>
+              <button type="button" className="sp-modal-done" onClick={closeStudentModal} disabled={disabled}>
+                Готово
+              </button>
+            </div>
+
+            <div className="sp-modal-list">
+              {loadingStudents[studentModalGroupKey] ? (
+                <div className="sp-loading-students">Загрузка...</div>
+              ) : modalStudents.length === 0 ? (
+                <div className="sp-no-students">Нет учеников</div>
+              ) : (
+                modalStudents.map((student) => {
+                  const studentKey = normalizeId(student?.id);
+                  const isStudentSelected = modalSelection?.studentIds?.has(studentKey);
+                  const fullName = `${student?.first_name || ''} ${student?.last_name || ''}`.trim() || student?.email;
+
+                  return (
+                    <label key={studentKey} className="sp-student-item sp-student-item-modal">
+                      <input
+                        type="checkbox"
+                        checked={!!isStudentSelected}
+                        onChange={() => toggleStudent(modalGroup.id, student?.id)}
+                        disabled={disabled}
+                      />
+                      <span className="sp-checkbox-custom">
+                        {isStudentSelected && <IconCheck size={12} />}
+                      </span>
+                      <span className="sp-student-name">{fullName}</span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Поиск */}
       <div className="student-picker-search">
         <IconSearch size={16} />
@@ -300,7 +427,12 @@ const StudentPicker = ({
                       <button
                         type="button"
                         className={`sp-mode-btn ${selection?.allStudents ? 'active' : ''}`}
-                        onClick={() => !selection?.allStudents && toggleAllStudents(group.id)}
+                        onClick={() => {
+                          if (!selection?.allStudents) {
+                            closeStudentModal();
+                            toggleAllStudents(group.id);
+                          }
+                        }}
                         disabled={disabled}
                       >
                         Все ученики
@@ -308,7 +440,12 @@ const StudentPicker = ({
                       <button
                         type="button"
                         className={`sp-mode-btn ${!selection?.allStudents ? 'active' : ''}`}
-                        onClick={() => selection?.allStudents && toggleAllStudents(group.id)}
+                        onClick={() => {
+                          if (selection?.allStudents) {
+                            toggleAllStudents(group.id);
+                          }
+                          openStudentModal(group.id);
+                        }}
                         disabled={disabled}
                       >
                         Выбрать
@@ -321,35 +458,47 @@ const StudentPicker = ({
                       </div>
                     )}
 
-                    {/* Список учеников (показываем всегда, в режиме "Все" — read-only) */}
-                    <div className={`sp-students-list ${selection?.allStudents ? 'is-readonly' : ''}`}>
-                      {isLoadingStudents ? (
-                        <div className="sp-loading-students">Загрузка...</div>
-                      ) : students.length === 0 ? (
-                        <div className="sp-no-students">Нет учеников в группе</div>
-                      ) : (
-                        students.map(student => {
-                          const studentKey = normalizeId(student?.id);
-                          const isStudentSelected = selection?.studentIds?.has(studentKey);
-                          const fullName = `${student?.first_name || ''} ${student?.last_name || ''}`.trim() || student?.email;
+                    {selection?.allStudents ? (
+                      <div className="sp-students-list is-readonly">
+                        {isLoadingStudents ? (
+                          <div className="sp-loading-students">Загрузка...</div>
+                        ) : students.length === 0 ? (
+                          <div className="sp-no-students">Нет учеников в группе</div>
+                        ) : (
+                          students.map(student => {
+                            const studentKey = normalizeId(student?.id);
+                            const fullName = `${student?.first_name || ''} ${student?.last_name || ''}`.trim() || student?.email;
 
-                          return (
-                            <label key={studentKey} className="sp-student-item">
-                              <input
-                                type="checkbox"
-                                checked={!!isStudentSelected}
-                                onChange={() => toggleStudent(group.id, student?.id)}
-                                disabled={disabled || selection?.allStudents}
-                              />
-                              <span className="sp-checkbox-custom small">
-                                {isStudentSelected && <IconCheck size={10} />}
-                              </span>
-                              <span className="sp-student-name">{fullName}</span>
-                            </label>
-                          );
-                        })
-                      )}
-                    </div>
+                            return (
+                              <label key={studentKey} className="sp-student-item">
+                                <input
+                                  type="checkbox"
+                                  checked={false}
+                                  onChange={() => {}}
+                                  disabled
+                                />
+                                <span className="sp-checkbox-custom small" />
+                                <span className="sp-student-name">{fullName}</span>
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
+                    ) : (
+                      <div className="sp-custom-summary">
+                        <div className="sp-custom-summary-text">
+                          Выбрано учеников: {selection?.studentIds?.size || 0}
+                        </div>
+                        <button
+                          type="button"
+                          className="sp-custom-summary-btn"
+                          onClick={() => openStudentModal(group.id)}
+                          disabled={disabled}
+                        >
+                          Открыть список
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
