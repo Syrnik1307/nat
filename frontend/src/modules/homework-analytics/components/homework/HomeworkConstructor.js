@@ -837,13 +837,15 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                 <span className="hc-checkbox-hint">Отключите для контрольных работ, чтобы ученики не могли делиться ответами</span>
               </div>
 
-              <div className="hc-params-row">
-                <StudentPicker
-                  value={assignmentMeta.groupAssignments}
-                  onChange={(assignments) => handleMetaChange('groupAssignments', assignments)}
-                  groups={groups}
-                  disabled={loadingGroups}
-                />
+              <div className="hc-params-row hc-params-row--picker">
+                <div className="hc-params-row-fill">
+                  <StudentPicker
+                    value={assignmentMeta.groupAssignments}
+                    onChange={(assignments) => handleMetaChange('groupAssignments', assignments)}
+                    groups={groups}
+                    disabled={loadingGroups}
+                  />
+                </div>
               </div>
 
               <div className="hc-params-row">

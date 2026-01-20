@@ -53,7 +53,11 @@ const StudentPicker = ({
   onIndividualChange,
   disabled = false,
 }) => {
-  const normalizeId = useCallback((id) => String(id), []);
+  const normalizeId = useCallback((id) => String(id ?? ''), []);
+  const toNumberId = useCallback((id) => {
+    const num = Number(id);
+    return Number.isFinite(num) ? num : id;
+  }, []);
   const [groups, setGroups] = useState(propGroups || []);
   const [loadingGroups, setLoadingGroups] = useState(!propGroups);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
@@ -91,14 +95,15 @@ const StudentPicker = ({
     setLoadingStudents(prev => ({ ...prev, [normalizedGroupId]: true }));
     try {
       const res = await getGroupStudents(Number(groupId));
-      const students = res.data?.results || res.data?.students || res.data || [];
+      const raw = res.data?.results || res.data?.students || res.data || [];
+      const students = Array.isArray(raw) ? raw : [];
       setGroupStudents(prev => ({ ...prev, [normalizedGroupId]: students }));
     } catch (err) {
       console.error('Failed to load students for group', groupId, err);
       // Fallback: попробуем использовать студентов из groups
       const group = groups.find(g => normalizeId(g.id) === normalizedGroupId);
       if (group?.students) {
-        setGroupStudents(prev => ({ ...prev, [normalizedGroupId]: group.students }));
+        setGroupStudents(prev => ({ ...prev, [normalizedGroupId]: Array.isArray(group.students) ? group.students : [] }));
       }
     } finally {
       setLoadingStudents(prev => ({ ...prev, [normalizedGroupId]: false }));
@@ -109,9 +114,11 @@ const StudentPicker = ({
   const selectionIndex = useMemo(() => {
     const index = {};
     value.forEach(item => {
-      index[normalizeId(item.groupId)] = {
-        allStudents: item.allStudents !== false && (!item.studentIds || item.studentIds.length === 0),
-        studentIds: new Set(item.studentIds || []),
+      const groupKey = normalizeId(item.groupId);
+      const ids = Array.isArray(item.studentIds) ? item.studentIds : [];
+      index[groupKey] = {
+        allStudents: item.allStudents !== false && ids.length === 0,
+        studentIds: new Set(ids.map(normalizeId)),
       };
     });
     return index;
@@ -133,11 +140,12 @@ const StudentPicker = ({
 
   // Toggle "все ученики" / "конкретные"
   const toggleAllStudents = (groupId) => {
-    const current = selectionIndex[groupId];
+    const groupKey = normalizeId(groupId);
+    const current = selectionIndex[groupKey];
     if (!current) return;
     
     const newValue = value.map(v => {
-      if (v.groupId === groupId) {
+      if (normalizeId(v.groupId) === groupKey) {
         return { ...v, allStudents: !current.allStudents, studentIds: [] };
       }
       return v;
@@ -147,19 +155,21 @@ const StudentPicker = ({
 
   // Toggle конкретного ученика
   const toggleStudent = (groupId, studentId) => {
-    const current = selectionIndex[groupId];
+    const groupKey = normalizeId(groupId);
+    const current = selectionIndex[groupKey];
     if (!current) return;
     
+    const studentKey = normalizeId(studentId);
     const currentIds = new Set(current.studentIds);
-    if (currentIds.has(studentId)) {
-      currentIds.delete(studentId);
+    if (currentIds.has(studentKey)) {
+      currentIds.delete(studentKey);
     } else {
-      currentIds.add(studentId);
+      currentIds.add(studentKey);
     }
     
     const newValue = value.map(v => {
-      if (v.groupId === groupId) {
-        return { ...v, allStudents: false, studentIds: Array.from(currentIds) };
+      if (normalizeId(v.groupId) === groupKey) {
+        return { ...v, allStudents: false, studentIds: Array.from(currentIds).map(toNumberId) };
       }
       return v;
     });
@@ -168,11 +178,12 @@ const StudentPicker = ({
 
   // Развернуть/свернуть группу
   const toggleExpand = (groupId) => {
+    const groupKey = normalizeId(groupId);
     const newExpanded = new Set(expandedGroups);
-    if (newExpanded.has(groupId)) {
-      newExpanded.delete(groupId);
+    if (newExpanded.has(groupKey)) {
+      newExpanded.delete(groupKey);
     } else {
-      newExpanded.add(groupId);
+      newExpanded.add(groupKey);
       loadGroupStudents(groupId);
     }
     setExpandedGroups(newExpanded);
@@ -182,14 +193,14 @@ const StudentPicker = ({
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return groups;
     const query = searchQuery.toLowerCase();
-    return groups.filter(g => g.name.toLowerCase().includes(query));
+    return groups.filter(g => String(g?.name || '').toLowerCase().includes(query));
   }, [groups, searchQuery]);
 
   // Подсчет выбранных
   const selectedCount = value.length;
   const studentsCount = value.reduce((acc, v) => {
     if (v.allStudents) {
-      const group = groups.find(g => g.id === v.groupId);
+      const group = groups.find(g => normalizeId(g.id) === normalizeId(v.groupId));
       return acc + (group?.students_count || group?.students?.length || 0);
     }
     return acc + (v.studentIds?.length || 0);
@@ -239,11 +250,13 @@ const StudentPicker = ({
           </div>
         ) : (
           filteredGroups.map(group => {
-            const isSelected = !!selectionIndex[group.id];
-            const isExpanded = expandedGroups.has(group.id);
-            const selection = selectionIndex[group.id];
-            const students = groupStudents[group.id] || [];
-            const isLoadingStudents = loadingStudents[group.id];
+            const groupKey = normalizeId(group.id);
+            const isSelected = !!selectionIndex[groupKey];
+            const isExpanded = expandedGroups.has(groupKey);
+            const selection = selectionIndex[groupKey];
+            const studentsRaw = groupStudents[groupKey];
+            const students = Array.isArray(studentsRaw) ? studentsRaw : [];
+            const isLoadingStudents = !!loadingStudents[groupKey];
 
             return (
               <div key={group.id} className={`sp-group ${isSelected ? 'selected' : ''}`}>
@@ -302,36 +315,41 @@ const StudentPicker = ({
                       </button>
                     </div>
 
-                    {/* Список учеников (если режим "выбрать") */}
-                    {!selection?.allStudents && (
-                      <div className="sp-students-list">
-                        {isLoadingStudents ? (
-                          <div className="sp-loading-students">Загрузка...</div>
-                        ) : students.length === 0 ? (
-                          <div className="sp-no-students">Нет учеников в группе</div>
-                        ) : (
-                          students.map(student => {
-                            const isStudentSelected = selection?.studentIds?.has(student.id);
-                            const fullName = `${student.first_name || ''} ${student.last_name || ''}`.trim() || student.email;
-                            
-                            return (
-                              <label key={student.id} className="sp-student-item">
-                                <input
-                                  type="checkbox"
-                                  checked={isStudentSelected}
-                                  onChange={() => toggleStudent(group.id, student.id)}
-                                  disabled={disabled}
-                                />
-                                <span className="sp-checkbox-custom small">
-                                  {isStudentSelected && <IconCheck size={10} />}
-                                </span>
-                                <span className="sp-student-name">{fullName}</span>
-                              </label>
-                            );
-                          })
-                        )}
+                    {selection?.allStudents && (
+                      <div className="sp-students-hint">
+                        Сейчас выбраны все ученики. Переключитесь на «Выбрать», чтобы отметить конкретных.
                       </div>
                     )}
+
+                    {/* Список учеников (показываем всегда, в режиме "Все" — read-only) */}
+                    <div className={`sp-students-list ${selection?.allStudents ? 'is-readonly' : ''}`}>
+                      {isLoadingStudents ? (
+                        <div className="sp-loading-students">Загрузка...</div>
+                      ) : students.length === 0 ? (
+                        <div className="sp-no-students">Нет учеников в группе</div>
+                      ) : (
+                        students.map(student => {
+                          const studentKey = normalizeId(student?.id);
+                          const isStudentSelected = selection?.studentIds?.has(studentKey);
+                          const fullName = `${student?.first_name || ''} ${student?.last_name || ''}`.trim() || student?.email;
+
+                          return (
+                            <label key={studentKey} className="sp-student-item">
+                              <input
+                                type="checkbox"
+                                checked={!!isStudentSelected}
+                                onChange={() => toggleStudent(group.id, student?.id)}
+                                disabled={disabled || selection?.allStudents}
+                              />
+                              <span className="sp-checkbox-custom small">
+                                {isStudentSelected && <IconCheck size={10} />}
+                              </span>
+                              <span className="sp-student-name">{fullName}</span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

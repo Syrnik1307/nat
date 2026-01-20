@@ -98,7 +98,7 @@
   flex-direction: column;
   gap: var(--spacing-sm, 8px);
   overflow-y: auto;
-  max-height: 350px;
+  max-height: 420px;
   padding: var(--spacing-xs, 4px);
 }
 
@@ -140,7 +140,8 @@
 }
 
 .sp-group-checkbox {
-  display: flex;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--spacing-md, 12px);
   cursor: pointer;
@@ -163,6 +164,11 @@
   flex-shrink: 0;
   transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
   background: var(--color-surface, #fff);
+  line-height: 0;
+}
+
+.sp-checkbox-custom svg {
+  display: block;
 }
 
 .sp-checkbox-custom.small {
@@ -235,6 +241,12 @@
   background: var(--color-surface-secondary, #fafafa);
 }
 
+.sp-students-hint {
+  font-size: 12px;
+  color: var(--color-text-tertiary, #8c8c8c);
+  line-height: 1.35;
+}
+
 @keyframes sp-expand {
   from {
     opacity: 0;
@@ -281,13 +293,17 @@
 .sp-students-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: 180px;
+  gap: 8px;
+  max-height: 260px;
   overflow-y: auto;
-  padding: var(--spacing-sm, 8px);
+  padding: 10px;
   background: var(--color-surface, #fff);
   border-radius: var(--radius-md, 8px);
   border: 1px solid var(--color-border-light, #eee);
+}
+
+.sp-students-list.is-readonly {
+  opacity: 0.8;
 }
 
 .sp-loading-students,
@@ -302,11 +318,13 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm, 8px);
-  padding: 8px 10px;
+  padding: 12px 12px;
+  min-height: 44px;
   border-radius: var(--radius-sm, 6px);
   cursor: pointer;
   transition: background var(--duration-fast, 180ms) var(--ease-smooth, ease);
   border: 1px solid transparent;
+  background: var(--color-surface, #fff);
 }
 
 .sp-student-item:hover {
@@ -325,7 +343,7 @@
 }
 
 .sp-student-name {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--color-text-primary, #1a1a1a);
   flex: 1;
   overflow: hidden;

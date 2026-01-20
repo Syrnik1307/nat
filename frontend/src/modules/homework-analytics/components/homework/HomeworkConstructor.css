@@ -251,6 +251,15 @@
   align-items: flex-end;
 }
 
+.hc-params-row.hc-params-row--picker {
+  align-items: stretch;
+}
+
+.hc-params-row-fill {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Checkbox group styles */
 .hc-checkbox-group {
   margin-top: 0.25rem;
