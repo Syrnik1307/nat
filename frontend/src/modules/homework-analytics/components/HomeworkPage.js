@@ -4,17 +4,15 @@ import { useAuth } from '../../../auth';
 import { HomeworkConstructor } from '../index';
 import SubmissionsList from './teacher/SubmissionsList';
 import GradedSubmissionsList from './teacher/GradedSubmissionsList';
-import TemplatesList from './teacher/TemplatesList';
 import MyHomeworksList from './teacher/MyHomeworksList';
 import './HomeworkPage.css';
 
 /**
- * Главная страница домашних заданий с пятью вкладками:
+ * Главная страница домашних заданий с четырьмя вкладками:
  * 1. Конструктор - создание/редактирование ДЗ
  * 2. Мои ДЗ - управление созданными заданиями (редактировать, удалить, переназначить)
- * 3. Шаблоны - библиотека шаблонов для повторного использования
- * 4. ДЗ на проверку - очереди для преподавателя
- * 5. Проверенные ДЗ - архив проверенных работ
+ * 3. ДЗ на проверку - очереди для преподавателя
+ * 4. Проверенные ДЗ - архив проверенных работ
  */
 const HomeworkPage = () => {
   const { role } = useAuth();
@@ -24,7 +22,6 @@ const HomeworkPage = () => {
   // Определяем активную вкладку из URL или по умолчанию
   const getActiveTabFromPath = () => {
     if (location.pathname.includes('/homework/my')) return 'my';
-    if (location.pathname.includes('/homework/templates')) return 'templates';
     if (location.pathname.includes('/homework/to-review')) return 'review';
     if (location.pathname.includes('/homework/graded')) return 'graded';
     return 'constructor';
@@ -48,8 +45,6 @@ const HomeworkPage = () => {
       navigate('/homework/constructor', { replace: true });
     } else if (tab === 'my') {
       navigate('/homework/my', { replace: true });
-    } else if (tab === 'templates') {
-      navigate('/homework/templates', { replace: true });
     } else if (tab === 'review') {
       navigate('/homework/to-review', { replace: true });
     } else if (tab === 'graded') {
@@ -96,12 +91,6 @@ const HomeworkPage = () => {
           <span className="tab-label">Мои ДЗ</span>
         </button>
         <button
-          className={`homework-tab ${activeTab === 'templates' ? 'active' : ''}`}
-          onClick={() => handleTabChange('templates')}
-        >
-          <span className="tab-label">Шаблоны</span>
-        </button>
-        <button
           className={`homework-tab ${activeTab === 'review' ? 'active' : ''}`}
           onClick={() => handleTabChange('review')}
         >
@@ -128,7 +117,6 @@ const HomeworkPage = () => {
           />
         )}
         {activeTab === 'my' && <MyHomeworksList onEditHomework={handleEditHomework} />}
-        {activeTab === 'templates' && <TemplatesList onUseTemplate={handleEditHomework} />}
         {activeTab === 'review' && <SubmissionsList filterStatus="submitted" />}
         {activeTab === 'graded' && <GradedSubmissionsList />}
       </div>

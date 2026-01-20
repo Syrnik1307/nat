@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { apiClient, uploadHomeworkFile, uploadHomeworkDocument, saveAsTemplate, preloadImageCompressor } from '../../../../apiService';
+import { apiClient, uploadHomeworkFile, uploadHomeworkDocument, preloadImageCompressor } from '../../../../apiService';
 import { Modal, Button } from '../../../../shared/components';
 import useHomeworkConstructor from '../../hooks/useHomeworkConstructor';
 import {
@@ -248,7 +248,6 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
   const [confirmDialog, setConfirmDialog] = useState({ open: false });
   const [uploadingImageFor, setUploadingImageFor] = useState(null); // index вопроса
   const [uploadProgress, setUploadProgress] = useState(0); // прогресс загрузки 0-100
-  const [savingTemplate, setSavingTemplate] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const blobUrlsRef = useRef(new Set());
@@ -734,34 +733,6 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
           {assignmentMeta.title && <span className="hc-stats-badge hc-stats-title">{assignmentMeta.title.slice(0, 30)}{assignmentMeta.title.length > 30 ? '...' : ''}</span>}
         </div>
         <div className="hc-sticky-actions-right">
-          <button
-            type="button"
-            className="gm-btn-surface hc-action-btn"
-            onClick={async () => {
-              setSavingTemplate(true);
-              setFeedback(null);
-              try {
-                // Сначала сохраняем как черновик, потом делаем шаблон
-                  const result = await saveDraft(assignmentMeta, questions, homeworkId, { requireGroup: false });
-                if (!result.saved) {
-                  setValidationIssues(result.validation);
-                  setFeedback({ status: 'warning', message: 'Проверьте настройки задания' });
-                  return;
-                }
-                const savedId = result.homeworkId;
-                setHomeworkId(savedId);
-                await saveAsTemplate(savedId);
-                setFeedback({ status: 'success', message: 'Шаблон создан! Перейдите во вкладку Шаблоны.' });
-              } catch (err) {
-                setFeedback({ status: 'error', message: err.response?.data?.detail || 'Ошибка сохранения шаблона' });
-              } finally {
-                setSavingTemplate(false);
-              }
-            }}
-            disabled={savingTemplate || questions.length === 0}
-          >
-            {savingTemplate ? 'Сохранение...' : 'Создать шаблон'}
-          </button>
           {isEditMode && isPublished ? (
             // Для опубликованного ДЗ показываем кнопку "Сохранить"
             <button
