@@ -133,7 +133,7 @@ const CodeQuestionRenderer = ({ question, answer, onChange, disabled = false }) 
       {/* Заголовок с языком и кнопками */}
       <div className="code-editor-header">
         <span className="code-language-badge">
-          {language === 'python' ? '🐍 Python' : '📜 JavaScript'}
+          {language === 'python' ? 'Python' : 'JavaScript'}
         </span>
         <div className="code-editor-actions">
           <button
@@ -152,7 +152,7 @@ const CodeQuestionRenderer = ({ question, answer, onChange, disabled = false }) 
               disabled={isRunning || disabled}
               style={{ background: 'var(--color-primary)' }}
             >
-              {isRunning ? '...' : '🧪 Тесты'}
+              {isRunning ? '...' : 'Tесты'}
             </button>
           )}
         </div>
@@ -267,7 +267,7 @@ const CodeQuestionRenderer = ({ question, answer, onChange, disabled = false }) 
             className="code-hint-toggle"
             onClick={() => setShowHint(!showHint)}
           >
-            {showHint ? '🔼 Скрыть подсказку' : '💡 Показать подсказку'}
+            {showHint ? 'Скрыть подсказку' : 'Показать подсказку'}
           </button>
           {showHint && (
             <div className="code-hint-content">{hint}</div>

@@ -130,7 +130,7 @@ const GradedSubmissionsList = () => {
   if (error) {
     return (
       <div className="graded-submissions-error">
-        <span className="error-icon">⚠️</span>
+        <span className="error-icon"></span>
         <p>{error}</p>
         <button onClick={loadGradedSubmissions} className="btn-retry">
           Повторить
@@ -164,7 +164,7 @@ const GradedSubmissionsList = () => {
 
       {displayedSubmissions.length === 0 ? (
         <div className="graded-empty">
-          <div className="empty-icon">📚</div>
+          <div className="empty-icon"></div>
           <h3>Нет проверенных работ</h3>
           <p>Завершенные домашние задания появятся здесь</p>
         </div>

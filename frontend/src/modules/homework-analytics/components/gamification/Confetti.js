@@ -7,7 +7,7 @@ export default function Confetti() {
     <div aria-hidden="true" style={{pointerEvents: 'none'}}>
       {/* Небольшой визуальный индикатор: можно заменить на анимацию */}
       <div style={{position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'flex-start'}}>
-        <span style={{fontSize: 48}}>🎉</span>
+        <span style={{fontSize: 48}}></span>
       </div>
     </div>
   );

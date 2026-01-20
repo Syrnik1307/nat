@@ -128,18 +128,8 @@ const getQuestionLabel = (type) => {
 };
 
 const getQuestionIcon = (type) => {
-  const icons = {
-    TEXT: '📝',
-    SINGLE_CHOICE: '⭕',
-    MULTIPLE_CHOICE: '☑️',
-    LISTENING: '🎧',
-    MATCHING: '🔗',
-    DRAG_DROP: '↕️',
-    FILL_BLANKS: '✍️',
-    HOTSPOT: '🎯',
-    CODE: '💻',
-  };
-  return icons[type] || '❓';
+  // Иконки убраны - используем lucide-react иконки вместо эмодзи
+  return '';
 };
 
 export { QUESTION_TYPES, createQuestionTemplate, getQuestionLabel, getQuestionIcon };

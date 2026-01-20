@@ -89,25 +89,8 @@ const ReassignModal = ({ homework, groups, onClose, onSave, toast }) => {
   const [mode, setMode] = useState('duplicate');
   
   // Назначения: [{groupId, studentIds: [], allStudents: bool}]
-  const [groupAssignments, setGroupAssignments] = useState(() => {
-    // Инициализация из текущих назначений
-    const initial = [];
-    if (homework.group_assignments) {
-      homework.group_assignments.forEach(ga => {
-        initial.push({
-          groupId: ga.group_id,
-          studentIds: ga.student_ids || [],
-          allStudents: ga.all_students !== false,
-        });
-      });
-    } else if (homework.assigned_groups) {
-      homework.assigned_groups.forEach(g => {
-        const gId = g.id || g;
-        initial.push({ groupId: gId, studentIds: [], allStudents: true });
-      });
-    }
-    return initial;
-  });
+  // Начинаем с пустого списка - пользователь выбирает НОВЫЕ группы/учеников
+  const [groupAssignments, setGroupAssignments] = useState([]);
   
   const [deadline, setDeadline] = useState(
     homework.deadline ? homework.deadline.slice(0, 16) : ''

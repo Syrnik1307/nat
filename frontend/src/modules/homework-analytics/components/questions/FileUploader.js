@@ -200,7 +200,7 @@ const FileUploader = ({ fileType = 'image', onUploadSuccess, currentUrl, accept 
             style={{ display: 'none' }}
           />
           <div className="file-uploader-icon">
-            {fileType === 'image' ? '🖼️' : '🎵'}
+            {fileType === 'image' ? '' : ''}
           </div>
           <div className="file-uploader-text">
             <strong>Перетащите {fileType === 'image' ? 'изображение' : 'аудио'} сюда</strong>
@@ -267,7 +267,7 @@ const FileUploader = ({ fileType = 'image', onUploadSuccess, currentUrl, accept 
 
       {error && (
         <div className="file-uploader-error">
-          ⚠️ {error}
+          {error}
         </div>
       )}
     </div>
