@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }) => {
       try {
         await apiLogout();
       } catch (_) {}
-      clearTokens(true);
+      clearTokens();
       setAccessTokenValid(false);
       setRole(null);
       setUser(null);
@@ -165,7 +165,7 @@ export const AuthProvider = ({ children }) => {
     }
     
     // Если ничего не помогло - пользователь не авторизован
-    clearTokens(true);
+    clearTokens();
     setAccessTokenValid(false);
     setRole(null);
     setUser(null);
@@ -175,19 +175,14 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => { check(); }, [check]);
 
   const login = useCallback(async ({ email, password, roleSelection, rememberMe }) => {
-    // Перед логином жёстко очищаем токены и любые старые флаги
-    clearTokens(true);
+    // Перед логином очищаем старые токены
+    clearTokens();
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
 
     await apiLogin(email, password, rememberMe);
 
-    // Если пользователь выбрал "Запомнить меня", сохраняем флаг для будущих сессий
-    if (rememberMe) {
-      localStorage.setItem('tp_remember_session', 'true');
-    } else {
-      localStorage.removeItem('tp_remember_session');
-    }
+    // Токены сохраняются в localStorage и автоматически истекают через 12ч (JWT exp)
 
     const userRole = getRoleFromToken();
     const resolvedRole = userRole || roleSelection || null;
@@ -219,10 +214,7 @@ export const AuthProvider = ({ children }) => {
       cookie_id: localStorage.getItem('tp_cookie_id') || '',
     });
 
-    // Сохраняем флаг запомнить устройство
-    if (rememberMe) {
-      localStorage.setItem('tp_remember_session', 'true');
-    }
+    // Токены сохраняются в localStorage и автоматически истекают через 12ч (JWT exp)
 
     // 2. Очистим устаревшие ключи (совместимость со старым кодом)
     localStorage.removeItem('access_token');
@@ -262,8 +254,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await apiLogout();
     } catch (_) {}
-    clearTokens(true);
-    localStorage.removeItem('tp_remember_session');
+    clearTokens();
     setAccessTokenValid(false);
     setRole(null);
     setUser(null);

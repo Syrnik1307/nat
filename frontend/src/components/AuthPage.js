@@ -31,18 +31,14 @@ const AuthPage = () => {
   // const { executeRecaptcha } = useRecaptcha(); // отключено
   
   useEffect(() => {
-    // Если сессия «запомнить» и токены есть, не чистим их и сразу уводим на домашнюю
+    // Если токены есть — пользователь уже залогинен, редиректим на home
     try {
-      const hasRemember = localStorage.getItem('tp_remember_session') === 'true';
-      const hasTokens = !!(localStorage.getItem('tp_access_token') || localStorage.getItem('tp_refresh_token'));
-      if (hasRemember && hasTokens) {
+      const hasTokens = !!(localStorage.getItem('tp_access_token') && localStorage.getItem('tp_refresh_token'));
+      if (hasTokens) {
         navigate('/home-new', { replace: true });
         return undefined;
       }
-
-      // Иначе очищаем всё как раньше
-      clearTokens(true);
-      localStorage.removeItem('tp_remember_session');
+      // Очищаем устаревшие ключи (совместимость со старым кодом)
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
     } catch (_) {}
@@ -237,7 +233,7 @@ const AuthPage = () => {
     
     try {
       // Перед стартом логина принудительно очищаем старые токены
-      clearTokens(true);
+      clearTokens();
       // Логирование для диагностики мобильных проблем
       console.log('🔐 Попытка логина:', {
         email: formData.email?.trim().toLowerCase(),
@@ -263,15 +259,8 @@ const AuthPage = () => {
         student: '/student',
         admin: '/admin-home',
       };
-      // Сохраняем настройку "Запомнить меня"
-      if (rememberMe) {
-        localStorage.setItem('remember_me', 'true');
-        // Устанавливаем флаг для долгосрочного хранения токенов
-        localStorage.setItem('tp_remember_session', 'true');
-      } else {
-        localStorage.removeItem('remember_me');
-        localStorage.removeItem('tp_remember_session');
-      }
+      // Токены сохраняются в localStorage и автоматически истекают через 12 часов
+      // Флаг remember_me больше не используется — всегда "запоминаем"
       
       // Показываем успешное уведомление
       showNotification('success', 'Вход выполнен', `Добро пожаловать, ${formData.email}!`);

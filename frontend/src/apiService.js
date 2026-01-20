@@ -14,13 +14,11 @@ export const setTokens = ({ access, refresh }) => {
     if (refresh) localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
 };
 
-export const clearTokens = (force = false) => {
-    // Если force=true — всегда чистим токены независимо от remember
-    const rememberSession = localStorage.getItem('tp_remember_session') === 'true';
-    if (force || !rememberSession) {
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
-    }
+export const clearTokens = () => {
+    // Токены хранятся в localStorage и автоматически истекают через 12ч (JWT exp)
+    // При явном logout или ошибке refresh — очищаем
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
 };
 
 // Определяем корректный baseURL в зависимости от среды
@@ -121,7 +119,7 @@ apiClient.interceptors.response.use(
                 return apiClient(originalRequest);
             } catch (refreshErr) {
                 processQueue(refreshErr, null);
-                clearTokens(true);
+                clearTokens();
                 if (typeof window !== 'undefined') {
                     window.location.href = '/auth-new';
                 }
@@ -164,7 +162,7 @@ export const login = async (email, password, rememberMe = false) => {
         return data;
     } catch (error) {
         // Очищаем токены при любой ошибке логина безусловно
-        clearTokens(true);
+        clearTokens();
         // Пробрасываем ошибку дальше для обработки в UI
         throw error;
     }
