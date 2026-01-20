@@ -127,6 +127,7 @@ const Modal = ({
     alignItems: 'center',
     justifyContent: 'flex-end',
     gap: 'var(--space-md)',
+    flexWrap: 'wrap',
   };
 
   return createPortal(

@@ -1440,7 +1440,7 @@ from django.views import View
 class HomeworkFileProxyView(View):
     """
     Прокси для доступа к файлам домашек.
-    Отдаёт файл из локального хранилища или редиректит на GDrive.
+    Отдаёт файл из локального хранилища или проксирует с GDrive.
     
     GET /api/homework/file/<file_id>/
     """
@@ -1448,15 +1448,47 @@ class HomeworkFileProxyView(View):
     def get(self, request, file_id):
         from .models import HomeworkFile
         import os
+        import requests
+        import re
         
         try:
             hw_file = HomeworkFile.objects.get(id=file_id)
         except HomeworkFile.DoesNotExist:
             return HttpResponse("File not found", status=404)
         
-        # Если на GDrive - редирект
+        # Если на GDrive - проксируем через lh3.googleusercontent.com
         if hw_file.storage == HomeworkFile.STORAGE_GDRIVE and hw_file.gdrive_url:
-            return HttpResponseRedirect(hw_file.gdrive_url)
+            gdrive_url = hw_file.gdrive_url
+            file_id_match = None
+            
+            # Извлекаем file ID из разных форматов Google Drive URL
+            patterns = [
+                r'[?&]id=([a-zA-Z0-9_-]+)',  # /uc?id=FILE_ID
+                r'/file/d/([a-zA-Z0-9_-]+)',  # /file/d/FILE_ID/view
+                r'/open\?id=([a-zA-Z0-9_-]+)',  # /open?id=FILE_ID
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, gdrive_url)
+                if match:
+                    file_id_match = match.group(1)
+                    break
+            
+            if file_id_match:
+                # Используем lh3.googleusercontent.com для прямого доступа
+                proxy_url = f'https://lh3.googleusercontent.com/d/{file_id_match}'
+                try:
+                    resp = requests.get(proxy_url, timeout=10, stream=True)
+                    if resp.status_code == 200:
+                        content_type = resp.headers.get('Content-Type', hw_file.mime_type or 'application/octet-stream')
+                        response = HttpResponse(resp.content, content_type=content_type)
+                        response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
+                        response['Cache-Control'] = 'public, max-age=31536000'
+                        return response
+                except Exception as e:
+                    print(f"[HomeworkFileProxyView] GDrive proxy error: {e}")
+            
+            # Fallback: редирект если проксирование не удалось
+            return HttpResponseRedirect(gdrive_url)
         
         # Если локально - отдаём файл
         if hw_file.local_path and os.path.exists(hw_file.local_path):
