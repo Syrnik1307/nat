@@ -404,7 +404,7 @@ class RatingService:
     @staticmethod
     def get_student_stats(student_id, group_id=None):
         """
-        Получить статистику ученика по посещениям.
+        Получить статистику ученика по посещениям и рейтингу.
         
         Args:
             student_id (int): ID ученика
@@ -417,6 +417,12 @@ class RatingService:
                 'absent': int,
                 'watched_recording': int,
                 'attendance_percent': float,
+                'total_points': int,
+                'attendance_points': int,
+                'homework_points': int,
+                'control_points': int,
+                'rank_in_group': int or None,
+                'total_in_group': int or None,
             }
         """
         if group_id:
@@ -436,12 +442,43 @@ class RatingService:
         
         attendance_percent = (attended / total_lessons * 100) if total_lessons > 0 else 0
         
+        # Получить рейтинговую информацию
+        rating_info = {
+            'total_points': 0,
+            'attendance_points': 0,
+            'homework_points': 0,
+            'control_points': 0,
+            'rank_in_group': None,
+            'total_in_group': None,
+        }
+        
+        if group_id:
+            student_rating = UserRating.objects.filter(
+                user_id=student_id,
+                group_id=group_id
+            ).first()
+            
+            if student_rating:
+                rating_info['total_points'] = student_rating.total_points
+                rating_info['attendance_points'] = student_rating.attendance_points
+                rating_info['homework_points'] = student_rating.homework_points
+                rating_info['control_points'] = student_rating.control_points
+                
+                # Вычислить место в группе
+                higher_count = UserRating.objects.filter(
+                    group_id=group_id,
+                    total_points__gt=student_rating.total_points
+                ).count()
+                rating_info['rank_in_group'] = higher_count + 1
+                rating_info['total_in_group'] = UserRating.objects.filter(group_id=group_id).count()
+        
         return {
             'total_lessons': total_lessons,
             'attended': attended,
             'absent': absent,
             'watched_recording': watched,
             'attendance_percent': round(attendance_percent, 1),
+            **rating_info,
         }
 
     @staticmethod

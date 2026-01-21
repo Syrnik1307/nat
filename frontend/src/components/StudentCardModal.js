@@ -189,7 +189,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
               {/* Статистика */}
               <div className="stats-grid">
                 <div className="stat-card">
-                  <span className="stat-icon">+</span>
+                  <span className="stat-icon stat-icon-attendance"></span>
                   <span className="stat-label">Посещаемость</span>
                   <span className="stat-value">{card.stats?.attendance_percent || 0}%</span>
                   <span className="stat-detail">
@@ -198,27 +198,38 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
                 </div>
 
                 <div className="stat-card">
-                  <span className="stat-icon">📝</span>
-                  <span className="stat-label">Домашние задания</span>
-                  <span className="stat-value">—</span>
-                  <span className="stat-detail">Интеграция с модулем ДЗ</span>
+                  <span className="stat-icon stat-icon-homework"></span>
+                  <span className="stat-label">Баллы за ДЗ</span>
+                  <span className="stat-value">{card.stats?.homework_points || 0}</span>
+                  <span className="stat-detail">Сумма баллов</span>
                 </div>
 
                 <div className="stat-card">
-                  <span className="stat-icon">🎯</span>
-                  <span className="stat-label">Контрольные точки</span>
-                  <span className="stat-value">—</span>
-                  <span className="stat-detail">Интеграция с модулем аналитики</span>
+                  <span className="stat-icon stat-icon-control"></span>
+                  <span className="stat-label">Контрольные</span>
+                  <span className="stat-value">{card.stats?.control_points || 0}</span>
+                  <span className="stat-detail">Баллы за контрольные точки</span>
                 </div>
 
-                {!isIndividual && (
-                  <div className="stat-card">
-                    <span className="stat-icon">•</span>
+                {!isIndividual && card.stats?.rank_in_group && (
+                  <div className="stat-card stat-card-rank">
+                    <span className="stat-icon stat-icon-rank"></span>
                     <span className="stat-label">Место в группе</span>
-                    <span className="stat-value">—</span>
-                    <span className="stat-detail">Из рейтинга группы</span>
+                    <span className="stat-value rank-value">{card.stats.rank_in_group}</span>
+                    <span className="stat-detail">
+                      из {card.stats.total_in_group || '?'} учеников
+                    </span>
                   </div>
                 )}
+
+                <div className="stat-card stat-card-total">
+                  <span className="stat-icon stat-icon-total"></span>
+                  <span className="stat-label">Всего баллов</span>
+                  <span className="stat-value total-value">{card.stats?.total_points || 0}</span>
+                  <span className="stat-detail">
+                    = {card.stats?.attendance_points || 0} (посещ.) + {card.stats?.homework_points || 0} (ДЗ) + {card.stats?.control_points || 0} (контр.)
+                  </span>
+                </div>
               </div>
 
               {/* Ошибки и пробелы */}
@@ -253,7 +264,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
               {/* Замечания учителя */}
               <div className="notes-section">
                 <div className="notes-header">
-                  <h3 className="section-title">📝 Замечания учителя</h3>
+                  <h3 className="section-title">Замечания учителя</h3>
                   <button
                     className="edit-btn"
                     onClick={() => setEditing(!editing)}
@@ -277,7 +288,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
                         onClick={handleSaveNotes}
                         disabled={saving}
                       >
-                        {saving ? '💾 Сохранение...' : '💾 Сохранить'}
+                        {saving ? 'Сохранение...' : 'Сохранить'}
                       </button>
                       <button
                         className="btn btn-secondary"
@@ -304,7 +315,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
               {/* AI-анализ ученика */}
               <div className="ai-report-section">
                 <div className="ai-report-header">
-                  <h3 className="section-title">🤖 AI-анализ</h3>
+                  <h3 className="section-title">AI-анализ</h3>
                   <button
                     className="generate-btn"
                     onClick={handleGenerateAiReport}
@@ -330,7 +341,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
                     {/* Сильные стороны */}
                     {aiReport.ai_analysis.strengths?.length > 0 && (
                       <div className="ai-section strengths">
-                        <h4>✅ Сильные стороны</h4>
+                        <h4>Сильные стороны</h4>
                         <ul>
                           {aiReport.ai_analysis.strengths.slice(0, 3).map((item, i) => (
                             <li key={i}>{item}</li>
@@ -342,7 +353,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
                     {/* Слабые стороны */}
                     {aiReport.ai_analysis.weaknesses?.length > 0 && (
                       <div className="ai-section weaknesses">
-                        <h4>⚠️ Требуют внимания</h4>
+                        <h4>Требуют внимания</h4>
                         <ul>
                           {aiReport.ai_analysis.weaknesses.slice(0, 3).map((item, i) => (
                             <li key={i}>{item}</li>
@@ -354,7 +365,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
                     {/* Рекомендации */}
                     {aiReport.ai_analysis.recommendations?.length > 0 && (
                       <div className="ai-section recommendations">
-                        <h4>💡 Рекомендации</h4>
+                        <h4>Рекомендации</h4>
                         <ul>
                           {aiReport.ai_analysis.recommendations.slice(0, 3).map((item, i) => (
                             <li key={i}>{item}</li>
@@ -383,7 +394,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
               {/* Поведенческий AI-анализ */}
               <div className="behavior-report-section">
                 <div className="ai-report-header">
-                  <h3 className="section-title">📊 Поведенческий анализ</h3>
+                  <h3 className="section-title">Поведенческий анализ</h3>
                   <button
                     className="generate-btn"
                     onClick={handleGenerateBehaviorReport}
@@ -400,8 +411,8 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
                     {/* Риск и надёжность */}
                     <div className="behavior-stats-row">
                       <div className={`risk-badge risk-${behaviorReport.risk_level || 'medium'}`}>
-                        {behaviorReport.risk_level === 'low' ? '🟢 Низкий риск' :
-                         behaviorReport.risk_level === 'high' ? '🔴 Высокий риск' : '🟡 Средний риск'}
+                        {behaviorReport.risk_level === 'low' ? 'Низкий риск' :
+                         behaviorReport.risk_level === 'high' ? 'Высокий риск' : 'Средний риск'}
                       </div>
                       {behaviorReport.reliability_score !== null && (
                         <div className="reliability-score">
@@ -429,7 +440,8 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
                       <div className="behavior-alerts">
                         {behaviorReport.ai_analysis.alerts.map((alert, i) => (
                           <div key={i} className={`alert-item alert-${alert.type}`}>
-                            {alert.type === 'warning' ? '⚠️' : 'ℹ️'} {alert.message}
+                            <span className={`alert-icon alert-icon--${alert.type}`}></span>
+                            {alert.message}
                           </div>
                         ))}
                       </div>
@@ -438,13 +450,10 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
                     {/* Рекомендации */}
                     {behaviorReport.ai_analysis?.recommendations?.length > 0 && (
                       <div className="ai-section recommendations">
-                        <h4>💡 Рекомендации</h4>
+                        <h4>Рекомендации</h4>
                         <ul>
                           {behaviorReport.ai_analysis.recommendations.slice(0, 3).map((rec, i) => (
-                            <li key={i}>
-                              {rec.priority === 'high' && '🔴 '}
-                              {rec.priority === 'medium' && '🟡 '}
-                              {rec.priority === 'low' && '🟢 '}
+                            <li key={i} className={`rec-priority-${rec.priority}`}>
                               {rec.action}
                             </li>
                           ))}

@@ -28,9 +28,9 @@ const GroupDetailModal = ({ group, isOpen, onClose, onStudentClick }) => {
     { id: 'control', label: 'Контрольные точки' },
     { id: 'rating', label: 'Рейтинг группы' },
     { id: 'reports', label: 'Отчеты' },
-    { id: 'analytics-summary', label: '📊 Сводная аналитика' },
-    { id: 'lesson-reports', label: '📝 Отчеты по урокам' },
-    { id: 'ai-reports', label: '🤖 AI-анализ ошибок' },
+    { id: 'analytics-summary', label: 'Сводная аналитика' },
+    { id: 'lesson-reports', label: 'Отчеты по урокам' },
+    { id: 'ai-reports', label: 'AI-анализ ошибок' },
   ];
 
   const renderTabContent = () => {
@@ -73,7 +73,7 @@ const GroupDetailModal = ({ group, isOpen, onClose, onStudentClick }) => {
         return (
           <div className="tab-content">
             <div className="placeholder">
-              📌 Контрольные точки (интеграция с модулем аналитики)
+              Контрольные точки (интеграция с модулем аналитики)
             </div>
           </div>
         );
