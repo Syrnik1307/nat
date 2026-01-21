@@ -121,54 +121,13 @@
 /* Кнопка справа */
 .platform-action {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
-.btn-platform {
-  padding: 0.45rem 0.9rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: 7px;
-  cursor: pointer;
-  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
-  white-space: nowrap;
-  border: none;
-}
-
-.btn-platform:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-platform.connect.zoom {
-  background: linear-gradient(135deg, #0d6efd 0%, #1d4ed8 100%);
-  color: #ffffff;
-  box-shadow: 0 6px 14px rgba(13, 110, 253, 0.25);
-}
-
-.btn-platform.connect.zoom:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(13, 110, 253, 0.3);
-}
-
-.btn-platform.connect.google {
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-  color: #ffffff;
-  box-shadow: 0 6px 14px rgba(22, 163, 74, 0.25);
-}
-
-.btn-platform.connect.google:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(22, 163, 74, 0.3);
-}
-
-.btn-platform.disconnect {
-  background: #ffffff;
-  color: #b91c1c;
-  border: 1px solid #fca5a5;
-}
-
-.btn-platform.disconnect:hover:not(:disabled) {
-  background: #fff1f2;
+.platform-btn {
+  min-width: 128px;
+  justify-content: center;
 }
 
 /* Справка — компактная */
@@ -264,11 +223,9 @@
   .platform-action {
     width: 100%;
   }
-
-  .btn-platform {
+  
+  .platform-btn {
     width: 100%;
-    text-align: center;
-    padding: 0.5rem;
   }
   
   .platform-unavailable-hint {

@@ -341,7 +341,7 @@ GOOGLE_MEET_CLIENT_ID = os.environ.get('GOOGLE_MEET_CLIENT_ID', '')
 GOOGLE_MEET_CLIENT_SECRET = os.environ.get('GOOGLE_MEET_CLIENT_SECRET', '')
 GOOGLE_MEET_REDIRECT_URI = os.environ.get(
     'GOOGLE_MEET_REDIRECT_URI',
-    'http://localhost:8000/api/integrations/google-meet/callback/'
+    'https://lectio.tw1.ru/api/integrations/google-meet/callback/'
 )
 
 # Video compression settings

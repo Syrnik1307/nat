@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../apiService';
 import PlatformInstructionModal from './PlatformInstructionModal';
-import { Modal } from '../shared/components';
+import { Button, Modal } from '../shared/components';
 import './PlatformsSection.css';
 
 /**
@@ -195,23 +195,27 @@ const PlatformsSection = ({ user, onRefresh }) => {
           </div>
           <div className="platform-action">
             {zoomConnected ? (
-              <button
-                type="button"
-                className="btn-platform disconnect"
+              <Button
+                variant="danger"
+                size="small"
+                className="platform-btn"
                 onClick={() => setConfirmDisconnect('zoom')}
                 disabled={loading === 'zoom'}
+                loading={loading === 'zoom'}
               >
-                {loading === 'zoom' ? '...' : 'Отключить'}
-              </button>
+                Отключить
+              </Button>
             ) : (
-              <button
-                type="button"
-                className="btn-platform connect zoom"
+              <Button
+                variant="primary"
+                size="small"
+                className="platform-btn"
                 onClick={() => handleShowInstruction('zoom')}
                 disabled={loading === 'zoom'}
+                loading={loading === 'zoom'}
               >
-                {loading === 'zoom' ? '...' : 'Подключить'}
-              </button>
+                Подключить
+              </Button>
             )}
           </div>
         </div>
@@ -233,23 +237,27 @@ const PlatformsSection = ({ user, onRefresh }) => {
           </div>
           <div className="platform-action">
             {googleMeetConnected ? (
-              <button
-                type="button"
-                className="btn-platform disconnect"
+              <Button
+                variant="danger"
+                size="small"
+                className="platform-btn"
                 onClick={() => setConfirmDisconnect('google_meet')}
                 disabled={loading === 'google_meet'}
+                loading={loading === 'google_meet'}
               >
-                {loading === 'google_meet' ? '...' : 'Отключить'}
-              </button>
+                Отключить
+              </Button>
             ) : (
-              <button
-                type="button"
-                className="btn-platform connect google"
+              <Button
+                variant="primary"
+                size="small"
+                className="platform-btn"
                 onClick={() => handleShowInstruction('google_meet')}
                 disabled={loading === 'google_meet'}
+                loading={loading === 'google_meet'}
               >
-                {loading === 'google_meet' ? '...' : 'Подключить'}
-              </button>
+                Подключить
+              </Button>
             )}
           </div>
         </div>

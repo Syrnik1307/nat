@@ -108,8 +108,20 @@ class GoogleMeetService:
     
     @property
     def redirect_uri(self) -> str:
-        return getattr(settings, 'GOOGLE_MEET_REDIRECT_URI', 
-                       'https://lectio.tw1.ru/api/integrations/google-meet/callback/')
+        uri = getattr(
+            settings,
+            'GOOGLE_MEET_REDIRECT_URI',
+            'https://lectio.tw1.ru/api/integrations/google-meet/callback/',
+        )
+
+        # Safety net for production misconfiguration.
+        # If prod accidentally has localhost redirect URI, Google OAuth will fail with redirect_uri_mismatch.
+        if not getattr(settings, 'DEBUG', False):
+            bad_prefixes = ('http://localhost', 'http://127.0.0.1', 'http://0.0.0.0')
+            if isinstance(uri, str) and uri.startswith(bad_prefixes):
+                return 'https://lectio.tw1.ru/api/integrations/google-meet/callback/'
+
+        return uri
     
     def get_auth_url(self, state: Optional[str] = None) -> str:
         """
