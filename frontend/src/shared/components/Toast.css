@@ -16,15 +16,11 @@
   align-items: flex-start;
   gap: var(--space-md);
   padding: var(--space-md) var(--space-lg);
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: #FFFFFF;
   border-radius: var(--radius-xl);
-  box-shadow: 
-    0 10px 25px -5px rgba(0, 0, 0, 0.1),
-    0 4px 10px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  animation: toastSlideIn 0.3s ease-out;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid #E2E8F0;
+  animation: toastSlideIn 0.12s ease-out;
   min-width: 300px;
 }
 
@@ -74,7 +70,7 @@
 .toast-progress .toast-icon {
   background: var(--primary-100);
   color: var(--primary-600);
-  animation: toastPulse 1.5s ease-in-out infinite;
+  /* PERF: убрана бесконечная toastPulse */
 }
 
 @keyframes toastPulse {

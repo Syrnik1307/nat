@@ -934,3 +934,248 @@ def send_student_inactivity_nudges():
         'sent': sent,
         'timestamp': now.isoformat(),
     }
+
+
+TOP_RATING_COOLDOWN_HOURS = 720  # 30 дней — не спамим одним и тем же достижением
+
+
+@shared_task
+def send_top_rating_notifications():
+    """
+    Отправляет уведомления ученикам, попавшим в топ-3 рейтинга за прошлый месяц.
+    
+    Запускается 1 числа каждого месяца.
+    Проверяет рейтинг за предыдущий месяц и отправляет поздравления топ-3.
+    """
+    import logging
+    from datetime import date
+    from dateutil.relativedelta import relativedelta
+    from django.db.models import Sum
+    
+    from .attendance_service import RatingService
+    from .notifications import notify_student_top_rating, get_season_info
+    from schedule.models import Group
+    
+    logger = logging.getLogger(__name__)
+    now = timezone.now()
+    
+    # Определяем прошлый месяц
+    last_month = now - relativedelta(months=1)
+    month_str = f"{last_month.year}-{last_month.month:02d}"
+    month_label = last_month.strftime("%B %Y").capitalize()
+    
+    # Русские названия месяцев
+    russian_months = {
+        1: "Январь", 2: "Февраль", 3: "Март", 4: "Апрель",
+        5: "Май", 6: "Июнь", 7: "Июль", 8: "Август",
+        9: "Сентябрь", 10: "Октябрь", 11: "Ноябрь", 12: "Декабрь"
+    }
+    month_label = f"{russian_months[last_month.month]} {last_month.year}"
+    
+    sent = 0
+    groups_processed = 0
+    
+    # Получаем все активные группы
+    groups = Group.objects.filter(is_active=True).prefetch_related('students')
+    
+    for group in groups:
+        try:
+            # Получаем рейтинг за прошлый месяц
+            rating_data = RatingService.get_group_rating_for_period(group.id, month_str)
+            
+            if not rating_data or len(rating_data) == 0:
+                continue
+            
+            groups_processed += 1
+            
+            # Уведомляем топ-3
+            for rank, student_data in enumerate(rating_data[:3], start=1):
+                student_id = student_data.get('student_id')
+                total_points = student_data.get('total_points', 0)
+                
+                if not student_id or total_points == 0:
+                    continue
+                
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                
+                try:
+                    student = User.objects.get(id=student_id)
+                except User.DoesNotExist:
+                    continue
+                
+                # Проверяем, не отправляли ли уже это достижение
+                already_notified = NotificationLog.objects.filter(
+                    user=student,
+                    notification_type='achievement',
+                    message__icontains=month_label,
+                    message__icontains=group.name,
+                    created_at__gte=now - timedelta(hours=TOP_RATING_COOLDOWN_HOURS),
+                ).exists()
+                
+                if already_notified:
+                    continue
+                
+                if notify_student_top_rating(
+                    student=student,
+                    rank=rank,
+                    period_type='month',
+                    period_label=month_label,
+                    group_name=group.name,
+                    total_points=total_points
+                ):
+                    sent += 1
+                    logger.info(f"Sent top-{rank} notification to student {student.id} for group {group.id}")
+                    
+        except Exception as e:
+            logger.exception(f"Error processing top rating for group {group.id}: {e}")
+    
+    return {
+        'groups_processed': groups_processed,
+        'notifications_sent': sent,
+        'period': month_label,
+        'timestamp': now.isoformat(),
+    }
+
+
+@shared_task
+def send_season_top_rating_notifications():
+    """
+    Отправляет уведомления ученикам, попавшим в топ-3 рейтинга за прошлый сезон.
+    
+    Запускается 1 числа первого месяца нового сезона (март, июнь, сентябрь, декабрь).
+    """
+    import logging
+    from dateutil.relativedelta import relativedelta
+    
+    from .attendance_service import RatingService
+    from .notifications import notify_student_top_rating, get_season_info
+    from schedule.models import Group
+    
+    logger = logging.getLogger(__name__)
+    now = timezone.now()
+    
+    # Определяем текущий и прошлый сезон
+    current_season, _, _, _ = get_season_info(now)
+    
+    # Определяем начальную дату прошлого сезона
+    season_months = {
+        'winter': ([12, 1, 2], "Зима"),
+        'spring': ([3, 4, 5], "Весна"),
+        'summer': ([6, 7, 8], "Лето"),
+        'autumn': ([9, 10, 11], "Осень"),
+    }
+    
+    # Прошлый сезон
+    prev_seasons = ['autumn', 'winter', 'spring', 'summer']
+    current_idx = prev_seasons.index(current_season) if current_season in prev_seasons else 0
+    prev_season = prev_seasons[(current_idx - 1) % 4]
+    
+    prev_months, prev_season_name = season_months[prev_season]
+    
+    # Вычисляем год для прошлого сезона
+    if prev_season == 'winter':
+        # Зима охватывает два года
+        year = now.year - 1 if now.month >= 3 else now.year - 1
+        season_label = f"{prev_season_name} {year}-{year + 1}"
+    else:
+        year = now.year if now.month > prev_months[-1] else now.year - 1
+        season_label = f"{prev_season_name} {year}"
+    
+    sent = 0
+    groups_processed = 0
+    
+    # Получаем все активные группы
+    groups = Group.objects.filter(is_active=True).prefetch_related('students')
+    
+    for group in groups:
+        try:
+            # Суммируем рейтинг за все месяцы сезона
+            season_ratings = {}
+            
+            for month in prev_months:
+                if prev_season == 'winter' and month == 12:
+                    month_year = year
+                elif prev_season == 'winter':
+                    month_year = year + 1
+                else:
+                    month_year = year
+                
+                month_str = f"{month_year}-{month:02d}"
+                
+                try:
+                    rating_data = RatingService.get_group_rating_for_period(group.id, month_str)
+                    
+                    if rating_data:
+                        for student_data in rating_data:
+                            sid = student_data.get('student_id')
+                            if sid:
+                                if sid not in season_ratings:
+                                    season_ratings[sid] = {
+                                        'student_id': sid,
+                                        'student_name': student_data.get('student_name', ''),
+                                        'total_points': 0,
+                                    }
+                                season_ratings[sid]['total_points'] += student_data.get('total_points', 0)
+                except Exception:
+                    pass
+            
+            if not season_ratings:
+                continue
+            
+            groups_processed += 1
+            
+            # Сортируем по баллам и берём топ-3
+            sorted_ratings = sorted(
+                season_ratings.values(),
+                key=lambda x: x['total_points'],
+                reverse=True
+            )[:3]
+            
+            for rank, student_data in enumerate(sorted_ratings, start=1):
+                student_id = student_data.get('student_id')
+                total_points = student_data.get('total_points', 0)
+                
+                if not student_id or total_points == 0:
+                    continue
+                
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                
+                try:
+                    student = User.objects.get(id=student_id)
+                except User.DoesNotExist:
+                    continue
+                
+                # Проверяем, не отправляли ли уже
+                already_notified = NotificationLog.objects.filter(
+                    user=student,
+                    notification_type='achievement',
+                    message__icontains=season_label,
+                    message__icontains=group.name,
+                    created_at__gte=now - timedelta(hours=TOP_RATING_COOLDOWN_HOURS),
+                ).exists()
+                
+                if already_notified:
+                    continue
+                
+                if notify_student_top_rating(
+                    student=student,
+                    rank=rank,
+                    period_type='season',
+                    period_label=season_label,
+                    group_name=group.name,
+                    total_points=total_points
+                ):
+                    sent += 1
+                    logger.info(f"Sent season top-{rank} notification to student {student.id} for group {group.id}")
+                    
+        except Exception as e:
+            logger.exception(f"Error processing season top rating for group {group.id}: {e}")
+    
+    return {
+        'groups_processed': groups_processed,
+        'notifications_sent': sent,
+        'period': season_label,
+        'timestamp': now.isoformat(),
+    }

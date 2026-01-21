@@ -1,6 +1,6 @@
 .telegram-warning-banner {
   margin-bottom: 24px;
-  animation: slideDown 0.4s ease-out;
+  animation: slideDown 0.15s ease-out;
 }
 
 @keyframes slideDown {
@@ -24,7 +24,7 @@
   align-items: flex-start;
   box-shadow: 0 8px 24px rgba(255, 152, 0, 0.15);
   position: relative;
-  animation: pulse 2s ease-in-out infinite;
+  /* PERF: убрана бесконечная pulse-анимация */
 }
 
 @keyframes pulse {
@@ -43,7 +43,7 @@
 .icon-emoji {
   font-size: 48px;
   display: block;
-  animation: shake 1.5s ease-in-out infinite;
+  /* PERF: убрана бесконечная shake-анимация */
 }
 
 @keyframes shake {

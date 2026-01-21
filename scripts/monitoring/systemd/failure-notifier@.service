@@ -1,0 +1,20 @@
+# ============================================================
+# SYSTEMD SERVICE FAILURE NOTIFIER
+# ============================================================
+# Файл: /etc/systemd/system/failure-notifier@.service
+# 
+# Template-сервис для отправки Telegram уведомлений
+# при падении любого сервиса
+# ============================================================
+
+[Unit]
+Description=Service Failure Notification for %i
+After=network.target
+
+[Service]
+Type=oneshot
+# %i = имя упавшего сервиса
+ExecStart=/opt/lectio-monitor/notify_failure.sh %i
+
+[Install]
+WantedBy=multi-user.target

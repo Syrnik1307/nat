@@ -911,6 +911,42 @@
 			"type": "shell",
 			"command": "ssh tp \"systemctl is-active teaching_panel && cd /var/www/teaching_panel && git log --oneline -1 && ls -la frontend/build/index.html\"",
 			"isBackground": false
+		},
+		{
+			"label": "fix-production",
+			"type": "shell",
+			"command": "scp scripts/fix_hosts_backup.sh tp:/tmp/ && ssh tp 'sudo bash /tmp/fix_hosts_backup.sh'",
+			"isBackground": false
+		},
+		{
+			"label": "check-backups",
+			"type": "shell",
+			"command": "ssh tp \"ls -la /var/backups/teaching_panel/*.gz 2>/dev/null | tail -5 && echo && grep ALLOWED_HOSTS /var/www/teaching_panel/teaching_panel/.env\"",
+			"isBackground": false
+		},
+		{
+			"label": "show-backups",
+			"type": "shell",
+			"command": "ssh tp \"echo BACKUPS: && ls -la /var/backups/teaching_panel/ | tail -6\"",
+			"isBackground": false
+		},
+		{
+			"label": "list-backups",
+			"type": "shell",
+			"command": "ssh tp ls -la /var/backups/teaching_panel/",
+			"isBackground": false
+		},
+		{
+			"label": "status-all",
+			"type": "shell",
+			"command": "ssh tp \"echo === STATUS === && systemctl is-active teaching_panel nginx fail2ban && echo && echo === UFW === && sudo ufw status | head -10 && echo && echo === RATE LIMIT === && grep -c limit_req /etc/nginx/nginx.conf && echo zones configured\"",
+			"isBackground": false
+		},
+		{
+			"label": "services-status",
+			"type": "shell",
+			"command": "ssh tp systemctl is-active teaching_panel nginx fail2ban",
+			"isBackground": false
 		}
 	]
 }

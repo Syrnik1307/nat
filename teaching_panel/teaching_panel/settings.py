@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -440,6 +441,15 @@ CELERY_BEAT_SCHEDULE = {
     'send-student-inactivity-nudges': {
         'task': 'accounts.tasks.send_student_inactivity_nudges',
         'schedule': 604800.0,  # раз в неделю
+    },
+    # --- Top Rating Notifications ---
+    'send-monthly-top-rating': {
+        'task': 'accounts.tasks.send_top_rating_notifications',
+        'schedule': crontab(day_of_month='1', hour='10', minute='0'),  # 1 числа каждого месяца в 10:00
+    },
+    'send-season-top-rating': {
+        'task': 'accounts.tasks.send_season_top_rating_notifications',
+        'schedule': crontab(day_of_month='1', month_of_year='3,6,9,12', hour='11', minute='0'),  # 1 марта, июня, сентября, декабря в 11:00
     },
 }
 

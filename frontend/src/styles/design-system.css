@@ -169,12 +169,11 @@
   --leading-loose: 2;
 
   /* ========================================
-    ⚡ ANIMATIONS - ОПТИМИЗИРОВАНО ДЛЯ СКОРОСТИ
+    ⚡ ANIMATIONS - УЛЬТРАБЫСТРЫЕ ДЛЯ ПРЕМИУМ
     ======================================== */
-  /* PERF: Уменьшены длительности для мгновенного отклика */
-  --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 180ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 60ms cubic-bezier(0.2, 0, 0.4, 1);
+  --transition-base: 100ms cubic-bezier(0.2, 0, 0.4, 1);
+  --transition-slow: 150ms cubic-bezier(0.2, 0, 0.4, 1);
 
   /* === Z-INDEX === */
   --z-base: 0;
@@ -319,13 +318,13 @@ html, body {
 .page-layout::before {
   content: '';
   position: fixed;
-  inset: -15%;
+  inset: -8%;
   background: radial-gradient(780px at 15% 20%, rgba(224, 231, 255, 0.5), transparent 55%),
               radial-gradient(720px at 85% 5%, rgba(221, 214, 254, 0.45), transparent 55%),
               radial-gradient(760px at 40% 85%, rgba(191, 219, 254, 0.35), transparent 60%);
-  filter: blur(60px);
+  filter: blur(32px);
   opacity: 0.75;
-  animation: auroraFloat 18s ease-in-out infinite alternate;
+  /* PERF: Убрана бесконечная анимация и сильный blur (дергали FPS на слабых GPU) */
   pointer-events: none;
   z-index: 0;
 }
@@ -350,28 +349,20 @@ html, body {
 .section-card,
 .light-card,
 .main-content-card {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #E2E8F0;
   border-radius: var(--radius-2xl);
   padding: clamp(24px, 5vw, 32px);
-  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
-              0 10px 25px -5px rgba(0, 0, 0, 0.06),
-              0 0 20px rgba(79, 70, 229, 0.08);
-  /* PERF: GPU-ускоренные свойства вместо all */
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
-              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.25s ease;
+  box-shadow: var(--shadow-md);
+  /* PERF: быстрые и предсказуемые переходы без тяжелых эффектов */
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
   will-change: transform;
 }
 
 .card:hover,
 .content-card:hover {
-  box-shadow: 0 30px 60px -14px rgba(79, 70, 229, 0.18),
-              0 0 25px rgba(79, 70, 229, 0.15);
-  transform: translateY(-4px);
-  border-color: rgba(79, 70, 229, 0.2);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 /* Заголовки - Bold, Dark, Tight Spacing */
@@ -806,8 +797,8 @@ input, textarea, select {
   }
 }
 
-.animate-fadeIn { animation: fadeIn 0.3s ease-out; }
-.animate-slideUp { animation: slideUp 0.4s ease-out; }
+.animate-fadeIn { animation: fadeIn 0.12s ease-out; }
+.animate-slideUp { animation: slideUp 0.15s ease-out; }
 
 /* ========================================
    📱 RESPONSIVE BREAKPOINTS

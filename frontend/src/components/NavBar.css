@@ -3,16 +3,14 @@
    ================================================ */
 
 .navbar-new {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  background: #FFFFFF;
+  border-bottom: 1px solid #E2E8F0;
   position: sticky;
   top: 0;
   z-index: 100002;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  /* PERF: Убран transition: all - navbar не должен анимироваться при hover */
   contain: layout style;
+  /* PERF: Убран backdrop-filter - дорогой GPU эффект */
 }
 
 .navbar-container {
@@ -146,7 +144,7 @@
   background: var(--color-error);
   border-radius: 50%;
   border: 2px solid white;
-  animation: pulseBadge 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  /* PERF: убран бесконечный pulseBadge */
 }
 
 @keyframes pulseBadge {
@@ -176,7 +174,7 @@
   cursor: pointer;
   font-weight: var(--font-medium);
   font-size: var(--text-sm);
-  transition: all var(--transition-base);
+  transition: background-color 80ms ease-out, border-color 80ms ease-out, transform 80ms ease-out;
   min-height: 44px;
 }
 
@@ -195,7 +193,7 @@
   box-shadow: var(--shadow-hover);
   min-width: 220px;
   overflow: hidden;
-  animation: slideDown 0.25s ease-out;
+  animation: slideDown 0.12s ease-out;
 }
 
 @keyframes slideDown {
@@ -216,7 +214,7 @@
   padding: var(--space-md) var(--space-lg);
   color: var(--text-primary);
   text-decoration: none;
-  transition: all var(--transition-base);
+  transition: background-color 80ms ease-out, color 80ms ease-out;
   font-size: var(--text-base);
 }
 

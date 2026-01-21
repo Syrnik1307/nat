@@ -19,7 +19,7 @@ class SystemStatusAdmin(admin.ModelAdmin):
 
 @admin.register(SupportTicket)
 class SupportTicketAdmin(admin.ModelAdmin):
-    list_display = ('id', 'subject', 'user_or_email', 'status', 'priority_badge', 'category', 'sla_status', 'created_at', 'assigned_to')
+    list_display = ('id', 'subject', 'user_or_email', 'status', 'priority', 'priority_badge', 'category', 'sla_status', 'created_at', 'assigned_to')
     list_filter = ('status', 'priority', 'category', 'created_at')
     search_fields = ('subject', 'description', 'user__email', 'email', 'error_message')
     readonly_fields = ('created_at', 'updated_at', 'resolved_at', 'first_response_at', 'sla_info')

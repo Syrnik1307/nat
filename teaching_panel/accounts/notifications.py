@@ -679,3 +679,70 @@ def notify_admin_payment(payment, subscription, plan_name: Optional[str] = None,
         logger.exception(f'Failed to send admin payment notification: {exc}')
         return False
 
+
+def notify_student_top_rating(student, rank: int, period_type: str, period_label: str, group_name: str, total_points: int) -> bool:
+    """
+    Отправляет уведомление ученику о попадании в топ рейтинга.
+    
+    Args:
+        student: Пользователь-ученик
+        rank: Место в рейтинге (1, 2, 3)
+        period_type: 'month' или 'season'
+        period_label: Название периода (например, "Январь 2026" или "Зима 2025-2026")
+        group_name: Название группы
+        total_points: Всего баллов
+    
+    Returns:
+        bool: True если уведомление отправлено
+    """
+    if rank == 1:
+        medal = "1 место"
+        emoji_line = "Вы заняли первое место!"
+    elif rank == 2:
+        medal = "2 место"
+        emoji_line = "Вы заняли второе место!"
+    elif rank == 3:
+        medal = "3 место"
+        emoji_line = "Вы заняли третье место!"
+    else:
+        return False  # Уведомляем только топ-3
+    
+    period_name = "месяц" if period_type == 'month' else "сезон"
+    
+    message = (
+        f"Поздравляем! {emoji_line}\n\n"
+        f"Группа: {group_name}\n"
+        f"Период: {period_label}\n"
+        f"Рейтинг: {medal}\n"
+        f"Баллы: {total_points}\n\n"
+        f"Так держать! Продолжайте в том же духе."
+    )
+    
+    return send_telegram_notification(student, 'achievement', message)
+
+
+def get_season_info(date=None):
+    """
+    Возвращает информацию о сезоне для указанной даты.
+    
+    Returns:
+        tuple: (season_name, season_start_month, season_end_month, season_label)
+    """
+    if date is None:
+        date = timezone.now()
+    
+    month = date.month
+    year = date.year
+    
+    if month in [12, 1, 2]:
+        # Зима: декабрь прошлого года - февраль текущего
+        start_year = year - 1 if month == 12 else year
+        season_label = f"Зима {start_year}-{start_year + 1}" if month == 12 else f"Зима {year - 1}-{year}"
+        return ('winter', 12, 2, season_label)
+    elif month in [3, 4, 5]:
+        return ('spring', 3, 5, f"Весна {year}")
+    elif month in [6, 7, 8]:
+        return ('summer', 6, 8, f"Лето {year}")
+    else:  # 9, 10, 11
+        return ('autumn', 9, 11, f"Осень {year}")
+

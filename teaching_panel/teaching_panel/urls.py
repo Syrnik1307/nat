@@ -135,7 +135,7 @@ urlpatterns = [
     
     # Accounts (authentication)
     path('accounts/', include('accounts.urls')),
-    path('', include('accounts.urls')),  # Include accounts at root for /api/* paths defined in accounts/urls.py
+    path('', include(('accounts.urls', 'accounts'), namespace='accounts-root')),  # Include accounts at root for /api/* paths
     
     # Schedule (web UI + API)
     path('schedule/', include('schedule.urls')),

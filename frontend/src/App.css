@@ -114,7 +114,7 @@
   max-width: 480px;
   padding: var(--space-2xl);
   color: var(--bg-paper);
-  animation: fadeIn 0.6s ease;
+  animation: fadeIn 0.2s ease-out;
   z-index: 1;
 }
 

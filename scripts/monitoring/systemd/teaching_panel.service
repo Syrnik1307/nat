@@ -1,0 +1,77 @@
+# ============================================================
+# SYSTEMD WATCHDOG SERVICE для teaching_panel
+# ============================================================
+# Файл: /etc/systemd/system/teaching_panel.service
+# 
+# Обновлённая версия с Watchdog для автоматического
+# перезапуска при зависании
+# ============================================================
+
+[Unit]
+Description=Teaching Panel Django Application
+After=network.target
+# Автоматический старт если nginx доступен
+Wants=nginx.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="DJANGO_SETTINGS_MODULE=teaching_panel.settings"
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+
+# Команда запуска gunicorn с watchdog support
+ExecStart=/var/www/teaching_panel/venv/bin/gunicorn \
+    --bind 127.0.0.1:8000 \
+    --workers 3 \
+    --worker-class sync \
+    --timeout 120 \
+    --graceful-timeout 30 \
+    --keep-alive 5 \
+    --max-requests 1000 \
+    --max-requests-jitter 50 \
+    --access-logfile /var/log/teaching_panel/access.log \
+    --error-logfile /var/log/teaching_panel/error.log \
+    --capture-output \
+    teaching_panel.wsgi:application
+
+# ==================== WATCHDOG SETTINGS ====================
+# Если сервис не отвечает 60 секунд - systemd перезапустит его
+WatchdogSec=60
+
+# ==================== RESTART SETTINGS ====================
+# Автоматический перезапуск при любом сбое
+Restart=always
+RestartSec=5
+
+# Максимум 5 перезапусков за 5 минут
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# ==================== RESOURCE LIMITS ====================
+# Ограничение памяти
+MemoryMax=1G
+MemoryHigh=768M
+
+# Ограничение CPU (100% = 1 ядро)
+CPUQuota=200%
+
+# Ограничение файловых дескрипторов
+LimitNOFILE=65536
+
+# ==================== SECURITY ====================
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/teaching_panel
+ReadWritePaths=/var/log/teaching_panel
+NoNewPrivileges=true
+
+# ==================== NOTIFICATIONS ====================
+# Отправка уведомлений при изменении статуса
+# Требует настроенный OnFailure и OnSuccess
+NotifyAccess=all
+
+[Install]
+WantedBy=multi-user.target
