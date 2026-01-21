@@ -109,29 +109,12 @@ const PlatformsSection = ({ user, onRefresh }) => {
     }
   };
 
-  // OAuth авторизация Google Meet с credentials (вызывается из модалки)
-  const handleConnectGoogleMeet = async (credentials = null) => {
+  // OAuth авторизация Google Meet (единый OAuth client платформы)
+  const handleConnectGoogleMeet = async () => {
     setLoading('google_meet');
     setError('');
     setSuccess('');
     try {
-      // Если переданы credentials - сначала сохраняем их, затем начинаем OAuth
-      if (credentials && credentials.clientId && credentials.clientSecret) {
-        const response = await apiClient.post('/integrations/google-meet/save-credentials/', {
-          client_id: credentials.clientId,
-          client_secret: credentials.clientSecret
-        });
-        if (response.data?.auth_url) {
-          window.location.href = response.data.auth_url;
-          return;
-        } else {
-          setError('Не удалось получить ссылку авторизации');
-          setInstructionModal(null);
-          return;
-        }
-      }
-      
-      // Старый путь - без credentials (если уже сохранены)
       const response = await apiClient.get('/integrations/google-meet/auth-url/');
       if (response.data?.auth_url) {
         window.location.href = response.data.auth_url;
@@ -141,8 +124,8 @@ const PlatformsSection = ({ user, onRefresh }) => {
       }
     } catch (err) {
       console.error('Google Meet auth error:', err);
-      if (err.response?.status === 501) {
-        setError('Google Meet пока не настроен. Обратитесь к администратору.');
+      if (err.response?.data?.need_admin_setup) {
+        setError('Google Meet не настроен администратором');
       } else {
         setError(err.response?.data?.detail || 'Ошибка подключения Google Meet');
       }

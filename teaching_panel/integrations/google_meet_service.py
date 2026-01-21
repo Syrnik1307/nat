@@ -76,6 +76,10 @@ class GoogleMeetService:
     
     def _validate_config(self):
         """Check that Google Meet credentials are available"""
+        # Prefer a single, platform-wide OAuth client if configured.
+        if getattr(settings, 'GOOGLE_MEET_CLIENT_ID', '') and getattr(settings, 'GOOGLE_MEET_CLIENT_SECRET', ''):
+            return
+
         # If explicit credentials provided, use them
         if self._client_id and self._client_secret:
             return
@@ -87,11 +91,14 @@ class GoogleMeetService:
         
         # No credentials available
         raise GoogleMeetNotConfiguredError(
-            'Google Meet credentials not configured. Teacher needs to add Client ID and Client Secret.'
+            'Google Meet не настроен. Требуются GOOGLE_MEET_CLIENT_ID и GOOGLE_MEET_CLIENT_SECRET.'
         )
     
     @property
     def client_id(self) -> str:
+        client_id = getattr(settings, 'GOOGLE_MEET_CLIENT_ID', '')
+        if client_id:
+            return client_id
         if self._client_id:
             return self._client_id
         if self.user and self.user.google_meet_client_id:
@@ -100,6 +107,9 @@ class GoogleMeetService:
     
     @property
     def client_secret(self) -> str:
+        client_secret = getattr(settings, 'GOOGLE_MEET_CLIENT_SECRET', '')
+        if client_secret:
+            return client_secret
         if self._client_secret:
             return self._client_secret
         if self.user and self.user.google_meet_client_secret:

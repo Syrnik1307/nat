@@ -4,7 +4,7 @@ import './PlatformInstructionModal.css';
 
 /**
  * Модальное окно с инструкцией по подключению Zoom или Google Meet
- * Каждый учитель создаёт свой проект и вводит свои credentials
+ * Zoom может требовать credentials, Google Meet подключается через единый OAuth client платформы
  */
 
 const IconClose = () => (
@@ -136,79 +136,16 @@ const PLATFORM_DATA = {
         <path fill="#ffba00" d="M18 5v4.5l-6 4.5V5h6z"/>
       </svg>
     ),
-    requiresCredentials: true,
-    credentialFields: [
-      { id: 'clientId', label: 'Client ID', placeholder: 'xxxxx.apps.googleusercontent.com', type: 'text' },
-      { id: 'clientSecret', label: 'Client Secret', placeholder: 'GOCSPX-xxxxxxxxx', type: 'password' }
-    ],
-    validateCredentials: (creds) => {
-      if (!creds.clientId?.trim()) return 'Введите Client ID';
-      if (!creds.clientId.endsWith('.apps.googleusercontent.com')) {
-        return 'Client ID должен заканчиваться на .apps.googleusercontent.com';
-      }
-      if (!creds.clientSecret?.trim()) return 'Введите Client Secret';
-      return null;
-    },
+    requiresCredentials: false,
     instructions: [
       {
-        title: 'Создайте проект в Google Cloud',
-        description: 'Откройте консоль и создайте новый проект',
-        link: 'https://console.cloud.google.com/projectcreate',
-        linkText: 'Открыть Google Cloud Console',
+        title: 'Авторизуйте Google-аккаунт',
+        description: 'Нажмите "Подключить" и подтвердите доступ в Google. Это подключит ваш аккаунт к Lectio.',
         substeps: [
-          'Введите название проекта (например "Lectio")',
-          'Нажмите "Create"',
-          'Дождитесь создания проекта (10-20 сек)'
+          'Выберите нужный Google-аккаунт',
+          'Нажмите "Continue" / "Продолжить" на экране доступа',
+          'После успешной авторизации вы вернётесь в профиль'
         ]
-      },
-      {
-        title: 'Включите Google Calendar API',
-        description: 'API необходим для создания встреч Meet',
-        link: 'https://console.cloud.google.com/apis/library/calendar-json.googleapis.com',
-        linkText: 'Открыть Calendar API',
-        substeps: [
-          'Убедитесь что выбран ваш проект в шапке',
-          'Нажмите большую синюю кнопку "Enable"'
-        ]
-      },
-      {
-        title: 'Настройте OAuth Consent Screen',
-        description: 'Создайте экран согласия для авторизации',
-        link: 'https://console.cloud.google.com/apis/credentials/consent',
-        linkText: 'Настроить Consent Screen',
-        substeps: [
-          'Выберите "External" и нажмите "Create"',
-          'App name: введите "Lectio"',
-          'User support email: выберите ваш email',
-          'Developer contact: введите ваш email',
-          'Нажмите "Save and Continue"',
-          'Пропустите Scopes - нажмите "Save and Continue"',
-          'На Test Users нажмите "Add Users"',
-          'Введите ваш Google email',
-          'Нажмите "Save and Continue"'
-        ]
-      },
-      {
-        title: 'Создайте OAuth Client ID',
-        description: 'Получите учётные данные для интеграции',
-        link: 'https://console.cloud.google.com/apis/credentials',
-        linkText: 'Создать Credentials',
-        substeps: [
-          'Нажмите "+ Create Credentials"',
-          'Выберите "OAuth client ID"',
-          'Application type: "Web application"',
-          'Name: "Lectio Web"',
-          'В "Authorized redirect URIs" нажмите "+ Add URI"',
-          'Вставьте URI из поля ниже',
-          'Нажмите "Create"',
-          'Скопируйте Client ID и Client Secret из окна'
-        ],
-        copyValue: 'https://lectio.tw1.ru/api/integrations/google-meet/callback/'
-      },
-      {
-        title: 'Введите данные ниже',
-        description: 'Вставьте Client ID и Client Secret',
-        isCredentialsStep: true
       }
     ],
     benefits: [
@@ -353,13 +290,8 @@ const PlatformInstructionModal = ({
       }
     }
     setError('');
-    
-    if (platform === 'google_meet') {
-      onConnect({ 
-        clientId: credentials.clientId?.trim(), 
-        clientSecret: credentials.clientSecret?.trim() 
-      });
-    } else if (platform === 'zoom') {
+
+    if (platform === 'zoom') {
       onConnect({
         accountId: credentials.accountId?.trim(),
         clientId: credentials.clientId?.trim(),
@@ -388,7 +320,7 @@ const PlatformInstructionModal = ({
           </div>
           <div>
             <h2>Подключение {data.name}</h2>
-            <p>Создайте своё приложение для интеграции</p>
+            <p>{platform === 'google_meet' ? 'Авторизуйте ваш Google-аккаунт' : 'Создайте своё приложение для интеграции'}</p>
           </div>
         </header>
 

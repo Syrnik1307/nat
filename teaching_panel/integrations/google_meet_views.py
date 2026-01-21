@@ -39,6 +39,17 @@ class GoogleMeetSaveCredentialsView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
+        # После рефактора используем единый OAuth client, заданный в настройках.
+        # Эндпоинт оставлен для обратной совместимости, но сохранение пользовательских
+        # credentials больше не поддерживается.
+        if getattr(settings, 'GOOGLE_MEET_CLIENT_ID', '') and getattr(settings, 'GOOGLE_MEET_CLIENT_SECRET', ''):
+            return Response(
+                {
+                    'detail': 'Google Meet настроен администратором. Ввод Client ID/Secret больше не требуется.'
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Only teachers can connect Google Meet
         if getattr(request.user, 'role', '') != 'teacher':
             return Response(
@@ -118,11 +129,14 @@ class GoogleMeetAuthURLView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Check if user has credentials
-        if not request.user.google_meet_client_id or not request.user.google_meet_client_secret:
+        # Check if integration is configured globally
+        if not getattr(settings, 'GOOGLE_MEET_CLIENT_ID', '') or not getattr(settings, 'GOOGLE_MEET_CLIENT_SECRET', ''):
             return Response(
-                {'detail': 'Сначала введите Client ID и Client Secret', 'need_credentials': True},
-                status=status.HTTP_400_BAD_REQUEST
+                {
+                    'detail': 'Google Meet не настроен администратором',
+                    'need_admin_setup': True,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
         
         try:
