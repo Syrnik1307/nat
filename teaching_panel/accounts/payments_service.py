@@ -8,7 +8,7 @@ from django.utils import timezone
 from datetime import timedelta
 import logging
 
-from .notifications import send_telegram_notification
+from .notifications import send_telegram_notification, notify_admin_payment
 
 logger = logging.getLogger(__name__)
 
@@ -293,6 +293,11 @@ class PaymentService:
                         'payment_success',
                         f"{message}\nСумма: {payment.amount} {payment.currency}"
                     )
+                
+                # Уведомление админа о новом платеже
+                plan_name = metadata.get('plan')
+                storage_gb = int(metadata['storage_gb']) if 'storage_gb' in metadata else None
+                notify_admin_payment(payment, sub, plan_name=plan_name, storage_gb=storage_gb)
 
                 # Реферальная комиссия: проверяем ReferralLink или referred_by
                 try:

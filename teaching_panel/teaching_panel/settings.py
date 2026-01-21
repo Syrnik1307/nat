@@ -564,6 +564,10 @@ TELEGRAM_BOT_WEBHOOK_SECRET = os.environ.get(
     TELEGRAM_BOT_TOKEN,
 )
 
+# Admin chat ID for payment notifications
+# Set this to your Telegram chat_id (get it from @userinfobot)
+ADMIN_PAYMENT_TELEGRAM_CHAT_ID = os.environ.get('ADMIN_PAYMENT_TELEGRAM_CHAT_ID', '')
+
 
 # =============================================================================
 # PRODUCTION SECURITY SETTINGS

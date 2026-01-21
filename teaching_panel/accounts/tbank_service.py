@@ -12,7 +12,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
 
-from .notifications import send_telegram_notification
+from .notifications import send_telegram_notification, notify_admin_payment
 
 logger = logging.getLogger(__name__)
 
@@ -479,6 +479,11 @@ class TBankService:
                         'payment_success',
                         f"{message}\nСумма: {payment.amount} {payment.currency}"
                     )
+                
+                # Уведомление админа о новом платеже
+                plan_name = metadata.get('plan')
+                storage_gb = int(metadata['storage_gb']) if 'storage_gb' in metadata else None
+                notify_admin_payment(payment, sub, plan_name=plan_name, storage_gb=storage_gb)
                 
                 # Handle referral commission
                 TBankService._process_referral_commission(payment)

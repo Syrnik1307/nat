@@ -615,3 +615,68 @@ def notify_lesson_reminder_with_link(lesson, minutes_before: int) -> dict:
     
     return result
 
+
+def notify_admin_payment(payment, subscription, plan_name: Optional[str] = None, storage_gb: Optional[int] = None) -> bool:
+    """
+    Отправить уведомление админу о новом платеже.
+    
+    Args:
+        payment: Объект Payment
+        subscription: Объект Subscription
+        plan_name: Название плана (если оплата подписки)
+        storage_gb: Количество ГБ (если оплата хранилища)
+        
+    Returns:
+        bool: True если уведомление отправлено
+    """
+    # Chat ID админа для уведомлений о платежах
+    admin_chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', None)
+    if not admin_chat_id:
+        logger.debug('ADMIN_PAYMENT_TELEGRAM_CHAT_ID not configured, skipping admin notification')
+        return False
+    
+    token = _get_bot_token()
+    if not token:
+        logger.warning('Telegram bot token is not configured, cannot notify admin about payment')
+        return False
+    
+    user = subscription.user
+    user_info = user.get_full_name() or user.email
+    
+    # Формируем сообщение
+    if plan_name:
+        payment_type = f"Подписка ({plan_name})"
+    elif storage_gb:
+        payment_type = f"Хранилище (+{storage_gb} ГБ)"
+    else:
+        payment_type = "Оплата"
+    
+    message = (
+        f"Новая оплата\n\n"
+        f"Пользователь: {user_info}\n"
+        f"Email: {user.email}\n"
+        f"Тип: {payment_type}\n"
+        f"Сумма: {payment.amount} {payment.currency}\n"
+        f"Платёжная система: {payment.payment_system}\n"
+        f"ID платежа: {payment.payment_id}"
+    )
+    
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        'chat_id': admin_chat_id,
+        'text': message,
+        'parse_mode': 'Markdown',
+        'disable_web_page_preview': True,
+    }
+    
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        if response.ok:
+            logger.info(f'Admin payment notification sent for payment {payment.payment_id}')
+            return True
+        logger.warning(f'Failed to send admin payment notification: {response.status_code} {response.text}')
+        return False
+    except requests.RequestException as exc:
+        logger.exception(f'Failed to send admin payment notification: {exc}')
+        return False
+
