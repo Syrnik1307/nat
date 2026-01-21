@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { apiClient } from '../apiService';
+import { apiClient, withScheduleApiBase } from '../apiService';
 import './StorageStats.css';
 
 const StorageStats = ({ onClose }) => {
@@ -14,7 +14,7 @@ const StorageStats = ({ onClose }) => {
   const loadStats = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/schedule/api/storage/gdrive-stats/all/');
+      const response = await apiClient.get('storage/gdrive-stats/all/', withScheduleApiBase());
       setStats(response.data);
       setError('');
     } catch (err) {
@@ -53,7 +53,7 @@ const StorageStats = ({ onClose }) => {
     <div className="storage-stats-modal" onClick={onClose}>
       <div className="storage-stats-content" onClick={e => e.stopPropagation()}>
         <div className="storage-stats-header">
-          <h2>📊 Статистика хранилища Google Drive</h2>
+          <h2>Статистика хранилища Google Drive</h2>
           <button onClick={onClose} className="close-btn">×</button>
         </div>
 
