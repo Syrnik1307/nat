@@ -76,9 +76,13 @@
   box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
               0 10px 25px -5px rgba(0, 0, 0, 0.06),
               0 0 20px rgba(79, 70, 229, 0.08);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  /* PERF: GPU-ускоренные свойства */
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s ease;
   position: relative;
   overflow: hidden;
+  will-change: transform;
 }
 
 .stats-card::before {
@@ -166,8 +170,12 @@
   box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
               0 10px 25px -5px rgba(0, 0, 0, 0.06),
               0 0 20px rgba(79, 70, 229, 0.08);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  /* PERF: GPU-ускоренные свойства */
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s ease;
   border-left: 4px solid transparent;
+  will-change: transform;
 }
 
 .lesson-card:hover {
@@ -238,10 +246,14 @@
   box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
               0 10px 25px -5px rgba(0, 0, 0, 0.06),
               0 0 20px rgba(79, 70, 229, 0.08);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  /* PERF: GPU-ускоренные свойства */
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s ease;
   cursor: pointer;
   position: relative;
   overflow: hidden;
+  will-change: transform;
 }
 
 .group-card:hover {

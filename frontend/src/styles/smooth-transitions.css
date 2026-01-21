@@ -595,10 +595,25 @@ svg,
    🎨 УТИЛИТЫ ДЛЯ РАЗРАБОТЧИКОВ
    ======================================== */
 
-/* Быстрое добавление transition */
-.smooth { transition: all var(--transition-hover); }
-.smooth-slow { transition: all var(--transition-page); }
-.smooth-content { transition: all var(--transition-content); }
+/* PERF: Оптимизированные transition классы - используют GPU-ускоренные свойства */
+.smooth { 
+  transition: 
+    transform var(--transition-hover), 
+    opacity var(--transition-hover),
+    background-color var(--transition-hover),
+    border-color var(--transition-hover);
+}
+.smooth-slow { 
+  transition: 
+    transform var(--transition-page), 
+    opacity var(--transition-page),
+    background-color var(--transition-page);
+}
+.smooth-content { 
+  transition: 
+    transform var(--transition-content), 
+    opacity var(--transition-content);
+}
 
 /* Delay utilities */
 .delay-50 { transition-delay: 50ms; }

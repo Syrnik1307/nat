@@ -5,6 +5,39 @@
 @import './styles/dashboard.css';
 @import './styles/mobile-responsive.css';
 
+/* ========================================
+   🚀 PERFORMANCE CRITICAL - GPU ACCELERATION
+   ======================================== */
+
+/* Включаем GPU-ускорение для всех анимируемых элементов */
+* {
+  /* Отключаем subpixel antialiasing для лучшей производительности на macOS */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Критические элементы получают GPU layer */
+.navbar-new,
+.student-navbar,
+.page-loader-wrapper,
+.modal-overlay,
+.modal-content {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Отключаем тяжелые эффекты на слабых устройствах */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Остальные глобальные стили уже в design-system.css */
 code {
   font-family: var(--font-mono);

@@ -47,7 +47,8 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-3xl);
   box-shadow: var(--shadow-glow);
-  transition: all var(--transition-slow);
+  /* PERF: Убран transition: all - backdrop-filter уже тяжелый */
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
 
 .glass-card.role-select {
@@ -215,7 +216,8 @@
   padding: clamp(24px, 5vw, 40px);
   margin-bottom: var(--space-xl);
   box-shadow: var(--shadow-sm);
-  transition: all var(--transition-base);
+  /* PERF: Конкретные свойства вместо all */
+  transition: box-shadow var(--transition-base), border-color var(--transition-base);
 }
 
 .courses-section:hover, .quick-actions:hover {
@@ -256,10 +258,12 @@
   border: 1px solid var(--border-light);
   border-radius: var(--radius-xl);
   padding: clamp(20px, 4vw, 28px);
-  transition: all var(--transition-base);
+  /* PERF: Конкретные свойства - GPU-ускорение */
+  transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-xs);
+  will-change: transform;
 }
 
 .course-card:hover {
@@ -321,7 +325,8 @@
   font-size: var(--text-base);
   font-weight: var(--font-medium);
   cursor: pointer;
-  transition: all var(--transition-base);
+  /* PERF: GPU-ускоренные свойства */
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
   box-shadow: var(--shadow-glow);
 }
 
@@ -378,7 +383,8 @@
   border-radius: var(--radius-full);
   font-size: var(--text-base);
   cursor: pointer;
-  transition: all var(--transition-base);
+  /* PERF: Конкретные свойства */
+  transition: background-color var(--transition-base), color var(--transition-base);
   color: var(--text-secondary);
   font-weight: var(--font-medium);
 }
@@ -400,7 +406,8 @@
   border-radius: var(--radius-xl);
   padding: var(--space-xl);
   margin-bottom: var(--space-lg);
-  transition: all var(--transition-base);
+  /* PERF: Конкретные свойства */
+  transition: box-shadow var(--transition-base), border-color var(--transition-base);
 }
 
 .lesson-card:hover {
@@ -500,7 +507,8 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: all var(--transition-base);
+  /* PERF: GPU-ускоренные свойства */
+  transition: transform var(--transition-base), background-color var(--transition-base), border-color var(--transition-base);
 }
 
 .group-item:hover {
@@ -555,7 +563,8 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   font-size: var(--text-base);
-  transition: all var(--transition-base);
+  /* PERF: Конкретные свойства */
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-sans);
@@ -645,7 +654,8 @@
   border-radius: var(--radius-md);
   min-height: 100px;
   cursor: pointer;
-  transition: all var(--transition-base);
+  /* PERF: Конкретные свойства */
+  transition: border-color var(--transition-base), background-color var(--transition-base);
 }
 
 .calendar-day:hover {

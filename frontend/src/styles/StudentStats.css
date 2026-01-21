@@ -68,7 +68,9 @@
   padding: 0.6rem 1rem;
   font-weight: var(--font-semibold);
   cursor: pointer;
-  transition: all var(--transition-base);
+  /* PERF: GPU-ускоренные свойства */
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  will-change: transform;
 }
 
 .student-stats-btn:hover {

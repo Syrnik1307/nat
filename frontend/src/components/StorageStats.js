@@ -59,6 +59,34 @@ const StorageStats = ({ onClose }) => {
 
         {stats && (
           <>
+            {/* Drive Quota Info */}
+            {stats.drive_quota && (
+              <div className="drive-quota-section">
+                <div className="drive-quota-header">
+                  <span className="quota-title">Квота Google Drive</span>
+                  <span className={`quota-status ${stats.drive_quota.usage_percent > 80 ? 'warning' : stats.drive_quota.usage_percent > 95 ? 'critical' : 'ok'}`}>
+                    {stats.drive_quota.usage_percent}% использовано
+                  </span>
+                </div>
+                <div className="drive-quota-bar">
+                  <div 
+                    className={`drive-quota-fill ${stats.drive_quota.usage_percent > 80 ? 'warning' : stats.drive_quota.usage_percent > 95 ? 'critical' : ''}`}
+                    style={{ width: `${Math.min(100, stats.drive_quota.usage_percent)}%` }}
+                  />
+                </div>
+                <div className="drive-quota-details">
+                  <span>Занято: <strong>{stats.drive_quota.usage_gb} GB</strong></span>
+                  <span>Свободно: <strong>{stats.drive_quota.free_gb} GB</strong></span>
+                  <span>Всего: <strong>{stats.drive_quota.limit_gb} GB</strong></span>
+                </div>
+                {stats.drive_quota.usage_in_trash > 0 && (
+                  <div className="trash-info">
+                    В корзине: {(stats.drive_quota.usage_in_trash / (1024 * 1024 * 1024)).toFixed(2)} GB
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="summary-cards">
               <div className="summary-card">
                 <div className="card-label">Всего учителей</div>

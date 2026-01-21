@@ -21,11 +21,17 @@
   border: none;
   border-radius: var(--radius-button);
   cursor: pointer;
-  transition: all var(--transition-base);
+  /* PERF: GPU-ускоренные свойства вместо all */
+  transition: transform var(--transition-base), 
+              box-shadow var(--transition-base),
+              background-color var(--transition-base),
+              border-color var(--transition-base),
+              color var(--transition-base);
   outline: none;
   user-select: none;
   min-height: 48px;
   white-space: nowrap;
+  will-change: transform;
 }
 
 .btn:focus-visible,
