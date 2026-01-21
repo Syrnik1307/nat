@@ -447,6 +447,39 @@ export const uploadHomeworkDocument = async (file, onProgress) => {
   });
 };
 
+/**
+ * Загрузка файла студентом в качестве ответа на вопрос
+ * (отдельный эндпоинт от учительского upload-file)
+ * 
+ * @param {File} file - Файл для загрузки
+ * @param {Function} onProgress - Callback для прогресса загрузки (0-100)
+ */
+export const uploadStudentAnswerFile = async (file, onProgress) => {
+  let fileToUpload = file;
+  
+  // Быстрое сжатие только для больших изображений (>2MB)
+  if (file.type.startsWith('image/') && file.size > 2 * 1024 * 1024) {
+    try {
+      const compress = await getCompressor();
+      fileToUpload = await compress(file);
+    } catch (e) {
+      console.warn('[uploadStudentAnswerFile] Compression failed, using original:', e);
+    }
+  }
+  
+  const formData = new FormData();
+  formData.append('file', fileToUpload);
+  
+  return apiClient.post('homework/upload-student-answer/', formData, {
+    headers: { 'Content-Type': undefined },
+    timeout: 120000, // 2 минуты для загрузки
+    onUploadProgress: onProgress ? (progressEvent) => {
+      const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+      onProgress(percent);
+    } : undefined,
+  });
+};
+
 // Submissions
 export const getSubmissions = (params = {}) => apiClient.get('submissions/', { params });
 export const getSubmission = (id) => apiClient.get(`submissions/${id}/`);

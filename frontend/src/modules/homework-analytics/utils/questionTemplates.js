@@ -44,6 +44,11 @@ const QUESTION_TYPES = [
     label: 'Программирование',
     description: 'Написание и запуск кода с автопроверкой',
   },
+  {
+    value: 'FILE_UPLOAD',
+    label: 'Загрузка файла',
+    description: 'Ученик загружает фото или документ',
+  },
 ];
 
 const defaultConfigByType = {
@@ -104,6 +109,12 @@ const defaultConfigByType = {
       { id: 'tc-1', input: '', expectedOutput: '' }
     ],
     hint: '',
+  },
+  FILE_UPLOAD: {
+    allowedTypes: ['image', 'document'], // 'image', 'document', 'any'
+    maxFiles: 1,
+    maxSizeMB: 10,
+    instructions: '',
   },
 };
 

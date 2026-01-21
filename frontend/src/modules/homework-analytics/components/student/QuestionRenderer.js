@@ -1,6 +1,7 @@
 import React from 'react';
 import MediaPreview from '../shared/MediaPreview';
 import CodeQuestionRenderer from './CodeQuestionRenderer';
+import FileUploadRenderer from './FileUploadRenderer';
 
 const QuestionRenderer = ({ question, answer, onChange, disabled = false }) => {
   if (!question) return null;
@@ -282,6 +283,17 @@ const QuestionRenderer = ({ question, answer, onChange, disabled = false }) => {
   if (type === 'CODE') {
     return (
       <CodeQuestionRenderer
+        question={question}
+        answer={answer}
+        onChange={onChange}
+        disabled={disabled}
+      />
+    );
+  }
+
+  if (type === 'FILE_UPLOAD') {
+    return (
+      <FileUploadRenderer
         question={question}
         answer={answer}
         onChange={onChange}

@@ -19,6 +19,7 @@ import DragDropQuestion from '../questions/DragDropQuestion';
 import FillBlanksQuestion from '../questions/FillBlanksQuestion';
 import HotspotQuestion from '../questions/HotspotQuestion';
 import CodeQuestion from '../questions/CodeQuestion';
+import FileUploadQuestion from '../questions/FileUploadQuestion';
 import '../questions/CodeQuestion.css';
 import './HomeworkConstructor.css';
 import DateTimePicker from './DateTimePicker';
@@ -46,6 +47,7 @@ const QUESTION_COMPONENTS = {
   FILL_BLANKS: FillBlanksQuestion,
   HOTSPOT: HotspotQuestion,
   CODE: CodeQuestion,
+  FILE_UPLOAD: FileUploadQuestion,
 };
 
 // Нормализация URL для картинок (включая Google Drive)
@@ -167,6 +169,25 @@ const HomeworkPreviewSection = ({ questions, previewQuestion, onChangePreviewQue
                 <label>{option.text || `Вариант ${idx + 1}`}</label>
               </div>
             ))}
+          </div>
+        );
+
+      case 'FILE_UPLOAD':
+        return (
+          <div className="preview-question">
+            <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
+            {currentQuestion.config?.instructions && (
+              <p className="preview-note">{currentQuestion.config.instructions}</p>
+            )}
+            <div style={{ 
+              padding: '24px', 
+              border: '2px dashed var(--border-color, #e5e7eb)', 
+              borderRadius: '8px',
+              textAlign: 'center',
+              color: 'var(--text-muted, #9ca3af)'
+            }}>
+              Зона загрузки файла (до {currentQuestion.config?.maxSizeMB || 10} MB)
+            </div>
           </div>
         );
 

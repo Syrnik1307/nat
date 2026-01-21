@@ -414,6 +414,127 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=False, methods=['post'], url_path='upload-student-answer', permission_classes=[IsAuthenticated])
+    def upload_student_answer(self, request):
+        """
+        Загрузка файла студентом в качестве ответа на вопрос типа FILE_UPLOAD.
+        
+        POST /api/homework/upload-student-answer/
+        Body (multipart/form-data):
+            - file: файл (изображение или документ)
+        
+        Returns:
+            {
+                'url': '/api/homework/file/<file_id>/',
+                'file_id': 'unique_file_id',
+                'file_name': 'original_filename.jpg',
+                'mime_type': 'image/jpeg',
+                'size': 12345
+            }
+        """
+        import logging
+        import os
+        import uuid
+        from django.conf import settings as django_settings
+        from .models import HomeworkFile
+        
+        logger = logging.getLogger(__name__)
+        
+        # Проверка прав: только аутентифицированные пользователи (студенты и учителя)
+        if not request.user.is_authenticated:
+            return Response(
+                {'detail': 'Требуется авторизация'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # Получаем файл из request
+        uploaded_file = request.FILES.get('file')
+        if not uploaded_file:
+            return Response(
+                {'detail': 'Файл не найден в запросе'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Валидация MIME типа - разрешаем изображения и документы
+        allowed_types = [
+            # Изображения
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+            # PDF
+            'application/pdf',
+            # Word
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            # Excel
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            # Text
+            'text/plain',
+        ]
+        
+        mime_type = uploaded_file.content_type
+        
+        if mime_type not in allowed_types:
+            return Response(
+                {'detail': f'Неподдерживаемый тип файла: {mime_type}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Проверка размера файла (макс 10 MB для студенческих ответов)
+        max_size = 10 * 1024 * 1024
+        if uploaded_file.size > max_size:
+            return Response(
+                {'detail': 'Файл слишком большой. Максимум: 10 MB'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Генерируем уникальный ID
+            file_id = uuid.uuid4().hex
+            
+            # Сохраняем локально
+            homework_media_dir = os.path.join(django_settings.MEDIA_ROOT, 'student_uploads')
+            os.makedirs(homework_media_dir, exist_ok=True)
+            
+            # Расширение из оригинального имени
+            ext = os.path.splitext(uploaded_file.name)[1].lower() or '.bin'
+            local_filename = f"{file_id}{ext}"
+            local_path = os.path.join(homework_media_dir, local_filename)
+            
+            with open(local_path, 'wb+') as destination:
+                for chunk in uploaded_file.chunks():
+                    destination.write(chunk)
+            
+            # Создаём запись в БД (студент может быть None для teacher - указываем как student)
+            hw_file = HomeworkFile.objects.create(
+                id=file_id,
+                teacher=None,  # Для студентов teacher=None
+                original_name=uploaded_file.name,
+                mime_type=mime_type,
+                size=uploaded_file.size,
+                storage=HomeworkFile.STORAGE_LOCAL,
+                local_path=local_path,
+            )
+            
+            proxy_url = hw_file.get_proxy_url()
+            
+            logger.info(
+                f"User {request.user.email} uploaded student answer file: "
+                f"{uploaded_file.name} -> {file_id} ({uploaded_file.size} bytes)"
+            )
+            
+            return Response({
+                'status': 'success',
+                'url': proxy_url,
+                'file_id': file_id,
+                'file_name': uploaded_file.name,
+                'mime_type': mime_type,
+                'size': uploaded_file.size
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Failed to upload student answer file: {e}", exc_info=True)
+            return Response({'detail': f'Ошибка загрузки файла: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def _notify_students_about_new_homework(self, homework: Homework):
         # Получатели: группы (assigned_groups) + индивидуальные ученики (assigned_students)
         students = set()
