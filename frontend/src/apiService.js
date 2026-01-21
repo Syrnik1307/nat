@@ -216,6 +216,11 @@ export const changePassword = (oldPassword, newPassword) =>
         old_password: oldPassword, 
         new_password: newPassword 
     });
+export const changeEmail = (password, newEmail) => 
+    apiClient.post('change-email/', { 
+        password: password, 
+        new_email: newEmail 
+    });
 export const getTelegramStatus = () => apiClient.get('telegram/status/');
 export const generateTelegramCode = () => apiClient.post('accounts/generate-telegram-code/');
 export const unlinkTelegramAccount = () => apiClient.post('telegram/unlink/');

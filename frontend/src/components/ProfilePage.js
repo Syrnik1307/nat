@@ -5,6 +5,7 @@ import { useNotifications } from '../shared/context/NotificationContext';
 import {
   updateCurrentUser,
   changePassword,
+  changeEmail,
   getTelegramStatus,
   generateTelegramCode,
   unlinkTelegramAccount,
@@ -46,6 +47,16 @@ const ProfilePage = () => {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+  // Состояние для смены email
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [emailForm, setEmailForm] = useState({
+    password: '',
+    newEmail: '',
+  });
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailSuccess, setEmailSuccess] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   // Telegram linking state
   const [telegramInfo, setTelegramInfo] = useState(null);
@@ -554,6 +565,43 @@ const ProfilePage = () => {
     }
   };
 
+  const handleEmailSubmit = async () => {
+    setEmailSaving(true);
+    setEmailSuccess('');
+    setEmailError('');
+
+    // Валидация
+    if (!emailForm.password || !emailForm.newEmail) {
+      setEmailError('Заполните все поля');
+      setEmailSaving(false);
+      return;
+    }
+
+    // Простая проверка формата email
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(emailForm.newEmail)) {
+      setEmailError('Некорректный формат email');
+      setEmailSaving(false);
+      return;
+    }
+
+    try {
+      await changeEmail(emailForm.password, emailForm.newEmail);
+      setEmailSuccess('Email успешно изменён');
+      setEmailForm({ password: '', newEmail: '' });
+      await refreshUser();
+      setTimeout(() => {
+        setShowEmailForm(false);
+        setEmailSuccess('');
+      }, 2000);
+    } catch (err) {
+      console.error('Не удалось изменить email', err);
+      setEmailError(err.response?.data?.detail || 'Не удалось изменить email. Проверьте пароль.');
+    } finally {
+      setEmailSaving(false);
+    }
+  };
+
   if (!user) {
     return (
       <div className="profile-page">
@@ -761,6 +809,78 @@ const ProfilePage = () => {
 
                   {passwordSuccess && <p className="form-message success">{passwordSuccess}</p>}
                   {passwordError && <p className="form-message error">{passwordError}</p>}
+                </div>
+              )}
+            </section>
+
+            {/* Секция смены Email */}
+            <section className="profile-email-change">
+              <div className="password-header">
+                <div>
+                  <h3>Изменить логин (Email)</h3>
+                  <p className="profile-subtitle">Текущий email: {user?.email}</p>
+                </div>
+                {!showEmailForm && (
+                  <button 
+                    type="button" 
+                    className="secondary"
+                    onClick={() => setShowEmailForm(true)}
+                  >
+                    Изменить email
+                  </button>
+                )}
+              </div>
+
+              {showEmailForm && (
+                <div className="password-form">
+                  <div className="field-group">
+                    <label htmlFor="emailPassword">Текущий пароль</label>
+                    <input
+                      id="emailPassword"
+                      type="password"
+                      value={emailForm.password}
+                      onChange={(e) => setEmailForm(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder="Введите пароль для подтверждения"
+                    />
+                  </div>
+
+                  <div className="field-group">
+                    <label htmlFor="newEmail">Новый email</label>
+                    <input
+                      id="newEmail"
+                      type="email"
+                      value={emailForm.newEmail}
+                      onChange={(e) => setEmailForm(prev => ({ ...prev, newEmail: e.target.value }))}
+                      placeholder="example@email.com"
+                    />
+                  </div>
+
+                  <div className="form-actions">
+                    <button 
+                      type="button" 
+                      className="primary"
+                      onClick={handleEmailSubmit}
+                      disabled={emailSaving}
+                    >
+                      {emailSaving ? 'Сохранение...' : 'Сохранить email'}
+                    </button>
+                    <button 
+                      type="button" 
+                      className="secondary"
+                      onClick={() => {
+                        setShowEmailForm(false);
+                        setEmailForm({ password: '', newEmail: '' });
+                        setEmailError('');
+                        setEmailSuccess('');
+                      }}
+                      disabled={emailSaving}
+                    >
+                      Отмена
+                    </button>
+                  </div>
+
+                  {emailSuccess && <p className="form-message success">{emailSuccess}</p>}
+                  {emailError && <p className="form-message error">{emailError}</p>}
                 </div>
               )}
             </section>

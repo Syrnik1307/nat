@@ -41,6 +41,7 @@ from .api_views import (
     MeView, 
     users_list, 
     change_password,
+    change_email,
     link_telegram,
     unlink_telegram,
     request_password_reset,
@@ -124,6 +125,7 @@ urlpatterns = [
     path('api/users/', users_list, name='users_list'),
     path('api/me/', MeView.as_view(), name='me'),
     path('api/change-password/', change_password, name='change_password'),
+    path('api/change-email/', change_email, name='change_email'),
     
     # API для Telegram и восстановления пароля
     path('api/telegram/link/', link_telegram, name='link_telegram'),

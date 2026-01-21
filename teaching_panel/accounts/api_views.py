@@ -105,6 +105,60 @@ def change_password(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def change_email(request):
+    """Смена email текущего пользователя"""
+    import re
+    user = request.user
+    password = request.data.get('password')
+    new_email = request.data.get('new_email', '').strip().lower()
+    
+    if not password or not new_email:
+        return Response(
+            {'detail': 'Требуются оба поля: password и new_email'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Проверяем пароль
+    if not user.check_password(password):
+        return Response(
+            {'detail': 'Неверный пароль'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Валидация email
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_pattern, new_email):
+        return Response(
+            {'detail': 'Некорректный формат email'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Проверяем, не занят ли email
+    if CustomUser.objects.filter(email=new_email).exclude(id=user.id).exists():
+        return Response(
+            {'detail': 'Этот email уже используется'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Проверяем, что email отличается от текущего
+    if user.email.lower() == new_email:
+        return Response(
+            {'detail': 'Новый email совпадает с текущим'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Меняем email
+    user.email = new_email
+    user.save()
+    
+    return Response(
+        {'detail': 'Email успешно изменён', 'email': new_email},
+        status=status.HTTP_200_OK
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def link_telegram(request):
     """Deprecated endpoint kept for backward compatibility."""
     return Response(
