@@ -119,18 +119,26 @@ class Command(BaseCommand):
             raise FileNotFoundError(f'Local file not found: {hw_file.local_path}')
         
         gdrive = get_gdrive_manager()
-        teacher_folders = gdrive.get_or_create_teacher_folder(hw_file.teacher)
-        homework_root_folder_id = teacher_folders.get('homework')
         
-        # Кешируем uploads folder ID
-        uploads_cache_key = f"gdrive_uploads_folder_{hw_file.teacher.id}"
+        # Для файлов учителей используем их папку, для студентов - общую папку
+        if hw_file.teacher:
+            teacher_folders = gdrive.get_or_create_teacher_folder(hw_file.teacher)
+            homework_root_folder_id = teacher_folders.get('homework')
+            uploads_cache_key = f"gdrive_uploads_folder_{hw_file.teacher.id}"
+            folder_name = 'Uploads'
+        else:
+            # Студенческие файлы загружаются в общую папку StudentUploads в корне
+            uploads_cache_key = "gdrive_student_uploads_folder"
+            homework_root_folder_id = gdrive.root_folder_id
+            folder_name = 'StudentUploads'
+        
         uploads_folder_id = cache.get(uploads_cache_key)
         
         if not uploads_folder_id:
-            # Создаём/находим подпапку Uploads
+            # Создаём/находим подпапку Uploads или StudentUploads
             try:
                 query = (
-                    f"name='Uploads' and mimeType='application/vnd.google-apps.folder' "
+                    f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' "
                     f"and trashed=false and '{homework_root_folder_id}' in parents"
                 )
                 results = gdrive.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
@@ -138,9 +146,9 @@ class Command(BaseCommand):
                 if items:
                     uploads_folder_id = items[0]['id']
                 else:
-                    uploads_folder_id = gdrive.create_folder('Uploads', homework_root_folder_id)
+                    uploads_folder_id = gdrive.create_folder(folder_name, homework_root_folder_id)
             except Exception:
-                uploads_folder_id = gdrive.create_folder('Uploads', homework_root_folder_id)
+                uploads_folder_id = gdrive.create_folder(folder_name, homework_root_folder_id)
             
             cache.set(uploads_cache_key, uploads_folder_id, 86400)
         
