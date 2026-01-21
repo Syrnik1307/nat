@@ -342,9 +342,10 @@ const TeacherHomePage = () => {
     try {
       // Преобразуем 'zoom' → 'zoom_pool' для бэкенда
       const providerForBackend = selectedPlatform === 'zoom' ? 'zoom_pool' : selectedPlatform;
+      const recordForBackend = providerForBackend === 'google_meet' ? false : recordLesson;
       
       const res = await startQuickLesson({
-        record_lesson: recordLesson,
+        record_lesson: recordForBackend,
         group_id: selectedGroupId || undefined,
         provider: providerForBackend, // Передаём выбранную платформу
       });
@@ -428,33 +429,47 @@ const TeacherHomePage = () => {
     setLessonStartError(null);
     
     try {
+      const providerForBackend = selectedPlatform === 'zoom' ? 'zoom_pool' : selectedPlatform;
+      const recordForBackend = providerForBackend === 'google_meet' ? false : lessonRecordEnabled;
+
       // Если изменилось название или флаг записи - сначала обновляем урок
       const needsUpdate = 
-        (lessonRecordEnabled !== selectedLesson.record_lesson) ||
+        (recordForBackend !== selectedLesson.record_lesson) ||
         (recordingTitle && recordingTitle !== selectedLesson.title);
       
       if (needsUpdate) {
         await updateLesson(selectedLesson.id, {
-          record_lesson: lessonRecordEnabled,
+          record_lesson: recordForBackend,
           title: recordingTitle || selectedLesson.title,
         });
       }
       
       const response = await startLessonNew(selectedLesson.id, {
-        record_lesson: lessonRecordEnabled,
-        force_new_meeting: needsUpdate && lessonRecordEnabled && Boolean(selectedLesson.zoom_meeting_id),
+        record_lesson: recordForBackend,
+        force_new_meeting: needsUpdate && recordForBackend && Boolean(selectedLesson.zoom_meeting_id),
+        provider: providerForBackend,
       });
-      
-      if (response.data?.zoom_start_url) {
-        window.open(response.data.zoom_start_url, '_blank', 'noopener,noreferrer');
+
+      const responseProvider = response.data?.provider;
+      let startUrl;
+      if (responseProvider === 'google_meet') {
+        startUrl = response.data?.meet_link || response.data?.start_url;
+      } else {
+        startUrl = response.data?.zoom_start_url || response.data?.start_url;
+      }
+
+      if (startUrl) {
+        window.open(startUrl, '_blank', 'noopener,noreferrer');
         setShowLessonStartModal(false);
-        
-        // Обновляем список уроков
-        setLessons(prev => prev.map(l => 
-          l.id === selectedLesson.id 
-            ? { ...l, zoom_start_url: response.data.zoom_start_url, zoom_join_url: response.data.zoom_join_url }
-            : l
-        ));
+
+        // Обновляем список уроков (Zoom ссылки есть только для Zoom)
+        if (response.data?.zoom_start_url) {
+          setLessons(prev => prev.map(l => 
+            l.id === selectedLesson.id 
+              ? { ...l, zoom_start_url: response.data.zoom_start_url, zoom_join_url: response.data.zoom_join_url }
+              : l
+          ));
+        }
       }
     } catch (err) {
       if (err.response?.status === 503) {
@@ -562,7 +577,9 @@ const TeacherHomePage = () => {
               <button
                 type="button"
                 className={`platform-option ${selectedPlatform === 'zoom' ? 'selected' : ''}`}
-                onClick={() => setSelectedPlatform('zoom')}
+                onClick={() => {
+                  setSelectedPlatform('zoom');
+                }}
               >
                 <div className="platform-option-icon zoom-icon">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
@@ -583,7 +600,14 @@ const TeacherHomePage = () => {
               <button
                 type="button"
                 className={`platform-option ${selectedPlatform === 'google_meet' ? 'selected' : ''}`}
-                onClick={() => setSelectedPlatform('google_meet')}
+                onClick={() => {
+                  setSelectedPlatform('google_meet');
+                  if (platformModalContext === 'quick') {
+                    setRecordLesson(false);
+                  } else if (platformModalContext === 'scheduled') {
+                    setLessonRecordEnabled(false);
+                  }
+                }}
               >
                 <div className="platform-option-icon meet-icon">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
@@ -644,21 +668,29 @@ const TeacherHomePage = () => {
               />
             </div>
 
-            {/* Record Option */}
-            <label className={`start-modal-checkbox ${recordLesson ? 'checked' : ''}`}>
-              <input
-                type="checkbox"
-                checked={recordLesson}
-                onChange={(e) => setRecordLesson(e.target.checked)}
-              />
-              <IconDisc size={18} />
-              <span>Записывать урок</span>
-            </label>
+            {/* Record Option (Zoom only) */}
+            {selectedPlatform !== 'google_meet' ? (
+              <>
+                <label className={`start-modal-checkbox ${recordLesson ? 'checked' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={recordLesson}
+                    onChange={(e) => setRecordLesson(e.target.checked)}
+                  />
+                  <IconDisc size={18} />
+                  <span>Записывать урок</span>
+                </label>
 
-            {recordLesson && (
-              <div className="start-modal-hint">
-                <IconDisc size={14} />
-                <span>Запись будет доступна в разделе «Записи» после окончания</span>
+                {recordLesson && (
+                  <div className="start-modal-hint">
+                    <IconDisc size={14} />
+                    <span>Запись будет доступна в разделе «Записи» после окончания</span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="start-modal-hint" style={{ color: '#92400e' }}>
+                <span>Запись доступна только для Zoom. Для Google Meet используйте запись в Google Meet вручную.</span>
               </div>
             )}
 
@@ -704,16 +736,22 @@ const TeacherHomePage = () => {
               )}
             </div>
 
-            {/* Record Option */}
-            <label className={`start-modal-checkbox ${lessonRecordEnabled ? 'checked' : ''}`}>
-              <input
-                type="checkbox"
-                checked={lessonRecordEnabled}
-                onChange={(e) => setLessonRecordEnabled(e.target.checked)}
-              />
-              <IconDisc size={18} />
-              <span>Записывать урок</span>
-            </label>
+            {/* Record Option (Zoom only) */}
+            {selectedPlatform !== 'google_meet' ? (
+              <label className={`start-modal-checkbox ${lessonRecordEnabled ? 'checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={lessonRecordEnabled}
+                  onChange={(e) => setLessonRecordEnabled(e.target.checked)}
+                />
+                <IconDisc size={18} />
+                <span>Записывать урок</span>
+              </label>
+            ) : (
+              <div className="start-modal-hint" style={{ color: '#92400e' }}>
+                <span>Запись доступна только для Zoom. Для Google Meet используйте запись в Google Meet вручную.</span>
+              </div>
+            )}
 
             {lessonRecordEnabled && (
               <>

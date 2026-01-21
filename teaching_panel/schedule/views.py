@@ -1858,8 +1858,25 @@ class LessonViewSet(viewsets.ModelViewSet):
         start_time = timezone.now()
         end_time = start_time + timezone.timedelta(minutes=duration)
 
+        # Определяем провайдера (по умолчанию zoom_pool для backward compatibility)
+        provider = request.data.get('provider', 'zoom_pool')
+        if provider not in ('zoom_pool', 'zoom_personal', 'google_meet'):
+            provider = 'zoom_pool'
+
         # Получаем настройки записи
-        record_lesson = request.data.get('record_lesson', False)
+        record_lesson_raw = request.data.get('record_lesson', False)
+        record_lesson = str(record_lesson_raw).lower() in ('1', 'true', 'yes', 'on', 'y', 't')
+
+        # Запись поддерживается только для Zoom
+        if provider == 'google_meet' and record_lesson:
+            return Response(
+                {'detail': 'Запись доступна только для Zoom. Для Google Meet используйте запись в Google Meet вручную.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Для Google Meet запись отключаем в любом случае
+        if provider == 'google_meet':
+            record_lesson = False
 
         lesson = Lesson.objects.create(
             title=title,
@@ -1871,11 +1888,6 @@ class LessonViewSet(viewsets.ModelViewSet):
             is_quick_lesson=True,  # Помечаем как быстрый урок
             notes='Создано кнопкой "Быстрый урок"'
         )
-
-        # Определяем провайдера (по умолчанию zoom_pool для backward compatibility)
-        provider = request.data.get('provider', 'zoom_pool')
-        if provider not in ('zoom_pool', 'zoom_personal', 'google_meet'):
-            provider = 'zoom_pool'
 
         # ========== Google Meet ==========
         if provider == 'google_meet':
