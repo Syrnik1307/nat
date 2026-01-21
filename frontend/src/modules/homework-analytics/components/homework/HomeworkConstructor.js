@@ -1316,7 +1316,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                                       e.target.value = '';
                                     }}
                                   />
-                                  + Добавить фото к пояснению
+                                  Добавить изображение
                                 </label>
                               ) : (
                                 <div className="hc-explanation-image-preview">
