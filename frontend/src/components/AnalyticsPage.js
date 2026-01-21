@@ -380,7 +380,7 @@ const AnalyticsPage = () => {
                                     <td className="cell-primary">{g.name}</td>
                                     <td>{g.students_count || g.students?.length || 0}</td>
                                     <td className="cell-actions">
-                                        <Link to={`/groups/manage?openGroup=${g.id}`} className="link-action">
+                                        <Link to={`/attendance/${g.id}`} className="link-action">
                                             Журнал
                                         </Link>
                                         <button 

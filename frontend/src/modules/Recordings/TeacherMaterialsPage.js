@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import './TeacherMaterialsPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
-import { ConfirmModal, Select, ToastContainer, Modal, RichTextEditor } from '../../shared/components';
+import { ConfirmModal, Select, SearchableSelect, ToastContainer, Modal, RichTextEditor } from '../../shared/components';
 
 /**
  * TeacherMaterialsPage - Страница материалов урока
@@ -370,13 +370,46 @@ function TeacherMaterialsPage() {
     });
   };
 
-  const lessonOptions = [
-    { value: '', label: 'Без привязки к уроку' },
-    ...lessons.map(l => ({
-      value: String(l.id),
-      label: `${l.title || l.subject || 'Урок'} — ${l.group_name} (${formatDate(l.start_time)})`
-    }))
-  ];
+  // Группировка уроков по прошедшим/предстоящим для удобного поиска
+  const lessonSelectOptions = useMemo(() => {
+    const now = new Date();
+    const pastLessons = lessons.filter(l => new Date(l.start_time) < now);
+    const futureLessons = lessons.filter(l => new Date(l.start_time) >= now);
+    const fmt = (dateStr) => {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    const result = [{ value: '', label: 'Без привязки к уроку' }];
+
+    if (pastLessons.length > 0) {
+      result.push({ type: 'group', label: 'Прошедшие уроки' });
+      pastLessons
+        .slice()
+        .sort((a, b) => new Date(b.start_time) - new Date(a.start_time))
+        .forEach((lesson) => {
+          result.push({
+            value: String(lesson.id),
+            label: `${lesson.title || lesson.subject || 'Урок'} • ${lesson.group_name} (${fmt(lesson.start_time)})`
+          });
+        });
+    }
+
+    if (futureLessons.length > 0) {
+      result.push({ type: 'group', label: 'Предстоящие уроки' });
+      futureLessons
+        .slice()
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+        .forEach((lesson) => {
+          result.push({
+            value: String(lesson.id),
+            label: `${lesson.title || lesson.subject || 'Урок'} • ${lesson.group_name} (${fmt(lesson.start_time)})`
+          });
+        });
+    }
+
+    return result;
+  }, [lessons]);
 
   const visibilityOptions = [
     { value: 'all_teacher_groups', label: 'Все мои группы' },
@@ -676,10 +709,12 @@ function TeacherMaterialsPage() {
             
             <div className="form-group">
               <label>Привязать к уроку</label>
-              <Select
+              <SearchableSelect
                 value={miroForm.lesson_id}
                 onChange={(e) => setMiroForm({...miroForm, lesson_id: e.target.value})}
-                options={lessonOptions}
+                options={lessonSelectOptions}
+                placeholder="Без привязки к уроку"
+                searchPlaceholder="Поиск по названию урока..."
               />
             </div>
             
@@ -798,10 +833,12 @@ function TeacherMaterialsPage() {
             <div className="form-row">
               <div className="form-group">
                 <label>Привязать к уроку</label>
-                <Select
+                <SearchableSelect
                   value={notesForm.lesson_id}
                   onChange={(e) => setNotesForm({...notesForm, lesson_id: e.target.value})}
-                  options={lessonOptions}
+                  options={lessonSelectOptions}
+                  placeholder="Без привязки к уроку"
+                  searchPlaceholder="Поиск по названию урока..."
                 />
               </div>
               <div className="form-group">

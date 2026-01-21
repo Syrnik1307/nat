@@ -1,7 +1,8 @@
 from django.contrib import admin
+from django.utils.html import format_html as admin_format_html
 from .models import (
     ZoomAccount, Group, Lesson, Attendance, RecurringLesson, AuditLog, 
-    TeacherStorageQuota, LessonMaterial, MaterialView
+    TeacherStorageQuota, LessonMaterial, MaterialView, LessonRecording
 )
 
 
@@ -340,4 +341,56 @@ class MaterialViewAdmin(admin.ModelAdmin):
     duration_display.short_description = 'Длительность'
 
 
-from django.utils.html import format_html
+@admin.register(LessonRecording)
+class LessonRecordingAdmin(admin.ModelAdmin):
+    """Админка для просмотра записей уроков (локальные + GDrive)."""
+    list_display = ('id', 'title_or_lesson', 'teacher_link', 'status', 'storage_provider',
+                    'gdrive_link', 'file_size_display', 'duration_display', 'created_at')
+    list_filter = ('status', 'storage_provider', 'visibility', 'created_at')
+    search_fields = ('title', 'lesson__title', 'teacher__email', 'gdrive_file_id')
+    readonly_fields = ('id', 'created_at', 'updated_at', 'archived_at')
+    ordering = ('-created_at',)
+    raw_id_fields = ('lesson', 'teacher')
+    
+    def title_or_lesson(self, obj):
+        if obj.title:
+            return obj.title[:50]
+        elif obj.lesson:
+            return f"Урок: {obj.lesson.title[:40]}"
+        return f"ID {obj.id}"
+    title_or_lesson.short_description = 'Название'
+    
+    def teacher_link(self, obj):
+        teacher = obj.teacher or (obj.lesson.teacher if obj.lesson else None)
+        if teacher:
+            return admin_format_html(
+                '<a href="/admin/accounts/customuser/{}/change/">{}</a>',
+                teacher.id, teacher.email
+            )
+        return '-'
+    teacher_link.short_description = 'Учитель'
+    
+    def gdrive_link(self, obj):
+        if obj.gdrive_file_id:
+            return admin_format_html(
+                '<a href="https://drive.google.com/file/d/{}/view" target="_blank">GDrive</a>',
+                obj.gdrive_file_id
+            )
+        return '-'
+    gdrive_link.short_description = 'GDrive'
+    
+    def file_size_display(self, obj):
+        if obj.file_size:
+            mb = obj.file_size / (1024 * 1024)
+            return f"{mb:.1f} MB"
+        return '-'
+    file_size_display.short_description = 'Размер'
+    
+    def duration_display(self, obj):
+        if obj.duration:
+            mins = obj.duration // 60
+            secs = obj.duration % 60
+            return f"{mins}м {secs}с"
+        return '-'
+    duration_display.short_description = 'Длительность'
+

@@ -598,6 +598,24 @@ const TeachersManage = ({ onClose }) => {
                         <strong>{profile.teacher.phone_number || '—'}</strong>
                       </div>
                       <div>
+                        <span>Telegram</span>
+                        <strong>
+                          {profile.teacher.telegram_id ? (
+                            <>
+                              {profile.teacher.telegram_username && (
+                                <span style={{ color: 'var(--accent-primary)' }}>@{profile.teacher.telegram_username}</span>
+                              )}
+                              {profile.teacher.telegram_username && ' '}
+                              <span style={{ color: 'var(--text-light)', fontSize: '0.85em' }}>
+                                (ID: {profile.teacher.telegram_id})
+                              </span>
+                            </>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>Не подключен</span>
+                          )}
+                        </strong>
+                      </div>
+                      <div>
                         <span>На платформе</span>
                         <strong>{profile.teacher.days_on_platform} дней</strong>
                       </div>
