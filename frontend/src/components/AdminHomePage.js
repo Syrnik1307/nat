@@ -2,852 +2,665 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth';
 import { getAccessToken } from '../apiService';
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell
+  AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, Tooltip, ResponsiveContainer
 } from 'recharts';
 import TeachersManage from './TeachersManage';
 import StudentsManage from './StudentsManage';
 import StatusMessages from './StatusMessages';
 import ZoomPoolManager from '../modules/core/zoom/ZoomPoolManager';
-import ZoomPoolStats from './ZoomPoolStats';
 import SystemSettings from './SystemSettings';
-import '../styles/AdminPanel.css';
-import '../styles/AdminDashboard.css';
 import StorageQuotaModal from '../modules/Admin/StorageQuotaModal';
 import SubscriptionsModal from '../modules/Admin/SubscriptionsModal';
 import StorageStats from './StorageStats';
 import AdminReferrals from '../modules/Admin/AdminReferrals';
 import { Modal, Button } from '../shared/components';
+import '../styles/AdminPanel.css';
 
-/* ========================================
-   SVG ICONS
-   ======================================== */
-const Icons = {
-  dashboard: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
-  business: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>,
-  moderation: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-  system: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
-  users: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>,
-  userPlus: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>,
-  wallet: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>,
-  trendingUp: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
-  trendingDown: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>,
-  video: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="15" height="10" rx="2"/><path d="m17 9 5-3v12l-5-3"/></svg>,
-  hardDrive: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>,
-  message: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
-  link: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
-  refresh: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>,
-  alert: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
-  check: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
-  dollarSign: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
-  percent: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>,
-  activity: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+/* ========== ICONS ========== */
+const Icon = {
+  revenue: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>,
+  users: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>,
+  trend: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+  video: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="15" height="10" rx="2"/><path d="m17 9 5-3v12l-5-3"/></svg>,
+  storage: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
+  settings: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>,
+  refresh: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>,
+  plus: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  alert: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
 };
 
-/* ========================================
-   COLORS
-   ======================================== */
-const COLORS = {
-  primary: '#4F46E5',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  info: '#3B82F6',
-  purple: '#8B5CF6',
-  pink: '#EC4899',
+/* ========== HELPERS ========== */
+const fmt = (n) => new Intl.NumberFormat('ru-RU').format(n || 0);
+const fmtRub = (n) => `${fmt(n)} ₽`;
+
+/* ========== STYLES ========== */
+const styles = {
+  page: {
+    minHeight: '100vh',
+    background: '#0a0a0f',
+    color: '#fff',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '20px 32px',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    background: 'rgba(255,255,255,0.02)',
+  },
+  logo: {
+    fontSize: 20,
+    fontWeight: 700,
+    display: 'flex',
+    gap: 6,
+  },
+  logoAccent: { color: '#6366f1' },
+  nav: {
+    display: 'flex',
+    gap: 4,
+    background: 'rgba(255,255,255,0.04)',
+    padding: 4,
+    borderRadius: 10,
+  },
+  navBtn: (active) => ({
+    padding: '10px 20px',
+    background: active ? 'rgba(99,102,241,0.15)' : 'transparent',
+    border: 'none',
+    borderRadius: 8,
+    color: active ? '#818cf8' : 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  }),
+  actions: {
+    display: 'flex',
+    gap: 8,
+  },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: 10,
+    color: 'rgba(255,255,255,0.6)',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  main: {
+    padding: '24px 32px',
+    maxWidth: 1400,
+    margin: '0 auto',
+  },
+  grid: (cols) => ({
+    display: 'grid',
+    gridTemplateColumns: `repeat(${cols}, 1fr)`,
+    gap: 16,
+  }),
+  card: {
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: 16,
+    padding: 20,
+  },
+  cardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: 500,
+    color: 'rgba(255,255,255,0.5)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  statValue: {
+    fontSize: 32,
+    fontWeight: 700,
+    color: '#fff',
+    lineHeight: 1.2,
+  },
+  statSub: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.4)',
+    marginTop: 4,
+  },
+  badge: (color) => ({
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: '4px 10px',
+    background: color === 'green' ? 'rgba(34,197,94,0.15)' : color === 'red' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.08)',
+    color: color === 'green' ? '#22c55e' : color === 'red' ? '#ef4444' : 'rgba(255,255,255,0.6)',
+    borderRadius: 6,
+    fontSize: 12,
+    fontWeight: 500,
+  }),
+  section: {
+    marginTop: 32,
+  },
+  sectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 600,
+    color: '#fff',
+  },
+  actionGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+    gap: 12,
+  },
+  actionBtn: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 10,
+    padding: '20px 16px',
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    color: '#fff',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    fontSize: 13,
+    fontWeight: 500,
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: 13,
+  },
+  th: {
+    textAlign: 'left',
+    padding: '12px 16px',
+    color: 'rgba(255,255,255,0.4)',
+    fontWeight: 500,
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
+  },
+  td: {
+    padding: '12px 16px',
+    borderBottom: '1px solid rgba(255,255,255,0.04)',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  progressBar: {
+    height: 6,
+    background: 'rgba(255,255,255,0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: (pct, color) => ({
+    height: '100%',
+    width: `${Math.min(pct, 100)}%`,
+    background: color || '#6366f1',
+    borderRadius: 3,
+    transition: 'width 0.5s ease',
+  }),
+  alertItem: (severity) => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: '12px 16px',
+    background: severity === 'critical' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+    border: `1px solid ${severity === 'critical' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}`,
+    borderRadius: 10,
+    marginBottom: 8,
+  }),
 };
 
-const CHART_COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6'];
-
-/* ========================================
-   HELPERS
-   ======================================== */
-const formatRub = (value) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value || 0);
-const formatPercent = (value) => (Number(value) || 0).toFixed(1) + '%';
-
-/* ========================================
-   KPI CARD
-   ======================================== */
-const KpiCard = ({ label, value, subValue, icon, color = 'primary', trend, onClick }) => {
-  const colorStyles = {
-    primary: { bg: '#EEF2FF', text: '#4F46E5', iconBg: '#E0E7FF' },
-    success: { bg: '#ECFDF5', text: '#059669', iconBg: '#D1FAE5' },
-    warning: { bg: '#FFFBEB', text: '#D97706', iconBg: '#FEF3C7' },
-    danger: { bg: '#FEF2F2', text: '#DC2626', iconBg: '#FEE2E2' },
-    info: { bg: '#EFF6FF', text: '#2563EB', iconBg: '#DBEAFE' },
-    purple: { bg: '#F5F3FF', text: '#7C3AED', iconBg: '#EDE9FE' },
-  };
-  const c = colorStyles[color] || colorStyles.primary;
-
-  return (
-    <div className={`kpi-card ${onClick ? 'kpi-card--clickable' : ''}`} onClick={onClick}
-         style={{ '--kpi-bg': c.bg, '--kpi-text': c.text, '--kpi-icon-bg': c.iconBg }}>
-      <div className="kpi-card__icon">{icon}</div>
-      <div className="kpi-card__content">
-        <div className="kpi-card__label">{label}</div>
-        <div className="kpi-card__value">{value}</div>
-        {subValue && <div className="kpi-card__sub">{subValue}</div>}
-        {trend !== undefined && (
-          <div className={`kpi-card__trend ${trend >= 0 ? 'positive' : 'negative'}`}>
-            {trend >= 0 ? Icons.trendingUp : Icons.trendingDown}
-            <span>{Math.abs(trend).toFixed(1)}%</span>
-          </div>
-        )}
+/* ========== STAT CARD ========== */
+const StatCard = ({ icon, label, value, sub, trend, color = '#6366f1' }) => (
+  <div style={styles.card}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+      <div style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${color}15`, borderRadius: 10, color }}>
+        <div style={{ width: 20, height: 20 }}>{icon}</div>
       </div>
-    </div>
-  );
-};
-
-/* ========================================
-   MINI CHART CARD
-   ======================================== */
-const MiniChartCard = ({ title, value, chartData, dataKey, color = COLORS.primary }) => (
-  <div className="mini-chart-card">
-    <div className="mini-chart-card__header">
-      <span className="mini-chart-card__title">{title}</span>
-      <span className="mini-chart-card__value">{value}</span>
-    </div>
-    <div className="mini-chart-card__chart">
-      <ResponsiveContainer width="100%" height={60}>
-        <AreaChart data={chartData}>
-          <defs>
-            <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.3}/>
-              <stop offset="100%" stopColor={color} stopOpacity={0}/>
-            </linearGradient>
-          </defs>
-          <Area type="monotone" dataKey={dataKey} stroke={color} fill={`url(#gradient-${title})`} strokeWidth={2}/>
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  </div>
-);
-
-/* ========================================
-   MAIN TAB NAVIGATION
-   ======================================== */
-const TabNav = ({ activeTab, onTabChange, alertCount }) => (
-  <div className="admin-tabs">
-    <button className={`admin-tab ${activeTab === 'business' ? 'active' : ''}`} onClick={() => onTabChange('business')}>
-      {Icons.business}
-      <span>Бизнес</span>
-    </button>
-    <button className={`admin-tab ${activeTab === 'moderation' ? 'active' : ''}`} onClick={() => onTabChange('moderation')}>
-      {Icons.moderation}
-      <span>Модерация</span>
-      {alertCount > 0 && <span className="tab-badge">{alertCount}</span>}
-    </button>
-    <button className={`admin-tab ${activeTab === 'system' ? 'active' : ''}`} onClick={() => onTabChange('system')}>
-      {Icons.system}
-      <span>Система</span>
-    </button>
-  </div>
-);
-
-/* ========================================
-   BUSINESS TAB
-   ======================================== */
-const BusinessTab = ({ data, churnData, activePeriod, setActivePeriod, loadChurnData }) => {
-  const currentPeriod = data?.periods?.find(p => p.key === activePeriod) || {};
-  
-  // Prepare chart data from periods
-  const revenueChartData = data?.periods?.map(p => ({
-    name: p.label,
-    revenue: p.revenue || 0,
-    registrations: p.registrations || 0,
-  })) || [];
-
-  // Cohort data for retention chart
-  const retentionChartData = churnData?.cohorts?.slice(0, 6).reverse().map(c => ({
-    name: c.month?.slice(5) || c.month_label?.slice(0, 3),
-    retention: c.retention_rate || 0,
-    conversion: c.conversion_rate || 0,
-  })) || [];
-
-  // Funnel data
-  const funnelData = data?.funnel?.steps?.map((s, i) => ({
-    name: s.name,
-    value: s.value,
-    fill: CHART_COLORS[i % CHART_COLORS.length],
-  })) || [];
-
-  return (
-    <div className="tab-content business-tab">
-      {/* TOP KPIs */}
-      <div className="section-header">
-        <h2>Ключевые показатели</h2>
-        <div className="period-selector">
-          {data?.periods?.map(p => (
-            <button key={p.key} className={`period-btn ${activePeriod === p.key ? 'active' : ''}`}
-                    onClick={() => setActivePeriod(p.key)}>{p.label}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="kpi-grid kpi-grid--5">
-        <KpiCard label="Выручка" value={`${formatRub(currentPeriod.revenue)} ₽`} 
-                 icon={Icons.dollarSign} color="success" subValue={currentPeriod.range_label} />
-        <KpiCard label="MRR" value={`${formatRub(churnData?.metrics?.mrr)} ₽`}
-                 icon={Icons.wallet} color="primary" />
-        <KpiCard label="LTV" value={`${formatRub(churnData?.metrics?.ltv)} ₽`}
-                 icon={Icons.trendingUp} color="purple" />
-        <KpiCard label="ARPU" value={`${formatRub(churnData?.metrics?.arpu)} ₽`}
-                 icon={Icons.users} color="info" />
-        <KpiCard label="Churn" value={formatPercent(churnData?.metrics?.monthly_churn_rate)}
-                 icon={Icons.trendingDown} color="danger" subValue={`${churnData?.metrics?.churned_this_month || 0} ушло`} />
-      </div>
-
-      {/* REVENUE CHART */}
-      <div className="dashboard-grid-2" style={{ marginTop: 24 }}>
-        <div className="chart-card">
-          <div className="chart-card__header">
-            <h3>Выручка по периодам</h3>
-          </div>
-          <div className="chart-card__body">
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={revenueChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v) => [`${formatRub(v)} ₽`, 'Выручка']} />
-                <Bar dataKey="revenue" fill={COLORS.primary} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="chart-card">
-          <div className="chart-card__header">
-            <h3>Retention по когортам</h3>
-            <button className="btn-link" onClick={loadChurnData}>Обновить</button>
-          </div>
-          <div className="chart-card__body">
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={retentionChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                <Tooltip formatter={(v) => [`${v.toFixed(1)}%`]} />
-                <Line type="monotone" dataKey="retention" stroke={COLORS.success} strokeWidth={2} dot={{ fill: COLORS.success }} name="Retention" />
-                <Line type="monotone" dataKey="conversion" stroke={COLORS.primary} strokeWidth={2} dot={{ fill: COLORS.primary }} name="Конверсия" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* CONVERSION METRICS */}
-      <div className="section-header" style={{ marginTop: 32 }}>
-        <h2>Конверсии</h2>
-      </div>
-
-      <div className="kpi-grid kpi-grid--4">
-        <KpiCard label="Регистрации" value={currentPeriod.registrations || 0}
-                 icon={Icons.userPlus} color="primary" />
-        <KpiCard label="Рег → Оплата" value={formatPercent(currentPeriod.reg_to_pay_cr)}
-                 icon={Icons.percent} color="success" subValue={`${currentPeriod.new_paid_users || 0} оплатили`} />
-        <KpiCard label="Успешность платежей" value={formatPercent(currentPeriod.payment_success_rate)}
-                 icon={Icons.check} color="info" subValue={`${currentPeriod.payments_succeeded || 0} / ${currentPeriod.payments_created || 0}`} />
-        <KpiCard label="Средний чек" value={`${formatRub(currentPeriod.avg_check)} ₽`}
-                 icon={Icons.wallet} color="purple" />
-      </div>
-
-      {/* FUNNEL + SOURCES */}
-      <div className="dashboard-grid-2" style={{ marginTop: 24 }}>
-        <div className="chart-card">
-          <div className="chart-card__header">
-            <h3>Воронка (30 дней)</h3>
-          </div>
-          <div className="chart-card__body">
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={funnelData} layout="vertical">
-                <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={100} />
-                <Tooltip formatter={(v) => [v, 'Количество']} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                  {funnelData.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="chart-card">
-          <div className="chart-card__header">
-            <h3>Источники трафика</h3>
-          </div>
-          <div className="chart-card__body">
-            {data?.sources?.revenue?.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie data={data.sources.revenue.slice(0, 5)} dataKey="revenue" nameKey="source" cx="50%" cy="50%"
-                       innerRadius={50} outerRadius={80} paddingAngle={2}>
-                    {data.sources.revenue.slice(0, 5).map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v) => [`${formatRub(v)} ₽`]} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="empty-state">Нет данных</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* COHORT TABLE */}
-      {churnData?.cohorts?.length > 0 && (
-        <div className="chart-card" style={{ marginTop: 24 }}>
-          <div className="chart-card__header">
-            <h3>Когортный анализ</h3>
-          </div>
-          <div className="chart-card__body">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Когорта</th>
-                  <th className="text-right">Регистрации</th>
-                  <th className="text-right">Оплатили</th>
-                  <th className="text-right">Конверсия</th>
-                  <th className="text-right">Активны</th>
-                  <th className="text-right">Retention</th>
-                </tr>
-              </thead>
-              <tbody>
-                {churnData.cohorts.map((c, i) => (
-                  <tr key={i}>
-                    <td>{c.month_label || c.month}</td>
-                    <td className="text-right">{c.registered}</td>
-                    <td className="text-right">{c.converted}</td>
-                    <td className="text-right">{formatPercent(c.conversion_rate)}</td>
-                    <td className="text-right">{c.still_active}</td>
-                    <td className="text-right font-bold" style={{ color: c.retention_rate > 50 ? COLORS.success : COLORS.danger }}>
-                      {formatPercent(c.retention_rate)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      {trend !== undefined && (
+        <span style={styles.badge(trend >= 0 ? 'green' : 'red')}>
+          {trend >= 0 ? '+' : ''}{trend}%
+        </span>
       )}
     </div>
-  );
-};
-
-/* ========================================
-   MODERATION TAB
-   ======================================== */
-const ModerationTab = ({ 
-  data, alerts, activityLog, 
-  setShowTeachersManage, setShowStudentsManage, setShowSubscriptionsModal,
-  setShowStorageStats, setShowStatusMessages, setShowReferrals,
-  setShowCreateUser, loadActivityLog
-}) => (
-  <div className="tab-content moderation-tab">
-    {/* ALERTS */}
-    {alerts.summary?.total > 0 && (
-      <>
-        <div className="section-header">
-          <h2>Требуют внимания</h2>
-          <span className="alert-count">{alerts.summary?.critical || 0} критичных, {alerts.summary?.warning || 0} предупреждений</span>
-        </div>
-        <div className="alerts-grid">
-          {alerts.alerts?.slice(0, 6).map((alert) => (
-            <div key={alert.id} className={`alert-card alert-card--${alert.severity}`}>
-              <div className="alert-card__icon">
-                {alert.severity === 'critical' ? Icons.alert : Icons.trendingDown}
-              </div>
-              <div className="alert-card__content">
-                <div className="alert-card__title">{alert.title}</div>
-                <div className="alert-card__user">{alert.user_name}</div>
-              </div>
-              <button className="alert-card__action" onClick={() => window.open(`mailto:${alert.user_email}`)}>
-                Написать
-              </button>
-            </div>
-          ))}
-        </div>
-      </>
-    )}
-
-    {/* QUICK STATS */}
-    <div className="section-header" style={{ marginTop: alerts.summary?.total > 0 ? 32 : 0 }}>
-      <h2>Статистика платформы</h2>
-    </div>
-
-    <div className="kpi-grid kpi-grid--4">
-      <KpiCard label="Всего учителей" value={data?.platform?.total_teachers || 0}
-               icon={Icons.users} color="primary" onClick={() => setShowTeachersManage(true)} />
-      <KpiCard label="Активные подписки" value={data?.platform?.active_teachers || 0}
-               icon={Icons.check} color="success" subValue={formatPercent(data?.platform?.active_rate)} />
-      <KpiCard label="Истекает скоро" value={data?.platform?.expiring_soon || 0}
-               icon={Icons.alert} color="warning" onClick={() => setShowSubscriptionsModal(true)} />
-      <KpiCard label="Сегодня регистраций" value={data?.today?.registrations || 0}
-               icon={Icons.userPlus} color="info" />
-    </div>
-
-    {/* MANAGEMENT ACTIONS */}
-    <div className="section-header" style={{ marginTop: 32 }}>
-      <h2>Управление</h2>
-    </div>
-
-    <div className="action-grid">
-      <button className="action-card" onClick={() => setShowCreateUser(true)}>
-        {Icons.userPlus}
-        <span>Создать пользователя</span>
-      </button>
-      <button className="action-card" onClick={() => setShowTeachersManage(true)}>
-        {Icons.users}
-        <span>Управление учителями</span>
-      </button>
-      <button className="action-card" onClick={() => setShowStudentsManage(true)}>
-        {Icons.users}
-        <span>Управление учениками</span>
-      </button>
-      <button className="action-card" onClick={() => setShowSubscriptionsModal(true)}>
-        {Icons.wallet}
-        <span>Подписки</span>
-      </button>
-      <button className="action-card" onClick={() => setShowStorageStats(true)}>
-        {Icons.hardDrive}
-        <span>Хранилище</span>
-      </button>
-      <button className="action-card" onClick={() => setShowStatusMessages(true)}>
-        {Icons.message}
-        <span>Сообщения</span>
-      </button>
-      <button className="action-card" onClick={() => setShowReferrals(true)}>
-        {Icons.link}
-        <span>Рефералы</span>
-      </button>
-    </div>
-
-    {/* ACTIVITY LOG */}
-    <div className="section-header" style={{ marginTop: 32 }}>
-      <h2>Последняя активность</h2>
-      <button className="btn-link" onClick={loadActivityLog}>Обновить</button>
-    </div>
-
-    <div className="activity-feed">
-      {activityLog.slice(0, 8).map((log, i) => (
-        <div key={i} className="activity-item">
-          <div className={`activity-item__icon activity-item__icon--${log.type}`}>
-            {log.type === 'registration' && Icons.userPlus}
-            {log.type === 'payment' && Icons.wallet}
-            {log.type === 'lesson' && Icons.video}
-          </div>
-          <div className="activity-item__content">
-            <span className="activity-item__message">{log.message}</span>
-            <span className="activity-item__meta">{log.user_name} • {new Date(log.timestamp).toLocaleString('ru-RU')}</span>
-          </div>
-        </div>
-      ))}
-      {activityLog.length === 0 && <div className="empty-state">Нет активности</div>}
+    <div style={{ marginTop: 16 }}>
+      <div style={styles.statValue}>{value}</div>
+      <div style={styles.statSub}>{label}</div>
+      {sub && <div style={{ ...styles.statSub, marginTop: 2 }}>{sub}</div>}
     </div>
   </div>
 );
 
-/* ========================================
-   SYSTEM TAB
-   ======================================== */
-const SystemTab = ({ 
-  data, healthData, 
-  setShowZoomManager, setShowSystemSettings,
-  runQuickAction, quickActionLoading, loadHealthData
-}) => (
-  <div className="tab-content system-tab">
-    {/* SYSTEM HEALTH */}
-    <div className="section-header">
-      <h2>Состояние системы</h2>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span className={`health-badge health-badge--${healthData?.status || 'unknown'}`}>
-          {healthData?.status === 'healthy' ? 'Все работает' : healthData?.status === 'degraded' ? 'Есть проблемы' : 'Проверка...'}
-        </span>
-        <button className="btn-link" onClick={loadHealthData}>Обновить</button>
-      </div>
-    </div>
-
-    <div className="health-grid">
-      {healthData?.checks?.map((check, i) => (
-        <div key={i} className={`health-card health-card--${check.status}`}>
-          <div className="health-card__status">
-            {check.status === 'ok' && Icons.check}
-            {check.status === 'warning' && Icons.alert}
-            {check.status === 'error' && Icons.alert}
-            {check.status === 'info' && Icons.activity}
-          </div>
-          <div className="health-card__info">
-            <div className="health-card__name">{check.name}</div>
-            <div className="health-card__message">{check.message}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-
-    {/* ZOOM POOL */}
-    <div className="section-header" style={{ marginTop: 32 }}>
-      <h2>Zoom Pool</h2>
-    </div>
-
-    <div className="kpi-grid kpi-grid--3">
-      <KpiCard label="Всего аккаунтов" value={data?.zoom?.total || 0} icon={Icons.video} color="primary" />
-      <KpiCard label="Используется" value={data?.zoom?.in_use || 0} icon={Icons.activity} color="warning" />
-      <KpiCard label="Свободно" value={data?.zoom?.available || 0} icon={Icons.check} color="success" />
-    </div>
-
-    {/* STORAGE */}
-    <div className="section-header" style={{ marginTop: 32 }}>
-      <h2>Хранилище</h2>
-    </div>
-
-    <div className="storage-bar-container">
-      <div className="storage-bar">
-        <div className="storage-bar__fill" style={{ 
-          width: `${data?.storage?.total_gb > 0 ? (data.storage.used_gb / data.storage.total_gb) * 100 : 0}%` 
-        }} />
-      </div>
-      <div className="storage-bar__labels">
-        <span>{(data?.storage?.used_gb || 0).toFixed(1)} ГБ использовано</span>
-        <span>{(data?.storage?.total_gb || 0).toFixed(1)} ГБ всего</span>
-      </div>
-    </div>
-
-    {/* QUICK ACTIONS */}
-    <div className="section-header" style={{ marginTop: 32 }}>
-      <h2>Служебные действия</h2>
-    </div>
-
-    <div className="admin-actions-grid">
-      <button className="admin-action" onClick={() => runQuickAction('send_expiring_reminders')}
-              disabled={quickActionLoading === 'send_expiring_reminders'}>
-        {Icons.message}
-        <span>Напомнить об истекающих подписках</span>
-      </button>
-      <button className="admin-action" onClick={() => runQuickAction('cleanup_stuck_zoom')}
-              disabled={quickActionLoading === 'cleanup_stuck_zoom'}>
-        {Icons.refresh}
-        <span>Освободить застрявшие Zoom</span>
-      </button>
-      <button className="admin-action" onClick={() => runQuickAction('recalculate_storage')}
-              disabled={quickActionLoading === 'recalculate_storage'}>
-        {Icons.hardDrive}
-        <span>Пересчитать хранилище</span>
-      </button>
-      <button className="admin-action" onClick={() => setShowZoomManager(true)}>
-        {Icons.video}
-        <span>Управление Zoom Pool</span>
-      </button>
-      <button className="admin-action" onClick={() => setShowSystemSettings(true)}>
-        {Icons.system}
-        <span>Настройки системы</span>
-      </button>
-    </div>
-  </div>
+/* ========== MINI CHART ========== */
+const MiniChart = ({ data, dataKey, color = '#6366f1' }) => (
+  <ResponsiveContainer width="100%" height={60}>
+    <AreaChart data={data}>
+      <defs>
+        <linearGradient id={`grad-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} fill={`url(#grad-${dataKey})`} />
+    </AreaChart>
+  </ResponsiveContainer>
 );
 
-/* ========================================
-   MAIN COMPONENT
-   ======================================== */
+/* ========== MAIN COMPONENT ========== */
 const AdminHomePage = () => {
   const { user } = useAuth();
-  
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
-  const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('business');
-  const [activePeriod, setActivePeriod] = useState('month');
-  
-  // Extended data
-  const [alerts, setAlerts] = useState({ alerts: [], summary: {} });
-  const [churnData, setChurnData] = useState(null);
-  const [healthData, setHealthData] = useState(null);
-  const [activityLog, setActivityLog] = useState([]);
-  const [quickActionLoading, setQuickActionLoading] = useState('');
-  
-  // Modal states
-  const [showCreateUser, setShowCreateUser] = useState(false);
-  const [showTeachersManage, setShowTeachersManage] = useState(false);
-  const [showStudentsManage, setShowStudentsManage] = useState(false);
-  const [showStatusMessages, setShowStatusMessages] = useState(false);
-  const [showZoomManager, setShowZoomManager] = useState(false);
-  const [showZoomStats, setShowZoomStats] = useState(false);
-  const [showSystemSettings, setShowSystemSettings] = useState(false);
-  const [showStorageModal, setShowStorageModal] = useState(false);
-  const [showSubscriptionsModal, setShowSubscriptionsModal] = useState(false);
+  const [tab, setTab] = useState('overview');
+  const [alerts, setAlerts] = useState([]);
+  const [churn, setChurn] = useState(null);
+  const [health, setHealth] = useState(null);
+
+  // Modals
+  const [showCreate, setShowCreate] = useState(false);
+  const [showTeachers, setShowTeachers] = useState(false);
+  const [showStudents, setShowStudents] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
+  const [showZoom, setShowZoom] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showStorage, setShowStorage] = useState(false);
+  const [showSubs, setShowSubs] = useState(false);
   const [showStorageStats, setShowStorageStats] = useState(false);
   const [showReferrals, setShowReferrals] = useState(false);
-  
-  // Create user form
-  const [userRole, setUserRole] = useState('teacher');
-  const [userForm, setUserForm] = useState({ email: '', password: '', first_name: '', last_name: '', middle_name: '' });
-  const [formError, setFormError] = useState('');
-  const [formSuccess, setFormSuccess] = useState('');
 
-  /* ======== LOADERS ======== */
-  const loadDashboard = useCallback(async () => {
+  // Create user
+  const [userRole, setUserRole] = useState('teacher');
+  const [userForm, setUserForm] = useState({ email: '', password: '', first_name: '', last_name: '' });
+  const [formMsg, setFormMsg] = useState({ type: '', text: '' });
+
+  const load = useCallback(async () => {
     try {
-      setError('');
       const token = getAccessToken();
-      const res = await fetch('/accounts/api/admin/growth/overview/', { headers: { 'Authorization': `Bearer ${token}` }});
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Ошибка');
-      setData(json);
+      const headers = { Authorization: `Bearer ${token}` };
+      const [overview, alertsRes, churnRes, healthRes] = await Promise.all([
+        fetch('/accounts/api/admin/growth/overview/', { headers }).then(r => r.json()),
+        fetch('/accounts/api/admin/alerts/', { headers }).then(r => r.json()).catch(() => ({ alerts: [] })),
+        fetch('/accounts/api/admin/churn-retention/', { headers }).then(r => r.json()).catch(() => null),
+        fetch('/accounts/api/admin/system-health/', { headers }).then(r => r.json()).catch(() => null),
+      ]);
+      setData(overview);
+      setAlerts(alertsRes?.alerts || []);
+      setChurn(churnRes);
+      setHealth(healthRes);
     } catch (e) {
-      setError(e?.message || 'Ошибка загрузки');
+      console.error(e);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const loadAlerts = useCallback(async () => {
-    try {
-      const token = getAccessToken();
-      const res = await fetch('/accounts/api/admin/alerts/', { headers: { 'Authorization': `Bearer ${token}` }});
-      const json = await res.json();
-      if (res.ok) setAlerts(json);
-    } catch (e) { console.error(e); }
-  }, []);
+  useEffect(() => { load(); }, [load]);
 
-  const loadChurnData = useCallback(async () => {
-    try {
-      const token = getAccessToken();
-      const res = await fetch('/accounts/api/admin/churn-retention/', { headers: { 'Authorization': `Bearer ${token}` }});
-      const json = await res.json();
-      if (res.ok) setChurnData(json);
-    } catch (e) { console.error(e); }
-  }, []);
-
-  const loadHealthData = useCallback(async () => {
-    try {
-      const token = getAccessToken();
-      const res = await fetch('/accounts/api/admin/system-health/', { headers: { 'Authorization': `Bearer ${token}` }});
-      const json = await res.json();
-      if (res.ok) setHealthData(json);
-    } catch (e) { console.error(e); }
-  }, []);
-
-  const loadActivityLog = useCallback(async () => {
-    try {
-      const token = getAccessToken();
-      const res = await fetch('/accounts/api/admin/activity-log/', { headers: { 'Authorization': `Bearer ${token}` }});
-      const json = await res.json();
-      if (res.ok) setActivityLog(json.logs || []);
-    } catch (e) { console.error(e); }
-  }, []);
-
-  const runQuickAction = async (action) => {
-    try {
-      setQuickActionLoading(action);
-      const token = getAccessToken();
-      const res = await fetch('/accounts/api/admin/quick-actions/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ action })
-      });
-      const json = await res.json();
-      alert(res.ok ? `Выполнено: ${JSON.stringify(json)}` : `Ошибка: ${json.error}`);
-      if (res.ok) { loadDashboard(); loadAlerts(); }
-    } catch (e) {
-      alert(`Ошибка: ${e.message}`);
-    } finally {
-      setQuickActionLoading('');
-    }
+  const quickAction = async (action) => {
+    const token = getAccessToken();
+    await fetch('/accounts/api/admin/quick-actions/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action }),
+    });
+    load();
   };
 
-  useEffect(() => {
-    loadDashboard();
-    loadAlerts();
-    loadChurnData();
-    loadHealthData();
-    loadActivityLog();
-  }, [loadDashboard, loadAlerts, loadChurnData, loadHealthData, loadActivityLog]);
-
-  const handleCreateUser = async (e) => {
+  const createUser = async (e) => {
     e.preventDefault();
-    setFormError('');
-    setFormSuccess('');
-    if (!userForm.email || !userForm.password || !userForm.first_name || !userForm.last_name) {
-      setFormError('Заполните все обязательные поля');
-      return;
-    }
+    setFormMsg({ type: '', text: '' });
     try {
       const endpoint = userRole === 'teacher' ? '/accounts/api/admin/create-teacher/' : '/accounts/api/admin/create-student/';
-      const token = getAccessToken();
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(userForm)
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAccessToken()}` },
+        body: JSON.stringify(userForm),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Ошибка');
-      setFormSuccess(`${userRole === 'teacher' ? 'Учитель' : 'Ученик'} создан!`);
-      setUserForm({ email: '', password: '', first_name: '', last_name: '', middle_name: '' });
-      loadDashboard();
-      setTimeout(() => { setShowCreateUser(false); setFormSuccess(''); }, 1500);
+      if (!res.ok) throw new Error((await res.json()).error || 'Ошибка');
+      setFormMsg({ type: 'success', text: 'Создано!' });
+      setUserForm({ email: '', password: '', first_name: '', last_name: '' });
+      setTimeout(() => setShowCreate(false), 1000);
+      load();
     } catch (err) {
-      setFormError(err.message);
+      setFormMsg({ type: 'error', text: err.message });
     }
   };
 
   if (loading) {
     return (
-      <div className="admin-dashboard">
-        <div className="admin-dashboard__loading">
-          <div className="spinner"></div>
-          <span>Загрузка...</span>
-        </div>
+      <div style={{ ...styles.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>Загрузка...</div>
       </div>
     );
   }
 
+  const period = data?.periods?.find(p => p.key === 'month') || {};
+  const chartData = data?.periods?.map(p => ({ name: p.label?.slice(0, 3), revenue: p.revenue || 0, users: p.registrations || 0 })) || [];
+
   return (
-    <div className="admin-dashboard">
+    <div style={styles.page}>
       {/* HEADER */}
-      <header className="admin-header-new">
-        <div className="admin-header__brand">
-          <span className="brand-primary">Easy</span>
-          <span className="brand-secondary">Teaching</span>
-          <span className="brand-admin">Admin</span>
+      <header style={styles.header}>
+        <div style={styles.logo}>
+          <span style={styles.logoAccent}>Lectio</span>
+          <span style={{ color: 'rgba(255,255,255,0.4)' }}>Admin</span>
         </div>
-        
-        <TabNav activeTab={activeTab} onTabChange={setActiveTab} alertCount={alerts.summary?.critical || 0} />
-        
-        <div className="admin-header__actions">
-          <button className="btn-icon" onClick={() => { loadDashboard(); loadAlerts(); loadChurnData(); }} title="Обновить">
-            {Icons.refresh}
+        <nav style={styles.nav}>
+          <button style={styles.navBtn(tab === 'overview')} onClick={() => setTab('overview')}>Обзор</button>
+          <button style={styles.navBtn(tab === 'users')} onClick={() => setTab('users')}>Пользователи</button>
+          <button style={styles.navBtn(tab === 'system')} onClick={() => setTab('system')}>Система</button>
+        </nav>
+        <div style={styles.actions}>
+          <button style={styles.iconBtn} onClick={load} title="Обновить">
+            <div style={{ width: 18, height: 18 }}>{Icon.refresh}</div>
           </button>
-          <div className="user-badge">
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 600 }}>
             {user?.first_name?.charAt(0) || 'A'}
           </div>
         </div>
       </header>
 
-      {/* MAIN */}
-      <main className="admin-main-new">
-        {error && (
-          <div className="error-banner">
-            {Icons.alert}
-            <span>{error}</span>
-            <button onClick={loadDashboard}>Повторить</button>
-          </div>
+      <main style={styles.main}>
+        {/* OVERVIEW TAB */}
+        {tab === 'overview' && (
+          <>
+            {/* ALERTS */}
+            {alerts.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                {alerts.slice(0, 3).map((a, i) => (
+                  <div key={i} style={styles.alertItem(a.severity)}>
+                    <div style={{ width: 20, height: 20, color: a.severity === 'critical' ? '#ef4444' : '#f59e0b' }}>{Icon.alert}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 500, color: '#fff' }}>{a.title}</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{a.user_name}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* KPI CARDS */}
+            <div style={styles.grid(4)}>
+              <StatCard icon={Icon.revenue} label="Выручка за месяц" value={fmtRub(period.revenue)} color="#22c55e" />
+              <StatCard icon={Icon.users} label="Активные учителя" value={data?.platform?.active_teachers || 0} sub={`из ${data?.platform?.total_teachers || 0}`} color="#6366f1" />
+              <StatCard icon={Icon.trend} label="MRR" value={fmtRub(churn?.metrics?.mrr)} color="#8b5cf6" />
+              <StatCard icon={Icon.trend} label="LTV" value={fmtRub(churn?.metrics?.ltv)} color="#ec4899" />
+            </div>
+
+            {/* CHARTS */}
+            <div style={{ ...styles.grid(2), marginTop: 24 }}>
+              <div style={styles.card}>
+                <div style={styles.cardHeader}>
+                  <span style={styles.cardTitle}>Выручка</span>
+                </div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={chartData}>
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 12 }} />
+                    <YAxis hide />
+                    <Tooltip contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8 }} labelStyle={{ color: '#fff' }} />
+                    <Bar dataKey="revenue" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={styles.card}>
+                <div style={styles.cardHeader}>
+                  <span style={styles.cardTitle}>Регистрации</span>
+                </div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="regGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#22c55e" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 12 }} />
+                    <YAxis hide />
+                    <Tooltip contentStyle={{ background: '#1a1a2e', border: 'none', borderRadius: 8 }} labelStyle={{ color: '#fff' }} />
+                    <Area type="monotone" dataKey="users" stroke="#22c55e" strokeWidth={2} fill="url(#regGrad)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* METRICS */}
+            <div style={{ ...styles.grid(4), marginTop: 24 }}>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>Конверсия</div>
+                <div style={{ ...styles.statValue, marginTop: 8 }}>{(period.reg_to_pay_cr || 0).toFixed(1)}%</div>
+                <div style={styles.statSub}>рег → оплата</div>
+              </div>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>Churn</div>
+                <div style={{ ...styles.statValue, marginTop: 8, color: '#ef4444' }}>{(churn?.metrics?.monthly_churn_rate || 0).toFixed(1)}%</div>
+                <div style={styles.statSub}>{churn?.metrics?.churned_this_month || 0} ушло</div>
+              </div>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>ARPU</div>
+                <div style={{ ...styles.statValue, marginTop: 8 }}>{fmtRub(churn?.metrics?.arpu)}</div>
+                <div style={styles.statSub}>средний доход</div>
+              </div>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>Средний чек</div>
+                <div style={{ ...styles.statValue, marginTop: 8 }}>{fmtRub(period.avg_check)}</div>
+                <div style={styles.statSub}>за период</div>
+              </div>
+            </div>
+
+            {/* COHORTS */}
+            {churn?.cohorts?.length > 0 && (
+              <div style={{ ...styles.card, marginTop: 24 }}>
+                <div style={styles.cardHeader}>
+                  <span style={styles.cardTitle}>Когорты</span>
+                </div>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Месяц</th>
+                      <th style={{ ...styles.th, textAlign: 'right' }}>Рег.</th>
+                      <th style={{ ...styles.th, textAlign: 'right' }}>Конв.</th>
+                      <th style={{ ...styles.th, textAlign: 'right' }}>Retention</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {churn.cohorts.slice(0, 6).map((c, i) => (
+                      <tr key={i}>
+                        <td style={styles.td}>{c.month_label || c.month}</td>
+                        <td style={{ ...styles.td, textAlign: 'right' }}>{c.registered}</td>
+                        <td style={{ ...styles.td, textAlign: 'right' }}>{(c.conversion_rate || 0).toFixed(1)}%</td>
+                        <td style={{ ...styles.td, textAlign: 'right', color: c.retention_rate > 50 ? '#22c55e' : '#ef4444' }}>
+                          {(c.retention_rate || 0).toFixed(1)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
 
-        {/* TODAY SUMMARY - всегда показываем */}
-        <div className="today-summary">
-          <div className="today-summary__item">
-            <span className="today-summary__label">Сегодня</span>
-            <span className="today-summary__value">{data?.today?.registrations || 0} рег.</span>
-          </div>
-          <div className="today-summary__divider" />
-          <div className="today-summary__item">
-            <span className="today-summary__value">{data?.today?.payments || 0} платежей</span>
-          </div>
-          <div className="today-summary__divider" />
-          <div className="today-summary__item">
-            <span className="today-summary__value">{formatRub(data?.today?.revenue)} ₽</span>
-          </div>
-        </div>
+        {/* USERS TAB */}
+        {tab === 'users' && (
+          <>
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.sectionTitle}>Управление</h2>
+            </div>
+            <div style={styles.actionGrid}>
+              <button style={styles.actionBtn} onClick={() => setShowCreate(true)}>
+                <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.plus}</div>
+                Создать пользователя
+              </button>
+              <button style={styles.actionBtn} onClick={() => setShowTeachers(true)}>
+                <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.users}</div>
+                Учителя
+              </button>
+              <button style={styles.actionBtn} onClick={() => setShowStudents(true)}>
+                <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.users}</div>
+                Ученики
+              </button>
+              <button style={styles.actionBtn} onClick={() => setShowSubs(true)}>
+                <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.revenue}</div>
+                Подписки
+              </button>
+              <button style={styles.actionBtn} onClick={() => setShowStorageStats(true)}>
+                <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.storage}</div>
+                Хранилище
+              </button>
+              <button style={styles.actionBtn} onClick={() => setShowReferrals(true)}>
+                <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.trend}</div>
+                Рефералы
+              </button>
+              <button style={styles.actionBtn} onClick={() => setShowMessages(true)}>
+                <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.alert}</div>
+                Сообщения
+              </button>
+            </div>
 
-        {/* TAB CONTENT */}
-        {activeTab === 'business' && (
-          <BusinessTab 
-            data={data} 
-            churnData={churnData}
-            activePeriod={activePeriod}
-            setActivePeriod={setActivePeriod}
-            loadChurnData={loadChurnData}
-          />
+            {/* Stats */}
+            <div style={{ ...styles.grid(3), marginTop: 32 }}>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>Учителя</div>
+                <div style={{ ...styles.statValue, marginTop: 8 }}>{data?.platform?.total_teachers || 0}</div>
+                <div style={{ ...styles.progressBar, marginTop: 12 }}>
+                  <div style={styles.progressFill((data?.platform?.active_teachers / data?.platform?.total_teachers) * 100 || 0, '#22c55e')} />
+                </div>
+                <div style={styles.statSub}>{data?.platform?.active_teachers || 0} активных</div>
+              </div>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>Истекает скоро</div>
+                <div style={{ ...styles.statValue, marginTop: 8, color: '#f59e0b' }}>{data?.platform?.expiring_soon || 0}</div>
+                <div style={styles.statSub}>подписок</div>
+              </div>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>Сегодня</div>
+                <div style={{ ...styles.statValue, marginTop: 8 }}>{data?.today?.registrations || 0}</div>
+                <div style={styles.statSub}>новых регистраций</div>
+              </div>
+            </div>
+          </>
         )}
-        
-        {activeTab === 'moderation' && (
-          <ModerationTab
-            data={data}
-            alerts={alerts}
-            activityLog={activityLog}
-            setShowTeachersManage={setShowTeachersManage}
-            setShowStudentsManage={setShowStudentsManage}
-            setShowSubscriptionsModal={setShowSubscriptionsModal}
-            setShowStorageStats={setShowStorageStats}
-            setShowStatusMessages={setShowStatusMessages}
-            setShowReferrals={setShowReferrals}
-            setShowCreateUser={setShowCreateUser}
-            loadActivityLog={loadActivityLog}
-          />
-        )}
-        
-        {activeTab === 'system' && (
-          <SystemTab
-            data={data}
-            healthData={healthData}
-            setShowZoomManager={setShowZoomManager}
-            setShowSystemSettings={setShowSystemSettings}
-            runQuickAction={runQuickAction}
-            quickActionLoading={quickActionLoading}
-            loadHealthData={loadHealthData}
-          />
+
+        {/* SYSTEM TAB */}
+        {tab === 'system' && (
+          <>
+            {/* Health */}
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.sectionTitle}>Состояние</h2>
+              <span style={styles.badge(health?.status === 'healthy' ? 'green' : 'red')}>
+                {health?.status === 'healthy' ? 'OK' : health?.status || 'N/A'}
+              </span>
+            </div>
+            <div style={styles.grid(4)}>
+              {health?.checks?.map((c, i) => (
+                <div key={i} style={{ ...styles.card, borderColor: c.status === 'ok' ? 'rgba(34,197,94,0.3)' : c.status === 'warning' ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: c.status === 'ok' ? '#22c55e' : c.status === 'warning' ? '#f59e0b' : '#ef4444' }} />
+                    <span style={{ fontSize: 14, fontWeight: 500 }}>{c.name}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>{c.message}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Zoom */}
+            <div style={{ ...styles.sectionHeader, marginTop: 32 }}>
+              <h2 style={styles.sectionTitle}>Zoom Pool</h2>
+            </div>
+            <div style={styles.grid(3)}>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>Всего</div>
+                <div style={{ ...styles.statValue, marginTop: 8 }}>{data?.zoom?.total || 0}</div>
+              </div>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>Используется</div>
+                <div style={{ ...styles.statValue, marginTop: 8, color: '#f59e0b' }}>{data?.zoom?.in_use || 0}</div>
+              </div>
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>Свободно</div>
+                <div style={{ ...styles.statValue, marginTop: 8, color: '#22c55e' }}>{data?.zoom?.available || 0}</div>
+              </div>
+            </div>
+
+            {/* Storage */}
+            <div style={{ ...styles.sectionHeader, marginTop: 32 }}>
+              <h2 style={styles.sectionTitle}>Хранилище</h2>
+            </div>
+            <div style={styles.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                <span style={{ color: 'rgba(255,255,255,0.6)' }}>{(data?.storage?.used_gb || 0).toFixed(1)} ГБ</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)' }}>{(data?.storage?.total_gb || 0).toFixed(1)} ГБ</span>
+              </div>
+              <div style={styles.progressBar}>
+                <div style={styles.progressFill(data?.storage?.total_gb ? (data.storage.used_gb / data.storage.total_gb) * 100 : 0)} />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div style={{ ...styles.sectionHeader, marginTop: 32 }}>
+              <h2 style={styles.sectionTitle}>Действия</h2>
+            </div>
+            <div style={styles.actionGrid}>
+              <button style={styles.actionBtn} onClick={() => quickAction('send_expiring_reminders')}>Напомнить об истекающих</button>
+              <button style={styles.actionBtn} onClick={() => quickAction('cleanup_stuck_zoom')}>Очистить Zoom</button>
+              <button style={styles.actionBtn} onClick={() => quickAction('recalculate_storage')}>Пересчитать хранилище</button>
+              <button style={styles.actionBtn} onClick={() => setShowZoom(true)}>Zoom Manager</button>
+              <button style={styles.actionBtn} onClick={() => setShowSettings(true)}>Настройки</button>
+            </div>
+          </>
         )}
       </main>
 
       {/* MODALS */}
-      <Modal isOpen={showCreateUser} onClose={() => setShowCreateUser(false)} title="Создать пользователя" size="medium">
-        <form onSubmit={handleCreateUser} className="create-user-form">
-          {formError && <div className="form-error">{formError}</div>}
-          {formSuccess && <div className="form-success">{formSuccess}</div>}
-          <div className="form-group">
-            <label>Тип пользователя</label>
-            <div className="radio-group">
-              <label><input type="radio" name="role" value="teacher" checked={userRole === 'teacher'} onChange={(e) => setUserRole(e.target.value)} /> Учитель</label>
-              <label><input type="radio" name="role" value="student" checked={userRole === 'student'} onChange={(e) => setUserRole(e.target.value)} /> Ученик</label>
+      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Создать пользователя" size="medium">
+        <form onSubmit={createUser}>
+          {formMsg.text && (
+            <div style={{ padding: 12, marginBottom: 16, borderRadius: 8, background: formMsg.type === 'error' ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)', color: formMsg.type === 'error' ? '#ef4444' : '#22c55e', fontSize: 13 }}>
+              {formMsg.text}
+            </div>
+          )}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'flex', gap: 16 }}>
+              <label><input type="radio" value="teacher" checked={userRole === 'teacher'} onChange={(e) => setUserRole(e.target.value)} /> Учитель</label>
+              <label><input type="radio" value="student" checked={userRole === 'student'} onChange={(e) => setUserRole(e.target.value)} /> Ученик</label>
+            </label>
+          </div>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <input type="email" placeholder="Email *" value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} required style={{ padding: '10px 14px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14 }} />
+            <input type="password" placeholder="Пароль *" value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} required style={{ padding: '10px 14px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14 }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <input type="text" placeholder="Имя *" value={userForm.first_name} onChange={(e) => setUserForm({ ...userForm, first_name: e.target.value })} required style={{ padding: '10px 14px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14 }} />
+              <input type="text" placeholder="Фамилия *" value={userForm.last_name} onChange={(e) => setUserForm({ ...userForm, last_name: e.target.value })} required style={{ padding: '10px 14px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14 }} />
             </div>
           </div>
-          <div className="form-group">
-            <label>Email *</label>
-            <input type="email" value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} required />
-          </div>
-          <div className="form-group">
-            <label>Пароль *</label>
-            <input type="password" value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} required />
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Имя *</label>
-              <input type="text" value={userForm.first_name} onChange={(e) => setUserForm({ ...userForm, first_name: e.target.value })} required />
-            </div>
-            <div className="form-group">
-              <label>Фамилия *</label>
-              <input type="text" value={userForm.last_name} onChange={(e) => setUserForm({ ...userForm, last_name: e.target.value })} required />
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Отчество</label>
-            <input type="text" value={userForm.middle_name} onChange={(e) => setUserForm({ ...userForm, middle_name: e.target.value })} />
-          </div>
-          <div className="form-actions">
-            <Button type="button" variant="secondary" onClick={() => setShowCreateUser(false)}>Отмена</Button>
-            <Button type="submit">{userRole === 'teacher' ? 'Создать учителя' : 'Создать ученика'}</Button>
+          <div style={{ display: 'flex', gap: 12, marginTop: 20, justifyContent: 'flex-end' }}>
+            <Button variant="secondary" onClick={() => setShowCreate(false)}>Отмена</Button>
+            <Button type="submit">Создать</Button>
           </div>
         </form>
       </Modal>
 
-      {showTeachersManage && <TeachersManage onClose={() => setShowTeachersManage(false)} />}
-      {showStudentsManage && <StudentsManage onClose={() => setShowStudentsManage(false)} />}
-      {showStatusMessages && <StatusMessages onClose={() => setShowStatusMessages(false)} />}
-      {showSystemSettings && <SystemSettings onClose={() => setShowSystemSettings(false)} />}
-      {showStorageModal && <StorageQuotaModal onClose={() => setShowStorageModal(false)} />}
+      {showTeachers && <TeachersManage onClose={() => setShowTeachers(false)} />}
+      {showStudents && <StudentsManage onClose={() => setShowStudents(false)} />}
+      {showMessages && <StatusMessages onClose={() => setShowMessages(false)} />}
+      {showSettings && <SystemSettings onClose={() => setShowSettings(false)} />}
+      {showStorage && <StorageQuotaModal onClose={() => setShowStorage(false)} />}
+      {showSubs && <SubscriptionsModal onClose={() => setShowSubs(false)} />}
       {showStorageStats && <StorageStats onClose={() => setShowStorageStats(false)} />}
-      {showSubscriptionsModal && <SubscriptionsModal onClose={() => setShowSubscriptionsModal(false)} />}
       {showReferrals && <AdminReferrals onClose={() => setShowReferrals(false)} />}
-      
-      <Modal isOpen={showZoomManager} onClose={() => setShowZoomManager(false)} title="Zoom Pool Manager" size="large">
-        <ZoomPoolManager onClose={() => setShowZoomManager(false)} />
-      </Modal>
-      
-      <Modal isOpen={showZoomStats} onClose={() => setShowZoomStats(false)} title="Аналитика Zoom Pool" size="large">
-        <ZoomPoolStats />
+
+      <Modal isOpen={showZoom} onClose={() => setShowZoom(false)} title="Zoom Pool" size="large">
+        <ZoomPoolManager onClose={() => setShowZoom(false)} />
       </Modal>
     </div>
   );
