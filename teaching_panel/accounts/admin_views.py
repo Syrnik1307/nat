@@ -398,8 +398,11 @@ class AdminGrowthOverviewView(APIView):
         # === ZOOM POOL STATUS ===
         from zoom_pool.models import ZoomAccount
         zoom_total = ZoomAccount.objects.filter(is_active=True).count()
-        zoom_in_use = ZoomAccount.objects.filter(is_active=True, in_use=True).count()
-        zoom_available = zoom_total - zoom_in_use
+        zoom_in_use = ZoomAccount.objects.filter(is_active=True, current_meetings__gt=0).count()
+        zoom_available = ZoomAccount.objects.filter(
+            is_active=True,
+            current_meetings__lt=F('max_concurrent_meetings'),
+        ).count()
 
         # === ХРАНИЛИЩЕ ===
         storage_stats = Subscription.objects.filter(
