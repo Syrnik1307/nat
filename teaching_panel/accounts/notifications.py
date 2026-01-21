@@ -665,7 +665,6 @@ def notify_admin_payment(payment, subscription, plan_name: Optional[str] = None,
     payload = {
         'chat_id': admin_chat_id,
         'text': message,
-        'parse_mode': 'Markdown',
         'disable_web_page_preview': True,
     }
     
