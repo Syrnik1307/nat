@@ -18,6 +18,7 @@ const Button = ({
   onClick,
   type = 'button',
   className = '',
+  style: userStyle = {},
   children,
   ...props 
 }) => {
@@ -148,6 +149,7 @@ const Button = ({
         ...baseStyles,
         ...variants[safeVariant],
         ...sizes[size],
+        ...(userStyle || {}),
       }}
       {...props}
     >
