@@ -3,7 +3,7 @@ import './TeacherRecordingsPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
 import RecordingCard from './RecordingCard';
 import RecordingPlayer from './RecordingPlayer';
-import { ConfirmModal, SearchableSelect, ToastContainer } from '../../shared/components';
+import { ConfirmModal, Select, SearchableSelect, ToastContainer } from '../../shared/components';
 
 function TeacherRecordingsPage() {
   const [recordings, setRecordings] = useState([]);
