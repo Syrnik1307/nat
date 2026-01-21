@@ -1,0 +1,37 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# Системные зависимости для PostgreSQL и healthcheck
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python зависимости (с psycopg2 для PostgreSQL)
+COPY teaching_panel/requirements.txt /app/teaching_panel/requirements.txt
+RUN pip install --no-cache-dir -r /app/teaching_panel/requirements.txt \
+    && pip install --no-cache-dir gunicorn psycopg2-binary
+
+# Копируем код
+COPY teaching_panel /app/teaching_panel
+COPY docker/backend/entrypoint.prod.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+WORKDIR /app/teaching_panel
+
+# Non-root user для безопасности
+RUN useradd -m -u 1000 appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8000
+
+ENTRYPOINT ["/entrypoint.sh"]

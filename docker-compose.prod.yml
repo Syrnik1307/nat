@@ -1,0 +1,157 @@
+# Production Docker Compose for Teaching Panel
+# Рассчитан на 1000+ учителей, 10000+ учеников
+#
+# Запуск: docker compose -f docker-compose.prod.yml up -d --build
+# Масштабирование Celery: docker compose -f docker-compose.prod.yml up -d --scale celery=4
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile.prod
+    restart: always
+    environment:
+      DEBUG: "0"
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-teaching_panel}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-teaching_panel}"
+      REDIS_URL: "redis://redis:6379/1"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+    env_file:
+      - .env.production
+    volumes:
+      - static_data:/app/teaching_panel/staticfiles
+      - media_data:/app/teaching_panel/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  celery:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile.prod
+    command: celery -A teaching_panel worker -l info --concurrency=4
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      DEBUG: "0"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-teaching_panel}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-teaching_panel}"
+      REDIS_URL: "redis://redis:6379/1"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+    volumes:
+      - media_data:/app/teaching_panel/media
+    depends_on:
+      - backend
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+      # Для масштабирования: docker compose -f docker-compose.prod.yml up -d --scale celery=4
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile.prod
+    command: celery -A teaching_panel beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      DEBUG: "0"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-teaching_panel}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-teaching_panel}"
+      REDIS_URL: "redis://redis:6379/1"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+    depends_on:
+      - backend
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 600M
+    # НЕ открываем порт наружу в проде!
+
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-teaching_panel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-teaching_panel}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-teaching_panel}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    # НЕ открываем порт наружу!
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile.prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - static_data:/var/www/static:ro
+      - media_data:/var/www/media:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro  # SSL сертификаты
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_data:
+  media_data:

@@ -765,3 +765,346 @@
   border-radius: 6px;
   font-size: 14px;
 }
+
+/* ---- Alert Badge ---- */
+.alert-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.alert-badge--critical {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.alert-badge--warning {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
+/* ---- Alerts List ---- */
+.alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.alert-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--dash-card-bg);
+  border-radius: var(--dash-radius);
+  border-left: 4px solid #E5E7EB;
+}
+
+.alert-item--critical {
+  border-left-color: #DC2626;
+  background: #FEF2F2;
+}
+
+.alert-item--warning {
+  border-left-color: #F59E0B;
+  background: #FFFBEB;
+}
+
+.alert-item__icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.alert-item--critical .alert-item__icon {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.alert-item--warning .alert-item__icon {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
+.alert-item__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.alert-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.alert-item__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dash-text);
+  margin-bottom: 2px;
+}
+
+.alert-item__message {
+  font-size: 13px;
+  color: var(--dash-text-secondary);
+}
+
+.alert-item__action button {
+  padding: 8px 16px;
+  background: var(--dash-sidebar-active);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.alert-item__action button:hover {
+  background: #4338CA;
+}
+
+/* ---- Health Status ---- */
+.health-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.health-status--healthy {
+  background: #D1FAE5;
+  color: #059669;
+}
+
+.health-status--degraded {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
+.health-status--unhealthy {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+/* ---- Health Checks ---- */
+.health-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.health-check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--dash-card-bg);
+  border-radius: var(--dash-radius-sm);
+  border: 1px solid var(--dash-border);
+}
+
+.health-check__status {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.health-check__status svg {
+  width: 16px;
+  height: 16px;
+}
+
+.health-check--ok .health-check__status {
+  background: #D1FAE5;
+  color: #059669;
+}
+
+.health-check--warning .health-check__status {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
+.health-check--error .health-check__status,
+.health-check--critical .health-check__status {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.health-check--info .health-check__status {
+  background: #E0F2FE;
+  color: #0284C7;
+}
+
+.health-check__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dash-text);
+}
+
+.health-check__message {
+  font-size: 12px;
+  color: var(--dash-text-secondary);
+  margin-left: auto;
+}
+
+/* ---- Cohorts Table ---- */
+.cohorts-table-container {
+  margin-top: 20px;
+  overflow-x: auto;
+}
+
+.cohorts-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cohorts-table th {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dash-text-secondary);
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--dash-border);
+}
+
+.cohorts-table th.text-right {
+  text-align: right;
+}
+
+.cohorts-table td {
+  font-size: 13px;
+  color: var(--dash-text);
+  padding: 12px;
+  border-bottom: 1px solid var(--dash-border);
+}
+
+.cohorts-table td.text-right {
+  text-align: right;
+}
+
+.cohorts-table td.font-medium {
+  font-weight: 600;
+}
+
+.cohorts-table tbody tr:hover {
+  background: #F9FAFB;
+}
+
+/* ---- Admin Actions ---- */
+.admin-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: var(--dash-card-bg);
+  border: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--dash-text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.admin-action-btn:hover {
+  border-color: var(--dash-sidebar-active);
+  color: var(--dash-sidebar-active);
+}
+
+.admin-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-action-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ---- Activity Log ---- */
+.activity-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--dash-card-bg);
+  border-radius: var(--dash-radius-sm);
+  border: 1px solid var(--dash-border);
+}
+
+.activity-item__icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #EEF2FF;
+  color: var(--dash-sidebar-active);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.activity-item__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.activity-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-item__message {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--dash-text);
+}
+
+.activity-item__meta {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--dash-text-secondary);
+  margin-top: 2px;
+}
+
+/* ---- Button Link ---- */
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--dash-sidebar-active);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
+}

@@ -62,7 +62,9 @@
   box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
               0 10px 25px -5px rgba(0, 0, 0, 0.06),
               0 0 20px rgba(79, 70, 229, 0.08);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  /* PERF: GPU-ускоренные свойства */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  will-change: transform;
 }
 
 .current-subscription:hover {

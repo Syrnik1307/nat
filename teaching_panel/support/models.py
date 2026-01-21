@@ -3,6 +3,80 @@ from django.utils import timezone
 from accounts.models import CustomUser
 
 
+class SystemStatus(models.Model):
+    """Статус системы для страницы /status и инцидент-режима"""
+    
+    STATUS_CHOICES = (
+        ('operational', 'Всё работает'),
+        ('degraded', 'Частичные проблемы'),
+        ('major_outage', 'Серьёзный сбой'),
+        ('maintenance', 'Техобслуживание'),
+    )
+    
+    status = models.CharField(
+        'Статус',
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='operational'
+    )
+    message = models.TextField(
+        'Сообщение',
+        blank=True,
+        default='',
+        help_text='Публичное сообщение о статусе'
+    )
+    incident_title = models.CharField(
+        'Название инцидента',
+        max_length=200,
+        blank=True,
+        default=''
+    )
+    incident_started_at = models.DateTimeField(
+        'Начало инцидента',
+        null=True,
+        blank=True
+    )
+    updated_at = models.DateTimeField('Обновлено', auto_now=True)
+    updated_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Обновил'
+    )
+    
+    class Meta:
+        verbose_name = 'Статус системы'
+        verbose_name_plural = 'Статус системы'
+    
+    def __str__(self):
+        return f"{self.get_status_display()} - {self.updated_at}"
+    
+    @classmethod
+    def get_current(cls):
+        """Получить текущий статус (singleton)"""
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+    
+    def start_incident(self, title, message='', user=None):
+        """Начать инцидент"""
+        self.status = 'major_outage'
+        self.incident_title = title
+        self.message = message
+        self.incident_started_at = timezone.now()
+        self.updated_by = user
+        self.save()
+    
+    def resolve_incident(self, message='', user=None):
+        """Завершить инцидент"""
+        self.status = 'operational'
+        self.message = message or 'Проблема решена'
+        self.incident_title = ''
+        self.incident_started_at = None
+        self.updated_by = user
+        self.save()
+
+
 class SupportTicket(models.Model):
     """Обращения в поддержку"""
     
@@ -14,11 +88,30 @@ class SupportTicket(models.Model):
         ('closed', 'Закрыт'),
     )
     
+    # P0-P3 маппинг для SLA
     PRIORITY_CHOICES = (
-        ('low', 'Низкий'),
-        ('normal', 'Обычный'),
-        ('high', 'Высокий'),
-        ('urgent', 'Срочный'),
+        ('p0', 'P0 - Инцидент (всем плохо)'),
+        ('p1', 'P1 - Критично (блокирует работу)'),
+        ('p2', 'P2 - Важно (есть обходной путь)'),
+        ('p3', 'P3 - Низкий (вопрос/пожелание)'),
+    )
+    
+    # SLA в минутах для первого ответа
+    PRIORITY_SLA = {
+        'p0': 15,   # 15 минут
+        'p1': 120,  # 2 часа
+        'p2': 480,  # 8 часов (1 рабочий день)
+        'p3': 1440, # 24 часа
+    }
+    
+    CATEGORY_CHOICES = (
+        ('login', 'Вход/Регистрация'),
+        ('payment', 'Оплата/Подписка'),
+        ('lesson', 'Уроки/Расписание'),
+        ('zoom', 'Zoom/Видеосвязь'),
+        ('homework', 'Домашние задания'),
+        ('recording', 'Записи уроков'),
+        ('other', 'Другое'),
     )
     
     user = models.ForeignKey(
@@ -49,15 +142,15 @@ class SupportTicket(models.Model):
         'Приоритет',
         max_length=20,
         choices=PRIORITY_CHOICES,
-        default='normal'
+        default='p2'
     )
     
     category = models.CharField(
         'Категория',
         max_length=50,
-        blank=True,
-        default='',
-        help_text='Техническая проблема, Вопрос по функционалу и т.д.'
+        choices=CATEGORY_CHOICES,
+        default='other',
+        help_text='Категория проблемы для быстрого триажа'
     )
     
     assigned_to = models.ForeignKey(
@@ -72,11 +165,23 @@ class SupportTicket(models.Model):
     created_at = models.DateTimeField('Создано', auto_now_add=True)
     updated_at = models.DateTimeField('Обновлено', auto_now=True)
     resolved_at = models.DateTimeField('Решено', null=True, blank=True)
+    first_response_at = models.DateTimeField('Первый ответ', null=True, blank=True)
     
-    # Технические данные
+    # Технические данные (расширенный контекст)
     user_agent = models.TextField('User Agent', blank=True, default='')
     page_url = models.TextField('URL страницы', blank=True, default='')
     screenshot = models.TextField('Скриншот (base64)', blank=True, default='')
+    
+    # Расширенный контекст для быстрой диагностики
+    build_version = models.CharField('Версия билда', max_length=50, blank=True, default='')
+    user_role = models.CharField('Роль пользователя', max_length=20, blank=True, default='')
+    subscription_status = models.CharField('Статус подписки', max_length=50, blank=True, default='')
+    browser_info = models.CharField('Браузер', max_length=100, blank=True, default='')
+    screen_resolution = models.CharField('Разрешение экрана', max_length=20, blank=True, default='')
+    error_message = models.TextField('Сообщение об ошибке', blank=True, default='')
+    steps_to_reproduce = models.TextField('Шаги воспроизведения', blank=True, default='')
+    expected_behavior = models.TextField('Ожидаемое поведение', blank=True, default='')
+    actual_behavior = models.TextField('Фактическое поведение', blank=True, default='')
     
     class Meta:
         verbose_name = 'Обращение в поддержку'
@@ -86,6 +191,38 @@ class SupportTicket(models.Model):
     def __str__(self):
         user_info = self.user.email if self.user else self.email or 'Аноним'
         return f"#{self.id} {self.subject} - {user_info}"
+    
+    @property
+    def sla_minutes(self):
+        """SLA в минутах для этого приоритета"""
+        return self.PRIORITY_SLA.get(self.priority, 480)
+    
+    @property
+    def sla_deadline(self):
+        """Дедлайн для первого ответа"""
+        from datetime import timedelta
+        return self.created_at + timedelta(minutes=self.sla_minutes)
+    
+    @property
+    def sla_breached(self):
+        """SLA нарушен?"""
+        if self.first_response_at:
+            return self.first_response_at > self.sla_deadline
+        return timezone.now() > self.sla_deadline
+    
+    @property
+    def time_to_first_response(self):
+        """Время до первого ответа в минутах"""
+        if self.first_response_at:
+            delta = self.first_response_at - self.created_at
+            return int(delta.total_seconds() / 60)
+        return None
+    
+    def record_first_response(self):
+        """Записать время первого ответа"""
+        if not self.first_response_at:
+            self.first_response_at = timezone.now()
+            self.save(update_fields=['first_response_at'])
     
     def mark_resolved(self):
         """Пометить как решённое"""
@@ -119,21 +256,35 @@ class SupportTicket(models.Model):
             return
         
         priority_emoji = {
-            'low': '🟢',
-            'normal': '🟡',
-            'high': '🟠',
-            'urgent': '🔴'
+            'p0': '🔴🔴🔴',  # Инцидент - максимальное внимание
+            'p1': '🔴',
+            'p2': '🟡',
+            'p3': '🟢'
         }.get(self.priority, '⚪')
         
+        category_display = dict(self.CATEGORY_CHOICES).get(self.category, self.category)
         user_info = self.user.get_full_name() if self.user else self.email or 'Аноним'
+        sla_text = f"⏱️ SLA: {self.sla_minutes} мин"
+        
+        # Дополнительный контекст для быстрой диагностики
+        context_lines = []
+        if self.user_role:
+            context_lines.append(f"👤 Роль: {self.user_role}")
+        if self.subscription_status:
+            context_lines.append(f"💳 Подписка: {self.subscription_status}")
+        if self.error_message:
+            context_lines.append(f"❌ Ошибка: {self.error_message[:100]}")
+        context_str = '\n'.join(context_lines) if context_lines else ''
         
         message = (
             f"🆕 *Новый тикет #{self.id}*\n\n"
             f"{priority_emoji} *Приоритет:* {self.get_priority_display()}\n"
-            f"🏷️ *Категория:* {self.category}\n"
+            f"{sla_text}\n"
+            f"🏷️ *Категория:* {category_display}\n"
             f"📝 *Тема:* {self.subject}\n"
             f"📄 *Описание:*\n{self.description[:200]}{'...' if len(self.description) > 200 else ''}\n\n"
-            f"👤 *От:* {user_info}\n\n"
+            f"👤 *От:* {user_info}\n"
+            f"{context_str}\n\n"
             f"Для просмотра: /view\\_{self.id}"
         )
         

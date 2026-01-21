@@ -90,7 +90,8 @@
   font-weight: 600;
   font-size: 15px;
   text-decoration: none;
-  transition: all 0.3s ease;
+  /* PERF: GPU-ускоренные свойства */
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
   align-self: flex-start;
   border: none;
   cursor: pointer;

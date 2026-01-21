@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Q, Count, Sum, ExpressionWrapper, F, DurationField
+from django.db.models import Q, Count, Sum, ExpressionWrapper, F, DurationField, Value
+from django.db.models.functions import Coalesce, NullIf
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.conf import settings
@@ -13,7 +14,7 @@ import logging
 from schedule.models import Lesson, Group as ScheduleGroup
 
 from .serializers import UserProfileSerializer, SystemSettingsSerializer
-from .models import StatusBarMessage, SystemSettings, Subscription
+from .models import StatusBarMessage, SystemSettings, Subscription, Payment
 from .subscriptions_utils import get_subscription
 
 User = get_user_model()
@@ -212,6 +213,242 @@ class AdminStatsView(APIView):
             'lessons': lessons,
             'zoom_accounts': zoom_accounts,
             'growth_periods': growth_periods,
+        })
+
+
+def _source_expr_for_user(prefix: str = ''):
+    channel = F(f'{prefix}referral_attribution__channel')
+    utm_source = F(f'{prefix}referral_attribution__utm_source')
+    return Coalesce(
+        NullIf(channel, Value('')),
+        NullIf(utm_source, Value('')),
+        Value('unknown')
+    )
+
+
+def _source_expr_for_payment():
+    channel = F('subscription__user__referral_attribution__channel')
+    utm_source = F('subscription__user__referral_attribution__utm_source')
+    return Coalesce(
+        NullIf(channel, Value('')),
+        NullIf(utm_source, Value('')),
+        Value('unknown')
+    )
+
+
+class AdminGrowthOverviewView(APIView):
+    """Полная аналитика роста/монетизации для управления бизнесом."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # === КЛЮЧЕВЫЕ KPI ЗА СЕГОДНЯ ===
+        today_registrations = User.objects.filter(role='teacher', created_at__gte=today_start).count()
+        today_payments = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED,
+            created_at__gte=today_start
+        ).aggregate(count=Count('id'), revenue=Sum('amount'))
+
+        # === ПЕРИОДИЧЕСКИЕ МЕТРИКИ ===
+        period_specs = [
+            ('day', 'Сегодня', 'За 24 часа', timedelta(days=1)),
+            ('week', 'Неделя', 'За 7 дней', timedelta(days=7)),
+            ('month', 'Месяц', 'За 30 дней', timedelta(days=30)),
+        ]
+
+        periods = []
+        payment_source_expr = _source_expr_for_payment()
+        user_source_expr = _source_expr_for_user(prefix='')
+
+        for key, label, range_label, delta in period_specs:
+            start = now - delta
+
+            new_teachers = User.objects.filter(
+                role='teacher',
+                created_at__gte=start,
+                created_at__lte=now,
+            )
+            new_teachers_count = new_teachers.count()
+
+            payments_created_qs = Payment.objects.filter(created_at__gte=start, created_at__lte=now)
+            payments_succeeded_qs = Payment.objects.filter(
+                status=Payment.STATUS_SUCCEEDED
+            ).filter(
+                Q(paid_at__gte=start, paid_at__lte=now) |
+                Q(paid_at__isnull=True, created_at__gte=start, created_at__lte=now)
+            )
+            payments_failed_qs = Payment.objects.filter(
+                status=Payment.STATUS_FAILED,
+                created_at__gte=start, created_at__lte=now
+            )
+
+            payments_created_count = payments_created_qs.count()
+            payments_succeeded_count = payments_succeeded_qs.count()
+            payments_failed_count = payments_failed_qs.count()
+            revenue_value = payments_succeeded_qs.aggregate(total=Sum('amount'))['total'] or 0
+
+            new_teachers_paid_count = new_teachers.filter(
+                subscription__payments__status=Payment.STATUS_SUCCEEDED
+            ).filter(
+                Q(subscription__payments__paid_at__gte=start, subscription__payments__paid_at__lte=now) |
+                Q(subscription__payments__paid_at__isnull=True, subscription__payments__created_at__gte=start, subscription__payments__created_at__lte=now)
+            ).distinct().count()
+
+            avg_check = float(revenue_value) / float(payments_succeeded_count) if payments_succeeded_count > 0 else 0
+            reg_to_pay_cr = round((new_teachers_paid_count / new_teachers_count) * 100, 2) if new_teachers_count > 0 else 0
+            payment_success_rate = round((payments_succeeded_count / payments_created_count) * 100, 2) if payments_created_count > 0 else 0
+
+            periods.append({
+                'key': key,
+                'label': label,
+                'range_label': range_label,
+                'registrations': new_teachers_count,
+                'payments_created': payments_created_count,
+                'payments_succeeded': payments_succeeded_count,
+                'payments_failed': payments_failed_count,
+                'revenue': float(revenue_value),
+                'avg_check': round(avg_check, 2),
+                'reg_to_pay_cr': reg_to_pay_cr,
+                'payment_success_rate': payment_success_rate,
+                'new_paid_users': new_teachers_paid_count,
+            })
+
+        # === ВОРОНКА ЗА 30 ДНЕЙ ===
+        month_start = now - timedelta(days=30)
+        funnel_registrations = User.objects.filter(role='teacher', created_at__gte=month_start).count()
+        funnel_with_subscription = Subscription.objects.filter(
+            user__role='teacher',
+            user__created_at__gte=month_start
+        ).count()
+        funnel_paid = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED,
+            subscription__user__role='teacher',
+            subscription__user__created_at__gte=month_start
+        ).values('subscription__user').distinct().count()
+
+        funnel = {
+            'period': 'Последние 30 дней',
+            'steps': [
+                {'name': 'Регистрации', 'value': funnel_registrations, 'percent': 100},
+                {'name': 'Создали подписку', 'value': funnel_with_subscription, 'percent': round((funnel_with_subscription / funnel_registrations) * 100, 1) if funnel_registrations else 0},
+                {'name': 'Оплатили', 'value': funnel_paid, 'percent': round((funnel_paid / funnel_registrations) * 100, 1) if funnel_registrations else 0},
+            ]
+        }
+
+        # === ИСТОЧНИКИ ТРАФИКА (ТОП-10) ===
+        sources_registrations = list(
+            User.objects.filter(role='teacher', created_at__gte=month_start)
+            .annotate(source=user_source_expr)
+            .values('source')
+            .annotate(count=Count('id'))
+            .order_by('-count')[:10]
+        )
+
+        sources_revenue = list(
+            Payment.objects.filter(status=Payment.STATUS_SUCCEEDED)
+            .filter(
+                Q(paid_at__gte=month_start, paid_at__lte=now) |
+                Q(paid_at__isnull=True, created_at__gte=month_start, created_at__lte=now)
+            )
+            .annotate(source=payment_source_expr)
+            .values('source')
+            .annotate(
+                revenue=Sum('amount'),
+                count=Count('id'),
+                users=Count('subscription__user', distinct=True),
+            )
+            .order_by('-revenue')[:10]
+        )
+
+        # === АКТИВНОСТЬ ПЛАТФОРМЫ ===
+        active_teachers = User.objects.filter(
+            role='teacher',
+            subscription__status=Subscription.STATUS_ACTIVE,
+            subscription__expires_at__gt=now
+        ).count()
+        total_teachers = User.objects.filter(role='teacher').count()
+        active_rate = round((active_teachers / total_teachers) * 100, 1) if total_teachers else 0
+
+        # Истекающие подписки (следующие 7 дней)
+        expiring_soon = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE,
+            expires_at__gt=now,
+            expires_at__lte=now + timedelta(days=7)
+        ).count()
+
+        # Недавние платежи (последние 5)
+        recent_payments = list(
+            Payment.objects.filter(status=Payment.STATUS_SUCCEEDED)
+            .select_related('subscription__user')
+            .order_by('-created_at')[:5]
+            .values(
+                'id', 'amount', 'created_at',
+                'subscription__user__email',
+                'subscription__user__first_name',
+                'subscription__user__last_name',
+            )
+        )
+
+        # === ZOOM POOL STATUS ===
+        from zoom_pool.models import ZoomAccount
+        zoom_total = ZoomAccount.objects.filter(is_active=True).count()
+        zoom_in_use = ZoomAccount.objects.filter(is_active=True, in_use=True).count()
+        zoom_available = zoom_total - zoom_in_use
+
+        # === ХРАНИЛИЩЕ ===
+        storage_stats = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE
+        ).aggregate(
+            total_used=Sum('used_storage_gb'),
+            total_base=Sum('base_storage_gb'),
+            total_extra=Sum('extra_storage_gb'),
+        )
+
+        return Response({
+            'today': {
+                'registrations': today_registrations,
+                'payments': today_payments['count'] or 0,
+                'revenue': float(today_payments['revenue'] or 0),
+            },
+            'periods': periods,
+            'funnel': funnel,
+            'sources': {
+                'period': 'Последние 30 дней',
+                'registrations': sources_registrations,
+                'revenue': [
+                    {**r, 'revenue': float(r['revenue'] or 0)} for r in sources_revenue
+                ],
+            },
+            'platform': {
+                'active_teachers': active_teachers,
+                'total_teachers': total_teachers,
+                'active_rate': active_rate,
+                'expiring_soon': expiring_soon,
+            },
+            'recent_payments': [
+                {
+                    'id': p['id'],
+                    'amount': float(p['amount']),
+                    'date': p['created_at'].isoformat() if p['created_at'] else None,
+                    'user': f"{p['subscription__user__first_name'] or ''} {p['subscription__user__last_name'] or ''}".strip() or p['subscription__user__email'],
+                }
+                for p in recent_payments
+            ],
+            'zoom': {
+                'total': zoom_total,
+                'in_use': zoom_in_use,
+                'available': zoom_available,
+            },
+            'storage': {
+                'used_gb': float(storage_stats['total_used'] or 0),
+                'total_gb': float((storage_stats['total_base'] or 0) + (storage_stats['total_extra'] or 0)),
+            },
         })
 
 
@@ -1231,4 +1468,581 @@ class AdminChangeStudentPasswordView(APIView):
         return Response({
             'message': f'Пароль для {student.first_name} {student.last_name} успешно изменен'
         }, status=status.HTTP_200_OK)
+
+
+class AdminAlertsView(APIView):
+    """Алерты и предупреждения для админа."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        now = timezone.now()
+        alerts = []
+
+        # 1. Истекающие подписки (7 дней)
+        expiring_subs = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE,
+            expires_at__gt=now,
+            expires_at__lte=now + timedelta(days=7)
+        ).select_related('user')
+
+        for sub in expiring_subs:
+            days_left = (sub.expires_at - now).days
+            alerts.append({
+                'id': f'sub_expiring_{sub.id}',
+                'type': 'subscription_expiring',
+                'severity': 'warning' if days_left > 3 else 'critical',
+                'title': f'Подписка истекает через {days_left} дн.',
+                'message': f'{sub.user.get_full_name() or sub.user.email} - подписка истекает {sub.expires_at.strftime("%d.%m.%Y")}',
+                'user_id': sub.user.id,
+                'user_name': sub.user.get_full_name() or sub.user.email,
+                'user_email': sub.user.email,
+                'expires_at': sub.expires_at.isoformat(),
+                'action': 'contact',
+            })
+
+        # 2. Неактивные учителя (не заходили 14+ дней)
+        inactive_threshold = now - timedelta(days=14)
+        inactive_teachers = User.objects.filter(
+            role='teacher',
+            is_active=True,
+            last_login__lt=inactive_threshold
+        ).exclude(last_login__isnull=True)
+
+        for teacher in inactive_teachers[:20]:
+            days_inactive = (now - teacher.last_login).days if teacher.last_login else 999
+            alerts.append({
+                'id': f'inactive_{teacher.id}',
+                'type': 'inactive_user',
+                'severity': 'warning' if days_inactive < 30 else 'critical',
+                'title': f'Неактивен {days_inactive} дней',
+                'message': f'{teacher.get_full_name() or teacher.email} не заходил {days_inactive} дней',
+                'user_id': teacher.id,
+                'user_name': teacher.get_full_name() or teacher.email,
+                'user_email': teacher.email,
+                'last_login': teacher.last_login.isoformat() if teacher.last_login else None,
+                'action': 'contact',
+            })
+
+        # 3. Просроченные подписки (истекли за последние 7 дней)
+        recently_expired = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE,
+            expires_at__lt=now,
+            expires_at__gte=now - timedelta(days=7)
+        ).select_related('user')
+
+        for sub in recently_expired:
+            days_ago = (now - sub.expires_at).days
+            alerts.append({
+                'id': f'sub_expired_{sub.id}',
+                'type': 'subscription_expired',
+                'severity': 'critical',
+                'title': f'Подписка истекла {days_ago} дн. назад',
+                'message': f'{sub.user.get_full_name() or sub.user.email} - подписка истекла {sub.expires_at.strftime("%d.%m.%Y")}',
+                'user_id': sub.user.id,
+                'user_name': sub.user.get_full_name() or sub.user.email,
+                'user_email': sub.user.email,
+                'expires_at': sub.expires_at.isoformat(),
+                'action': 'renew',
+            })
+
+        # 4. Неудачные платежи за последние 7 дней
+        failed_payments = Payment.objects.filter(
+            status=Payment.STATUS_FAILED,
+            created_at__gte=now - timedelta(days=7)
+        ).select_related('subscription__user').order_by('-created_at')[:10]
+
+        for payment in failed_payments:
+            user = payment.subscription.user if payment.subscription else None
+            if user:
+                alerts.append({
+                    'id': f'payment_failed_{payment.id}',
+                    'type': 'payment_failed',
+                    'severity': 'warning',
+                    'title': 'Неудачный платеж',
+                    'message': f'{user.get_full_name() or user.email} - платеж на {payment.amount} ₽ не прошел',
+                    'user_id': user.id,
+                    'user_name': user.get_full_name() or user.email,
+                    'user_email': user.email,
+                    'amount': float(payment.amount),
+                    'created_at': payment.created_at.isoformat(),
+                    'action': 'contact',
+                })
+
+        # 5. Переполнение хранилища (>90%)
+        storage_alerts = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE
+        ).select_related('user').annotate(
+            total_storage=F('base_storage_gb') + F('extra_storage_gb')
+        ).filter(
+            used_storage_gb__gt=F('total_storage') * 0.9
+        )
+
+        for sub in storage_alerts:
+            total = sub.base_storage_gb + sub.extra_storage_gb
+            used_pct = round((float(sub.used_storage_gb or 0) / total) * 100, 1) if total else 0
+            alerts.append({
+                'id': f'storage_{sub.id}',
+                'type': 'storage_full',
+                'severity': 'warning' if used_pct < 100 else 'critical',
+                'title': f'Хранилище заполнено на {used_pct}%',
+                'message': f'{sub.user.get_full_name() or sub.user.email} - {sub.used_storage_gb:.1f}/{total} ГБ',
+                'user_id': sub.user.id,
+                'user_name': sub.user.get_full_name() or sub.user.email,
+                'user_email': sub.user.email,
+                'used_gb': float(sub.used_storage_gb or 0),
+                'total_gb': total,
+                'action': 'upsell',
+            })
+
+        # Сортируем по severity (critical первые)
+        severity_order = {'critical': 0, 'warning': 1, 'info': 2}
+        alerts.sort(key=lambda x: severity_order.get(x['severity'], 99))
+
+        return Response({
+            'alerts': alerts,
+            'summary': {
+                'total': len(alerts),
+                'critical': sum(1 for a in alerts if a['severity'] == 'critical'),
+                'warning': sum(1 for a in alerts if a['severity'] == 'warning'),
+            }
+        })
+
+
+class AdminChurnRetentionView(APIView):
+    """Метрики оттока и удержания."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        now = timezone.now()
+
+        # Cohort analysis по месяцам (последние 6 месяцев)
+        cohorts = []
+        for months_ago in range(6):
+            month_start = (now.replace(day=1) - timedelta(days=months_ago * 30)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            if months_ago > 0:
+                prev_month = (month_start - timedelta(days=1)).replace(day=1)
+                month_start = prev_month
+            
+            month_end = (month_start + timedelta(days=32)).replace(day=1)
+            
+            # Зарегистрированные в этом месяце
+            registered = User.objects.filter(
+                role='teacher',
+                created_at__gte=month_start,
+                created_at__lt=month_end
+            )
+            registered_count = registered.count()
+            
+            # Оплатившие из зарегистрированных
+            paid = Payment.objects.filter(
+                status=Payment.STATUS_SUCCEEDED,
+                subscription__user__in=registered
+            ).values('subscription__user').distinct().count()
+            
+            # Активные сейчас (есть активная подписка)
+            still_active = Subscription.objects.filter(
+                user__in=registered,
+                status=Subscription.STATUS_ACTIVE,
+                expires_at__gt=now
+            ).count()
+            
+            # Churn rate
+            churn_rate = round(((paid - still_active) / paid) * 100, 1) if paid > 0 else 0
+            retention_rate = 100 - churn_rate if paid > 0 else 0
+
+            cohorts.append({
+                'month': month_start.strftime('%Y-%m'),
+                'month_label': month_start.strftime('%B %Y'),
+                'registered': registered_count,
+                'converted': paid,
+                'conversion_rate': round((paid / registered_count) * 100, 1) if registered_count else 0,
+                'still_active': still_active,
+                'churned': paid - still_active if paid > still_active else 0,
+                'churn_rate': churn_rate,
+                'retention_rate': retention_rate,
+            })
+
+        # MRR (Monthly Recurring Revenue)
+        month_ago = now - timedelta(days=30)
+        mrr_payments = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED,
+            paid_at__gte=month_ago
+        ).aggregate(total=Sum('amount'))
+        mrr = float(mrr_payments['total'] or 0)
+
+        # LTV (Lifetime Value) - средний доход на платящего пользователя
+        paying_users = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED
+        ).values('subscription__user').distinct().count()
+        
+        total_revenue = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        ltv = round(float(total_revenue) / paying_users, 0) if paying_users > 0 else 0
+
+        # ARPU (Average Revenue Per User)
+        total_teachers = User.objects.filter(role='teacher').count()
+        arpu = round(float(total_revenue) / total_teachers, 0) if total_teachers > 0 else 0
+
+        # Churn за последний месяц
+        month_start = now - timedelta(days=30)
+        active_start = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE,
+            expires_at__gte=month_start
+        ).count()
+        
+        churned_this_month = Subscription.objects.filter(
+            expires_at__gte=month_start,
+            expires_at__lt=now
+        ).count()
+        
+        monthly_churn_rate = round((churned_this_month / active_start) * 100, 1) if active_start > 0 else 0
+
+        return Response({
+            'cohorts': cohorts,
+            'metrics': {
+                'mrr': mrr,
+                'ltv': ltv,
+                'arpu': arpu,
+                'monthly_churn_rate': monthly_churn_rate,
+                'churned_this_month': churned_this_month,
+                'paying_users': paying_users,
+                'total_revenue': float(total_revenue),
+            }
+        })
+
+
+class AdminTeachersActivityView(APIView):
+    """Детальная таблица активности учителей."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        now = timezone.now()
+        thirty_days_ago = now - timedelta(days=30)
+
+        teachers = User.objects.filter(role='teacher').select_related('subscription')
+        
+        result = []
+        for teacher in teachers:
+            sub = getattr(teacher, 'subscription', None)
+            
+            # Метрики за 30 дней
+            lessons_30d = Lesson.objects.filter(
+                teacher=teacher,
+                start_time__gte=thirty_days_ago
+            ).count()
+            
+            groups_count = ScheduleGroup.objects.filter(teacher=teacher).count()
+            students_count = ScheduleGroup.objects.filter(teacher=teacher).aggregate(
+                count=Count('students', distinct=True)
+            )['count'] or 0
+            
+            # Последний урок
+            last_lesson = Lesson.objects.filter(teacher=teacher).order_by('-start_time').first()
+            
+            # Статус
+            if sub and sub.status == Subscription.STATUS_ACTIVE and sub.expires_at > now:
+                status_label = 'active'
+            elif sub and sub.expires_at and sub.expires_at <= now:
+                status_label = 'expired'
+            else:
+                status_label = 'no_subscription'
+
+            result.append({
+                'id': teacher.id,
+                'name': teacher.get_full_name() or teacher.email,
+                'email': teacher.email,
+                'created_at': teacher.created_at.isoformat() if teacher.created_at else None,
+                'last_login': teacher.last_login.isoformat() if teacher.last_login else None,
+                'last_lesson': last_lesson.start_time.isoformat() if last_lesson else None,
+                'lessons_30d': lessons_30d,
+                'groups_count': groups_count,
+                'students_count': students_count,
+                'subscription_status': status_label,
+                'subscription_expires': sub.expires_at.isoformat() if sub and sub.expires_at else None,
+                'storage_used_gb': float(sub.used_storage_gb or 0) if sub else 0,
+                'storage_total_gb': (sub.base_storage_gb + sub.extra_storage_gb) if sub else 0,
+            })
+
+        # Сортировка по активности
+        result.sort(key=lambda x: x['lessons_30d'], reverse=True)
+
+        return Response({
+            'teachers': result,
+            'summary': {
+                'total': len(result),
+                'active': sum(1 for t in result if t['subscription_status'] == 'active'),
+                'expired': sum(1 for t in result if t['subscription_status'] == 'expired'),
+                'no_subscription': sum(1 for t in result if t['subscription_status'] == 'no_subscription'),
+            }
+        })
+
+
+class AdminSystemHealthView(APIView):
+    """Проверка здоровья системы."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        checks = []
+        overall_status = 'healthy'
+
+        # 1. Database check
+        try:
+            User.objects.count()
+            checks.append({'name': 'Database', 'status': 'ok', 'message': 'Connected'})
+        except Exception as e:
+            checks.append({'name': 'Database', 'status': 'error', 'message': str(e)})
+            overall_status = 'unhealthy'
+
+        # 2. Zoom Pool check
+        try:
+            from zoom_pool.models import ZoomAccount
+            total = ZoomAccount.objects.filter(is_active=True).count()
+            in_use = ZoomAccount.objects.filter(is_active=True, in_use=True).count()
+            available = total - in_use
+            
+            if available == 0 and total > 0:
+                checks.append({'name': 'Zoom Pool', 'status': 'warning', 'message': f'No available accounts ({in_use}/{total} in use)'})
+                if overall_status == 'healthy':
+                    overall_status = 'degraded'
+            else:
+                checks.append({'name': 'Zoom Pool', 'status': 'ok', 'message': f'{available}/{total} available'})
+        except Exception as e:
+            checks.append({'name': 'Zoom Pool', 'status': 'error', 'message': str(e)})
+
+        # 3. Google Drive check
+        try:
+            if getattr(settings, 'USE_GDRIVE_STORAGE', False):
+                from .gdrive_folder_service import get_gdrive_service
+                service = get_gdrive_service()
+                if service:
+                    checks.append({'name': 'Google Drive', 'status': 'ok', 'message': 'Connected'})
+                else:
+                    checks.append({'name': 'Google Drive', 'status': 'warning', 'message': 'Service unavailable'})
+            else:
+                checks.append({'name': 'Google Drive', 'status': 'info', 'message': 'Disabled'})
+        except Exception as e:
+            checks.append({'name': 'Google Drive', 'status': 'error', 'message': str(e)})
+
+        # 4. Redis/Celery check (if configured)
+        try:
+            from django.core.cache import cache
+            cache.set('health_check', 'ok', 10)
+            val = cache.get('health_check')
+            if val == 'ok':
+                checks.append({'name': 'Cache/Redis', 'status': 'ok', 'message': 'Connected'})
+            else:
+                checks.append({'name': 'Cache/Redis', 'status': 'warning', 'message': 'Cache not responding'})
+        except Exception as e:
+            checks.append({'name': 'Cache/Redis', 'status': 'info', 'message': 'Not configured'})
+
+        # 5. Telegram Bot check
+        try:
+            bot_token = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
+            if bot_token:
+                checks.append({'name': 'Telegram Bot', 'status': 'ok', 'message': 'Configured'})
+            else:
+                checks.append({'name': 'Telegram Bot', 'status': 'info', 'message': 'Not configured'})
+        except Exception as e:
+            checks.append({'name': 'Telegram Bot', 'status': 'error', 'message': str(e)})
+
+        # 6. YooKassa check
+        try:
+            yookassa_id = getattr(settings, 'YOOKASSA_ACCOUNT_ID', None)
+            if yookassa_id:
+                checks.append({'name': 'YooKassa', 'status': 'ok', 'message': 'Configured'})
+            else:
+                checks.append({'name': 'YooKassa', 'status': 'warning', 'message': 'Not configured (mock mode)'})
+        except Exception as e:
+            checks.append({'name': 'YooKassa', 'status': 'error', 'message': str(e)})
+
+        # 7. Disk space (если доступно)
+        try:
+            import shutil
+            total, used, free = shutil.disk_usage('/')
+            free_gb = free // (1024 ** 3)
+            if free_gb < 1:
+                checks.append({'name': 'Disk Space', 'status': 'critical', 'message': f'{free_gb} GB free'})
+                overall_status = 'unhealthy'
+            elif free_gb < 5:
+                checks.append({'name': 'Disk Space', 'status': 'warning', 'message': f'{free_gb} GB free'})
+            else:
+                checks.append({'name': 'Disk Space', 'status': 'ok', 'message': f'{free_gb} GB free'})
+        except Exception:
+            pass
+
+        return Response({
+            'status': overall_status,
+            'checks': checks,
+            'timestamp': timezone.now().isoformat(),
+        })
+
+
+class AdminActivityLogView(APIView):
+    """Логи активности пользователей."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        now = timezone.now()
+        logs = []
+
+        # Последние регистрации
+        recent_users = User.objects.filter(
+            created_at__gte=now - timedelta(days=7)
+        ).order_by('-created_at')[:10]
+
+        for user in recent_users:
+            logs.append({
+                'type': 'registration',
+                'timestamp': user.created_at.isoformat(),
+                'user_id': user.id,
+                'user_name': user.get_full_name() or user.email,
+                'user_email': user.email,
+                'message': f'{user.role.capitalize()} зарегистрирован',
+                'icon': 'user-plus',
+            })
+
+        # Последние платежи
+        recent_payments = Payment.objects.filter(
+            created_at__gte=now - timedelta(days=7)
+        ).select_related('subscription__user').order_by('-created_at')[:10]
+
+        for payment in recent_payments:
+            user = payment.subscription.user if payment.subscription else None
+            status_label = 'оплачен' if payment.status == Payment.STATUS_SUCCEEDED else 'неудачен'
+            logs.append({
+                'type': 'payment',
+                'timestamp': payment.created_at.isoformat(),
+                'user_id': user.id if user else None,
+                'user_name': user.get_full_name() if user else 'Unknown',
+                'user_email': user.email if user else None,
+                'message': f'Платеж {payment.amount} ₽ {status_label}',
+                'icon': 'wallet' if payment.status == Payment.STATUS_SUCCEEDED else 'alert',
+                'amount': float(payment.amount),
+                'payment_status': payment.status,
+            })
+
+        # Последние уроки
+        recent_lessons = Lesson.objects.filter(
+            start_time__gte=now - timedelta(days=7)
+        ).select_related('teacher').order_by('-start_time')[:10]
+
+        for lesson in recent_lessons:
+            logs.append({
+                'type': 'lesson',
+                'timestamp': lesson.start_time.isoformat(),
+                'user_id': lesson.teacher.id,
+                'user_name': lesson.teacher.get_full_name() or lesson.teacher.email,
+                'user_email': lesson.teacher.email,
+                'message': f'Урок: {lesson.title or "Без названия"}',
+                'icon': 'video',
+            })
+
+        # Сортируем по времени
+        logs.sort(key=lambda x: x['timestamp'], reverse=True)
+
+        return Response({
+            'logs': logs[:30],
+            'period': '7 days',
+        })
+
+
+class AdminQuickActionsView(APIView):
+    """Массовые действия для админа."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        action = request.data.get('action')
+        
+        if action == 'send_expiring_reminders':
+            # Отправить напоминания об истекающих подписках
+            now = timezone.now()
+            expiring = Subscription.objects.filter(
+                status=Subscription.STATUS_ACTIVE,
+                expires_at__gt=now,
+                expires_at__lte=now + timedelta(days=3)
+            ).select_related('user')
+            
+            count = 0
+            for sub in expiring:
+                try:
+                    from .notifications import notify_user
+                    notify_user(
+                        sub.user,
+                        'subscription_expiring',
+                        title='Подписка скоро истекает',
+                        body=f'Ваша подписка истекает {sub.expires_at.strftime("%d.%m.%Y")}. Продлите её, чтобы не потерять доступ.'
+                    )
+                    count += 1
+                except Exception as e:
+                    logger.error(f'Failed to notify user {sub.user.id}: {e}')
+            
+            return Response({'success': True, 'sent': count})
+
+        elif action == 'cleanup_stuck_zoom':
+            # Освободить застрявшие Zoom аккаунты
+            try:
+                from zoom_pool.models import ZoomAccount
+                from schedule.models import Lesson as ScheduleLesson
+                
+                now = timezone.now()
+                stuck_threshold = now - timedelta(hours=4)
+                
+                stuck = ZoomAccount.objects.filter(
+                    in_use=True,
+                    last_used__lt=stuck_threshold
+                )
+                count = stuck.count()
+                stuck.update(in_use=False)
+                
+                return Response({'success': True, 'released': count})
+            except Exception as e:
+                return Response({'error': str(e)}, status=500)
+
+        elif action == 'recalculate_storage':
+            # Пересчитать хранилище для всех
+            try:
+                subs = Subscription.objects.filter(
+                    status=Subscription.STATUS_ACTIVE,
+                    gdrive_folder_id__isnull=False
+                )
+                count = 0
+                for sub in subs:
+                    try:
+                        from .gdrive_folder_service import get_teacher_storage_usage
+                        get_teacher_storage_usage(sub)
+                        count += 1
+                    except Exception:
+                        pass
+                
+                return Response({'success': True, 'recalculated': count})
+            except Exception as e:
+                return Response({'error': str(e)}, status=500)
+
+        return Response({'error': 'Unknown action'}, status=400)
 

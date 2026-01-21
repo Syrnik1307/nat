@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from . import views
 from .admin_views import (
     AdminStatsView, 
+    AdminGrowthOverviewView,
     AdminCreateTeacherView,
     AdminCreateStudentView,
     AdminTeachersListView,
@@ -19,7 +20,13 @@ from .admin_views import (
     AdminDeleteStudentView,
     AdminChangeStudentPasswordView,
     AdminStatusMessagesView,
-    SystemSettingsView
+    SystemSettingsView,
+    AdminAlertsView,
+    AdminChurnRetentionView,
+    AdminTeachersActivityView,
+    AdminSystemHealthView,
+    AdminActivityLogView,
+    AdminQuickActionsView,
 )
 from .chat_views import ChatViewSet, MessageViewSet, UserSearchViewSet
 from .email_views import (
@@ -83,6 +90,7 @@ urlpatterns = [
     
     # Admin API endpoints
     path('api/admin/stats/', AdminStatsView.as_view(), name='admin_stats'),
+    path('api/admin/growth/overview/', AdminGrowthOverviewView.as_view(), name='admin_growth_overview'),
     path('api/admin/create-teacher/', AdminCreateTeacherView.as_view(), name='admin_create_teacher'),
     path('api/admin/create-student/', AdminCreateStudentView.as_view(), name='admin_create_student'),
     path('api/admin/teachers/', AdminTeachersListView.as_view(), name='admin_teachers_list'),
@@ -100,6 +108,12 @@ urlpatterns = [
     path('api/admin/status-messages/', AdminStatusMessagesView.as_view(), name='admin_status_messages'),
     path('api/admin/status-messages/<int:message_id>/', AdminStatusMessagesView.as_view(), name='admin_status_message_delete'),
     path('api/admin/settings/', SystemSettingsView.as_view(), name='admin_settings'),
+    path('api/admin/alerts/', AdminAlertsView.as_view(), name='admin_alerts'),
+    path('api/admin/churn-retention/', AdminChurnRetentionView.as_view(), name='admin_churn_retention'),
+    path('api/admin/teachers-activity/', AdminTeachersActivityView.as_view(), name='admin_teachers_activity'),
+    path('api/admin/system-health/', AdminSystemHealthView.as_view(), name='admin_system_health'),
+    path('api/admin/activity-log/', AdminActivityLogView.as_view(), name='admin_activity_log'),
+    path('api/admin/quick-actions/', AdminQuickActionsView.as_view(), name='admin_quick_actions'),
     
     # API для получения сообщений (для всех пользователей)
     path('api/status-messages/', AdminStatusMessagesView.as_view(), name='status_messages'),

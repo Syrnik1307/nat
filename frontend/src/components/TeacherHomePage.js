@@ -3,6 +3,7 @@ import { getTeacherStatsSummary, getLessons, getGroups, startQuickLesson, startL
 import { getCached } from '../utils/dataCache';
 import { Link } from 'react-router-dom';
 import SubscriptionBanner from './SubscriptionBanner';
+import TelegramReminderToast from './TelegramReminderToast';
 import { Select, TeacherDashboardSkeleton } from '../shared/components';
 import { useAuth } from '../auth';
 import './TeacherHomePage.css';
@@ -586,6 +587,9 @@ const TeacherHomePage = () => {
       
       {/* Subscription Banner */}
       <SubscriptionBanner />
+      
+      {/* Telegram Reminder Toast */}
+      <TelegramReminderToast />
 
       {/* Platform Selection Modal */}
       {showPlatformModal && (

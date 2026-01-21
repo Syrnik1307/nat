@@ -425,6 +425,13 @@ def gdrive_stats_all_teachers(request):
         # Сортировка по размеру
         stats_list.sort(key=lambda x: x['total_size'], reverse=True)
         
+        # Получаем квоту Google Drive
+        try:
+            drive_quota = gdrive.get_drive_quota()
+        except Exception as e:
+            logger.error(f"Failed to get drive quota: {e}")
+            drive_quota = {'limit_gb': 0, 'usage_gb': 0, 'free_gb': 0, 'usage_percent': 0}
+        
         return Response({
             'teachers': stats_list,
             'summary': {
@@ -432,7 +439,8 @@ def gdrive_stats_all_teachers(request):
                 'total_size': total_size,
                 'total_size_gb': round(total_size / (1024 * 1024 * 1024), 2) if total_size > 0 else 0,
                 'total_files': total_files
-            }
+            },
+            'drive_quota': drive_quota
         })
         
     except Exception as e:

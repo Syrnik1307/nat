@@ -30,7 +30,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'teaching_panel.settings')
 django.setup()
 
 from accounts.models import CustomUser
-from support.models import SupportTicket, SupportMessage
+from support.models import SupportTicket, SupportMessage, SystemStatus
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -548,6 +548,223 @@ async def notify_new_ticket(ticket_id: int, bot_token: str):
             logger.error(f"Не удалось отправить уведомление админу {admin.id}: {e}")
 
 
+# ============ Инцидент-режим ============
+
+async def incident_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /incident <название> - начать инцидент (P0)"""
+    telegram_id = update.effective_user.id
+    
+    try:
+        user = CustomUser.objects.get(telegram_id=telegram_id)
+        if not user.is_staff:
+            await update.message.reply_text("❌ Доступ запрещён")
+            return
+    except CustomUser.DoesNotExist:
+        await update.message.reply_text("❌ Сначала зарегистрируйтесь через /start")
+        return
+    
+    # Получаем название инцидента
+    args = context.args
+    if not args:
+        await update.message.reply_text(
+            "❌ Укажите название инцидента:\n"
+            "/incident Проблемы с оплатой\n"
+            "/incident Zoom не работает"
+        )
+        return
+    
+    title = ' '.join(args)
+    status = SystemStatus.get_current()
+    status.start_incident(title=title, user=user)
+    
+    # Уведомляем всех админов
+    admins = CustomUser.objects.filter(is_staff=True, telegram_id__isnull=False)
+    
+    message = (
+        f"🔴🔴🔴 *ИНЦИДЕНТ ОБЪЯВЛЕН* 🔴🔴🔴\n\n"
+        f"📛 *{title}*\n\n"
+        f"Объявил: {user.first_name}\n"
+        f"Время: {status.incident_started_at.strftime('%d.%m.%Y %H:%M')}\n\n"
+        f"Автоответ включён для новых тикетов.\n"
+        f"Закончить: /resolve <сообщение>"
+    )
+    
+    for admin in admins:
+        if admin.telegram_id != telegram_id:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin.telegram_id,
+                    text=message,
+                    parse_mode='Markdown'
+                )
+            except Exception:
+                pass
+    
+    await update.message.reply_text(
+        f"🔴 Инцидент объявлен: *{title}*\n\n"
+        f"• Статус системы изменён на 'Серьёзный сбой'\n"
+        f"• Пользователи видят баннер в виджете поддержки\n"
+        f"• Все админы уведомлены\n\n"
+        f"Для завершения: /resolve Проблема решена",
+        parse_mode='Markdown'
+    )
+
+
+async def incident_resolve(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /resolve <сообщение> - завершить инцидент"""
+    telegram_id = update.effective_user.id
+    
+    try:
+        user = CustomUser.objects.get(telegram_id=telegram_id)
+        if not user.is_staff:
+            await update.message.reply_text("❌ Доступ запрещён")
+            return
+    except CustomUser.DoesNotExist:
+        await update.message.reply_text("❌ Сначала зарегистрируйтесь через /start")
+        return
+    
+    status = SystemStatus.get_current()
+    
+    if status.status == 'operational':
+        await update.message.reply_text("ℹ️ Нет активного инцидента")
+        return
+    
+    args = context.args
+    message = ' '.join(args) if args else 'Проблема решена'
+    
+    old_title = status.incident_title
+    status.resolve_incident(message=message, user=user)
+    
+    # Уведомляем всех админов
+    admins = CustomUser.objects.filter(is_staff=True, telegram_id__isnull=False)
+    
+    notification = (
+        f"✅ *ИНЦИДЕНТ ЗАВЕРШЁН*\n\n"
+        f"📛 {old_title}\n"
+        f"💬 {message}\n\n"
+        f"Завершил: {user.first_name}"
+    )
+    
+    for admin in admins:
+        if admin.telegram_id != telegram_id:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin.telegram_id,
+                    text=notification,
+                    parse_mode='Markdown'
+                )
+            except Exception:
+                pass
+    
+    await update.message.reply_text(
+        f"✅ Инцидент завершён\n\n"
+        f"• Статус системы: Всё работает\n"
+        f"• Баннер убран\n"
+        f"• Все админы уведомлены",
+        parse_mode='Markdown'
+    )
+
+
+async def system_status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /status - проверить статус системы"""
+    telegram_id = update.effective_user.id
+    
+    try:
+        user = CustomUser.objects.get(telegram_id=telegram_id)
+        if not user.is_staff:
+            await update.message.reply_text("❌ Доступ запрещён")
+            return
+    except CustomUser.DoesNotExist:
+        await update.message.reply_text("❌ Сначала зарегистрируйтесь через /start")
+        return
+    
+    status = SystemStatus.get_current()
+    
+    status_emoji = {
+        'operational': '✅',
+        'degraded': '⚠️',
+        'major_outage': '🔴',
+        'maintenance': '🔧'
+    }.get(status.status, '❓')
+    
+    message = f"{status_emoji} *Статус системы: {status.get_status_display()}*\n\n"
+    
+    if status.status != 'operational':
+        message += f"📛 *Инцидент:* {status.incident_title}\n"
+        if status.incident_started_at:
+            message += f"🕐 *Начало:* {status.incident_started_at.strftime('%d.%m.%Y %H:%M')}\n"
+        if status.message:
+            message += f"💬 *Сообщение:* {status.message}\n"
+    
+    message += f"\n🔄 *Обновлено:* {status.updated_at.strftime('%d.%m.%Y %H:%M')}"
+    
+    keyboard = []
+    if status.status == 'operational':
+        keyboard.append([InlineKeyboardButton("🔴 Объявить инцидент", callback_data="incident_start")])
+    else:
+        keyboard.append([InlineKeyboardButton("✅ Завершить инцидент", callback_data="incident_resolve")])
+    
+    await update.message.reply_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+    )
+
+
+async def sla_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /sla - проверить тикеты с нарушением SLA"""
+    telegram_id = update.effective_user.id
+    
+    try:
+        user = CustomUser.objects.get(telegram_id=telegram_id)
+        if not user.is_staff:
+            await update.message.reply_text("❌ Доступ запрещён")
+            return
+    except CustomUser.DoesNotExist:
+        await update.message.reply_text("❌ Сначала зарегистрируйтесь через /start")
+        return
+    
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    now = timezone.now()
+    
+    # Тикеты без первого ответа с просроченным SLA
+    breached = []
+    open_tickets = SupportTicket.objects.filter(
+        status__in=['new', 'in_progress'],
+        first_response_at__isnull=True
+    )
+    
+    for ticket in open_tickets:
+        if ticket.sla_breached:
+            breached.append(ticket)
+    
+    if not breached:
+        await update.message.reply_text("✅ Нет тикетов с нарушением SLA!")
+        return
+    
+    message = f"⚠️ *Тикеты с нарушением SLA ({len(breached)}):*\n\n"
+    
+    for ticket in breached[:10]:
+        priority_emoji = {
+            'p0': '🔴🔴🔴',
+            'p1': '🔴',
+            'p2': '🟡',
+            'p3': '🟢'
+        }.get(ticket.priority, '⚪')
+        
+        overdue_mins = int((now - ticket.sla_deadline).total_seconds() / 60)
+        
+        message += (
+            f"{priority_emoji} *#{ticket.id}* - {ticket.subject[:30]}\n"
+            f"⏱️ Просрочен на {overdue_mins} мин\n"
+            f"/view\\_{ticket.id}\n\n"
+        )
+    
+    await update.message.reply_text(message, parse_mode='Markdown')
+
+
 def main():
     """Запуск бота"""
     token = os.getenv('SUPPORT_BOT_TOKEN')
@@ -567,6 +784,12 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("reply", reply_ticket))
     
+    # Инцидент-команды
+    application.add_handler(CommandHandler("incident", incident_start))
+    application.add_handler(CommandHandler("resolve", incident_resolve))
+    application.add_handler(CommandHandler("status", system_status_cmd))
+    application.add_handler(CommandHandler("sla", sla_check))
+    
     # Обработчик для /view_<ticket_id>
     application.add_handler(MessageHandler(
         filters.Regex(r'^/view_\d+$'),
@@ -584,6 +807,7 @@ def main():
     
     print("✅ Бот поддержки запущен!")
     print(f"Команды: /start, /tickets, /my, /view_<id>, /reply, /stats, /help")
+    print(f"Инцидент: /incident, /resolve, /status, /sla")
     
     application.run_polling()
 

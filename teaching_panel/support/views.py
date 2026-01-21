@@ -193,3 +193,147 @@ def get_telegram_support_link(request):
 
     url = f"https://t.me/{username}?start={start_param}"
     return Response({'url': url, 'start': start_param})
+
+
+# ============ Статус системы и Health ============
+
+from .models import SystemStatus
+from .serializers import SystemStatusSerializer
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def system_status(request):
+    """Публичный статус системы для /status страницы"""
+    status_obj = SystemStatus.get_current()
+    serializer = SystemStatusSerializer(status_obj)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def health_check(request):
+    """Health check для мониторинга.
+    
+    Проверяет:
+    - База данных доступна
+    - Redis доступен (если используется)
+    """
+    from django.db import connection
+    from django.core.cache import cache
+    import time
+    
+    health = {
+        'status': 'healthy',
+        'timestamp': timezone.now().isoformat(),
+        'checks': {}
+    }
+    
+    # Проверка БД
+    try:
+        start = time.time()
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+        health['checks']['database'] = {
+            'status': 'ok',
+            'latency_ms': round((time.time() - start) * 1000, 2)
+        }
+    except Exception as e:
+        health['status'] = 'unhealthy'
+        health['checks']['database'] = {
+            'status': 'error',
+            'error': str(e)
+        }
+    
+    # Проверка Redis/Cache
+    try:
+        start = time.time()
+        cache.set('health_check', 'ok', 10)
+        result = cache.get('health_check')
+        if result == 'ok':
+            health['checks']['cache'] = {
+                'status': 'ok',
+                'latency_ms': round((time.time() - start) * 1000, 2)
+            }
+        else:
+            health['checks']['cache'] = {'status': 'degraded'}
+    except Exception as e:
+        health['checks']['cache'] = {
+            'status': 'skipped',
+            'note': 'Cache not configured'
+        }
+    
+    # Общий статус системы
+    system = SystemStatus.get_current()
+    health['system_status'] = system.status
+    if system.status != 'operational':
+        health['incident'] = {
+            'title': system.incident_title,
+            'message': system.message,
+            'started_at': system.incident_started_at.isoformat() if system.incident_started_at else None
+        }
+    
+    http_status = 200 if health['status'] == 'healthy' else 503
+    return Response(health, status=http_status)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def support_stats(request):
+    """Статистика поддержки для админов"""
+    if request.user.role not in ['admin', 'teacher']:
+        return Response({'detail': 'Доступ запрещён'}, status=status.HTTP_403_FORBIDDEN)
+    
+    from django.db.models import Count, Avg, F
+    from datetime import timedelta
+    
+    now = timezone.now()
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_ago = now - timedelta(days=7)
+    
+    # Общая статистика
+    open_tickets = SupportTicket.objects.filter(status__in=['new', 'in_progress', 'waiting_user'])
+    
+    stats = {
+        'open_total': open_tickets.count(),
+        'by_priority': {
+            item['priority']: item['count']
+            for item in open_tickets.values('priority').annotate(count=Count('id'))
+        },
+        'by_status': {
+            item['status']: item['count']
+            for item in open_tickets.values('status').annotate(count=Count('id'))
+        },
+        'new_today': SupportTicket.objects.filter(created_at__gte=today).count(),
+        'resolved_today': SupportTicket.objects.filter(resolved_at__gte=today).count(),
+        'sla_breached': open_tickets.filter(
+            first_response_at__isnull=True,
+            created_at__lt=now - timedelta(minutes=120)  # P1 SLA как базовый
+        ).count(),
+    }
+    
+    return Response(stats)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ticket_categories(request):
+    """Список категорий тикетов для формы"""
+    return Response([
+        {'value': k, 'label': v}
+        for k, v in SupportTicket.CATEGORY_CHOICES
+    ])
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ticket_priorities(request):
+    """Список приоритетов с SLA"""
+    return Response([
+        {
+            'value': k,
+            'label': v,
+            'sla_minutes': SupportTicket.PRIORITY_SLA.get(k, 480)
+        }
+        for k, v in SupportTicket.PRIORITY_CHOICES
+    ])

@@ -78,6 +78,7 @@ const EmailVerificationPage = lazy(() => import('./components/EmailVerificationP
 const PasswordResetPage = lazy(() => import('./components/PasswordResetPage'));
 const MockPaymentPage = lazy(() => import('./components/MockPaymentPage'));
 const PaymentResultPage = lazy(() => import('./components/PaymentResultPage'));
+const StatusPage = lazy(() => import('./components/StatusPage'));
 
 // Teacher pages - используем уже созданные импорты
 const TeacherHomePage = lazy(teacherHomeImport);
@@ -185,6 +186,7 @@ const AppRoutes = () => {
           <Route path="/verify-email" element={<EmailVerificationPage />} />
           <Route path="/reset-password/:uid/:token" element={<PasswordResetPage />} />
           <Route path="/mock-payment" element={<MockPaymentPage />} />
+          <Route path="/status" element={<StatusPage />} />
           <Route path="/teacher/subscription/success" element={<Protected allowRoles={['teacher', 'admin']}><PaymentResultPage /></Protected>} />
           
           {/* Teacher */}

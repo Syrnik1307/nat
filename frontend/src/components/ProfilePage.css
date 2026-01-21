@@ -1211,7 +1211,8 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  /* PERF: GPU-ускоренные свойства */
+  transition: transform 0.15s ease, background-color 0.15s ease;
 }
 
 .subscription-error .retry-btn:hover {
@@ -1949,5 +1950,243 @@
 .modal-footer button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* ================================================
+   MOBILE RESPONSIVE
+   ================================================ */
+
+@media (max-width: 1024px) {
+  .profile-content {
+    grid-template-columns: 220px 1fr;
+    gap: 24px;
+  }
+  
+  .profile-card {
+    padding: 24px 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-page {
+    padding: 16px 12px 60px;
+  }
+  
+  .profile-card {
+    padding: 20px 16px;
+    gap: 24px;
+    border-radius: 12px;
+  }
+  
+  .profile-header h1 {
+    font-size: 24px;
+  }
+  
+  .profile-subtitle {
+    font-size: 14px;
+  }
+  
+  .profile-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+    gap: 4px;
+  }
+  
+  .profile-tab {
+    padding: 10px 16px;
+    font-size: 14px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  .profile-content {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .profile-avatar {
+    flex-direction: row;
+    padding: 16px;
+    gap: 16px;
+    align-items: center;
+  }
+  
+  .avatar-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 16px;
+    flex-shrink: 0;
+  }
+  
+  .avatar-placeholder {
+    font-size: 12px;
+  }
+  
+  .profile-form {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .field-group.read-only {
+    grid-column: span 1;
+  }
+  
+  .profile-divider {
+    grid-column: span 1;
+  }
+  
+  .form-actions {
+    grid-column: span 1;
+    flex-direction: column;
+  }
+  
+  .form-actions .primary,
+  .form-actions button.secondary {
+    width: 100%;
+    margin-left: 0;
+  }
+  
+  .password-form {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+  
+  .password-form .field-group:first-child {
+    grid-column: span 1;
+  }
+  
+  .password-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .password-header h3 {
+    font-size: 20px;
+  }
+  
+  .telegram-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .telegram-header h3 {
+    font-size: 20px;
+  }
+  
+  .telegram-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .telegram-card {
+    padding: 16px;
+  }
+  
+  .telegram-section {
+    padding: 16px;
+  }
+  
+  .code-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  /* Modals */
+  .modal-content {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    margin: 16px;
+    max-height: 90vh;
+  }
+  
+  .modal-header {
+    padding: 16px;
+  }
+  
+  .modal-body {
+    padding: 16px;
+  }
+  
+  .modal-footer {
+    padding: 12px 16px 16px;
+    flex-direction: column-reverse;
+  }
+  
+  .modal-footer button {
+    width: 100%;
+  }
+  
+  /* Mute form */
+  .mute-type-selector {
+    flex-direction: column;
+  }
+  
+  .mute-type-selector .type-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-page {
+    padding: 12px 8px 48px;
+  }
+  
+  .profile-card {
+    padding: 16px 12px;
+  }
+  
+  .profile-header h1 {
+    font-size: 20px;
+  }
+  
+  .profile-tab {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  .profile-avatar {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .avatar-preview {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .field-group input {
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+  
+  .field-group label {
+    font-size: 13px;
+  }
+  
+  .stroked-field {
+    padding: 10px 12px;
+    font-size: 14px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .telegram-card h4 {
+    font-size: 16px;
+  }
+  
+  .telegram-actions-row {
+    flex-direction: column;
+  }
+  
+  .telegram-actions-row button,
+  .telegram-card .primary {
+    width: 100%;
+  }
 }
 

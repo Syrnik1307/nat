@@ -1,0 +1,84 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    environment:
+      DEBUG: "1"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,[::1]"
+      DATABASE_URL: "sqlite:////data/db.sqlite3"
+      REDIS_URL: "redis://redis:6379/1"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+      # При необходимости прокиньте SECRET_KEY через .env (рекомендуется)
+    env_file:
+      - .env
+    volumes:
+      - db_data:/data
+      - static_data:/app/teaching_panel/staticfiles
+      - media_data:/app/teaching_panel/media
+    depends_on:
+      - redis
+    expose:
+      - "8000"
+
+  celery:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    command: celery -A teaching_panel worker -l info
+    env_file:
+      - .env
+    environment:
+      DEBUG: "1"
+      DATABASE_URL: "sqlite:////data/db.sqlite3"
+      REDIS_URL: "redis://redis:6379/1"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+    volumes:
+      - db_data:/data
+      - media_data:/app/teaching_panel/media
+    depends_on:
+      - backend
+      - redis
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    command: celery -A teaching_panel beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file:
+      - .env
+    environment:
+      DEBUG: "1"
+      DATABASE_URL: "sqlite:////data/db.sqlite3"
+      REDIS_URL: "redis://redis:6379/1"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+    volumes:
+      - db_data:/data
+    depends_on:
+      - backend
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    volumes:
+      - static_data:/var/www/static
+      - media_data:/var/www/media
+
+volumes:
+  db_data:
+  static_data:
+  media_data:

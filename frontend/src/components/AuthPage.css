@@ -698,6 +698,34 @@
     gap: 0.5rem;
   }
   
+  /* Role cards - одна колонка на узких экранах */
+  .role-selection {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .role-card {
+    padding: 1.5rem 1.25rem;
+    min-height: 140px;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 1.25rem;
+  }
+  
+  .role-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0;
+  }
+  
+  .role-title {
+    font-size: 1.1rem;
+    text-align: left;
+  }
+  
+  .role-description {
+    text-align: left;
+  }
+  
   .role-card {
     padding: 1.25rem 1rem;
   }

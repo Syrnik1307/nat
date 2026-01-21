@@ -4,6 +4,7 @@ import { getLessons, getHomeworkList, getSubmissions, getGroups, joinLesson } fr
 import { getCached, invalidateCache } from '../utils/dataCache';
 import JoinGroupModal from './JoinGroupModal';
 import SupportWidget from './SupportWidget';
+import TelegramReminderToast from './TelegramReminderToast';
 import { Button, StudentDashboardSkeleton } from '../shared/components';
 import '../styles/StudentHome.css';
 
@@ -401,6 +402,9 @@ const StudentHomePage = () => {
       )}
 
       {!showJoinModal && <SupportWidget />}
+      
+      {/* Telegram Reminder Toast */}
+      <TelegramReminderToast />
     </div>
   );
 };

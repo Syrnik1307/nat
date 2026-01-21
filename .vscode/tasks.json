@@ -833,6 +833,84 @@
 			],
 			"isBackground": false,
 			"problemMatcher": []
+		},
+		{
+			"label": "check storage URL",
+			"type": "shell",
+			"command": "ssh tp 'bash /tmp/check_build_url.sh'",
+			"isBackground": false
+		},
+		{
+			"label": "check storage URL v2",
+			"type": "shell",
+			"command": "cmd /c \"scp check_build_url.sh tp:/tmp/ && ssh tp bash /tmp/check_build_url.sh\"",
+			"isBackground": false
+		},
+		{
+			"label": "check build date",
+			"type": "shell",
+			"command": "ssh tp \"ls -la /var/www/teaching_panel/frontend/build/static/js/182*.js 2>&1\"",
+			"isBackground": false
+		},
+		{
+			"label": "rebuild frontend",
+			"type": "shell",
+			"command": "cd frontend && npm run build && echo BUILD DONE",
+			"isBackground": false
+		},
+		{
+			"label": "check URL in build",
+			"type": "shell",
+			"command": "findstr /C:\"storage/gdrive-stats/all\" frontend\\build\\static\\js\\182*.js",
+			"isBackground": false
+		},
+		{
+			"label": "deploy to prod",
+			"type": "shell",
+			"command": "powershell -File deploy_to_prod.ps1 -SSHAlias tp -GitBranch main -SkipMigrations",
+			"isBackground": false
+		},
+		{
+			"label": "verify deploy",
+			"type": "shell",
+			"command": "ssh tp \"ls -la /var/www/teaching_panel/frontend/build/index.html && systemctl is-active teaching_panel\"",
+			"isBackground": false
+		},
+		{
+			"label": "frontend-deploy",
+			"type": "shell",
+			"command": "scp -r frontend/build tp:/var/www/teaching_panel/frontend/build_new && ssh tp 'cd /var/www/teaching_panel/frontend && rm -rf build_old && mv build build_old && mv build_new build && sudo systemctl restart teaching_panel && echo DEPLOY_SUCCESS && ls -la build/index.html'",
+			"isBackground": false
+		},
+		{
+			"label": "frontend-deploy-step1",
+			"type": "shell",
+			"command": "ssh tp 'rm -rf /var/www/teaching_panel/frontend/build_new' && scp -r frontend/build tp:/var/www/teaching_panel/frontend/build_new && echo SCP_DONE",
+			"isBackground": false
+		},
+		{
+			"label": "frontend-deploy-step2",
+			"type": "shell",
+			"command": "ssh tp 'cd /var/www/teaching_panel/frontend && rm -rf build_old && mv build build_old && mv build_new build && sudo systemctl restart teaching_panel && echo DEPLOY_COMPLETE && ls -la build/index.html && systemctl is-active teaching_panel'",
+			"isBackground": false
+		},
+		{
+			"label": "test storage api final",
+			"type": "shell",
+			"command": "scp test_storage_v4.sh tp:/tmp/ && ssh tp \"bash /tmp/test_storage_v4.sh\"",
+			"isBackground": false
+		},
+		{
+			"label": "build frontend",
+			"type": "shell",
+			"command": "cd frontend && npm run build",
+			"isBackground": false
+		},
+		{
+			"label": "verify deploy",
+			"type": "shell",
+			"command": "ssh tp \"systemctl is-active teaching_panel && cd /var/www/teaching_panel && git log --oneline -1 && ls -la frontend/build/index.html\"",
+			"isBackground": false
 		}
 	]
 }

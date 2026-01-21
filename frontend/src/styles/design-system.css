@@ -169,11 +169,12 @@
   --leading-loose: 2;
 
   /* ========================================
-    ⚡ ANIMATIONS
+    ⚡ ANIMATIONS - ОПТИМИЗИРОВАНО ДЛЯ СКОРОСТИ
     ======================================== */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* PERF: Уменьшены длительности для мгновенного отклика */
+  --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 
   /* === Z-INDEX === */
   --z-base: 0;

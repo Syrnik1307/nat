@@ -8,7 +8,7 @@ import ZoomPoolManager from '../modules/core/zoom/ZoomPoolManager';
 import ZoomPoolStats from './ZoomPoolStats';
 import SystemSettings from './SystemSettings';
 import '../styles/AdminPanel.css';
-import './AdminDashboard.css';
+import '../styles/AdminDashboard.css';
 import StorageQuotaModal from '../modules/Admin/StorageQuotaModal';
 import SubscriptionsModal from '../modules/Admin/SubscriptionsModal';
 import StorageStats from './StorageStats';
@@ -305,6 +305,16 @@ const AdminHomePage = () => {
   const [showStorageStats, setShowStorageStats] = useState(false);
   const [showReferrals, setShowReferrals] = useState(false);
   
+  // New dashboard states
+  const [activeTab, setActiveTab] = useState('overview');
+  const [alerts, setAlerts] = useState({ alerts: [], summary: {} });
+  const [churnData, setChurnData] = useState(null);
+  const [healthData, setHealthData] = useState(null);
+  const [activityLog, setActivityLog] = useState([]);
+  const [teachersActivity, setTeachersActivity] = useState({ teachers: [], summary: {} });
+  const [loadingSection, setLoadingSection] = useState('');
+  const [quickActionLoading, setQuickActionLoading] = useState('');
+  
   // Create user form
   const [userRole, setUserRole] = useState('teacher');
   const [userForm, setUserForm] = useState({ email: '', password: '', first_name: '', last_name: '', middle_name: '' });
@@ -330,9 +340,125 @@ const AdminHomePage = () => {
     }
   }, []);
 
+  const loadAlerts = useCallback(async () => {
+    try {
+      setLoadingSection('alerts');
+      const token = getAccessToken();
+      const res = await fetch('/accounts/api/admin/alerts/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if (res.ok) setAlerts(json);
+    } catch (e) {
+      console.error('Alerts load error:', e);
+    } finally {
+      setLoadingSection('');
+    }
+  }, []);
+
+  const loadChurnData = useCallback(async () => {
+    try {
+      setLoadingSection('churn');
+      const token = getAccessToken();
+      const res = await fetch('/accounts/api/admin/churn-retention/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if (res.ok) setChurnData(json);
+    } catch (e) {
+      console.error('Churn load error:', e);
+    } finally {
+      setLoadingSection('');
+    }
+  }, []);
+
+  const loadHealthData = useCallback(async () => {
+    try {
+      setLoadingSection('health');
+      const token = getAccessToken();
+      const res = await fetch('/accounts/api/admin/system-health/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if (res.ok) setHealthData(json);
+    } catch (e) {
+      console.error('Health load error:', e);
+    } finally {
+      setLoadingSection('');
+    }
+  }, []);
+
+  const loadActivityLog = useCallback(async () => {
+    try {
+      setLoadingSection('activity');
+      const token = getAccessToken();
+      const res = await fetch('/accounts/api/admin/activity-log/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if (res.ok) setActivityLog(json.logs || []);
+    } catch (e) {
+      console.error('Activity log load error:', e);
+    } finally {
+      setLoadingSection('');
+    }
+  }, []);
+
+  const loadTeachersActivity = useCallback(async () => {
+    try {
+      setLoadingSection('teachers');
+      const token = getAccessToken();
+      const res = await fetch('/accounts/api/admin/teachers-activity/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const json = await res.json();
+      if (res.ok) setTeachersActivity(json);
+    } catch (e) {
+      console.error('Teachers activity load error:', e);
+    } finally {
+      setLoadingSection('');
+    }
+  }, []);
+
+  const runQuickAction = async (action) => {
+    try {
+      setQuickActionLoading(action);
+      const token = getAccessToken();
+      const res = await fetch('/accounts/api/admin/quick-actions/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ action })
+      });
+      const json = await res.json();
+      if (res.ok) {
+        alert(`Действие выполнено: ${JSON.stringify(json)}`);
+        loadDashboard();
+        loadAlerts();
+      } else {
+        alert(`Ошибка: ${json.error || 'Неизвестная ошибка'}`);
+      }
+    } catch (e) {
+      alert(`Ошибка: ${e.message}`);
+    } finally {
+      setQuickActionLoading('');
+    }
+  };
+
   useEffect(() => {
     loadDashboard();
-  }, [loadDashboard]);
+    loadAlerts();
+    loadHealthData();
+  }, [loadDashboard, loadAlerts, loadHealthData]);
+
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      loadChurnData();
+    } else if (activeTab === 'activity') {
+      loadActivityLog();
+    } else if (activeTab === 'teachers') {
+      loadTeachersActivity();
+    }
+  }, [activeTab, loadChurnData, loadActivityLog, loadTeachersActivity]);
 
   /* ======== CREATE USER ======== */
   const handleCreateUser = async (e) => {
@@ -638,6 +764,185 @@ const AdminHomePage = () => {
             </button>
           </div>
         </section>
+
+        {/* ALERTS SECTION */}
+        {alerts.summary?.total > 0 && (
+          <section className="dashboard-section">
+            <div className="section-header">
+              <h2>Алерты</h2>
+              <span className="alert-badge alert-badge--critical">{alerts.summary?.critical || 0} критичных</span>
+            </div>
+            <div className="alerts-list">
+              {alerts.alerts?.slice(0, 5).map((alert) => (
+                <div key={alert.id} className={`alert-item alert-item--${alert.severity}`}>
+                  <div className="alert-item__icon">
+                    {alert.severity === 'critical' ? Icons.alert : Icons.trendingDown}
+                  </div>
+                  <div className="alert-item__content">
+                    <div className="alert-item__title">{alert.title}</div>
+                    <div className="alert-item__message">{alert.message}</div>
+                  </div>
+                  <div className="alert-item__action">
+                    {alert.action === 'contact' && <button onClick={() => window.open(`mailto:${alert.user_email}`)}>Написать</button>}
+                    {alert.action === 'renew' && <button onClick={() => setShowSubscriptionsModal(true)}>Продлить</button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* SYSTEM HEALTH */}
+        {healthData && (
+          <section className="dashboard-section">
+            <div className="section-header">
+              <h2>Состояние системы</h2>
+              <span className={`health-status health-status--${healthData.status}`}>
+                {healthData.status === 'healthy' ? 'Все работает' : healthData.status === 'degraded' ? 'Есть проблемы' : 'Критично'}
+              </span>
+            </div>
+            <div className="health-checks">
+              {healthData.checks?.map((check, i) => (
+                <div key={i} className={`health-check health-check--${check.status}`}>
+                  <div className="health-check__status">
+                    {check.status === 'ok' ? Icons.check : check.status === 'error' ? Icons.alert : Icons.trendingDown}
+                  </div>
+                  <div className="health-check__name">{check.name}</div>
+                  <div className="health-check__message">{check.message}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* CHURN/RETENTION METRICS */}
+        {churnData && (
+          <section className="dashboard-section">
+            <div className="section-header">
+              <h2>Retention и Churn</h2>
+              <button type="button" className="btn-link" onClick={loadChurnData}>Обновить</button>
+            </div>
+            <div className="kpi-grid kpi-grid--4">
+              <KpiCard
+                label="MRR"
+                value={`${formatRub(churnData.metrics?.mrr || 0)} ₽`}
+                icon={Icons.wallet}
+                color="emerald"
+              />
+              <KpiCard
+                label="LTV"
+                value={`${formatRub(churnData.metrics?.ltv || 0)} ₽`}
+                icon={Icons.trendingUp}
+                color="indigo"
+              />
+              <KpiCard
+                label="ARPU"
+                value={`${formatRub(churnData.metrics?.arpu || 0)} ₽`}
+                icon={Icons.users}
+                color="sky"
+              />
+              <KpiCard
+                label="Churn за месяц"
+                value={formatPercent(churnData.metrics?.monthly_churn_rate || 0)}
+                subValue={`${churnData.metrics?.churned_this_month || 0} ушло`}
+                icon={Icons.trendingDown}
+                color="rose"
+              />
+            </div>
+            {churnData.cohorts?.length > 0 && (
+              <div className="cohorts-table-container">
+                <table className="cohorts-table">
+                  <thead>
+                    <tr>
+                      <th>Когорта</th>
+                      <th className="text-right">Регистрации</th>
+                      <th className="text-right">Оплатили</th>
+                      <th className="text-right">Конверсия</th>
+                      <th className="text-right">Активны</th>
+                      <th className="text-right">Retention</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {churnData.cohorts.map((c, i) => (
+                      <tr key={i}>
+                        <td>{c.month_label || c.month}</td>
+                        <td className="text-right">{c.registered}</td>
+                        <td className="text-right">{c.converted}</td>
+                        <td className="text-right">{formatPercent(c.conversion_rate)}</td>
+                        <td className="text-right">{c.still_active}</td>
+                        <td className="text-right font-medium">{formatPercent(c.retention_rate)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ADMIN QUICK ACTIONS */}
+        <section className="dashboard-section">
+          <div className="section-header">
+            <h2>Автоматические действия</h2>
+          </div>
+          <div className="admin-actions">
+            <button
+              type="button"
+              className="admin-action-btn"
+              onClick={() => runQuickAction('send_expiring_reminders')}
+              disabled={quickActionLoading === 'send_expiring_reminders'}
+            >
+              {Icons.message}
+              <span>Напомнить об истекающих подписках</span>
+            </button>
+            <button
+              type="button"
+              className="admin-action-btn"
+              onClick={() => runQuickAction('cleanup_stuck_zoom')}
+              disabled={quickActionLoading === 'cleanup_stuck_zoom'}
+            >
+              {Icons.refresh}
+              <span>Освободить застрявшие Zoom</span>
+            </button>
+            <button
+              type="button"
+              className="admin-action-btn"
+              onClick={() => runQuickAction('recalculate_storage')}
+              disabled={quickActionLoading === 'recalculate_storage'}
+            >
+              {Icons.hardDrive}
+              <span>Пересчитать хранилище</span>
+            </button>
+          </div>
+        </section>
+
+        {/* ACTIVITY LOG */}
+        {activityLog.length > 0 && (
+          <section className="dashboard-section">
+            <div className="section-header">
+              <h2>Последняя активность</h2>
+              <button type="button" className="btn-link" onClick={loadActivityLog}>Обновить</button>
+            </div>
+            <div className="activity-log">
+              {activityLog.slice(0, 10).map((log, i) => (
+                <div key={i} className="activity-item">
+                  <div className="activity-item__icon">
+                    {log.type === 'registration' && Icons.userPlus}
+                    {log.type === 'payment' && Icons.wallet}
+                    {log.type === 'lesson' && Icons.video}
+                  </div>
+                  <div className="activity-item__content">
+                    <div className="activity-item__message">{log.message}</div>
+                    <div className="activity-item__meta">
+                      <span>{log.user_name}</span>
+                      <span>{new Date(log.timestamp).toLocaleString('ru-RU')}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* ======== MODALS ======== */}

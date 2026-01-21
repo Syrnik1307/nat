@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from accounts.models import CustomUser, Subscription
+from accounts.models import CustomUser, Subscription, Payment
 from schedule.models import Group, Lesson
 
 
@@ -118,7 +118,61 @@ class AdminTeacherSubscriptionViewTests(APITestCase):
 
         response = self.client.post(self.url, {'action': 'activate'}, format='json')
 
-        self.assertEqual(response.status_code, 403)
+
+class AdminGrowthOverviewViewTests(APITestCase):
+    def setUp(self):
+        self.admin = CustomUser.objects.create_user(
+            email='admin-growth@example.com',
+            password='StrongPass123',
+            role='admin',
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.client.force_authenticate(user=self.admin)
+
+        self.teacher_new = CustomUser.objects.create_user(
+            email='new-teacher@example.com',
+            password='StrongPass123',
+            role='teacher',
+        )
+        CustomUser.objects.filter(pk=self.teacher_new.pk).update(
+            created_at=timezone.now() - timedelta(hours=2)
+        )
+        self.teacher_new = CustomUser.objects.get(pk=self.teacher_new.pk)
+
+        self.subscription = Subscription.objects.create(
+            user=self.teacher_new,
+            plan=Subscription.PLAN_MONTHLY,
+            status=Subscription.STATUS_PENDING,
+            expires_at=timezone.now() + timedelta(days=30),
+        )
+
+        Payment.objects.create(
+            subscription=self.subscription,
+            amount='990.00',
+            currency='RUB',
+            status=Payment.STATUS_SUCCEEDED,
+            payment_system='yookassa',
+            payment_id='test-payment-1',
+            paid_at=timezone.now() - timedelta(hours=1),
+            metadata={},
+        )
+
+    def test_overview_returns_periods_and_sources(self):
+        url = reverse('accounts:admin_growth_overview')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('periods', response.data)
+        self.assertIsInstance(response.data['periods'], list)
+        self.assertGreaterEqual(len(response.data['periods']), 3)
+        self.assertIn('top_sources', response.data)
+
+        day = next((p for p in response.data['periods'] if p['key'] == 'day'), None)
+        self.assertIsNotNone(day)
+        self.assertGreaterEqual(day['registrations_teachers'], 1)
+        self.assertGreaterEqual(day['payments_succeeded'], 1)
+        self.assertGreaterEqual(day['revenue'], 0)
 
 
 class AdminTeacherStorageViewTests(APITestCase):

@@ -22,12 +22,12 @@
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-bounce: cubic-bezier(0.68, -0.2, 0.32, 1.2);
   
-  /* Duration tokens - не слишком быстро, не слишком медленно */
-  --duration-instant: 100ms;   /* Мгновенные: hover подсветка */
-  --duration-fast: 180ms;      /* Быстрые: клики, фокус */
-  --duration-normal: 280ms;    /* Нормальные: переключения */
-  --duration-slow: 400ms;      /* Медленные: модалки, страницы */
-  --duration-gentle: 550ms;    /* Мягкие: сложные анимации */
+  /* Duration tokens - ОПТИМИЗИРОВАНО ДЛЯ МГНОВЕННОГО ОТКЛИКА */
+  --duration-instant: 80ms;    /* Мгновенные: hover подсветка */
+  --duration-fast: 120ms;      /* Быстрые: клики, фокус */
+  --duration-normal: 180ms;    /* Нормальные: переключения */
+  --duration-slow: 250ms;      /* Медленные: модалки, страницы */
+  --duration-gentle: 350ms;    /* Мягкие: сложные анимации */
   
   /* Готовые transition комбинации */
   --transition-hover: var(--duration-fast) var(--ease-smooth);

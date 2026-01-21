@@ -1,0 +1,27 @@
+.git
+.gitignore
+.github
+.vscode
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+.venv/
+venv/
+ENV/
+
+# Node
+frontend/node_modules/
+frontend/build/
+
+# Local/ops artifacts
+*.log
+*.tar.gz
+build.tar.gz
+
+# Docs & misc can stay, but keep images out if large
+*.mp3
+*.mp4
