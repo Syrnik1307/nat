@@ -340,15 +340,26 @@ const TeacherHomePage = () => {
     setStarting(true);
     setStartError(null);
     try {
+      // Преобразуем 'zoom' → 'zoom_pool' для бэкенда
+      const providerForBackend = selectedPlatform === 'zoom' ? 'zoom_pool' : selectedPlatform;
+      
       const res = await startQuickLesson({
         record_lesson: recordLesson,
         group_id: selectedGroupId || undefined,
+        provider: providerForBackend, // Передаём выбранную платформу
       });
-      if (res.data?.zoom_start_url) {
-        window.open(res.data.zoom_start_url, '_blank');
-        setShowStartModal(false);
-      } else if (res.data?.start_url) {
-        window.open(res.data.start_url, '_blank');
+      
+      // Открываем правильную ссылку в зависимости от платформы
+      const responseProvider = res.data?.provider;
+      let startUrl;
+      if (responseProvider === 'google_meet') {
+        startUrl = res.data?.meet_link || res.data?.start_url;
+      } else {
+        startUrl = res.data?.zoom_start_url || res.data?.start_url;
+      }
+      
+      if (startUrl) {
+        window.open(startUrl, '_blank');
         setShowStartModal(false);
       }
     } catch (err) {

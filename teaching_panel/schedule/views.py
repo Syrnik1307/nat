@@ -1837,6 +1837,27 @@ class LessonViewSet(viewsets.ModelViewSet):
             notes='Создано кнопкой "Быстрый урок"'
         )
 
+        # Определяем провайдера (по умолчанию zoom_pool для backward compatibility)
+        provider = request.data.get('provider', 'zoom_pool')
+        if provider not in ('zoom_pool', 'zoom_personal', 'google_meet'):
+            provider = 'zoom_pool'
+
+        # ========== Google Meet ==========
+        if provider == 'google_meet':
+            meet_response = self._start_via_google_meet(lesson, user, request)
+            if meet_response.status_code >= 400:
+                lesson.delete()
+                return meet_response
+            # Добавляем данные урока к ответу
+            meet_data = meet_response.data.copy() if hasattr(meet_response, 'data') else {}
+            meet_data.update({
+                'lesson_id': lesson.id,
+                'title': lesson.title,
+                'group_name': group.name,
+            })
+            return Response(meet_data, status=status.HTTP_201_CREATED)
+
+        # ========== Zoom (default) ==========
         payload, error_response = self._start_zoom_via_pool(lesson, user, request)
         if error_response:
             lesson.delete()
