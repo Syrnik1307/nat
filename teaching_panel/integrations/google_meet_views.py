@@ -9,11 +9,12 @@ import secrets
 from urllib.parse import urlencode
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.shortcuts import redirect
 from django.http import HttpResponseRedirect
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -79,6 +80,7 @@ class GoogleMeetSaveCredentialsView(APIView):
             
             # Store state in session for validation in callback
             request.session['google_meet_oauth_state'] = state
+            request.session['google_meet_oauth_user_id'] = request.user.id
             request.session.modified = True
             
             auth_url = service.get_auth_url(state=state)
@@ -131,6 +133,7 @@ class GoogleMeetAuthURLView(APIView):
             
             # Store state in session for validation in callback
             request.session['google_meet_oauth_state'] = state
+            request.session['google_meet_oauth_user_id'] = request.user.id
             request.session.modified = True
             
             auth_url = service.get_auth_url(state=state)
@@ -160,7 +163,9 @@ class GoogleMeetCallbackView(APIView):
     OAuth2 callback handler. Google redirects here after user consent.
     Exchanges authorization code for tokens and stores them.
     """
-    permission_classes = [IsAuthenticated]
+    # Google redirects the browser here without JWT headers.
+    # We bind the callback to the user via server-side session.
+    permission_classes = [AllowAny]
     
     def get(self, request):
         # Get query parameters
@@ -185,20 +190,32 @@ class GoogleMeetCallbackView(APIView):
         
         # Validate state (CSRF protection)
         stored_state = request.session.get('google_meet_oauth_state')
-        if state and stored_state and state != stored_state:
+        if stored_state and state != stored_state:
             logger.warning(f"State mismatch: expected {stored_state}, got {state}")
             return HttpResponseRedirect(f"{error_redirect}&error=state_mismatch")
+
+        user_id = request.session.get('google_meet_oauth_user_id')
+        if not user_id:
+            logger.warning("No user id in session for Google Meet callback")
+            return HttpResponseRedirect(f"{error_redirect}&error=no_session")
+
+        User = get_user_model()
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            logger.warning(f"User not found for Google Meet callback: {user_id}")
+            return HttpResponseRedirect(f"{error_redirect}&error=user_not_found")
         
         # Clear stored state
-        if 'google_meet_oauth_state' in request.session:
-            del request.session['google_meet_oauth_state']
-            request.session.modified = True
+        for key in ('google_meet_oauth_state', 'google_meet_oauth_user_id'):
+            if key in request.session:
+                del request.session[key]
+                request.session.modified = True
         
         try:
             # Exchange code for tokens and connect
-            result = connect_google_meet(request.user, code)
+            connect_google_meet(user, code)
             
-            logger.info(f"Google Meet connected for user {request.user.id}")
+            logger.info(f"Google Meet connected for user {user.id}")
             return HttpResponseRedirect(success_redirect)
             
         except GoogleMeetError as e:
