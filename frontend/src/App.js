@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState, useMemo, memo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import './App.css';
 import { AuthProvider, useAuth, Protected } from './auth';
@@ -6,21 +6,18 @@ import { NotificationProvider } from './shared/context/NotificationContext';
 import { AuthCheckingSkeleton } from './shared/components';
 
 // Навбары загружаются синхронно - они нужны сразу
-import NavBarNew from './components/NavBarNew';
-import StudentNavBar from './components/StudentNavBar';
+// Мемоизируем их чтобы избежать ререндеров при смене страницы
+import NavBarNewBase from './components/NavBarNew';
+import StudentNavBarBase from './components/StudentNavBar';
 
-// Минимальный fallback - показываем предыдущий контент пока грузится новый
-// Используем fade-in анимацию только если загрузка длится > 100ms
+const NavBarNew = memo(NavBarNewBase);
+const StudentNavBar = memo(StudentNavBarBase);
+
+// Минимальный fallback - почти мгновенный skeleton
+// Показываем прелоадер сразу, но с лёгким fade-in для плавности
 const PageLoader = () => {
-  const [showSpinner, setShowSpinner] = useState(false);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => setShowSpinner(true), 150);
-    return () => clearTimeout(timer);
-  }, []);
-  
   return (
-    <div className={`page-loader-wrapper ${showSpinner ? 'visible' : ''}`}>
+    <div className="page-loader-wrapper visible">
       <div className="page-loader-content">
         <div className="page-loader-spinner" />
       </div>
@@ -31,11 +28,12 @@ const PageLoader = () => {
           align-items: center;
           min-height: 40vh;
           background: transparent;
-          opacity: 0;
-          transition: opacity 0.15s ease-out;
-        }
-        .page-loader-wrapper.visible {
           opacity: 1;
+          animation: pageLoaderFadeIn 0.1s ease-out;
+        }
+        @keyframes pageLoaderFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
         .page-loader-content {
           display: flex;
@@ -49,7 +47,7 @@ const PageLoader = () => {
           border: 2px solid #e2e8f0;
           border-top-color: #4F46E5;
           border-radius: 50%;
-          animation: pageLoaderSpin 0.7s linear infinite;
+          animation: pageLoaderSpin 0.6s linear infinite;
         }
         @keyframes pageLoaderSpin { 
           to { transform: rotate(360deg); } 
@@ -59,6 +57,20 @@ const PageLoader = () => {
   );
 };
 
+// === PRELOADING: Загружаем основные страницы сразу после первого рендера ===
+// Это критически важно для быстрой навигации между страницами
+
+// Lazy imports с prefetch - компоненты начинают грузиться в фоне
+const teacherHomeImport = () => import('./components/TeacherHomePage');
+const studentHomeImport = () => import('./components/StudentHomePage');
+const analyticsImport = () => import('./components/AnalyticsPage');
+const profileImport = () => import('./components/ProfilePage');
+const groupsManageImport = () => import('./components/GroupsManage');
+const homeworkPageImport = () => import('./modules/homework-analytics/components/HomeworkPage');
+const recordingsImport = () => import('./modules/Recordings/RecordingsPage');
+const teacherRecordingsImport = () => import('./modules/Recordings/TeacherRecordingsPage');
+const studentDashboardImport = () => import('./components/StudentDashboard');
+
 // Lazy-loaded компоненты - грузятся по требованию
 const AuthPage = lazy(() => import('./components/AuthPage'));
 const RegisterPage = lazy(() => import('./components/RegisterPage'));
@@ -67,25 +79,25 @@ const PasswordResetPage = lazy(() => import('./components/PasswordResetPage'));
 const MockPaymentPage = lazy(() => import('./components/MockPaymentPage'));
 const PaymentResultPage = lazy(() => import('./components/PaymentResultPage'));
 
-// Teacher pages
-const TeacherHomePage = lazy(() => import('./components/TeacherHomePage'));
+// Teacher pages - используем уже созданные импорты
+const TeacherHomePage = lazy(teacherHomeImport);
 const AttendanceLogPage = lazy(() => import('./components/AttendanceLogPage'));
-const TeacherRecordingsPage = lazy(() => import('./modules/Recordings/TeacherRecordingsPage'));
+const TeacherRecordingsPage = lazy(teacherRecordingsImport);
 const TeacherMaterialsPage = lazy(() => import('./modules/Recordings/TeacherMaterialsPage'));
-const AnalyticsPage = lazy(() => import('./components/AnalyticsPage'));
+const AnalyticsPage = lazy(analyticsImport);
 const HomeworkManage = lazy(() => import('./components/HomeworkManage'));
-const HomeworkPage = lazy(() => import('./modules/homework-analytics/components/HomeworkPage'));
+const HomeworkPage = lazy(homeworkPageImport);
 const SubmissionsList = lazy(() => import('./modules/homework-analytics/components/teacher/SubmissionsList'));
 const SubmissionReview = lazy(() => import('./modules/homework-analytics/components/teacher/SubmissionReview'));
 const RecurringLessonsManage = lazy(() => import('./components/RecurringLessonsManage'));
-const GroupsManage = lazy(() => import('./components/GroupsManage'));
+const GroupsManage = lazy(groupsManageImport);
 const StudentAIReports = lazy(() => import('./components/StudentAIReports'));
 const CalendarIntegrationPage = lazy(() => import('./components/CalendarIntegrationSimple'));
 
-// Student pages
-const StudentHomePage = lazy(() => import('./components/StudentHomePage'));
-const StudentDashboard = lazy(() => import('./components/StudentDashboard'));
-const RecordingsPage = lazy(() => import('./modules/Recordings/RecordingsPage'));
+// Student pages - используем уже созданные импорты
+const StudentHomePage = lazy(studentHomeImport);
+const StudentDashboard = lazy(studentDashboardImport);
+const RecordingsPage = lazy(recordingsImport);
 const StudentMaterialsPage = lazy(() => import('./modules/Recordings/StudentMaterialsPage'));
 const HomeworkList = lazy(() => import('./components/HomeworkList'));
 const HomeworkTake = lazy(() => import('./modules/homework-analytics/components/homework/HomeworkTake'));
@@ -94,10 +106,36 @@ const HomeworkAnswersView = lazy(() => import('./modules/homework-analytics/comp
 // Admin pages
 const AdminHomePage = lazy(() => import('./components/AdminHomePage'));
 
-// Common pages
+// Common pages - используем уже созданный импорт
 const Calendar = lazy(() => import('./modules/core/calendar/Calendar'));
-const ProfilePage = lazy(() => import('./components/ProfilePage'));
+const ProfilePage = lazy(profileImport);
 const ChatPage = lazy(() => import('./components/ChatPage'));
+
+// Preload основных страниц после загрузки приложения
+const preloadPages = (role) => {
+  // Используем requestIdleCallback для загрузки в фоне без блокировки UI
+  const scheduleLoad = (fn) => {
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => fn(), { timeout: 3000 });
+    } else {
+      setTimeout(fn, 100);
+    }
+  };
+  
+  if (role === 'teacher') {
+    scheduleLoad(teacherHomeImport);
+    scheduleLoad(analyticsImport);
+    scheduleLoad(groupsManageImport);
+    scheduleLoad(homeworkPageImport);
+    scheduleLoad(profileImport);
+    scheduleLoad(teacherRecordingsImport);
+  } else if (role === 'student') {
+    scheduleLoad(studentHomeImport);
+    scheduleLoad(studentDashboardImport);
+    scheduleLoad(recordingsImport);
+    scheduleLoad(profileImport);
+  }
+};
 
 const RoleRouter = () => {
   const { accessTokenValid, role, loading } = useAuth();
@@ -117,6 +155,13 @@ const AppRoutes = () => {
   const isStudentView = accessTokenValid && role === 'student';
   const shouldShowStudentNav = baseNavVisible && isStudentView;
   const shouldShowNav = baseNavVisible && !isStudentView;
+
+  // Preload страниц после авторизации
+  useEffect(() => {
+    if (accessTokenValid && role) {
+      preloadPages(role);
+    }
+  }, [accessTokenValid, role]);
 
   const RootRedirect = () => {
     const { accessTokenValid, role, loading } = useAuth();
