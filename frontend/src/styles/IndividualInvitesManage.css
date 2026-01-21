@@ -136,6 +136,40 @@
     flex-direction: column;
     text-align: center;
   }
+
+  /* Ensure buttons in individual invites cards are mobile-friendly */
+  .individual-invites-manage .gm-group-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .individual-invites-manage .gm-group-card-actions .gm-btn-primary,
+  .individual-invites-manage .gm-group-card-actions .gm-btn-surface,
+  .individual-invites-manage .gm-group-card-actions .gm-btn-danger {
+    min-height: 44px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.9rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .individual-invites-manage .gm-group-card-actions .gm-btn-danger {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .individual-invites-manage .gm-group-card-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .individual-invites-manage .gm-group-card-actions .gm-btn-primary,
+  .individual-invites-manage .gm-group-card-actions .gm-btn-surface,
+  .individual-invites-manage .gm-group-card-actions .gm-btn-danger {
+    min-height: 48px;
+    font-size: 0.95rem;
+  }
 }
 
 /* Mini student row in card */

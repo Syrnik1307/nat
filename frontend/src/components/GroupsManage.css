@@ -216,6 +216,15 @@
   background: var(--error-600);
 }
 
+/* Disabled states for buttons */
+.gm-btn-primary:disabled,
+.gm-btn-surface:disabled,
+.gm-btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .gm-btn-block {
   width: 100%;
 }
@@ -524,6 +533,28 @@
     flex-direction: column;
     gap: 0.5rem;
   }
+
+  /* Mobile-friendly buttons - grid layout for touch targets */
+  .gm-group-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .gm-group-card-actions .gm-btn-primary,
+  .gm-group-card-actions .gm-btn-surface,
+  .gm-group-card-actions .gm-btn-danger {
+    min-height: 44px; /* Apple's recommended touch target */
+    padding: 0.6rem 0.75rem;
+    font-size: 0.9rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Danger button spans full width at bottom */
+  .gm-group-card-actions .gm-btn-danger {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 480px) {
@@ -543,6 +574,18 @@
   .gm-group-actions .gm-action-btn {
     padding: 0.5rem 0.75rem;
     font-size: 0.85rem;
+  }
+
+  /* Extra small screens - stack all buttons vertically */
+  .gm-group-card-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .gm-group-card-actions .gm-btn-primary,
+  .gm-group-card-actions .gm-btn-surface,
+  .gm-group-card-actions .gm-btn-danger {
+    min-height: 48px; /* Larger touch targets for small screens */
+    font-size: 0.95rem;
   }
 }
 
