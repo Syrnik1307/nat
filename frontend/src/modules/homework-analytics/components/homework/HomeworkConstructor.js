@@ -505,7 +505,15 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
     template.id = `q-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     template.order = 0; // Новый вопрос добавляется в начало UI
     // Добавляем в начало массива для удобства редактирования (не нужно скроллить вверх)
-    setQuestions((previous) => [template, ...previous]);
+    setQuestions((previous) => {
+      const newQuestions = [template, ...previous];
+      // Автообновление суммы баллов
+      const newMaxScore = computeSuggestedMaxScore(newQuestions);
+      if (newMaxScore > 0) {
+        setAssignmentMeta((prevMeta) => ({ ...prevMeta, maxScore: newMaxScore }));
+      }
+      return newQuestions;
+    });
     setShowTypeMenu(false);
   };
 
@@ -530,16 +538,22 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
 
   const handleQuestionPointsChange = (index, value) => {
     const numeric = Number(value);
-    setQuestions((previous) =>
-      previous.map((question, questionIndex) =>
+    setQuestions((previous) => {
+      const updated = previous.map((question, questionIndex) =>
         questionIndex === index
           ? {
               ...question,
               points: Number.isFinite(numeric) ? numeric : question.points,
             }
           : question
-      )
-    );
+      );
+      // Автообновление суммы баллов
+      const newMaxScore = computeSuggestedMaxScore(updated);
+      if (newMaxScore > 0) {
+        setAssignmentMeta((prevMeta) => ({ ...prevMeta, maxScore: newMaxScore }));
+      }
+      return updated;
+    });
   };
 
   const handleRemoveQuestion = (index) => {
@@ -548,11 +562,15 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
       message: 'После удаления восстановить вопрос будет нельзя.',
       confirmLabel: 'Удалить',
       onConfirm: () => {
-        setQuestions((previous) =>
-          previous
+        setQuestions((previous) => {
+          const filtered = previous
             .filter((_, questionIndex) => questionIndex !== index)
-            .map((question, order) => ({ ...question, order }))
-        );
+            .map((question, order) => ({ ...question, order }));
+          // Автообновление суммы баллов
+          const newMaxScore = computeSuggestedMaxScore(filtered);
+          setAssignmentMeta((prevMeta) => ({ ...prevMeta, maxScore: newMaxScore > 0 ? newMaxScore : 100 }));
+          return filtered;
+        });
       },
     });
   };
@@ -572,7 +590,13 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
     setQuestions((previous) => {
       const next = [...previous];
       next.splice(index + 1, 0, duplicate);
-      return next.map((question, order) => ({ ...question, order }));
+      const reordered = next.map((question, order) => ({ ...question, order }));
+      // Автообновление суммы баллов
+      const newMaxScore = computeSuggestedMaxScore(reordered);
+      if (newMaxScore > 0) {
+        setAssignmentMeta((prevMeta) => ({ ...prevMeta, maxScore: newMaxScore }));
+      }
+      return reordered;
     });
   };
 
@@ -627,7 +651,10 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
 
   const handlePublish = async () => {
     // Валидация перед публикацией
-    if (!assignmentMeta.title || !assignmentMeta.groupId || questions.length === 0) {
+    const hasGroupAssignments = assignmentMeta.groupAssignments && assignmentMeta.groupAssignments.length > 0;
+    const hasLegacyGroupId = !!assignmentMeta.groupId;
+    
+    if (!assignmentMeta.title || (!hasGroupAssignments && !hasLegacyGroupId) || questions.length === 0) {
       setFeedback({
         status: 'error',
         message: 'Заполните название, выберите группу и добавьте хотя бы один вопрос',
