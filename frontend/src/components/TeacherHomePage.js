@@ -221,6 +221,7 @@ const TeacherHomePage = () => {
   const [showPlatformModal, setShowPlatformModal] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState('zoom'); // 'zoom' | 'google_meet'
   const [platformModalContext, setPlatformModalContext] = useState(null); // 'quick' | 'scheduled'
+  const [quickLessonTitle, setQuickLessonTitle] = useState(''); // Название быстрого урока
   
   // State for editing lesson topic inline
   const [editingTopicLessonId, setEditingTopicLessonId] = useState(null);
@@ -349,6 +350,7 @@ const TeacherHomePage = () => {
         record_lesson: recordForBackend,
         group_id: selectedGroupId || undefined,
         provider: providerForBackend, // Передаём выбранную платформу
+        title: quickLessonTitle.trim() || undefined, // Передаём название урока
       });
       
       // Открываем правильную ссылку в зависимости от платформы
@@ -592,6 +594,21 @@ const TeacherHomePage = () => {
           <div className="platform-modal">
             <h3 className="platform-modal-title">Выберите платформу</h3>
             <p className="platform-modal-subtitle">Где вы хотите провести урок?</p>
+            
+            {/* Lesson Title Input - only for quick start */}
+            {platformModalContext === 'quick' && (
+              <div className="platform-modal-field">
+                <label className="platform-modal-label">Название урока</label>
+                <input
+                  type="text"
+                  className="platform-modal-input"
+                  value={quickLessonTitle}
+                  onChange={(e) => setQuickLessonTitle(e.target.value)}
+                  placeholder="Например: Алгебра — квадратные уравнения"
+                />
+                <span className="platform-modal-hint">Это название будет отображаться в записи урока у учеников</span>
+              </div>
+            )}
             
             <div className="platform-options">
               <button
@@ -2673,6 +2690,47 @@ const globalStyles = `
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+  }
+
+  /* Lesson Title Input in Platform Modal */
+  .platform-modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .platform-modal-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  .platform-modal-input {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    font-family: var(--font-family);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: #fff;
+    color: var(--color-text-primary);
+    transition: all 0.2s ease;
+    outline: none;
+  }
+
+  .platform-modal-input:focus {
+    border-color: var(--indigo-500);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+
+  .platform-modal-input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .platform-modal-hint {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    line-height: 1.4;
   }
 
   .platform-modal-actions {

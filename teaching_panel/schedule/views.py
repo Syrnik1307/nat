@@ -2443,10 +2443,14 @@ def zoom_webhook_receiver(request):
                 if not download_url:
                     continue
 
+                # Используем название урока для записи
+                recording_title = lesson.title or (lesson.group.name if lesson.group else 'Урок')
+
                 rec_obj, created = LessonRecording.objects.get_or_create(
                     lesson=lesson,
                     zoom_recording_id=zoom_rec_id,
                     defaults={
+                        'title': recording_title,
                         'download_url': download_url,
                         'play_url': rec_file.get('play_url', '') or '',
                         'file_size': rec_file.get('file_size', 0) or 0,
