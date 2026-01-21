@@ -78,10 +78,12 @@ const normalizeUrl = (url) => {
     return url;
   }
   
-  if (url.startsWith('/media')) {
+  // Абсолютные пути на нашем домене (включая /api/... и /media/...)
+  if (url.startsWith('/')) {
     return url;
   }
   
+  // Относительные пути без слэша добавляем /media/
   return `/media/${url}`;
 };
 
