@@ -151,7 +151,16 @@ const StartLessonButton = ({ lessonId, lesson, onSuccess }) => {
       });
       
       // Открываем ссылку в зависимости от платформы
-      const startUrl = response.data?.zoom_start_url || response.data?.meet_link || response.data?.start_url;
+      // ВАЖНО: Используем provider из ответа бэкенда, чтобы открыть правильную ссылку
+      const responseProvider = response.data?.provider;
+      let startUrl;
+      if (responseProvider === 'google_meet') {
+        // Google Meet - используем meet_link или start_url
+        startUrl = response.data?.meet_link || response.data?.start_url;
+      } else {
+        // Zoom - используем zoom_start_url
+        startUrl = response.data?.zoom_start_url || response.data?.start_url;
+      }
       if (startUrl) {
         window.open(startUrl, '_blank', 'noopener,noreferrer');
       }
