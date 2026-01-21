@@ -452,9 +452,10 @@ export const uploadHomeworkDocument = async (file, onProgress) => {
  * (отдельный эндпоинт от учительского upload-file)
  * 
  * @param {File} file - Файл для загрузки
+ * @param {string|number} homeworkId - ID домашки (для определения учителя/папки на GDrive)
  * @param {Function} onProgress - Callback для прогресса загрузки (0-100)
  */
-export const uploadStudentAnswerFile = async (file, onProgress) => {
+export const uploadStudentAnswerFile = async (file, homeworkId, onProgress) => {
   let fileToUpload = file;
   
   // Быстрое сжатие только для больших изображений (>2MB)
@@ -469,6 +470,9 @@ export const uploadStudentAnswerFile = async (file, onProgress) => {
   
   const formData = new FormData();
   formData.append('file', fileToUpload);
+  if (homeworkId) {
+    formData.append('homework_id', homeworkId);
+  }
   
   return apiClient.post('homework/upload-student-answer/', formData, {
     headers: { 'Content-Type': undefined },

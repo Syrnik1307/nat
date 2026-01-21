@@ -422,11 +422,12 @@ class HomeworkViewSet(viewsets.ModelViewSet):
         Логика аналогична upload_file для учителей:
         1. Сохраняем файл локально (быстро)
         2. Возвращаем прокси-URL сразу
-        3. Cron job migrate_homework_files мигрирует на Google Drive
+        3. Cron job migrate_homework_files мигрирует на Google Drive в папку учителя
         
         POST /api/homework/upload-student-answer/
         Body (multipart/form-data):
             - file: файл (изображение или документ)
+            - homework_id: ID домашки (для определения учителя)
         
         Returns:
             {
@@ -459,6 +460,16 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                 {'detail': 'Файл не найден в запросе'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Получаем homework_id для определения учителя
+        homework_id = request.data.get('homework_id')
+        teacher = None
+        if homework_id:
+            try:
+                homework = Homework.objects.select_related('teacher').get(id=homework_id)
+                teacher = homework.teacher
+            except Homework.DoesNotExist:
+                logger.warning(f"Homework {homework_id} not found for student upload")
         
         # Валидация MIME типа - разрешаем изображения и документы
         allowed_types = [
@@ -511,10 +522,10 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                     destination.write(chunk)
             
             # Создаём запись в БД
-            # uploaded_by хранит кто загрузил (студент), teacher=None для студентов
+            # teacher берётся из домашки - файл мигрирует в папку этого учителя
             hw_file = HomeworkFile.objects.create(
                 id=file_id,
-                teacher=None,  # Для студентов teacher=None
+                teacher=teacher,  # Учитель из домашки (для миграции в его папку на GDrive)
                 original_name=uploaded_file.name,
                 mime_type=mime_type,
                 size=uploaded_file.size,
@@ -524,13 +535,14 @@ class HomeworkViewSet(viewsets.ModelViewSet):
             
             proxy_url = hw_file.get_proxy_url()
             
+            teacher_info = f" (teacher: {teacher.email})" if teacher else ""
             logger.info(
-                f"Student {request.user.email} uploaded answer file locally: "
+                f"Student {request.user.email} uploaded answer file locally{teacher_info}: "
                 f"{uploaded_file.name} -> {file_id} ({uploaded_file.size} bytes)"
             )
             
             # Миграция на GDrive происходит через cron job migrate_homework_files
-            # Это позволяет быстро вернуть ответ студенту
+            # Файл попадёт в папку учителя Uploads/
             
             return Response({
                 'status': 'success',

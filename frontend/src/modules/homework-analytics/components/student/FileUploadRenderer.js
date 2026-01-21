@@ -9,7 +9,7 @@ import './FileUploadRenderer.css';
  * - Drag & Drop
  * - Вставку из буфера обмена (Ctrl+V)
  */
-const FileUploadRenderer = ({ question, answer, onChange, disabled = false }) => {
+const FileUploadRenderer = ({ question, answer, onChange, disabled = false, homeworkId = null }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState(null);
@@ -82,7 +82,7 @@ const FileUploadRenderer = ({ question, answer, onChange, disabled = false }) =>
     setError(null);
 
     try {
-      const response = await uploadStudentAnswerFile(file, (percent) => {
+      const response = await uploadStudentAnswerFile(file, homeworkId, (percent) => {
         setUploadProgress(percent);
       });
 

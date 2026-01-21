@@ -375,6 +375,7 @@ const HomeworkTake = () => {
                   }
                 }}
                 disabled={isLocked}
+                homeworkId={id}
               />
 
               <div className="ht-controls">

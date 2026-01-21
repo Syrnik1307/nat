@@ -3,7 +3,7 @@ import MediaPreview from '../shared/MediaPreview';
 import CodeQuestionRenderer from './CodeQuestionRenderer';
 import FileUploadRenderer from './FileUploadRenderer';
 
-const QuestionRenderer = ({ question, answer, onChange, disabled = false }) => {
+const QuestionRenderer = ({ question, answer, onChange, disabled = false, homeworkId = null }) => {
   if (!question) return null;
 
   const { question_type: type, config = {} } = question;
@@ -298,6 +298,7 @@ const QuestionRenderer = ({ question, answer, onChange, disabled = false }) => {
         answer={answer}
         onChange={onChange}
         disabled={disabled}
+        homeworkId={homeworkId}
       />
     );
   }
