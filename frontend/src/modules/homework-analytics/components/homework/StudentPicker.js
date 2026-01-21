@@ -306,6 +306,16 @@ const StudentPicker = ({
                   onChange={(e) => setStudentModalSearch(e.target.value)}
                   disabled={disabled}
                 />
+                {studentModalSearch && (
+                  <button 
+                    type="button" 
+                    className="sp-modal-search-clear"
+                    onClick={() => setStudentModalSearch('')}
+                    disabled={disabled}
+                  >
+                    <IconX size={14} />
+                  </button>
+                )}
               </div>
               <button type="button" className="sp-modal-done" onClick={closeStudentModal} disabled={disabled}>
                 Готово
@@ -354,6 +364,16 @@ const StudentPicker = ({
           onChange={(e) => setSearchQuery(e.target.value)}
           disabled={disabled}
         />
+        {searchQuery && (
+          <button 
+            type="button" 
+            className="student-picker-search-clear"
+            onClick={() => setSearchQuery('')}
+            disabled={disabled}
+          >
+            <IconX size={14} />
+          </button>
+        )}
       </div>
 
       {/* Статистика */}

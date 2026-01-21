@@ -70,6 +70,28 @@
   color: var(--color-text-tertiary, #8c8c8c);
 }
 
+.student-picker-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--color-text-tertiary, #8c8c8c);
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  flex-shrink: 0;
+}
+
+.student-picker-search-clear:hover {
+  background: var(--color-surface-secondary, #f5f5f5);
+  border-color: var(--color-border-hover, #d0d0d0);
+  color: var(--color-text-primary, #1a1a1a);
+}
+
 /* Статистика */
 .student-picker-stats {
   display: flex;
@@ -553,6 +575,27 @@
   font-size: 14px;
   width: 100%;
   background: transparent;
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+.sp-modal-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: var(--color-surface-secondary, #f5f5f5);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--color-text-tertiary, #8c8c8c);
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  flex-shrink: 0;
+}
+
+.sp-modal-search-clear:hover {
+  background: var(--color-border, #e0e0e0);
   color: var(--color-text-primary, #1a1a1a);
 }
 
