@@ -992,38 +992,47 @@ const TeacherHomePage = () => {
           </div>
 
           {/* Students & Groups Section */}
-          <div className="section-card">
+          <div className="section-card students-section">
             <div className="section-header">
               <div className="section-title-group">
                 <div className="section-icon-wrapper">
                   <IconUsers size={18} />
                 </div>
                 <h3 className="section-title">Ученики</h3>
+                <span className="section-counter">{groups.length} групп</span>
               </div>
               <Link to="/groups/manage" className="section-link">
                 Управление
                 <IconChevronRight size={16} />
               </Link>
             </div>
-            <div className="groups-grid">
+            <div className="students-grid">
               {groups.length > 0 ? (
                 groups.map((group) => {
                   const colorIndex = getGroupColorIndex(group.name);
                   const cleanName = cleanGroupName(group.name);
+                  const studentCount = group.students?.length || 0;
                   return (
                     <Link
                       key={group.id}
                       to={`/attendance/${group.id}`}
-                      className="group-card-minimal"
+                      className={`student-group-card color-${colorIndex}`}
                     >
-                      <div className={`group-icon-wrapper group-icon-${colorIndex}`}>
+                      <div className="student-group-icon">
                         {getGroupIcon(group.name)}
                       </div>
-                      <div className="group-info">
-                        <h4 className="group-name-minimal">{cleanName}</h4>
-                        <span className="group-count">{group.students?.length || 0} уч.</span>
+                      <div className="student-group-content">
+                        <h4 className="student-group-name">{cleanName}</h4>
+                        <div className="student-group-meta">
+                          <span className="student-count-badge">
+                            <IconUsers size={12} />
+                            {studentCount} {studentCount === 1 ? 'ученик' : studentCount >= 2 && studentCount <= 4 ? 'ученика' : 'учеников'}
+                          </span>
+                        </div>
                       </div>
-                      <IconChevronRight size={16} className="group-arrow-icon" />
+                      <div className="student-group-arrow">
+                        <IconChevronRight size={18} />
+                      </div>
                     </Link>
                   );
                 })
@@ -1818,6 +1827,154 @@ const globalStyles = `
   .group-card-minimal:hover .group-arrow-icon {
     opacity: 1;
     color: var(--color-primary);
+  }
+
+  /* === STUDENTS SECTION - New Beautiful Design === */
+  .students-section {
+    overflow: hidden;
+  }
+
+  .section-counter {
+    background: rgba(79, 70, 229, 0.1);
+    color: var(--indigo-600);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    border-radius: 100px;
+    margin-left: 0.5rem;
+  }
+
+  .students-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 1200px) {
+    .students-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .student-group-card {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 1rem 1.125rem;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.95) 100%);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .student-group-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    border-radius: 4px 0 0 4px;
+    transition: width 0.3s ease;
+  }
+
+  .student-group-card.color-0::before { background: linear-gradient(180deg, #4f46e5 0%, #6366f1 100%); }
+  .student-group-card.color-1::before { background: linear-gradient(180deg, #0ea5e9 0%, #38bdf8 100%); }
+  .student-group-card.color-2::before { background: linear-gradient(180deg, #10b981 0%, #34d399 100%); }
+  .student-group-card.color-3::before { background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%); }
+  .student-group-card.color-4::before { background: linear-gradient(180deg, #ec4899 0%, #f472b6 100%); }
+  .student-group-card.color-5::before { background: linear-gradient(180deg, #8b5cf6 0%, #a78bfa 100%); }
+
+  .student-group-card:hover {
+    background: #fff;
+    border-color: rgba(79, 70, 229, 0.15);
+    box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.12), 
+                0 4px 10px -3px rgba(0, 0, 0, 0.06);
+    transform: translateY(-3px) scale(1.01);
+  }
+
+  .student-group-card:hover::before {
+    width: 6px;
+  }
+
+  .student-group-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+  }
+
+  .student-group-card.color-0 .student-group-icon { background: rgba(79, 70, 229, 0.12); color: #4f46e5; }
+  .student-group-card.color-1 .student-group-icon { background: rgba(14, 165, 233, 0.12); color: #0ea5e9; }
+  .student-group-card.color-2 .student-group-icon { background: rgba(16, 185, 129, 0.12); color: #10b981; }
+  .student-group-card.color-3 .student-group-icon { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
+  .student-group-card.color-4 .student-group-icon { background: rgba(236, 72, 153, 0.12); color: #ec4899; }
+  .student-group-card.color-5 .student-group-icon { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
+
+  .student-group-card:hover .student-group-icon {
+    transform: scale(1.1);
+  }
+
+  .student-group-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .student-group-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin: 0 0 0.35rem 0;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .student-group-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .student-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    font-weight: 600;
+  }
+
+  .student-count-badge svg {
+    opacity: 0.7;
+  }
+
+  .student-group-arrow {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    background: transparent;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  .student-group-card:hover .student-group-arrow {
+    background: rgba(79, 70, 229, 0.1);
+    color: var(--indigo-600);
+    transform: translateX(3px);
   }
 
   /* === EMPTY STATE === */
