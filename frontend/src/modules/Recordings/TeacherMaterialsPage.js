@@ -55,6 +55,10 @@ function TeacherMaterialsPage() {
   // Miro status
   const [miroStatus, setMiroStatus] = useState(null);
   const [miroBoards, setMiroBoards] = useState([]);
+  
+  // Поиск в списках групп/учеников
+  const [groupSearchQuery, setGroupSearchQuery] = useState('');
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
 
   const removeToast = useCallback((id) => {
     setToasts(prev => prev.filter(t => t.id !== id));
@@ -411,19 +415,22 @@ function TeacherMaterialsPage() {
     return result;
   }, [lessons]);
 
-  const visibilityOptions = [
-    { value: 'all_teacher_groups', label: 'Все мои группы' },
-    { value: 'lesson_group', label: 'Только группа урока' },
-    { value: 'custom_groups', label: 'Выбранные группы' },
-    { value: 'custom_students', label: 'Выбранные ученики' }
-  ];
+  // Фильтрация групп и учеников по поиску
+  const filteredGroups = useMemo(() => {
+    if (!groupSearchQuery.trim()) return groups;
+    const query = groupSearchQuery.toLowerCase();
+    return groups.filter(g => g.name?.toLowerCase().includes(query));
+  }, [groups, groupSearchQuery]);
 
-  const groupOptions = groups.map(g => ({ value: g.id, label: g.name }));
-  const studentOptions = students.map(s => ({ 
-    value: s.id, 
-    label: s.full_name || s.name || s.email,
-    group: s.group_name
-  }));
+  const filteredStudents = useMemo(() => {
+    if (!studentSearchQuery.trim()) return students;
+    const query = studentSearchQuery.toLowerCase();
+    return students.filter(s => {
+      const fullName = (s.full_name || s.name || '').toLowerCase();
+      const email = (s.email || '').toLowerCase();
+      return fullName.includes(query) || email.includes(query);
+    });
+  }, [students, studentSearchQuery]);
 
   const filterBySearch = (items, field = 'title') => {
     if (!searchTerm) return items;
@@ -720,55 +727,119 @@ function TeacherMaterialsPage() {
             
             <div className="form-group">
               <label>Видимость</label>
-              <Select
-                value={miroForm.visibility}
-                onChange={(e) => setMiroForm({...miroForm, visibility: e.target.value, allowed_groups: [], allowed_students: []})}
-                options={visibilityOptions}
-              />
+              <div className="teacher-privacy-tabs">
+                <button
+                  type="button"
+                  className={`teacher-privacy-tab ${miroForm.visibility === 'all_teacher_groups' ? 'active' : ''}`}
+                  onClick={() => setMiroForm({...miroForm, visibility: 'all_teacher_groups', allowed_groups: [], allowed_students: []})}
+                >
+                  Все ученики
+                </button>
+                <button
+                  type="button"
+                  className={`teacher-privacy-tab ${miroForm.visibility === 'custom_groups' ? 'active' : ''}`}
+                  onClick={() => setMiroForm({...miroForm, visibility: 'custom_groups', allowed_students: []})}
+                >
+                  Выбрать группы
+                </button>
+                <button
+                  type="button"
+                  className={`teacher-privacy-tab ${miroForm.visibility === 'custom_students' ? 'active' : ''}`}
+                  onClick={() => setMiroForm({...miroForm, visibility: 'custom_students', allowed_groups: []})}
+                >
+                  Выбрать учеников
+                </button>
+              </div>
             </div>
             
             {miroForm.visibility === 'custom_groups' && (
               <div className="form-group">
-                <label>Выберите группы</label>
-                <div className="checkbox-list">
-                  {groupOptions.map(g => (
-                    <label key={g.value} className="checkbox-item">
+                <p className="teacher-privacy-hint">Выберите группы, которые смогут видеть доску:</p>
+                <div className="teacher-privacy-search">
+                  <input
+                    type="text"
+                    value={groupSearchQuery}
+                    onChange={(e) => setGroupSearchQuery(e.target.value)}
+                    placeholder="Поиск группы..."
+                    className="teacher-privacy-search-input"
+                  />
+                  {groupSearchQuery && (
+                    <button 
+                      type="button" 
+                      className="teacher-privacy-search-clear"
+                      onClick={() => setGroupSearchQuery('')}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                <div className="teacher-checkbox-list">
+                  {filteredGroups.map(group => (
+                    <label key={group.id} className="teacher-checkbox-item">
                       <input
                         type="checkbox"
-                        checked={miroForm.allowed_groups.includes(g.value)}
+                        checked={miroForm.allowed_groups.includes(group.id)}
                         onChange={(e) => {
                           const newGroups = e.target.checked
-                            ? [...miroForm.allowed_groups, g.value]
-                            : miroForm.allowed_groups.filter(id => id !== g.value);
+                            ? [...miroForm.allowed_groups, group.id]
+                            : miroForm.allowed_groups.filter(id => id !== group.id);
                           setMiroForm({...miroForm, allowed_groups: newGroups});
                         }}
                       />
-                      <span>{g.label}</span>
+                      <span>{group.name} ({group.student_count || 0} учеников)</span>
                     </label>
                   ))}
+                  {filteredGroups.length === 0 && (
+                    <div className="teacher-privacy-empty">Группы не найдены</div>
+                  )}
                 </div>
               </div>
             )}
             
             {miroForm.visibility === 'custom_students' && (
               <div className="form-group">
-                <label>Выберите учеников</label>
-                <div className="checkbox-list">
-                  {studentOptions.map(s => (
-                    <label key={s.value} className="checkbox-item">
+                <p className="teacher-privacy-hint">Выберите учеников, которые смогут видеть доску:</p>
+                <div className="teacher-privacy-search">
+                  <input
+                    type="text"
+                    value={studentSearchQuery}
+                    onChange={(e) => setStudentSearchQuery(e.target.value)}
+                    placeholder="Поиск ученика..."
+                    className="teacher-privacy-search-input"
+                  />
+                  {studentSearchQuery && (
+                    <button 
+                      type="button" 
+                      className="teacher-privacy-search-clear"
+                      onClick={() => setStudentSearchQuery('')}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                <div className="teacher-checkbox-list">
+                  {filteredStudents.map(student => (
+                    <label key={student.id} className="teacher-checkbox-item">
                       <input
                         type="checkbox"
-                        checked={miroForm.allowed_students.includes(s.value)}
+                        checked={miroForm.allowed_students.includes(student.id)}
                         onChange={(e) => {
                           const newStudents = e.target.checked
-                            ? [...miroForm.allowed_students, s.value]
-                            : miroForm.allowed_students.filter(id => id !== s.value);
+                            ? [...miroForm.allowed_students, student.id]
+                            : miroForm.allowed_students.filter(id => id !== student.id);
                           setMiroForm({...miroForm, allowed_students: newStudents});
                         }}
                       />
-                      <span>{s.label} {s.group && <small>({s.group})</small>}</span>
+                      <span>{student.full_name || student.name || student.email} {student.group_name && <small>({student.group_name})</small>}</span>
                     </label>
                   ))}
+                  {filteredStudents.length === 0 && (
+                    <div className="teacher-privacy-empty">Ученики не найдены</div>
+                  )}
                 </div>
               </div>
             )}
@@ -830,69 +901,132 @@ function TeacherMaterialsPage() {
               <small>Можно вставлять изображения и прикреплять файлы прямо в текст</small>
             </div>
             
-            <div className="form-row">
-              <div className="form-group">
-                <label>Привязать к уроку</label>
-                <SearchableSelect
-                  value={notesForm.lesson_id}
-                  onChange={(e) => setNotesForm({...notesForm, lesson_id: e.target.value})}
-                  options={lessonSelectOptions}
-                  placeholder="Без привязки к уроку"
-                  searchPlaceholder="Поиск по названию урока..."
-                />
-              </div>
-              <div className="form-group">
-                <label>Видимость</label>
-                <Select
-                  value={notesForm.visibility}
-                  onChange={(e) => setNotesForm({...notesForm, visibility: e.target.value, allowed_groups: [], allowed_students: []})}
-                  options={visibilityOptions}
-                />
+            <div className="form-group">
+              <label>Привязать к уроку</label>
+              <SearchableSelect
+                value={notesForm.lesson_id}
+                onChange={(e) => setNotesForm({...notesForm, lesson_id: e.target.value})}
+                options={lessonSelectOptions}
+                placeholder="Без привязки к уроку"
+                searchPlaceholder="Поиск по названию урока..."
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Видимость</label>
+              <div className="teacher-privacy-tabs">
+                <button
+                  type="button"
+                  className={`teacher-privacy-tab ${notesForm.visibility === 'all_teacher_groups' ? 'active' : ''}`}
+                  onClick={() => setNotesForm({...notesForm, visibility: 'all_teacher_groups', allowed_groups: [], allowed_students: []})}
+                >
+                  Все ученики
+                </button>
+                <button
+                  type="button"
+                  className={`teacher-privacy-tab ${notesForm.visibility === 'custom_groups' ? 'active' : ''}`}
+                  onClick={() => setNotesForm({...notesForm, visibility: 'custom_groups', allowed_students: []})}
+                >
+                  Выбрать группы
+                </button>
+                <button
+                  type="button"
+                  className={`teacher-privacy-tab ${notesForm.visibility === 'custom_students' ? 'active' : ''}`}
+                  onClick={() => setNotesForm({...notesForm, visibility: 'custom_students', allowed_groups: []})}
+                >
+                  Выбрать учеников
+                </button>
               </div>
             </div>
             
             {notesForm.visibility === 'custom_groups' && (
               <div className="form-group">
-                <label>Выберите группы</label>
-                <div className="checkbox-list">
-                  {groupOptions.map(g => (
-                    <label key={g.value} className="checkbox-item">
+                <p className="teacher-privacy-hint">Выберите группы, которые смогут видеть этот конспект:</p>
+                <div className="teacher-privacy-search">
+                  <input
+                    type="text"
+                    value={groupSearchQuery}
+                    onChange={(e) => setGroupSearchQuery(e.target.value)}
+                    placeholder="Поиск группы..."
+                    className="teacher-privacy-search-input"
+                  />
+                  {groupSearchQuery && (
+                    <button 
+                      type="button" 
+                      className="teacher-privacy-search-clear"
+                      onClick={() => setGroupSearchQuery('')}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                <div className="teacher-checkbox-list">
+                  {filteredGroups.map(group => (
+                    <label key={group.id} className="teacher-checkbox-item">
                       <input
                         type="checkbox"
-                        checked={notesForm.allowed_groups.includes(g.value)}
+                        checked={notesForm.allowed_groups.includes(group.id)}
                         onChange={(e) => {
                           const newGroups = e.target.checked
-                            ? [...notesForm.allowed_groups, g.value]
-                            : notesForm.allowed_groups.filter(id => id !== g.value);
+                            ? [...notesForm.allowed_groups, group.id]
+                            : notesForm.allowed_groups.filter(id => id !== group.id);
                           setNotesForm({...notesForm, allowed_groups: newGroups});
                         }}
                       />
-                      <span>{g.label}</span>
+                      <span>{group.name} ({group.student_count || 0} учеников)</span>
                     </label>
                   ))}
+                  {filteredGroups.length === 0 && (
+                    <div className="teacher-privacy-empty">Группы не найдены</div>
+                  )}
                 </div>
               </div>
             )}
             
             {notesForm.visibility === 'custom_students' && (
               <div className="form-group">
-                <label>Выберите учеников</label>
-                <div className="checkbox-list">
-                  {studentOptions.map(s => (
-                    <label key={s.value} className="checkbox-item">
+                <p className="teacher-privacy-hint">Выберите учеников, которые смогут видеть этот конспект:</p>
+                <div className="teacher-privacy-search">
+                  <input
+                    type="text"
+                    value={studentSearchQuery}
+                    onChange={(e) => setStudentSearchQuery(e.target.value)}
+                    placeholder="Поиск ученика..."
+                    className="teacher-privacy-search-input"
+                  />
+                  {studentSearchQuery && (
+                    <button 
+                      type="button" 
+                      className="teacher-privacy-search-clear"
+                      onClick={() => setStudentSearchQuery('')}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                <div className="teacher-checkbox-list">
+                  {filteredStudents.map(student => (
+                    <label key={student.id} className="teacher-checkbox-item">
                       <input
                         type="checkbox"
-                        checked={notesForm.allowed_students.includes(s.value)}
+                        checked={notesForm.allowed_students.includes(student.id)}
                         onChange={(e) => {
                           const newStudents = e.target.checked
-                            ? [...notesForm.allowed_students, s.value]
-                            : notesForm.allowed_students.filter(id => id !== s.value);
+                            ? [...notesForm.allowed_students, student.id]
+                            : notesForm.allowed_students.filter(id => id !== student.id);
                           setNotesForm({...notesForm, allowed_students: newStudents});
                         }}
                       />
-                      <span>{s.label} {s.group && <small>({s.group})</small>}</span>
+                      <span>{student.full_name || student.name || student.email} {student.group_name && <small>({student.group_name})</small>}</span>
                     </label>
                   ))}
+                  {filteredStudents.length === 0 && (
+                    <div className="teacher-privacy-empty">Ученики не найдены</div>
+                  )}
                 </div>
               </div>
             )}

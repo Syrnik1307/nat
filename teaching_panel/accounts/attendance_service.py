@@ -14,12 +14,11 @@ from schedule.models import Lesson, Group
 logger = logging.getLogger(__name__)
 
 # Константы для системы очков
-ATTENDANCE_POINTS = 10  # За присутствие
-WATCHED_RECORDING_POINTS = 10  # За просмотр записи
-ABSENCE_POINTS = -5  # За отсутствие
-HOMEWORK_POINTS = 5  # За выполненное ДЗ
-CONTROL_POINT_PASSED = 15  # За пройденную контрольную точку
-CONTROL_POINT_PARTIAL = 8  # За контрольную точку с ошибками (50%)
+ATTENDANCE_POINTS = 10  # За присутствие на уроке
+WATCHED_RECORDING_POINTS = 10  # За просмотр записи (если не был)
+
+# Домашние задания
+HOMEWORK_LATE_PENALTY = 10  # Штраф за сдачу после дедлайна (вычитается из балла ДЗ)
 
 
 class AttendanceService:
@@ -296,28 +295,71 @@ class RatingService:
             status=AttendanceRecord.STATUS_WATCHED_RECORDING
         ).count()
         
-        # Расчет: присутствие (+10) + просмотр записи (+10, но не суммируется с присутствием)
-        # То есть, если ученик был, но не смотрел запись = +10
-        # Если не был, но смотрел запись = +10
+        # Расчет: +10 за каждое присутствие, +10 за просмотр записи (если не был)
         points = (attended_count * ATTENDANCE_POINTS) + (watched_count * WATCHED_RECORDING_POINTS)
         
-        # Штраф за отсутствие
-        absent_count = records.filter(
-            status=AttendanceRecord.STATUS_ABSENT
-        ).count()
-        points += (absent_count * ABSENCE_POINTS)
-        
-        return max(0, points)  # Не может быть отрицательным
+        return points
     
     @staticmethod
     def _calculate_homework_points(student_id, group_id):
         """
         Рассчитать очки за домашние задания.
-        Подсчитываем выполненные и проверенные ДЗ.
+
+        Логика:
+        - Берём все ДЗ, относящиеся к группе (по lesson.group, assigned_groups и group_assignments)
+        - Суммируем total_score по сабмитам (submitted/graded)
+        - Если submitted_at > deadline (с учётом пер-групповых дедлайнов) — штраф -HOMEWORK_LATE_PENALTY
         """
-        # TODO: Интегрировать с системой ДЗ когда доступна модель Homework
-        # На данный момент возвращаем 0
-        return 0
+        from homework.models import Homework, HomeworkGroupAssignment, StudentSubmission
+        from django.db.models import Q
+
+        homework_ids = list(
+            Homework.objects.filter(
+                Q(lesson__group_id=group_id)
+                | Q(assigned_groups__id=group_id)
+                | Q(group_assignments__group_id=group_id)
+            )
+            .distinct()
+            .values_list('id', flat=True)
+        )
+
+        if not homework_ids:
+            return 0
+
+        # Дедлайны: сначала пер-групповой, затем общий
+        deadlines_by_homework_id = {}
+        for row in HomeworkGroupAssignment.objects.filter(
+            group_id=group_id,
+            homework_id__in=homework_ids,
+        ).values('homework_id', 'deadline'):
+            if row['deadline'] is not None:
+                deadlines_by_homework_id[row['homework_id']] = row['deadline']
+
+        for row in Homework.objects.filter(id__in=homework_ids).values('id', 'deadline'):
+            deadlines_by_homework_id.setdefault(row['id'], row['deadline'])
+
+        submissions = list(
+            StudentSubmission.objects.filter(
+                student_id=student_id,
+                homework_id__in=homework_ids,
+                status__in=['submitted', 'graded'],
+            ).values('homework_id', 'total_score', 'submitted_at')
+        )
+
+        points = 0
+
+        for sub in submissions:
+            score = int(sub['total_score'] or 0)
+
+            # Если сдано после дедлайна — вычитаем штраф из балла за эту работу
+            deadline = deadlines_by_homework_id.get(sub['homework_id'])
+            submitted_at = sub['submitted_at']
+            if deadline and submitted_at and submitted_at > deadline:
+                score = max(0, score - HOMEWORK_LATE_PENALTY)
+
+            points += score
+
+        return points
     
     @staticmethod
     def _calculate_control_points(student_id, group_id):
@@ -325,9 +367,14 @@ class RatingService:
         Рассчитать очки за контрольные точки.
         Подсчитываем пройденные контрольные точки.
         """
-        # TODO: Интегрировать с системой контрольных точек когда доступна модель ControlPoint
-        # На данный момент возвращаем 0
-        return 0
+        from analytics.models import ControlPointResult
+
+        total = ControlPointResult.objects.filter(
+            student_id=student_id,
+            control_point__group_id=group_id,
+        ).aggregate(total=Sum('points'))['total']
+
+        return int(total or 0)
     
     @staticmethod
     def _recalculate_group_ranking(group_id):
@@ -472,3 +519,113 @@ class RatingService:
                 })
         
         return alerts
+
+    @staticmethod
+    def get_group_rating_for_period(group_id, start_date=None, end_date=None):
+        """
+        Рассчитать рейтинг группы за указанный период (динамический расчёт).
+        
+        Args:
+            group_id (int): ID группы
+            start_date (date, optional): Начало периода
+            end_date (date, optional): Конец периода
+        
+        Returns:
+            list[dict]: Список учеников с баллами за период
+        """
+        from homework.models import Homework, HomeworkGroupAssignment, StudentSubmission
+        from analytics.models import ControlPointResult
+        from django.db.models import Q
+        from datetime import datetime
+        
+        group = Group.objects.get(id=group_id)
+        students = list(group.students.all())
+        
+        # Фильтруем уроки по периоду
+        lessons_qs = Lesson.objects.filter(group_id=group_id)
+        if start_date:
+            lessons_qs = lessons_qs.filter(start_time__date__gte=start_date)
+        if end_date:
+            lessons_qs = lessons_qs.filter(start_time__date__lte=end_date)
+        lesson_ids = list(lessons_qs.values_list('id', flat=True))
+        
+        # Домашки за период (по дедлайну или created_at)
+        hw_qs = Homework.objects.filter(
+            Q(lesson__group_id=group_id)
+            | Q(assigned_groups__id=group_id)
+            | Q(group_assignments__group_id=group_id)
+        ).distinct()
+        if start_date:
+            hw_qs = hw_qs.filter(
+                Q(deadline__date__gte=start_date) | Q(created_at__date__gte=start_date)
+            )
+        if end_date:
+            hw_qs = hw_qs.filter(
+                Q(deadline__date__lte=end_date) | Q(created_at__date__lte=end_date)
+            )
+        homework_ids = list(hw_qs.values_list('id', flat=True))
+        
+        # Дедлайны
+        deadlines_by_hw = {}
+        for row in HomeworkGroupAssignment.objects.filter(
+            group_id=group_id, homework_id__in=homework_ids
+        ).values('homework_id', 'deadline'):
+            if row['deadline']:
+                deadlines_by_hw[row['homework_id']] = row['deadline']
+        for row in Homework.objects.filter(id__in=homework_ids).values('id', 'deadline'):
+            deadlines_by_hw.setdefault(row['id'], row['deadline'])
+        
+        # Контрольные точки за период
+        cp_qs = ControlPointResult.objects.filter(control_point__group_id=group_id)
+        if start_date:
+            cp_qs = cp_qs.filter(control_point__date__gte=start_date)
+        if end_date:
+            cp_qs = cp_qs.filter(control_point__date__lte=end_date)
+        
+        results = []
+        for student in students:
+            # Посещаемость
+            attendance_records = AttendanceRecord.objects.filter(
+                student_id=student.id,
+                lesson_id__in=lesson_ids
+            )
+            attended = attendance_records.filter(status=AttendanceRecord.STATUS_ATTENDED).count()
+            watched = attendance_records.filter(status=AttendanceRecord.STATUS_WATCHED_RECORDING).count()
+            attendance_pts = (attended * ATTENDANCE_POINTS) + (watched * WATCHED_RECORDING_POINTS)
+            
+            # ДЗ
+            hw_pts = 0
+            submissions = StudentSubmission.objects.filter(
+                student_id=student.id,
+                homework_id__in=homework_ids,
+                status__in=['submitted', 'graded'],
+            )
+            for sub in submissions:
+                score = int(sub.total_score or 0)
+                deadline = deadlines_by_hw.get(sub.homework_id)
+                if deadline and sub.submitted_at and sub.submitted_at > deadline:
+                    score = max(0, score - HOMEWORK_LATE_PENALTY)
+                hw_pts += score
+            
+            # Контрольные
+            cp_pts = cp_qs.filter(student_id=student.id).aggregate(
+                total=Sum('points')
+            )['total'] or 0
+            
+            total = attendance_pts + hw_pts + int(cp_pts)
+            results.append({
+                'student_id': student.id,
+                'student_name': student.get_full_name() or student.email,
+                'email': student.email,
+                'attendance_points': attendance_pts,
+                'homework_points': hw_pts,
+                'control_points': int(cp_pts),
+                'total_points': total,
+            })
+        
+        # Сортируем по баллам и присваиваем rank
+        results.sort(key=lambda x: x['total_points'], reverse=True)
+        for rank, r in enumerate(results, start=1):
+            r['rank'] = rank
+        
+        return results

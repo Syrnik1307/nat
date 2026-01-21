@@ -4,6 +4,7 @@
 
 from rest_framework import serializers
 from django.utils import timezone
+from django.db.models import Avg
 
 from accounts.models import (
     AttendanceRecord, 
@@ -181,9 +182,7 @@ class GroupRatingSerializer(serializers.Serializer):
                 'total_students': 0,
             }
         
-        average_points = ratings.aggregate(
-            avg=serializers.models.Avg('total_points')
-        )['avg'] or 0
+        average_points = ratings.aggregate(avg=Avg('total_points'))['avg'] or 0
         
         return {
             'average_points': round(average_points, 1),

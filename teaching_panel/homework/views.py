@@ -1298,8 +1298,40 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             # Уведомляем учителя что работа автоматически проверена
             self._notify_teacher_auto_graded(submission)
 
+        self._recalculate_ratings_for_submission(submission)
+
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
+
+    @staticmethod
+    def _recalculate_ratings_for_submission(submission: StudentSubmission):
+        from accounts.attendance_service import RatingService
+
+        homework = submission.homework
+        group_ids = set()
+
+        if getattr(homework, 'lesson_id', None) and getattr(homework, 'lesson', None) and homework.lesson.group_id:
+            group_ids.add(homework.lesson.group_id)
+
+        try:
+            group_ids.update(homework.assigned_groups.values_list('id', flat=True))
+        except Exception:
+            pass
+
+        try:
+            group_ids.update(homework.group_assignments.values_list('group_id', flat=True))
+        except Exception:
+            pass
+
+        for group_id in group_ids:
+            try:
+                RatingService.recalculate_student_rating(
+                    student_id=submission.student_id,
+                    group_id=group_id,
+                )
+            except Exception:
+                # Рейтинг не должен ломать сдачу/проверку ДЗ
+                continue
 
     def perform_create(self, serializer):
         # Просто создаём submission без уведомления.
@@ -1438,6 +1470,8 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         # Уведомляем ученика только при первом переводе в graded
         if status_before == 'submitted' and submission.status == 'graded':
             self._notify_student_graded(submission)
+
+        self._recalculate_ratings_for_submission(submission)
         
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
@@ -1527,6 +1561,8 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             submission.graded_at = timezone.now()
             submission.save(update_fields=['status', 'graded_at'])
             self._notify_student_graded(submission)
+
+        self._recalculate_ratings_for_submission(submission)
         
         # Возвращаем обновленные данные
         serializer = self.get_serializer(submission)
@@ -1567,6 +1603,8 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             
             # Уведомляем ученика
             self._notify_student_graded(submission)
+
+        self._recalculate_ratings_for_submission(submission)
         
         serializer = self.get_serializer(submission)
         return Response(serializer.data)

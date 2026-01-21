@@ -518,12 +518,18 @@ class GroupRatingViewSet(viewsets.ViewSet):
     
     Endpoints:
     - GET /api/groups/{group_id}/rating/ - рейтинг группы
+    
+    Query params:
+    - month: фильтр по месяцу (формат: YYYY-MM, например 2026-01)
+    - recalculate: true для принудительного пересчёта (только для "за всё время")
     """
     
     permission_classes = [IsAuthenticated]
     
     def list(self, request, group_id=None):
         """GET /api/groups/{group_id}/rating/"""
+        from datetime import datetime
+        import calendar
         
         # Проверить доступ
         try:
@@ -539,11 +545,74 @@ class GroupRatingViewSet(viewsets.ViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
+        # Проверяем фильтр по месяцу
+        month_param = request.query_params.get('month')
+        
+        if month_param:
+            # Динамический расчёт за указанный месяц
+            try:
+                year, month = map(int, month_param.split('-'))
+                start_date = datetime(year, month, 1).date()
+                last_day = calendar.monthrange(year, month)[1]
+                end_date = datetime(year, month, last_day).date()
+            except (ValueError, TypeError):
+                return Response(
+                    {'error': 'Неверный формат месяца. Используйте YYYY-MM (например, 2026-01)'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            students_data = RatingService.get_group_rating_for_period(
+                group_id=group_id,
+                start_date=start_date,
+                end_date=end_date,
+            )
+            
+            from django.db.models import Avg
+            avg_points = sum(s['total_points'] for s in students_data) / len(students_data) if students_data else 0
+            
+            return Response({
+                'students': students_data,
+                'group_stats': {
+                    'average_points': round(avg_points, 1),
+                    'total_students': len(students_data),
+                },
+                'period': {
+                    'type': 'month',
+                    'month': month_param,
+                    'start_date': start_date.isoformat(),
+                    'end_date': end_date.isoformat(),
+                }
+            })
+        
+        # За всё время — используем кэшированные UserRating
+        # Гарантируем, что рейтинг существует для всех учеников группы.
+        recalculate = str(request.query_params.get('recalculate', '')).lower() in {'1', 'true', 'yes', 'y'}
+        student_ids = list(group.students.values_list('id', flat=True))
+        if student_ids:
+            if recalculate:
+                target_ids = student_ids
+            else:
+                existing_ids = set(
+                    UserRating.objects.filter(group_id=group_id).values_list('user_id', flat=True)
+                )
+                target_ids = [sid for sid in student_ids if sid not in existing_ids]
+
+            for student_id in target_ids:
+                try:
+                    RatingService.recalculate_student_rating(
+                        student_id=student_id,
+                        group_id=group_id,
+                    )
+                except Exception:
+                    continue
+        
         serializer = GroupRatingSerializer(
             {},
             context={'group_id': group_id}
         )
-        return Response(serializer.data)
+        data = serializer.data
+        data['period'] = {'type': 'all_time'}
+        return Response(data)
 
 
 class StudentCardViewSet(viewsets.ViewSet):
