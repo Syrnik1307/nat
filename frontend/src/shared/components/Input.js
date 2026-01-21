@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import EyeIcon from '../../components/icons/EyeIcon';
 
 /**
  * Переиспользуемый компонент поля ввода
@@ -144,7 +145,7 @@ const Input = ({
             style={togglePasswordStyles}
             tabIndex={-1}
           >
-            {showPassword ? '👁️' : '👁️‍🗨️'}
+            <EyeIcon open={showPassword} />
           </button>
         </div>
       );
