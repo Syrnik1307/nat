@@ -1935,6 +1935,67 @@ class LessonViewSet(viewsets.ModelViewSet):
         })
         return Response(payload, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=['post'], url_path='end')
+    def end_lesson(self, request, pk=None):
+        """
+        Завершить урок (учитель нажал "Закончить урок").
+        POST /api/schedule/lessons/{id}/end/
+        
+        Устанавливает ended_at и освобождает Zoom аккаунт.
+        """
+        lesson = self.get_object()
+        user = request.user
+        
+        # Проверка прав доступа
+        if lesson.teacher != user and getattr(user, 'role', None) != 'admin':
+            return Response(
+                {'detail': 'Только преподаватель урока может его завершить'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Уже завершён?
+        if lesson.ended_at:
+            return Response({
+                'detail': 'Урок уже завершён',
+                'ended_at': lesson.ended_at.isoformat(),
+            }, status=status.HTTP_200_OK)
+        
+        # Устанавливаем время завершения
+        lesson.ended_at = timezone.now()
+        
+        # Освобождаем Zoom аккаунт если есть
+        zoom_account_released = False
+        if lesson.zoom_account:
+            try:
+                lesson.zoom_account.release()
+                zoom_account_released = True
+                logger.info(f"Zoom account released for lesson {lesson.id} by user {user.email}")
+            except Exception as e:
+                logger.warning(f"Failed to release zoom account for lesson {lesson.id}: {e}")
+        
+        # Очищаем zoom_start_url (чтобы на фронте показался статус "Закончен")
+        lesson.zoom_start_url = None
+        lesson.save(update_fields=['ended_at', 'zoom_start_url'])
+        
+        # Логирование
+        log_audit(
+            user=user,
+            action='lesson_ended',
+            resource_type='Lesson',
+            resource_id=lesson.id,
+            request=request,
+            details={
+                'ended_at': lesson.ended_at.isoformat(),
+                'zoom_account_released': zoom_account_released,
+            }
+        )
+        
+        return Response({
+            'detail': 'Урок завершён',
+            'ended_at': lesson.ended_at.isoformat(),
+            'zoom_account_released': zoom_account_released,
+        }, status=status.HTTP_200_OK)
+
 
 class AttendanceViewSet(viewsets.ModelViewSet):
     """
@@ -2308,6 +2369,13 @@ def zoom_webhook_receiver(request):
                 lesson = Lesson.objects.select_related('zoom_account_used').get(
                     zoom_meeting_id=meeting_id
                 )
+                
+                # Устанавливаем время завершения урока
+                if not lesson.ended_at:
+                    lesson.ended_at = timezone.now()
+                    lesson.zoom_start_url = None  # Очищаем ссылку чтобы показать "Закончен"
+                    lesson.save(update_fields=['ended_at', 'zoom_start_url'])
+                    logger.info(f"[Webhook] Урок #{lesson.id} помечен как завершённый")
                 
                 # Получаем привязанный Zoom аккаунт
                 zoom_account = lesson.zoom_account_used

@@ -262,6 +262,14 @@ class Lesson(models.Model):
         help_text=_('ID события в Google Calendar (для обновления/удаления)')
     )
     
+    # Когда урок был завершён (учитель нажал "закончить")
+    ended_at = models.DateTimeField(
+        _('время завершения'),
+        null=True,
+        blank=True,
+        help_text=_('Когда учитель завершил урок (нажал кнопку "Закончить" или meeting.ended от Zoom)')
+    )
+    
     created_at = models.DateTimeField(_('дата создания'), auto_now_add=True)
     updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
     

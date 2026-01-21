@@ -92,6 +92,7 @@ class LessonSerializer(serializers.ModelSerializer):
             'record_lesson', 'recording_available_for_days',  # Добавили поля записи
             'notes', 'created_at', 'updated_at',
             'recording_id', 'homework_id',  # Для календаря студента
+            'ended_at',  # Когда урок был завершён
         ]
     
     def get_join_url(self, obj):

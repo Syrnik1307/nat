@@ -290,6 +290,7 @@ export const updateLesson = (id, data) => apiClient.patch(`schedule/lessons/${id
 export const deleteLesson = (id) => apiClient.delete(`schedule/lessons/${id}/`);
 export const startLesson = (id) => apiClient.post(`schedule/lessons/${id}/start/`);
 export const startLessonNew = (id, data = {}) => apiClient.post(`schedule/lessons/${id}/start-new/`, data);
+export const endLesson = (id) => apiClient.post(`schedule/lessons/${id}/end/`);
 export const joinLesson = (id) => apiClient.post(`schedule/lessons/${id}/join/`);
 export const logLessonJoin = (id, platform) => apiClient.post(`schedule/lessons/${id}/log_join/`, { platform });
 export const startQuickLesson = (payload = {}) => apiClient.post('schedule/lessons/quick-start/', payload);

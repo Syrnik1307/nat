@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { getTeacherStatsSummary, getLessons, getGroups, startQuickLesson, startLessonNew, updateLesson } from '../apiService';
+import { getTeacherStatsSummary, getLessons, getGroups, startQuickLesson, startLessonNew, updateLesson, endLesson } from '../apiService';
 import { getCached } from '../utils/dataCache';
 import { Link } from 'react-router-dom';
 import SubscriptionBanner from './SubscriptionBanner';
@@ -226,6 +226,7 @@ const TeacherHomePage = () => {
   const [editingTopicLessonId, setEditingTopicLessonId] = useState(null);
   const [editingTopicValue, setEditingTopicValue] = useState('');
   const [savingTopic, setSavingTopic] = useState(false);
+  const [endingLessonId, setEndingLessonId] = useState(null);
   const initialLoadDone = useRef(false);
   
   // Determine available platforms from user profile
@@ -420,6 +421,25 @@ const TeacherHomePage = () => {
   const cancelEditTopic = () => {
     setEditingTopicLessonId(null);
     setEditingTopicValue('');
+  };
+
+  // Завершить урок
+  const handleEndLesson = async (lessonId) => {
+    if (endingLessonId) return;
+    setEndingLessonId(lessonId);
+    try {
+      await endLesson(lessonId);
+      // Обновляем локально - ставим ended_at и убираем zoom_start_url
+      setLessons(prev => prev.map(l => 
+        l.id === lessonId 
+          ? { ...l, ended_at: new Date().toISOString(), zoom_start_url: null }
+          : l
+      ));
+    } catch (err) {
+      console.error('Failed to end lesson:', err);
+    } finally {
+      setEndingLessonId(null);
+    }
   };
 
   // Запустить конкретный урок
@@ -924,16 +944,31 @@ const TeacherHomePage = () => {
                         </div>
                       </div>
                       <div className="schedule-actions">
-                        {lesson.zoom_start_url ? (
-                          <a 
-                            href={lesson.zoom_start_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="schedule-start-btn active"
-                          >
-                            <IconVideo size={14} />
-                            <span>Продолжить</span>
-                          </a>
+                        {lesson.ended_at ? (
+                          <span className="schedule-ended-label">
+                            <IconCheck size={14} />
+                            <span>Закончен</span>
+                          </span>
+                        ) : lesson.zoom_start_url ? (
+                          <>
+                            <a 
+                              href={lesson.zoom_start_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="schedule-start-btn active"
+                            >
+                              <IconVideo size={14} />
+                              <span>Продолжить</span>
+                            </a>
+                            <button
+                              className="schedule-end-btn"
+                              onClick={() => handleEndLesson(lesson.id)}
+                              disabled={endingLessonId === lesson.id}
+                              title="Закончить урок"
+                            >
+                              {endingLessonId === lesson.id ? '...' : <IconCheck size={14} />}
+                            </button>
+                          </>
                         ) : (
                           <button
                             className="schedule-start-btn"
@@ -1639,6 +1674,45 @@ const globalStyles = `
 
   .schedule-start-btn.active:hover {
     box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+  }
+
+  .schedule-end-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 0.5rem;
+  }
+
+  .schedule-end-btn:hover {
+    background: #fee2e2;
+    color: #dc2626;
+    border-color: #fecaca;
+  }
+
+  .schedule-end-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .schedule-ended-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #dcfce7;
+    color: #166534;
+    padding: 0.5rem 0.9rem;
+    border-radius: var(--radius-sm);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
   }
 
   .status-badge {
