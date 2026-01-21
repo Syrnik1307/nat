@@ -1723,8 +1723,14 @@ class LessonViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_200_OK)
         
         try:
-            from integrations.google_meet_service import GoogleMeetService, GoogleMeetError
-            
+            from integrations.google_meet_service import (
+                GoogleMeetService,
+                GoogleMeetError,
+                GoogleMeetAuthError,
+                GoogleMeetNotConfiguredError,
+                disconnect_google_meet,
+            )
+
             service = GoogleMeetService(user=user)
             
             # Создаём встречу
@@ -1770,10 +1776,39 @@ class LessonViewSet(viewsets.ModelViewSet):
                 'provider': 'google_meet',
             }, status=status.HTTP_200_OK)
             
+        except GoogleMeetNotConfiguredError as e:
+            logger.warning(f"Google Meet not configured for user {user.id}: {e}")
+            return Response(
+                {
+                    'detail': 'Google Meet не настроен. Переподключите его в профиле и проверьте Client ID/Secret.',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except GoogleMeetAuthError as e:
+            logger.warning(f"Google Meet auth error for user {user.id}: {e}")
+            # If auth/scopes are broken, reset connection so UI forces reconnect.
+            try:
+                disconnect_google_meet(user)
+            except Exception:
+                logger.exception('Failed to disconnect Google Meet after auth error')
+            return Response(
+                {
+                    'detail': str(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except GoogleMeetError as e:
+            logger.warning(f"Google Meet error for lesson {lesson.id}: {e}")
+            return Response(
+                {
+                    'detail': str(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except Exception as e:
             logger.exception(f"Failed to create Google Meet for lesson {lesson.id}: {e}")
             return Response(
-                {'detail': f'Ошибка при создании Google Meet: {str(e)}'},
+                {'detail': 'Не удалось создать Google Meet. Попробуйте переподключить Google Meet в профиле.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

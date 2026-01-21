@@ -326,8 +326,57 @@ class GoogleMeetService:
         )
         
         if response.status_code not in (200, 201):
-            logger.error(f"Meeting creation failed: {response.text}")
-            raise GoogleMeetError(f"Failed to create meeting: {response.text}")
+            # Log raw response for diagnostics, but return a clean error to UI.
+            logger.error(
+                "Meeting creation failed: status=%s body=%s",
+                response.status_code,
+                response.text,
+            )
+
+            body_text = response.text or ''
+            try:
+                body_json = response.json()
+            except Exception:
+                body_json = None
+
+            # Common Google API errors
+            if response.status_code in (401,):
+                raise GoogleMeetAuthError(
+                    'Авторизация Google истекла. Переподключите Google Meet в профиле.'
+                )
+
+            if response.status_code in (403,):
+                # Insufficient scopes / permissions.
+                if (
+                    'ACCESS_TOKEN_SCOPE_INSUFFICIENT' in body_text
+                    or 'insufficient authentication scopes' in body_text
+                    or 'insufficientPermissions' in body_text
+                ):
+                    raise GoogleMeetAuthError(
+                        'Недостаточно прав Google OAuth для создания встречи. '
+                        'Переподключите Google Meet в профиле и согласитесь на доступ к Google Calendar.'
+                    )
+
+                # Calendar API not enabled for the project.
+                if 'accessNotConfigured' in body_text:
+                    raise GoogleMeetAuthError(
+                        'Google Calendar API не включён в вашем Google Cloud проекте. '
+                        'Включите Calendar API и переподключите Google Meet.'
+                    )
+
+            # Fallback: try to surface a short message from JSON
+            short_message = None
+            if isinstance(body_json, dict):
+                short_message = (
+                    body_json.get('error', {})
+                    .get('message')
+                    if isinstance(body_json.get('error'), dict)
+                    else None
+                )
+
+            raise GoogleMeetError(
+                f"Ошибка Google Calendar API: {short_message or 'не удалось создать встречу'}"
+            )
         
         event_data = response.json()
         
