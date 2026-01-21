@@ -3,7 +3,7 @@ import './TeacherRecordingsPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
 import RecordingCard from './RecordingCard';
 import RecordingPlayer from './RecordingPlayer';
-import { ConfirmModal, Select, ToastContainer } from '../../shared/components';
+import { ConfirmModal, SearchableSelect, ToastContainer } from '../../shared/components';
 
 function TeacherRecordingsPage() {
   const [recordings, setRecordings] = useState([]);
@@ -32,6 +32,8 @@ function TeacherRecordingsPage() {
   const [lessons, setLessons] = useState([]);
   const [students, setStudents] = useState([]);
   const [dragActive, setDragActive] = useState(false);
+  const [groupSearchQuery, setGroupSearchQuery] = useState('');
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: '',
@@ -224,6 +226,12 @@ function TeacherRecordingsPage() {
     }
   };
 
+  const closeUploadModal = () => {
+    setShowUploadModal(false);
+    setGroupSearchQuery('');
+    setStudentSearchQuery('');
+  };
+
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
     
@@ -268,7 +276,7 @@ function TeacherRecordingsPage() {
     const fileToUpload = uploadForm.file;
     const formDataToSend = { ...uploadForm };
     
-    setShowUploadModal(false);
+    closeUploadModal();
     setUploadForm({
       lessonId: '',
       title: '',
@@ -659,20 +667,21 @@ function TeacherRecordingsPage() {
 
       {/* Модальное окно загрузки */}
       {showUploadModal && (
-        <div className="teacher-upload-modal-overlay" onClick={() => setShowUploadModal(false)}>
+        <div className="teacher-upload-modal-overlay" onClick={closeUploadModal}>
           <div className="teacher-upload-modal" onClick={(e) => e.stopPropagation()}>
             <div className="teacher-upload-modal-header">
               <h2>Загрузить видео урока</h2>
-              <button className="teacher-modal-close" onClick={() => setShowUploadModal(false)}>✕</button>
+              <button className="teacher-modal-close" onClick={closeUploadModal}>×</button>
             </div>
             <form onSubmit={handleUploadSubmit} className="teacher-upload-form" noValidate>
               <div className="teacher-upload-field">
                 <label>Привязать к уроку (необязательно)</label>
-                <Select
+                <SearchableSelect
                   value={uploadForm.lessonId}
                   onChange={(e) => setUploadForm({ ...uploadForm, lessonId: e.target.value })}
                   options={lessonSelectOptions}
-                  placeholder="📹 Самостоятельное видео"
+                  placeholder="Самостоятельное видео"
+                  searchPlaceholder="Поиск по названию урока..."
                 />
                 <small className="teacher-upload-hint">
                   Выберите урок для привязки или оставьте "Самостоятельное видео" для дополнительных материалов
@@ -773,8 +782,34 @@ function TeacherRecordingsPage() {
                 {uploadForm.privacyType === 'groups' && (
                   <div className="teacher-privacy-selector">
                     <p className="teacher-privacy-hint">Выберите группы, которые смогут видеть это видео:</p>
+                    <div className="teacher-privacy-search">
+                      <input
+                        type="text"
+                        value={groupSearchQuery}
+                        onChange={(e) => setGroupSearchQuery(e.target.value)}
+                        placeholder="Поиск группы..."
+                        className="teacher-privacy-search-input"
+                      />
+                      {groupSearchQuery && (
+                        <button 
+                          type="button" 
+                          className="teacher-privacy-search-clear"
+                          onClick={() => setGroupSearchQuery('')}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                     <div className="teacher-checkbox-list">
-                      {groups.map(group => (
+                      {groups
+                        .filter(group => {
+                          if (!groupSearchQuery.trim()) return true;
+                          const query = groupSearchQuery.toLowerCase();
+                          return group.name?.toLowerCase().includes(query);
+                        })
+                        .map(group => (
                         <label key={group.id} className="teacher-checkbox-item">
                           <input
                             type="checkbox"
@@ -796,6 +831,9 @@ function TeacherRecordingsPage() {
                           <span>{group.name} ({group.student_count || 0} учеников)</span>
                         </label>
                       ))}
+                      {groups.filter(g => !groupSearchQuery.trim() || g.name?.toLowerCase().includes(groupSearchQuery.toLowerCase())).length === 0 && (
+                        <div className="teacher-privacy-empty">Группы не найдены</div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -803,8 +841,35 @@ function TeacherRecordingsPage() {
                 {uploadForm.privacyType === 'students' && (
                   <div className="teacher-privacy-selector">
                     <p className="teacher-privacy-hint">Выберите учеников, которые смогут видеть это видео:</p>
+                    <div className="teacher-privacy-search">
+                      <input
+                        type="text"
+                        value={studentSearchQuery}
+                        onChange={(e) => setStudentSearchQuery(e.target.value)}
+                        placeholder="Поиск ученика..."
+                        className="teacher-privacy-search-input"
+                      />
+                      {studentSearchQuery && (
+                        <button 
+                          type="button" 
+                          className="teacher-privacy-search-clear"
+                          onClick={() => setStudentSearchQuery('')}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                     <div className="teacher-checkbox-list">
-                      {students.map(student => (
+                      {students
+                        .filter(student => {
+                          if (!studentSearchQuery.trim()) return true;
+                          const query = studentSearchQuery.toLowerCase();
+                          const fullName = `${student.first_name} ${student.last_name}`.toLowerCase();
+                          return fullName.includes(query) || student.email?.toLowerCase().includes(query);
+                        })
+                        .map(student => (
                         <label key={student.id} className="teacher-checkbox-item">
                           <input
                             type="checkbox"
@@ -826,6 +891,14 @@ function TeacherRecordingsPage() {
                           <span>{student.first_name} {student.last_name} ({student.email})</span>
                         </label>
                       ))}
+                      {students.filter(s => {
+                        if (!studentSearchQuery.trim()) return true;
+                        const query = studentSearchQuery.toLowerCase();
+                        const fullName = `${s.first_name} ${s.last_name}`.toLowerCase();
+                        return fullName.includes(query) || s.email?.toLowerCase().includes(query);
+                      }).length === 0 && (
+                        <div className="teacher-privacy-empty">Ученики не найдены</div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -834,7 +907,7 @@ function TeacherRecordingsPage() {
               <div className="teacher-upload-actions">
                 <button 
                   type="button" 
-                  onClick={() => setShowUploadModal(false)}
+                  onClick={closeUploadModal}
                   className="teacher-cancel-btn"
                 >
                   Отмена

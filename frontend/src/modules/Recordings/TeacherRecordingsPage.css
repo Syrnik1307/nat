@@ -932,6 +932,71 @@
   margin-bottom: 0.75rem;
 }
 
+/* Поле поиска для групп/учеников */
+.teacher-privacy-search {
+  position: relative;
+  margin-bottom: 0.75rem;
+}
+
+.teacher-privacy-search-input {
+  width: 100%;
+  padding: 0.625rem 2.25rem 0.625rem 0.875rem;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--text-main);
+  background: white;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.teacher-privacy-search-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}
+
+.teacher-privacy-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.teacher-privacy-search-clear {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.teacher-privacy-search-clear:hover {
+  background: var(--border-light);
+  color: var(--text-main);
+}
+
+.teacher-privacy-search-clear svg {
+  width: 14px;
+  height: 14px;
+}
+
+.teacher-privacy-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
 .teacher-checkbox-list {
   max-height: 200px;
   overflow-y: auto;
