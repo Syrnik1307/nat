@@ -616,6 +616,14 @@ def notify_lesson_reminder_with_link(lesson, minutes_before: int) -> dict:
     return result
 
 
+def _get_payments_bot_token() -> str:
+    """Получить токен отдельного бота для уведомлений о платежах."""
+    token = getattr(settings, 'TELEGRAM_PAYMENTS_BOT_TOKEN', '')
+    if not token or token == 'YOUR_BOT_TOKEN_HERE':
+        return ''
+    return token
+
+
 def notify_admin_payment(
     payment,
     subscription,
@@ -626,6 +634,8 @@ def notify_admin_payment(
 ) -> bool:
     """
     Отправить уведомление админу о новом платеже.
+    
+    Использует отдельного бота (TELEGRAM_PAYMENTS_BOT_TOKEN) для уведомлений о платежах.
     
     Args:
         payment: Объект Payment
@@ -642,9 +652,10 @@ def notify_admin_payment(
         logger.debug('ADMIN_PAYMENT_TELEGRAM_CHAT_ID not configured, skipping admin notification')
         return False
     
-    token = _get_bot_token()
+    # Используем отдельного бота для уведомлений о платежах
+    token = _get_payments_bot_token()
     if not token:
-        logger.warning('Telegram bot token is not configured, cannot notify admin about payment')
+        logger.warning('TELEGRAM_PAYMENTS_BOT_TOKEN not configured, cannot notify admin about payment')
         return False
     
     user = subscription.user
