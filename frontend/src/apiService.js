@@ -29,14 +29,17 @@ let FIXED_ROOT_ORIGIN = '';
 if (typeof window !== 'undefined') {
     const { origin } = window.location;
     const url = new URL(origin);
-    if (url.port === '3000') {
-        // Если фронт запущен на :3000, отправляем запросы на :80 (nginx)
-        const targetOrigin = `${url.protocol}//${url.hostname}`; // без порта → :80
-        FIXED_ROOT_ORIGIN = targetOrigin;
-        FIXED_API_BASE_URL = `${targetOrigin}/api/`;
-    } else {
-        FIXED_ROOT_ORIGIN = origin;
-    }
+  const isLocalDevHost = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+  if (url.port === '3000' && !isLocalDevHost) {
+    // Если фронт запущен на :3000 на сервере без CRA-proxy,
+    // отправляем запросы на :80 (nginx)
+    const targetOrigin = `${url.protocol}//${url.hostname}`; // без порта → :80
+    FIXED_ROOT_ORIGIN = targetOrigin;
+    FIXED_API_BASE_URL = `${targetOrigin}/api/`;
+  } else {
+    // Локальный dev: оставляем относительный /api/ (setupProxy.js)
+    FIXED_ROOT_ORIGIN = origin;
+  }
 }
 
 const SCHEDULE_API_BASE_URL = FIXED_ROOT_ORIGIN
@@ -49,9 +52,9 @@ const apiClient = axios.create({
     headers: { 'Content-Type': 'application/json' }
 });
 // Debug log (remove later)
-if (typeof window !== 'undefined') {
-    // eslint-disable-next-line no-console
-    console.log('[apiService] Using FIXED base URL:', apiClient.defaults.baseURL);
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  // eslint-disable-next-line no-console
+  console.log('[apiService] Using FIXED base URL:', apiClient.defaults.baseURL);
 }
 
 // Export apiClient for direct use when needed

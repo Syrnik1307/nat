@@ -29,6 +29,8 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const { login, register } = useAuth();
   // const { executeRecaptcha } = useRecaptcha(); // отключено
+
+  const isDev = process.env.NODE_ENV !== 'production';
   
   useEffect(() => {
     // Если токены есть — пользователь уже залогинен, редиректим на home
@@ -170,14 +172,18 @@ const AuthPage = () => {
   // === ВАЛИДАЦИЯ ФОРМЫ ===
   const validateForm = () => {
     const newErrors = {};
-    
-    console.log('📝 Валидация формы:');
-    console.log('  - mode:', mode);
-    console.log('  - formData:', formData);
+
+    if (isDev) {
+      // eslint-disable-next-line no-console
+      console.log('[AuthPage] validateForm', { mode });
+    }
     
     // Проверка honeypot (должно быть пустым)
     if (formData.honeypot) {
-      console.log('❌ Honeypot сработал (бот?)');
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthPage] honeypot triggered');
+      }
       setBlocked(true);
       setBlockTimer(300); // 5 минут блокировки
       return false;
@@ -185,42 +191,65 @@ const AuthPage = () => {
     
     const emailError = validateEmail(formData.email);
     if (emailError) {
-      console.log('❌ Email ошибка:', emailError);
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthPage] email error:', emailError);
+      }
       newErrors.email = emailError;
     }
     
     const passwordError = validatePassword(formData.password);
     if (passwordError) {
-      console.log('❌ Password ошибка:', passwordError);
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthPage] password error:', passwordError);
+      }
       newErrors.password = passwordError;
     }
     
     if (mode === 'register') {
-      console.log('  - Режим регистрации, дополнительные проверки...');
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthPage] register validation');
+      }
       
       if (!formData.firstName) {
-        console.log('❌ Имя пустое');
+        if (isDev) {
+          // eslint-disable-next-line no-console
+          console.log('[AuthPage] firstName empty');
+        }
         newErrors.firstName = 'Имя обязательно';
       }
       if (!formData.lastName) {
-        console.log('❌ Фамилия пустая');
+        if (isDev) {
+          // eslint-disable-next-line no-console
+          console.log('[AuthPage] lastName empty');
+        }
         newErrors.lastName = 'Фамилия обязательна';
       }
       
       const phoneError = validatePhone(formData.phone);
       if (phoneError) {
-        console.log('❌ Телефон ошибка:', phoneError);
+        if (isDev) {
+          // eslint-disable-next-line no-console
+          console.log('[AuthPage] phone error:', phoneError);
+        }
         newErrors.phone = phoneError;
       }
       
       if (formData.password !== formData.confirmPassword) {
-        console.log('❌ Пароли не совпадают');
+        if (isDev) {
+          // eslint-disable-next-line no-console
+          console.log('[AuthPage] passwords mismatch');
+        }
         newErrors.confirmPassword = 'Пароли не совпадают';
       }
     }
-    
-    console.log('  - Все ошибки:', newErrors);
-    console.log('  - Количество ошибок:', Object.keys(newErrors).length);
+
+    if (isDev) {
+      // eslint-disable-next-line no-console
+      console.log('[AuthPage] validation errors:', Object.keys(newErrors));
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -235,13 +264,16 @@ const AuthPage = () => {
       // Перед стартом логина принудительно очищаем старые токены
       clearTokens();
       // Логирование для диагностики мобильных проблем
-      console.log('🔐 Попытка логина:', {
-        email: formData.email?.trim().toLowerCase(),
-        passwordLength: formData.password?.length,
-        passwordHasSpaces: formData.password?.includes(' '),
-        role,
-        userAgent: navigator.userAgent
-      });
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthPage] login attempt', {
+          email: formData.email?.trim().toLowerCase(),
+          passwordLength: formData.password?.length,
+          passwordHasSpaces: formData.password?.includes(' '),
+          role,
+          userAgent: navigator.userAgent,
+        });
+      }
       
       // reCAPTCHA отключена
       const recaptchaToken = null;
@@ -264,23 +296,23 @@ const AuthPage = () => {
       
       // Показываем успешное уведомление
       showNotification('success', 'Вход выполнен', `Добро пожаловать, ${formData.email}!`);
-      
-      // Небольшая задержка перед редиректом для показа уведомления
-      setTimeout(() => {
-        navigate(roleRedirects[nextRole] || '/');
-      }, 500);
+
+      // Редирект сразу: профиль догрузится в фоне, а искусственная задержка ощущается как "долгий логин".
+      navigate(roleRedirects[nextRole] || '/');
       
       // Сброс попыток при успешном входе
       setLoginAttempts(0);
       setShowCaptcha(false);
     } catch (err) {
       // Логирование ошибки для диагностики
-      console.error('❌ Ошибка логина:', {
-        status: err.response?.status,
-        detail: err.response?.data?.detail,
-        message: err.message,
-        fullError: err
-      });
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.error('[AuthPage] login error:', {
+          status: err.response?.status,
+          detail: err.response?.data?.detail,
+          message: err.message,
+        });
+      }
       
       // Увеличиваем счетчик попыток
       const newAttempts = loginAttempts + 1;

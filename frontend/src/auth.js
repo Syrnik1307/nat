@@ -188,7 +188,9 @@ export const AuthProvider = ({ children }) => {
     const resolvedRole = userRole || roleSelection || null;
     setRole(resolvedRole);
     setAccessTokenValid(true);
-    await loadUser();
+    // Важно для скорости: не блокируем редирект ожиданием /api/me/.
+    // Профиль подтянется в фоне, как и при auto-login по refresh.
+    loadUser();
     return resolvedRole;
   }, [loadUser]);
 
