@@ -700,6 +700,111 @@ def notify_admin_payment(
         return False
 
 
+def notify_payment_failed(
+    payment,
+    subscription,
+    *,
+    reason: Optional[str] = None,
+    zoom_addon: bool = False,
+) -> bool:
+    """Уведомить админа о неуспешной оплате."""
+    admin_chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', None)
+    if not admin_chat_id:
+        logger.debug('ADMIN_PAYMENT_TELEGRAM_CHAT_ID not configured, skipping payment-failed notification')
+        return False
+
+    token = _get_payments_bot_token()
+    if not token:
+        logger.warning('TELEGRAM_PAYMENTS_BOT_TOKEN not configured, cannot notify admin about failed payment')
+        return False
+
+    user = subscription.user
+    user_info = user.get_full_name() or user.email
+    payment_type = "Zoom (подписка)" if zoom_addon else "Оплата"
+    reason_text = f"\nПричина: {reason}" if reason else ''
+
+    message = (
+        f"Оплата не прошла\n\n"
+        f"Пользователь: {user_info}\n"
+        f"Email: {user.email}\n"
+        f"Тип: {payment_type}\n"
+        f"Сумма: {payment.amount} {payment.currency}\n"
+        f"Платёжная система: {payment.payment_system}\n"
+        f"ID платежа: {payment.payment_id}"
+        f"{reason_text}"
+    )
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        'chat_id': admin_chat_id,
+        'text': message,
+        'disable_web_page_preview': True,
+    }
+
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        if response.ok:
+            logger.info('Admin payment-failed notification sent for payment %s', getattr(payment, 'payment_id', None))
+            return True
+        logger.warning('Failed to send admin payment-failed notification: %s %s', response.status_code, response.text)
+        return False
+    except requests.RequestException as exc:
+        logger.exception('Failed to send admin payment-failed notification: %s', exc)
+        return False
+
+
+def notify_payment_refunded(
+    payment,
+    subscription,
+    *,
+    amount: Optional[str] = None,
+    zoom_addon: bool = False,
+) -> bool:
+    """Уведомить админа о возврате платежа."""
+    admin_chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', None)
+    if not admin_chat_id:
+        logger.debug('ADMIN_PAYMENT_TELEGRAM_CHAT_ID not configured, skipping refunded notification')
+        return False
+
+    token = _get_payments_bot_token()
+    if not token:
+        logger.warning('TELEGRAM_PAYMENTS_BOT_TOKEN not configured, cannot notify admin about refund')
+        return False
+
+    user = subscription.user
+    user_info = user.get_full_name() or user.email
+    payment_type = "Zoom (подписка)" if zoom_addon else "Оплата"
+    refunded_amount = amount or f"{payment.amount} {payment.currency}"
+
+    message = (
+        f"Возврат платежа\n\n"
+        f"Пользователь: {user_info}\n"
+        f"Email: {user.email}\n"
+        f"Тип: {payment_type}\n"
+        f"Сумма: {refunded_amount}\n"
+        f"Платёжная система: {payment.payment_system}\n"
+        f"ID платежа: {payment.payment_id}"
+    )
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        'chat_id': admin_chat_id,
+        'text': message,
+        'disable_web_page_preview': True,
+    }
+
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        if response.ok:
+            logger.info('Admin refunded notification sent for payment %s', getattr(payment, 'payment_id', None))
+            return True
+        logger.warning('Failed to send admin refunded notification: %s %s', response.status_code, response.text)
+        return False
+    except requests.RequestException as exc:
+        logger.exception('Failed to send admin refunded notification: %s', exc)
+        return False
+
+
 def notify_student_top_rating(student, rank: int, period_type: str, period_label: str, group_name: str, total_points: int) -> bool:
     """
     Отправляет уведомление ученику о попадании в топ рейтинга.
