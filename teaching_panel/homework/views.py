@@ -1708,7 +1708,7 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
 # Прокси-endpoint для доступа к файлам домашек
 # ============================================================
 
-from django.http import HttpResponse, FileResponse, HttpResponseRedirect
+from django.http import HttpResponse, FileResponse, HttpResponseRedirect, StreamingHttpResponse
 from django.views import View
 
 
@@ -1723,18 +1723,70 @@ class HomeworkFileProxyView(View):
     def get(self, request, file_id):
         from .models import HomeworkFile
         import os
-        import requests
+        import io
         import re
+        import requests
         
         try:
             hw_file = HomeworkFile.objects.get(id=file_id)
         except HomeworkFile.DoesNotExist:
             return HttpResponse("File not found", status=404)
+
+        # Быстрый путь: если есть локальная копия (в т.ч. как кэш), отдаём её сразу
+        if hw_file.local_path and os.path.exists(hw_file.local_path):
+            response = FileResponse(
+                open(hw_file.local_path, 'rb'),
+                content_type=hw_file.mime_type or 'application/octet-stream'
+            )
+            response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
+            response['Cache-Control'] = 'public, max-age=31536000'
+            return response
         
-        # Если на GDrive - проксируем через lh3.googleusercontent.com
-        if hw_file.storage == HomeworkFile.STORAGE_GDRIVE and hw_file.gdrive_url:
+        # Если на GDrive - сначала пробуем быстрый CDN путь (если файл публичный),
+        # затем fallback на Drive API (для приватных файлов).
+        if hw_file.storage == HomeworkFile.STORAGE_GDRIVE:
+            # 1) Предпочитаем явный `gdrive_file_id`
+            if hw_file.gdrive_file_id:
+                # Быстрый путь: lh3 (может работать для публичных файлов)
+                proxy_url = f'https://lh3.googleusercontent.com/d/{hw_file.gdrive_file_id}'
+                try:
+                    with requests.get(proxy_url, timeout=(3, 10), stream=True) as resp:
+                        if resp.status_code == 200:
+                            content_type = resp.headers.get('Content-Type', hw_file.mime_type or 'application/octet-stream')
+                            response = StreamingHttpResponse(resp.iter_content(chunk_size=8192), content_type=content_type)
+                            response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
+                            response['Cache-Control'] = 'public, max-age=31536000'
+                            return response
+                except Exception as e:
+                    print(f"[HomeworkFileProxyView] GDrive lh3 proxy error (gdrive_file_id): {e}")
+
+                try:
+                    from schedule.gdrive_utils import get_gdrive_manager
+                    from googleapiclient.http import MediaIoBaseDownload
+
+                    gdrive = get_gdrive_manager()
+                    request_media = gdrive.service.files().get_media(fileId=hw_file.gdrive_file_id)
+                    file_stream = io.BytesIO()
+                    downloader = MediaIoBaseDownload(file_stream, request_media)
+                    done = False
+                    while not done:
+                        _, done = downloader.next_chunk()
+                    file_stream.seek(0)
+
+                    content_type = hw_file.mime_type or 'application/octet-stream'
+                    response = FileResponse(file_stream, content_type=content_type)
+                    response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
+                    response['Cache-Control'] = 'public, max-age=31536000'
+                    return response
+                except Exception as e:
+                    print(f"[HomeworkFileProxyView] Drive API download error: {e}")
+
+            # 2) Fallback: если `gdrive_file_id` не заполнен, пробуем старую логику по URL
+            if not hw_file.gdrive_url:
+                return HttpResponse("File not found", status=404)
+
             gdrive_url = hw_file.gdrive_url
-            file_id_match = None
+            extracted_drive_id = None
             
             # Извлекаем file ID из разных форматов Google Drive URL
             patterns = [
@@ -1745,35 +1797,46 @@ class HomeworkFileProxyView(View):
             for pattern in patterns:
                 match = re.search(pattern, gdrive_url)
                 if match:
-                    file_id_match = match.group(1)
+                    extracted_drive_id = match.group(1)
                     break
             
-            if file_id_match:
-                # Используем lh3.googleusercontent.com для прямого доступа
-                proxy_url = f'https://lh3.googleusercontent.com/d/{file_id_match}'
+            if extracted_drive_id:
+                # Сначала — публичный lh3 (может работать для публичных файлов)
+                proxy_url = f'https://lh3.googleusercontent.com/d/{extracted_drive_id}'
                 try:
-                    resp = requests.get(proxy_url, timeout=10, stream=True)
-                    if resp.status_code == 200:
-                        content_type = resp.headers.get('Content-Type', hw_file.mime_type or 'application/octet-stream')
-                        response = HttpResponse(resp.content, content_type=content_type)
-                        response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
-                        response['Cache-Control'] = 'public, max-age=31536000'
-                        return response
+                    with requests.get(proxy_url, timeout=(3, 10), stream=True) as resp:
+                        if resp.status_code == 200:
+                            content_type = resp.headers.get('Content-Type', hw_file.mime_type or 'application/octet-stream')
+                            response = StreamingHttpResponse(resp.iter_content(chunk_size=8192), content_type=content_type)
+                            response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
+                            response['Cache-Control'] = 'public, max-age=31536000'
+                            return response
                 except Exception as e:
-                    print(f"[HomeworkFileProxyView] GDrive proxy error: {e}")
+                    print(f"[HomeworkFileProxyView] GDrive lh3 proxy error: {e}")
+
+                # Fallback: пробуем через Drive API (для приватных файлов)
+                try:
+                    from schedule.gdrive_utils import get_gdrive_manager
+                    from googleapiclient.http import MediaIoBaseDownload
+
+                    gdrive = get_gdrive_manager()
+                    request_media = gdrive.service.files().get_media(fileId=extracted_drive_id)
+                    file_stream = io.BytesIO()
+                    downloader = MediaIoBaseDownload(file_stream, request_media)
+                    done = False
+                    while not done:
+                        _, done = downloader.next_chunk()
+                    file_stream.seek(0)
+
+                    content_type = hw_file.mime_type or 'application/octet-stream'
+                    response = FileResponse(file_stream, content_type=content_type)
+                    response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
+                    response['Cache-Control'] = 'public, max-age=31536000'
+                    return response
+                except Exception as e:
+                    print(f"[HomeworkFileProxyView] Drive API fallback download error: {e}")
             
             # Fallback: редирект если проксирование не удалось
             return HttpResponseRedirect(gdrive_url)
-        
-        # Если локально - отдаём файл
-        if hw_file.local_path and os.path.exists(hw_file.local_path):
-            response = FileResponse(
-                open(hw_file.local_path, 'rb'),
-                content_type=hw_file.mime_type
-            )
-            response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
-            # Кеширование на 1 год (файлы не меняются)
-            response['Cache-Control'] = 'public, max-age=31536000'
-            return response
         
         return HttpResponse("File not found", status=404)

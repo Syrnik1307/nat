@@ -32,15 +32,15 @@ def sanitize_question_config(question: Question):
     q_type = question.question_type
 
     # Backward/forward compat: если фронт хранит только fileId, а url отсутствует — добавим.
-    # Это нужно для шаблонов/копирования вложений на Google Drive.
+    # Важно: `imageFileId`/`audioFileId` в нашем приложении — это ID `HomeworkFile`,
+    # а доступ к файлу должен идти через внутренний прокси `/api/homework/file/<id>/`.
     try:
-        if getattr(settings, 'USE_GDRIVE_STORAGE', False):
-            image_file_id = config.get('imageFileId')
-            if image_file_id and not config.get('imageUrl'):
-                config['imageUrl'] = f"https://drive.google.com/uc?export=download&id={image_file_id}"
-            audio_file_id = config.get('audioFileId')
-            if audio_file_id and not config.get('audioUrl'):
-                config['audioUrl'] = f"https://drive.google.com/uc?export=download&id={audio_file_id}"
+        image_file_id = config.get('imageFileId')
+        if image_file_id and not config.get('imageUrl'):
+            config['imageUrl'] = f"/api/homework/file/{image_file_id}/"
+        audio_file_id = config.get('audioFileId')
+        if audio_file_id and not config.get('audioUrl'):
+            config['audioUrl'] = f"/api/homework/file/{audio_file_id}/"
     except Exception:
         # Не должны ломать выдачу ДЗ ученикам из-за вспомогательной логики
         pass
