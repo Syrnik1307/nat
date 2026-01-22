@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getLessons, getHomeworkList, getSubmissions, getGroups, joinLesson } from '../apiService';
+import { getLessons, getGroups, joinLesson } from '../apiService';
 import { getCached, invalidateCache } from '../utils/dataCache';
 import JoinGroupModal from './JoinGroupModal';
 import SupportWidget from './SupportWidget';
@@ -22,14 +22,13 @@ const StudentHomePage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [lessons, setLessons] = useState([]);
-  const [homework, setHomework] = useState([]);
-  const [submissions, setSubmissions] = useState([]);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [groups, setGroups] = useState([]);
   const [inviteCodeFromUrl, setInviteCodeFromUrl] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [contentVisible, setContentVisible] = useState(false);
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
@@ -49,18 +48,44 @@ const StudentHomePage = () => {
 
   useEffect(() => {
     if (showJoinModal) {
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      const prevBodyPaddingRight = document.body.style.paddingRight;
+      document.body.dataset.prevPaddingRight = prevBodyPaddingRight;
+
       document.body.style.overflow = 'hidden';
       document.documentElement.style.overflow = 'hidden';
+
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
     } else {
       document.body.style.overflow = '';
       document.documentElement.style.overflow = '';
+
+      if (document.body.dataset.prevPaddingRight !== undefined) {
+        document.body.style.paddingRight = document.body.dataset.prevPaddingRight;
+        delete document.body.dataset.prevPaddingRight;
+      } else {
+        document.body.style.paddingRight = '';
+      }
     }
 
     return () => {
       document.body.style.overflow = '';
       document.documentElement.style.overflow = '';
+      document.body.style.paddingRight = '';
+      delete document.body.dataset.prevPaddingRight;
     };
   }, [showJoinModal]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      const raf = requestAnimationFrame(() => setContentVisible(true));
+      return () => cancelAnimationFrame(raf);
+    }
+    setContentVisible(false);
+    return undefined;
+  }, [isLoading]);
 
   const loadData = async (useCache = true) => {
     // Используем кэш для мгновенного показа данных
@@ -73,32 +98,30 @@ const StudentHomePage = () => {
         const in30 = new Date();
         in30.setDate(now.getDate() + 30);
         
-        const [lessonsData, hwData, subsData, groupsData] = await Promise.all([
-          getCached('student:lessons', async () => {
-            const res = await getLessons({
-              start: now.toISOString(),
-              end: in30.toISOString(),
-              include_recurring: true,
-            });
-            return Array.isArray(res.data) ? res.data : res.data.results || [];
-          }, cacheTTL),
-          getCached('student:homework', async () => {
-            const res = await getHomeworkList({});
-            return Array.isArray(res.data) ? res.data : res.data.results || [];
-          }, cacheTTL),
-          getCached('student:submissions', async () => {
-            const res = await getSubmissions({});
-            return Array.isArray(res.data) ? res.data : res.data.results || [];
-          }, cacheTTL),
-          getCached('student:groups', async () => {
-            const res = await getGroups();
-            return Array.isArray(res.data) ? res.data : res.data.results || [];
-          }, cacheTTL),
+        const [lessonsData, groupsData] = await Promise.all([
+          getCached(
+            'student:lessons',
+            async () => {
+              const res = await getLessons({
+                start: now.toISOString(),
+                end: in30.toISOString(),
+                include_recurring: true,
+              });
+              return Array.isArray(res.data) ? res.data : res.data.results || [];
+            },
+            cacheTTL
+          ),
+          getCached(
+            'student:groups',
+            async () => {
+              const res = await getGroups();
+              return Array.isArray(res.data) ? res.data : res.data.results || [];
+            },
+            cacheTTL
+          ),
         ]);
         
         setLessons(lessonsData);
-        setHomework(hwData);
-        setSubmissions(subsData);
         setGroups(groupsData);
         setIsLoading(false);
         return;
@@ -113,21 +136,15 @@ const StudentHomePage = () => {
       const now = new Date();
       const in30 = new Date();
       in30.setDate(now.getDate() + 30);
-      const [lessonsRes, hwRes, subRes, groupsRes] = await Promise.all([
+      const [lessonsRes, groupsRes] = await Promise.all([
         getLessons({
           start: now.toISOString(),
           end: in30.toISOString(),
           include_recurring: true,
         }),
-        getHomeworkList({}),
-        getSubmissions({}),
         getGroups(),
       ]);
       setLessons(Array.isArray(lessonsRes.data) ? lessonsRes.data : lessonsRes.data.results || []);
-      const hwList = Array.isArray(hwRes.data) ? hwRes.data : hwRes.data.results || [];
-      setHomework(hwList);
-      const subsList = Array.isArray(subRes.data) ? subRes.data : subRes.data.results || [];
-      setSubmissions(subsList);
       const groupsList = Array.isArray(groupsRes.data) ? groupsRes.data : groupsRes.data.results || [];
       setGroups(groupsList);
       
@@ -157,22 +174,14 @@ const StudentHomePage = () => {
     return name.trim().slice(0, 2).toUpperCase();
   };
 
-  // Calculate stats
-  const submissionIndex = submissions.reduce((acc, s) => { acc[s.homework] = s; return acc; }, {});
-  const decoratedHomework = homework.map(hw => {
-    const sub = submissionIndex[hw.id];
-    return {
-      ...hw,
-      submission_status: sub ? sub.status : 'not_submitted',
-    };
-  });
-  const pendingHomework = decoratedHomework.filter(hw => hw.submission_status === 'not_submitted');
-
   const today = new Date();
-  const todayLessons = lessons.filter(l => {
-    const lessonDate = new Date(l.start_time);
-    return lessonDate.toDateString() === today.toDateString();
-  });
+  const todayKey = today.toDateString();
+  const todayLessons = useMemo(() => {
+    return lessons.filter((l) => {
+      const lessonDate = new Date(l.start_time);
+      return lessonDate.toDateString() === todayKey;
+    });
+  }, [lessons, todayKey]);
 
   const hasLessonsToday = todayLessons.length > 0;
   const message = hasLessonsToday 
@@ -262,129 +271,119 @@ const StudentHomePage = () => {
     return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${day} ${month}`;
   };
 
-  // Show skeleton while loading
-  if (isLoading) {
-    return (
-      <div className="student-home">
-        <StudentDashboardSkeleton />
-        {!showJoinModal && <SupportWidget />}
-      </div>
-    );
-  }
-
   return (
     <div className="student-home">
-      <main className="student-main-content">
+      <main className="student-main-content animate-page-enter">
         <div className="student-container">
-          <h1 className="student-page-title">Мои курсы</h1>
+          <div className="student-page-stage">
+            <div className={`student-page-skeleton-layer ${isLoading ? 'is-visible' : 'is-hidden'}`}>
+              <StudentDashboardSkeleton />
+            </div>
 
-          {/* Today's status - compact */}
-          <div className="student-today-banner">
-            <span className="student-today-date">
-              <IconCalendar size={16} className="student-today-icon" />
-              {formatTodayDate()}
-            </span>
-            <span className="student-today-separator">•</span>
-            <span className={`student-today-status-text ${hasLessonsToday ? 'has-lessons' : ''}`}>
-              {message}
-            </span>
+            <div
+              className={`student-page-content-layer ${contentVisible ? 'is-visible' : 'is-hidden'}`}
+              aria-hidden={!contentVisible}
+            >
+              <h1 className="student-page-title">Мои курсы</h1>
 
-            {hasLessonsToday && nextLessonTimeText && (
-              <>
-                <span className="student-today-separator">•</span>
-                <span className="student-today-next-time">
-                  Ближайшее: {nextLessonTimeText}
+              {/* Today's status - compact */}
+              <div className="student-today-banner">
+                <span className="student-today-date">
+                  <IconCalendar size={16} className="student-today-icon" />
+                  {formatTodayDate()}
                 </span>
-              </>
-            )}
+                <span className="student-today-separator">•</span>
+                <span className={`student-today-status-text ${hasLessonsToday ? 'has-lessons' : ''}`}>{message}</span>
 
-            {hasLessonsToday && (
-              <div className="student-today-actions">
-                <Button
-                  variant="primary"
-                  size="small"
-                  loading={joinLoading}
-                  onClick={handleJoinLesson}
-                >
-                  Присоединиться
-                </Button>
-              </div>
-            )}
-          </div>
+                {hasLessonsToday && nextLessonTimeText && (
+                  <>
+                    <span className="student-today-separator">•</span>
+                    <span className="student-today-next-time">Ближайшее: {nextLessonTimeText}</span>
+                  </>
+                )}
 
-          {joinError && (
-            <div className="student-today-join-error" role="alert">
-              {joinError}
-            </div>
-          )}
-
-          {/* Today's Lessons with Topics */}
-          {todayLessons.length > 0 && (
-            <div className="student-lessons-today">
-              <h2 className="student-section-title">Расписание на сегодня</h2>
-              <div className="student-lessons-list">
-                {todayLessons.map((lesson) => (
-                  <div key={lesson.id} className="student-lesson-card">
-                    <div className="student-lesson-time">
-                      {formatTimeHHMM(lesson.start_time)} – {formatTimeHHMM(lesson.end_time)}
-                    </div>
-                    <div className="student-lesson-info">
-                      <div className="student-lesson-group">{lesson.group_name || lesson.display_name || 'Группа'}</div>
-                      {lesson.title && (
-                        <div className="student-lesson-topic">Тема: {lesson.title}</div>
-                      )}
-                    </div>
+                {hasLessonsToday && (
+                  <div className="student-today-actions">
+                    <Button variant="primary" size="small" loading={joinLoading} onClick={handleJoinLesson}>
+                      Присоединиться
+                    </Button>
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          )}
 
-          {/* Course List */}
-          <div className="student-courses-section">
-            <div className="student-section-header">
-              <h2>Список курсов</h2>
-              <button type="button" onClick={() => setShowJoinModal(true)} className="student-link-button">
-                Есть промокод?
-              </button>
-            </div>
+              {joinError && (
+                <div className="student-today-join-error" role="alert">
+                  {joinError}
+                </div>
+              )}
 
-            {groups.length === 0 ? (
-              <div className="student-empty-state">
-                <div className="student-empty-icon-style" />
-                <p>У вас пока нет активных курсов</p>
-                <button onClick={() => setShowJoinModal(true)} className="student-join-first-btn">
-                  Присоединиться к группе
-                </button>
-              </div>
-            ) : (
-              <div className="student-courses-grid">
-                {groups.map(group => {
-                  const studentCount = group.student_count || 0;
-                  const teacherName = group.teacher?.first_name || group.teacher?.email || 'Не указан';
-
-                  return (
-                    <div key={group.id} className="student-course-card">
-                      <div className="student-course-top">
-                        <div className="student-course-badge">{getCourseLabel(group.name)}</div>
-                        <div className="student-course-main">
-                          <h3 className="student-course-title">{group.name}</h3>
-                          <div className="student-course-chips">
-                            <span className="student-chip">
-                              <span className="student-chip-label">Преподаватель</span>
-                              <span className="student-chip-value">{teacherName}</span>
-                            </span>
-                            <span className="student-chip student-chip-muted">
-                              {studentCount} {getStudentsText(studentCount)}
-                            </span>
-                          </div>
+              {/* Today's Lessons with Topics */}
+              {todayLessons.length > 0 && (
+                <div className="student-lessons-today">
+                  <h2 className="student-section-title">Расписание на сегодня</h2>
+                  <div className="student-lessons-list animate-stagger">
+                    {todayLessons.map((lesson) => (
+                      <div key={lesson.id} className="student-lesson-card">
+                        <div className="student-lesson-time">
+                          {formatTimeHHMM(lesson.start_time)} – {formatTimeHHMM(lesson.end_time)}
+                        </div>
+                        <div className="student-lesson-info">
+                          <div className="student-lesson-group">{lesson.group_name || lesson.display_name || 'Группа'}</div>
+                          {lesson.title && <div className="student-lesson-topic">Тема: {lesson.title}</div>}
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Course List */}
+              <div className="student-courses-section">
+                <div className="student-section-header">
+                  <h2>Список курсов</h2>
+                  <button type="button" onClick={() => setShowJoinModal(true)} className="student-link-button">
+                    Есть промокод?
+                  </button>
+                </div>
+
+                {groups.length === 0 ? (
+                  <div className="student-empty-state">
+                    <div className="student-empty-icon-style" />
+                    <p>У вас пока нет активных курсов</p>
+                    <button onClick={() => setShowJoinModal(true)} className="student-join-first-btn">
+                      Присоединиться к группе
+                    </button>
+                  </div>
+                ) : (
+                  <div className="student-courses-grid animate-stagger">
+                    {groups.map((group) => {
+                      const studentCount = group.student_count || 0;
+                      const teacherName = group.teacher?.first_name || group.teacher?.email || 'Не указан';
+
+                      return (
+                        <div key={group.id} className="student-course-card">
+                          <div className="student-course-top">
+                            <div className="student-course-badge">{getCourseLabel(group.name)}</div>
+                            <div className="student-course-main">
+                              <h3 className="student-course-title">{group.name}</h3>
+                              <div className="student-course-chips">
+                                <span className="student-chip">
+                                  <span className="student-chip-label">Преподаватель</span>
+                                  <span className="student-chip-value">{teacherName}</span>
+                                </span>
+                                <span className="student-chip student-chip-muted">
+                                  {studentCount} {getStudentsText(studentCount)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </main>
