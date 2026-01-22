@@ -39,14 +39,7 @@ function Write-Status {
         default { $InfoColor }
     }
     
-    $icon = switch ($Type) {
-        "Error" { "❌" }
-        "Success" { "✅" }
-        "Warning" { "⚠️" }
-        default { "ℹ️" }
-    }
-    
-    Write-Host "$icon $Message" -ForegroundColor $color
+    Write-Host "$Message" -ForegroundColor $color
 }
 
 function Test-SSHConnection {
@@ -73,7 +66,7 @@ function Test-SSHConnection {
     Write-Host "  4. Сервер недоступен" -ForegroundColor Gray
     Write-Host ""
     Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "║ 🛠️  АВТОМАТИЧЕСКАЯ НАСТРОЙКА SSH                               ║" -ForegroundColor Cyan
+    Write-Host "║ АВТОМАТИЧЕСКАЯ НАСТРОЙКА SSH                                   ║" -ForegroundColor Cyan
     Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "У нас есть скрипт для автоматической настройки SSH!" -ForegroundColor Green
@@ -185,7 +178,7 @@ function Show-Menu {
 function Deploy-Full {
     Write-Host ""
     Write-Host "════════════════════════════════════════" -ForegroundColor Cyan
-    Write-Host "  🚀 ПОЛНЫЙ ДЕПЛОЙ" -ForegroundColor Cyan
+    Write-Host "  ПОЛНЫЙ ДЕПЛОЙ" -ForegroundColor Cyan
     Write-Host "════════════════════════════════════════" -ForegroundColor Cyan
     Write-Host ""
     
@@ -212,10 +205,10 @@ function Deploy-Full {
     
     Write-Host ""
     Write-Host "════════════════════════════════════════" -ForegroundColor Green
-    Write-Host "  ✅ ДЕПЛОЙ ЗАВЕРШЁН УСПЕШНО!" -ForegroundColor Green
+    Write-Host "  ДЕПЛОЙ ЗАВЕРШЁН УСПЕШНО" -ForegroundColor Green
     Write-Host "════════════════════════════════════════" -ForegroundColor Green
     Write-Host ""
-    Write-Host "🌐 Сайт: http://72.56.81.163" -ForegroundColor Cyan
+    Write-Host "Сайт: http://72.56.81.163" -ForegroundColor Cyan
     Write-Host ""
     
     return $true
@@ -224,7 +217,7 @@ function Deploy-Full {
 function Deploy-Backend {
     Write-Host ""
     Write-Host "════════════════════════════════════════" -ForegroundColor Cyan
-    Write-Host "  🐍 ОБНОВЛЕНИЕ БЭКЕНДА" -ForegroundColor Cyan
+    Write-Host "  ОБНОВЛЕНИЕ БЭКЕНДА" -ForegroundColor Cyan
     Write-Host "════════════════════════════════════════" -ForegroundColor Cyan
     Write-Host ""
     

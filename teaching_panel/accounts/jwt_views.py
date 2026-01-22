@@ -24,6 +24,7 @@ from .bot_protection import (
 )
 import logging
 import json
+import os
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -41,16 +42,9 @@ class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
         raw_email = (attrs.get(email_field) or '').strip()
         password = attrs.get('password') or ''
 
-        # DEBUG LOGGING (temporary): helps diagnose prod login issues
-        try:
-            import logging
-            logging.getLogger(__name__).info(
-                "[AuthDebug] incoming login: email=%s len(password)=%s", raw_email, len(password)
-            )
-            # Also print to stdout to ensure visibility under gunicorn
-            print(f"[AuthDebug] serializer.validate email={raw_email} password_len={len(password)}")
-        except Exception:
-            pass
+        auth_debug = os.environ.get('AUTH_DEBUG', '0') == '1'
+        if auth_debug:
+            logger.info("[AuthDebug] incoming login: email=%s password_len=%s", raw_email, len(password))
 
         if not raw_email or not password:
             from rest_framework import exceptions
@@ -64,32 +58,23 @@ class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
         try:
             user = User.objects.get(**{f'{email_field}__iexact': raw_email})
         except User.DoesNotExist:
-            try:
-                import logging
-                logging.getLogger(__name__).warning("[AuthDebug] user not found: %s", raw_email)
-            except Exception:
-                pass
+            if auth_debug:
+                logger.warning("[AuthDebug] user not found: %s", raw_email)
             register_failure(raw_email)
             from rest_framework import exceptions
             raise exceptions.AuthenticationFailed('Неверный email или пароль')
 
         # Проверка активности
         if not user.is_active:
-            try:
-                import logging
-                logging.getLogger(__name__).warning("[AuthDebug] user inactive: %s", raw_email)
-            except Exception:
-                pass
+            if auth_debug:
+                logger.warning("[AuthDebug] user inactive: %s", raw_email)
             from rest_framework import exceptions
             raise exceptions.AuthenticationFailed('Аккаунт деактивирован')
 
         # Строгая проверка пароля
         if not user.check_password(password):
-            try:
-                import logging
-                logging.getLogger(__name__).warning("[AuthDebug] bad password for: %s", raw_email)
-            except Exception:
-                pass
+            if auth_debug:
+                logger.warning("[AuthDebug] bad password for: %s", raw_email)
             register_failure(raw_email)
             from rest_framework import exceptions
             raise exceptions.AuthenticationFailed('Неверный email или пароль')
@@ -101,8 +86,7 @@ class CaseInsensitiveTokenObtainPairSerializer(CustomTokenObtainPairSerializer):
         
         # Поддержка remember_me: продлеваем refresh token до 365 дней
         remember_me_raw = self.context.get('request') and self.context['request'].data.get('remember_me')
-        remember_me_forced = user.email.lower().startswith('syrnik131313')
-        remember_me = bool(remember_me_raw) or remember_me_forced
+        remember_me = bool(remember_me_raw)
         if remember_me:
             from datetime import timedelta
             refresh.set_exp(lifetime=timedelta(days=365))
@@ -176,7 +160,8 @@ class DirectTokenView(APIView):
     def post(self, request):
         email = (request.data.get('email') or '').strip()
         password = request.data.get('password') or ''
-        print(f"[AuthDebug] DirectTokenView payload: email={email} len={len(password)} ct={request.content_type}")
+        if os.environ.get('AUTH_DEBUG', '0') == '1':
+            logger.info("[AuthDebug] DirectTokenView payload: email=%s len(password)=%s ct=%s", email, len(password), request.content_type)
         if not email or not password:
             return Response({'detail': 'Некорректные учетные данные'}, status=status.HTTP_400_BAD_REQUEST)
 
