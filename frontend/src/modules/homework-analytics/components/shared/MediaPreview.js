@@ -46,6 +46,12 @@ const MediaPreview = ({ type = 'image', src, alt = 'Медиа', className = '' 
   const [error, setError] = useState(false);
   const [reloadNonce, setReloadNonce] = useState(0);
 
+  // Сбрасываем состояние загрузки при смене src
+  React.useEffect(() => {
+    setLoading(true);
+    setError(false);
+  }, [src]);
+
   // Нормализация URL - добавляем baseURL если нужно, конвертируем Google Drive
   const normalizeUrl = (url) => {
     if (!url) return '';

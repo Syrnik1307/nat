@@ -336,6 +336,7 @@ const HomeworkTake = () => {
                   onClick={() => setImagePreview({ open: true, url: currentQuestion.config.imageUrl })}
                 >
                   <MediaPreview 
+                    key={`img-${currentQuestion.id}`}
                     type="image"
                     src={currentQuestion.config.imageUrl} 
                     alt="Изображение к вопросу"
