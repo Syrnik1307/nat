@@ -13,6 +13,7 @@ import StorageQuotaModal from '../modules/Admin/StorageQuotaModal';
 import SubscriptionsModal from '../modules/Admin/SubscriptionsModal';
 import StorageStats from './StorageStats';
 import AdminReferrals from '../modules/Admin/AdminReferrals';
+import BusinessMetricsDashboard from '../modules/Admin/BusinessMetricsDashboard';
 import { Modal, Button } from '../shared/components';
 import '../styles/AdminPanel.css';
 
@@ -28,6 +29,7 @@ const Icon = {
   plus: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
   alert: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
   check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
+  analytics: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 21H4.6c-.56 0-.84 0-1.054-.109a1 1 0 01-.437-.437C3 20.24 3 19.96 3 19.4V3"/><path d="M7 14l4-4 4 4 6-6"/></svg>,
 };
 
 /* ========== HELPERS ========== */
@@ -276,6 +278,7 @@ const AdminHomePage = () => {
   const [showSubs, setShowSubs] = useState(false);
   const [showStorageStats, setShowStorageStats] = useState(false);
   const [showReferrals, setShowReferrals] = useState(false);
+  const [showBusinessMetrics, setShowBusinessMetrics] = useState(false);
 
   // Sub-tabs for overview
   const [overviewTab, setOverviewTab] = useState('moderation');
@@ -309,13 +312,21 @@ const AdminHomePage = () => {
   useEffect(() => { load(); }, [load]);
 
   const quickAction = async (action) => {
-    const token = getAccessToken();
-    await fetch('/accounts/api/admin/quick-actions/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ action }),
-    });
-    load();
+    try {
+      const token = getAccessToken();
+      const res = await fetch('/accounts/api/admin/quick-actions/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.error || 'Ошибка выполнения действия');
+      }
+      load();
+    } catch (e) {
+      alert(e?.message || 'Ошибка выполнения действия');
+    }
   };
 
   const createUser = async (e) => {
@@ -471,6 +482,35 @@ const AdminHomePage = () => {
                   <div style={styles.sectionNote}>Выручка, удержание, конверсия, рост</div>
                 </div>
               </div>
+
+              <div style={{ ...styles.actionGrid, marginTop: 12 }}>
+                <button style={styles.actionBtn} onClick={() => setShowSubs(true)}>
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.revenue}</div>
+                  Подписки
+                </button>
+                <button style={styles.actionBtn} onClick={() => setShowStorageStats(true)}>
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.storage}</div>
+                  Хранилище
+                </button>
+                <button style={styles.actionBtn} onClick={() => setShowStorage(true)}>
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.settings}</div>
+                  Квоты хранилища
+                </button>
+                <button style={styles.actionBtn} onClick={() => setShowReferrals(true)}>
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.trend}</div>
+                  Рефералы
+                </button>
+                <button
+                  style={styles.actionBtn}
+                  onClick={() => {
+                    const ok = window.confirm('Пересчитать хранилище для активных подписок? Операция может занять время.');
+                    if (ok) quickAction('recalculate_storage');
+                  }}
+                >
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.refresh}</div>
+                  Пересчитать хранилище
+                </button>
+              </div>
             </div>
 
             {/* KPI CARDS */}
@@ -624,6 +664,10 @@ const AdminHomePage = () => {
                   <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.trend}</div>
                   Рефералы
                 </button>
+                <button style={styles.actionBtn} onClick={() => setShowBusinessMetrics(true)}>
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.analytics}</div>
+                  Аналитика
+                </button>
               </div>
             </div>
 
@@ -760,6 +804,7 @@ const AdminHomePage = () => {
       {showSubs && <SubscriptionsModal onClose={() => setShowSubs(false)} />}
       {showStorageStats && <StorageStats onClose={() => setShowStorageStats(false)} />}
       {showReferrals && <AdminReferrals onClose={() => setShowReferrals(false)} />}
+      {showBusinessMetrics && <BusinessMetricsDashboard onClose={() => setShowBusinessMetrics(false)} />}
     </div>
   );
 };

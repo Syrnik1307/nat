@@ -27,6 +27,7 @@ from .admin_views import (
     AdminSystemHealthView,
     AdminActivityLogView,
     AdminQuickActionsView,
+    AdminBusinessMetricsView,
 )
 from .chat_views import ChatViewSet, MessageViewSet, UserSearchViewSet
 from .email_views import (
@@ -114,6 +115,7 @@ urlpatterns = [
     path('api/admin/system-health/', AdminSystemHealthView.as_view(), name='admin_system_health'),
     path('api/admin/activity-log/', AdminActivityLogView.as_view(), name='admin_activity_log'),
     path('api/admin/quick-actions/', AdminQuickActionsView.as_view(), name='admin_quick_actions'),
+    path('api/admin/business-metrics/', AdminBusinessMetricsView.as_view(), name='admin_business_metrics'),
     
     # API для получения сообщений (для всех пользователей)
     path('api/status-messages/', AdminStatusMessagesView.as_view(), name='status_messages'),
