@@ -153,10 +153,26 @@ const styles = {
     justifyContent: 'space-between',
     marginBottom: 16,
   },
+  sectionHeaderStack: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 16,
+  },
+  sectionTitleWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: 600,
     color: '#fff',
+  },
+  sectionNote: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.45)',
   },
   actionGrid: {
     display: 'grid',
@@ -239,21 +255,6 @@ const StatCard = ({ icon, label, value, sub, trend, color = '#6366f1' }) => (
       {sub && <div style={{ ...styles.statSub, marginTop: 2 }}>{sub}</div>}
     </div>
   </div>
-);
-
-/* ========== MINI CHART ========== */
-const MiniChart = ({ data, dataKey, color = '#6366f1' }) => (
-  <ResponsiveContainer width="100%" height={60}>
-    <AreaChart data={data}>
-      <defs>
-        <linearGradient id={`grad-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-          <stop offset="100%" stopColor={color} stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} fill={`url(#grad-${dataKey})`} />
-    </AreaChart>
-  </ResponsiveContainer>
 );
 
 /* ========== MAIN COMPONENT ========== */
@@ -374,20 +375,62 @@ const AdminHomePage = () => {
         {/* OVERVIEW TAB */}
         {tab === 'overview' && (
           <>
-            {/* ALERTS */}
-            {alerts.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                {alerts.slice(0, 3).map((a, i) => (
-                  <div key={i} style={styles.alertItem(a.severity)}>
-                    <div style={{ width: 20, height: 20, color: a.severity === 'critical' ? '#ef4444' : '#f59e0b' }}>{Icon.alert}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 500, color: '#fff' }}>{a.title}</div>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{a.user_name}</div>
-                    </div>
-                  </div>
-                ))}
+            {/* MODERATION */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={styles.sectionHeaderStack}>
+                <div style={styles.sectionTitleWrap}>
+                  <h2 style={styles.sectionTitle}>Модерация</h2>
+                  <div style={styles.sectionNote}>Оперативные сигналы и управление пользователями</div>
+                </div>
               </div>
-            )}
+
+              {alerts.length > 0 ? (
+                <div>
+                  {alerts.slice(0, 3).map((a, i) => (
+                    <div key={i} style={styles.alertItem(a.severity)}>
+                      <div style={{ width: 20, height: 20, color: a.severity === 'critical' ? '#ef4444' : '#f59e0b' }}>{Icon.alert}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 500, color: '#fff' }}>{a.title}</div>
+                        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{a.user_name}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ ...styles.card, padding: 16, color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+                  Нет активных сигналов
+                </div>
+              )}
+
+              <div style={{ ...styles.actionGrid, marginTop: 12 }}>
+                <button style={styles.actionBtn} onClick={() => setShowMessages(true)}>
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.alert}</div>
+                  Сообщения
+                </button>
+                <button style={styles.actionBtn} onClick={() => setShowTeachers(true)}>
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.users}</div>
+                  Учителя
+                </button>
+                <button style={styles.actionBtn} onClick={() => setShowStudents(true)}>
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.users}</div>
+                  Ученики
+                </button>
+                <button style={styles.actionBtn} onClick={() => setShowCreate(true)}>
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.plus}</div>
+                  Создать пользователя
+                </button>
+              </div>
+            </div>
+
+            {/* BUSINESS METRICS */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={styles.sectionHeaderStack}>
+                <div style={styles.sectionTitleWrap}>
+                  <h2 style={styles.sectionTitle}>Бизнес-метрики</h2>
+                  <div style={styles.sectionNote}>Выручка, удержание, конверсия, рост</div>
+                </div>
+              </div>
+            </div>
 
             {/* KPI CARDS */}
             <div style={styles.grid(4)}>
@@ -493,8 +536,11 @@ const AdminHomePage = () => {
         {/* USERS TAB */}
         {tab === 'users' && (
           <>
-            <div style={styles.sectionHeader}>
-              <h2 style={styles.sectionTitle}>Управление</h2>
+            <div style={styles.sectionHeaderStack}>
+              <div style={styles.sectionTitleWrap}>
+                <h2 style={styles.sectionTitle}>Модерация</h2>
+                <div style={styles.sectionNote}>Пользователи, сообщения, ручные проверки</div>
+              </div>
             </div>
             <div style={styles.actionGrid}>
               <button style={styles.actionBtn} onClick={() => setShowCreate(true)}>
@@ -509,22 +555,33 @@ const AdminHomePage = () => {
                 <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.users}</div>
                 Ученики
               </button>
-              <button style={styles.actionBtn} onClick={() => setShowSubs(true)}>
-                <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.revenue}</div>
-                Подписки
-              </button>
-              <button style={styles.actionBtn} onClick={() => setShowStorageStats(true)}>
-                <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.storage}</div>
-                Хранилище
-              </button>
-              <button style={styles.actionBtn} onClick={() => setShowReferrals(true)}>
-                <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.trend}</div>
-                Рефералы
-              </button>
               <button style={styles.actionBtn} onClick={() => setShowMessages(true)}>
                 <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.alert}</div>
                 Сообщения
               </button>
+            </div>
+
+            <div style={{ marginTop: 28 }}>
+              <div style={styles.sectionHeaderStack}>
+                <div style={styles.sectionTitleWrap}>
+                  <h2 style={styles.sectionTitle}>Бизнес-метрики</h2>
+                  <div style={styles.sectionNote}>Подписки, хранилище и каналы роста</div>
+                </div>
+              </div>
+              <div style={styles.actionGrid}>
+                <button style={styles.actionBtn} onClick={() => setShowSubs(true)}>
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.revenue}</div>
+                  Подписки
+                </button>
+                <button style={styles.actionBtn} onClick={() => setShowStorageStats(true)}>
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.storage}</div>
+                  Хранилище
+                </button>
+                <button style={styles.actionBtn} onClick={() => setShowReferrals(true)}>
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.trend}</div>
+                  Рефералы
+                </button>
+              </div>
             </div>
 
             {/* Stats */}
