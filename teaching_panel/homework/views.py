@@ -1750,13 +1750,22 @@ class HomeworkFileProxyView(View):
                 # Быстрый путь: lh3 (может работать для публичных файлов)
                 proxy_url = f'https://lh3.googleusercontent.com/d/{hw_file.gdrive_file_id}'
                 try:
-                    with requests.get(proxy_url, timeout=(3, 10), stream=True) as resp:
-                        if resp.status_code == 200:
-                            content_type = resp.headers.get('Content-Type', hw_file.mime_type or 'application/octet-stream')
-                            response = StreamingHttpResponse(resp.iter_content(chunk_size=8192), content_type=content_type)
-                            response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
-                            response['Cache-Control'] = 'public, max-age=31536000'
-                            return response
+                    resp = requests.get(proxy_url, timeout=(3, 10), stream=True)
+                    if resp.status_code == 200:
+                        def stream_and_close():
+                            try:
+                                for chunk in resp.iter_content(chunk_size=8192):
+                                    if chunk:
+                                        yield chunk
+                            finally:
+                                resp.close()
+
+                        content_type = resp.headers.get('Content-Type', hw_file.mime_type or 'application/octet-stream')
+                        response = StreamingHttpResponse(stream_and_close(), content_type=content_type)
+                        response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
+                        response['Cache-Control'] = 'public, max-age=31536000'
+                        return response
+                    resp.close()
                 except Exception as e:
                     print(f"[HomeworkFileProxyView] GDrive lh3 proxy error (gdrive_file_id): {e}")
 
@@ -1804,13 +1813,22 @@ class HomeworkFileProxyView(View):
                 # Сначала — публичный lh3 (может работать для публичных файлов)
                 proxy_url = f'https://lh3.googleusercontent.com/d/{extracted_drive_id}'
                 try:
-                    with requests.get(proxy_url, timeout=(3, 10), stream=True) as resp:
-                        if resp.status_code == 200:
-                            content_type = resp.headers.get('Content-Type', hw_file.mime_type or 'application/octet-stream')
-                            response = StreamingHttpResponse(resp.iter_content(chunk_size=8192), content_type=content_type)
-                            response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
-                            response['Cache-Control'] = 'public, max-age=31536000'
-                            return response
+                    resp = requests.get(proxy_url, timeout=(3, 10), stream=True)
+                    if resp.status_code == 200:
+                        def stream_and_close():
+                            try:
+                                for chunk in resp.iter_content(chunk_size=8192):
+                                    if chunk:
+                                        yield chunk
+                            finally:
+                                resp.close()
+
+                        content_type = resp.headers.get('Content-Type', hw_file.mime_type or 'application/octet-stream')
+                        response = StreamingHttpResponse(stream_and_close(), content_type=content_type)
+                        response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
+                        response['Cache-Control'] = 'public, max-age=31536000'
+                        return response
+                    resp.close()
                 except Exception as e:
                     print(f"[HomeworkFileProxyView] GDrive lh3 proxy error: {e}")
 
