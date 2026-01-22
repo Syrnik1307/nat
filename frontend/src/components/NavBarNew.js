@@ -200,7 +200,7 @@ const NavBar = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/auth-new', { replace: true });
   };
 
   const menuContent = (

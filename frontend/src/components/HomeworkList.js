@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { getHomeworkList, getSubmissions, getGroups } from '../apiService';
-import { Link, useNavigate } from 'react-router-dom';
+import { getCached } from '../utils/dataCache';
+import { Link } from 'react-router-dom';
 import { HomeworkListSkeleton } from '../shared/components';
 import './HomeworkList.css';
 
@@ -59,7 +60,6 @@ const IconCheckCircle = ({ size = 24 }) => (
 );
 
 const HomeworkList = () => {
-  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -87,17 +87,35 @@ const HomeworkList = () => {
   }, []);
 
   const loadData = async () => {
+    const cacheTTL = 30000; // 30 секунд
     setLoading(true);
     try {
-      const [hwRes, subRes, groupsRes] = await Promise.all([
-        getHomeworkList({}),
-        getSubmissions({}),
-        getGroups()
+      const [hwList, subList, groupsList] = await Promise.all([
+        getCached(
+          'student:homework:list',
+          async () => {
+            const res = await getHomeworkList({});
+            return Array.isArray(res.data) ? res.data : res.data.results || [];
+          },
+          cacheTTL
+        ),
+        getCached(
+          'student:homework:submissions',
+          async () => {
+            const res = await getSubmissions({});
+            return Array.isArray(res.data) ? res.data : res.data.results || [];
+          },
+          cacheTTL
+        ),
+        getCached(
+          'student:groups',
+          async () => {
+            const res = await getGroups();
+            return Array.isArray(res.data) ? res.data : res.data.results || [];
+          },
+          cacheTTL
+        ),
       ]);
-      
-      const hwList = Array.isArray(hwRes.data) ? hwRes.data : hwRes.data.results || [];
-      const subList = Array.isArray(subRes.data) ? subRes.data : subRes.data.results || [];
-      const groupsList = Array.isArray(groupsRes.data) ? groupsRes.data : groupsRes.data.results || [];
       
       setItems(hwList);
       setSubmissions(subList);

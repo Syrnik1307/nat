@@ -34,7 +34,15 @@ const prefetchStudentData = () => {
     include_recurring: true,
   }).then(res => Array.isArray(res.data) ? res.data : res.data.results || []));
   
-  prefetch('student:homework', () => getHomeworkList({})
+  prefetch('student:groups', () => getGroups()
+    .then(res => Array.isArray(res.data) ? res.data : res.data.results || []));
+};
+
+const prefetchHomeworkData = () => {
+  prefetch('student:homework:list', () => getHomeworkList({})
+    .then(res => Array.isArray(res.data) ? res.data : res.data.results || []));
+  
+  prefetch('student:homework:submissions', () => getSubmissions({})
     .then(res => Array.isArray(res.data) ? res.data : res.data.results || []));
   
   prefetch('student:groups', () => getGroups()
@@ -44,7 +52,7 @@ const prefetchStudentData = () => {
 const navItems = [
   { to: '/student', label: 'Мои курсы', prefetch: prefetchStudentData },
   { to: '/calendar', label: 'Расписание' },
-  { to: '/homework', label: 'Домашнее задание' },
+  { to: '/homework', label: 'Домашнее задание', prefetch: prefetchHomeworkData },
   { to: '/student/recordings', label: 'Записи уроков' },
   { to: '/student/materials', label: 'Материалы' },
   { to: '/student/stats', label: 'Моя статистика' },
@@ -130,7 +138,7 @@ const StudentNavBar = () => {
   const handleLogout = () => {
     setShowProfileMenu(false);
     logout();
-    navigate('/auth');
+    navigate('/auth-new', { replace: true });
   };
 
   const handleToggleMenu = () => {

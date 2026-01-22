@@ -8,59 +8,33 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 20% 20%, rgba(224, 231, 255, 0.5), transparent 40%),
-              radial-gradient(circle at 80% 10%, rgba(221, 214, 254, 0.45), transparent 40%),
-              radial-gradient(circle at 40% 80%, rgba(191, 219, 254, 0.35), transparent 45%),
+  background: radial-gradient(ellipse at 20% 20%, rgba(224, 231, 255, 0.6), transparent 50%),
+              radial-gradient(ellipse at 80% 80%, rgba(221, 214, 254, 0.5), transparent 50%),
               #f8fafc;
   padding: clamp(2rem, 5vw, 4rem);
   position: relative;
   overflow: hidden;
 }
 
-/* Subtle animated aurora mesh */
-.auth-container::before,
-.auth-container::after {
+/* Static subtle gradient overlay - removed heavy animations for performance */
+.auth-container::before {
   content: '';
   position: absolute;
-  inset: -15%;
-  background: radial-gradient(780px at 15% 20%, rgba(224, 231, 255, 0.5), transparent 55%),
-              radial-gradient(720px at 85% 5%, rgba(221, 214, 254, 0.45), transparent 55%),
-              radial-gradient(760px at 40% 85%, rgba(191, 219, 254, 0.35), transparent 60%);
-  filter: blur(60px);
-  opacity: 0.75;
-  animation: auroraFloat 18s ease-in-out infinite alternate;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 20%, rgba(224, 231, 255, 0.4), transparent 60%);
   pointer-events: none;
   z-index: 0;
 }
 
-.auth-container::after {
-  animation-delay: 4s;
-  opacity: 0.6;
-}
-
-@keyframes auroraFloat {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(4%, -3%, 0) scale(1.05); }
-  100% { transform: translate3d(-3%, 4%, 0) scale(1.02); }
-}
-
-/* Geometric overlay stays on top of aurora */
+/* Static geometric overlay - removed rotation animation for performance */
 .auth-container .auth-pattern {
   position: absolute;
   inset: 0;
   background-image: 
-    radial-gradient(circle at 25% 25%, rgba(79, 70, 229, 0.04) 0%, transparent 50%),
-    radial-gradient(circle at 75% 75%, rgba(79, 70, 229, 0.03) 0%, transparent 50%),
-    linear-gradient(135deg, transparent 48%, rgba(79, 70, 229, 0.01) 50%, transparent 52%);
-  background-size: 100% 100%, 100% 100%, 60px 60px;
-  animation: slowRotate 90s linear infinite;
+    radial-gradient(circle at 25% 25%, rgba(79, 70, 229, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(79, 70, 229, 0.02) 0%, transparent 50%);
   pointer-events: none;
   z-index: 1;
-}
-
-@keyframes slowRotate {
-  from { transform: rotate(0deg) scale(1); }
-  to { transform: rotate(360deg) scale(1.1); }
 }
 
 /* Brand Logo at Top */
@@ -69,7 +43,7 @@
   z-index: 2;
   margin-bottom: 3rem;
   text-align: center;
-  animation: fadeInDown 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: fadeInDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .auth-brand h1 {
@@ -96,7 +70,7 @@
 @keyframes fadeInDown {
   from {
     opacity: 0;
-    transform: translateY(-30px);
+    transform: translateY(-15px);
   }
   to {
     opacity: 1;
@@ -109,21 +83,17 @@
   z-index: 2;
   width: 100%;
   max-width: 640px;
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(226, 232, 240, 0.8);
   border-radius: var(--radius-3xl);
   padding: clamp(2.5rem, 5vw, 4rem) clamp(2rem, 5vw, 3.5rem);
-  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
-              0 10px 25px -5px rgba(0, 0, 0, 0.06),
-              0 0 20px rgba(79, 70, 229, 0.08);
-  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), 
+              0 1px 3px rgba(0, 0, 0, 0.04);
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .auth-content:hover {
-  box-shadow: 0 30px 60px -14px rgba(79, 70, 229, 0.18),
-              0 0 20px rgba(79, 70, 229, 0.12);
-  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
 }
 
 @keyframes slideUp {
@@ -203,13 +173,12 @@
 }
 
 .role-card {
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.55);
+  background: #FFFFFF;
+  border: 2px solid #E2E8F0;
   border-radius: var(--radius-2xl);
   padding: 2.5rem 2rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
   text-align: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   position: relative;
@@ -228,18 +197,16 @@
   inset: 0;
   background: linear-gradient(135deg, rgba(79, 70, 229, 0.03) 0%, transparent 100%);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.18s ease;
   border-radius: var(--radius-2xl);
 }
 
 /* Hero Hover Effect - Lift and Glow */
 .role-card:hover {
   border-color: var(--color-primary);
-  background: rgba(255, 255, 255, 0.9);
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.25),
-              0 0 0 1px var(--color-primary),
-              0 0 20px rgba(79, 70, 229, 0.15);
+  background: #FFFFFF;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.15);
 }
 
 .role-card:hover::before {
@@ -248,7 +215,7 @@
 
 .role-card:hover .role-icon {
   color: var(--color-primary);
-  transform: scale(1.15) rotate(-5deg);
+  transform: scale(1.08);
 }
 
 .role-card:hover .role-title {
@@ -258,19 +225,19 @@
 .role-card:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
 }
 
 .role-card:active {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
 }
 
 .role-card.selected {
   border-color: var(--color-primary);
   background: linear-gradient(135deg, #FFFFFF 0%, #EEF2FF 100%);
-  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15),
-              0 20px 40px -10px rgba(79, 70, 229, 0.3);
-  transform: translateY(-4px);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12),
+              0 8px 24px rgba(79, 70, 229, 0.18);
+  transform: translateY(-2px);
 }
 
 .role-icon {
@@ -279,12 +246,12 @@
   display: block;
   color: var(--text-muted);
   filter: grayscale(0.3);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.18s ease, transform 0.18s ease, filter 0.18s ease;
 }
 
 .role-card.selected .role-icon {
   color: var(--color-primary);
-  transform: scale(1.1);
+  transform: scale(1.05);
   filter: grayscale(0);
 }
 
@@ -294,7 +261,7 @@
   color: var(--text-main);
   margin: 0;
   font-family: var(--font-display);
-  transition: color 0.3s ease;
+  transition: color 0.18s ease;
 }
 
 .role-card.selected .role-title {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../auth';
 import { getAccessToken } from '../apiService';
@@ -264,6 +264,7 @@ const StatCard = ({ icon, label, value, sub, trend, color = '#6366f1' }) => (
 /* ========== MAIN COMPONENT ========== */
 const AdminHomePage = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [tab, setTab] = useState('overview');
@@ -294,12 +295,10 @@ const AdminHomePage = () => {
   }, []);
 
   const handleLogout = useCallback(async () => {
-    try {
-      setShowProfileMenu(false);
-    } finally {
-      await logout();
-    }
-  }, [logout]);
+    setShowProfileMenu(false);
+    await logout();
+    navigate('/auth-new', { replace: true });
+  }, [logout, navigate]);
 
   // Modals
   const [showCreate, setShowCreate] = useState(false);

@@ -253,14 +253,29 @@ export const AuthProvider = ({ children }) => {
   }, [loadUser]);
 
   const logout = useCallback(async () => {
-    try {
-      await apiLogout();
-    } catch (_) {}
+    // Показываем skeleton для плавного перехода (избегаем "дребезга")
+    setLoading(true);
+    
+    // Очищаем токены синхронно
     clearTokens();
+    
+    // API logout в фоне (fire and forget)
+    try {
+      apiLogout();
+    } catch (_) {}
+    
+    // Небольшая задержка для fade-out эффекта, затем очищаем состояние
+    await new Promise(r => setTimeout(r, 100));
+    
     setAccessTokenValid(false);
     setRole(null);
     setUser(null);
-    window.location.href = '/auth-new';
+    setSubscription(null);
+    setLoading(false);
+    
+    // Редирект на страницу логина
+    // Используем мягкий подход - React компоненты Protected/Routes 
+    // сами обработают неавторизованное состояние и сделают редирект
   }, []);
 
   const refreshUser = useCallback(async () => loadUser(), [loadUser]);

@@ -9,6 +9,7 @@ import ProgressBar from '../student/ProgressBar';
 import QuestionNav from '../student/QuestionNav';
 import MediaPreview from '../shared/MediaPreview';
 import AnswerAttachment from '../student/AnswerAttachment';
+import { preloadAdjacentQuestionImages } from '../../../../utils/imagePreloader';
 import './HomeworkTake.css';
 
 // Нормализация URL для картинок (включая Google Drive)
@@ -107,8 +108,15 @@ const HomeworkTake = () => {
   const [resultData, setResultData] = useState(null);
   const [imagePreview, setImagePreview] = useState({ open: false, url: '' });
 
-  const questions = homework?.questions || [];
+  const questions = useMemo(() => homework?.questions || [], [homework?.questions]);
   const currentQuestion = questions[currentIndex];
+
+  // Preload соседних изображений при переключении вопроса
+  useEffect(() => {
+    if (questions.length > 0) {
+      preloadAdjacentQuestionImages(questions, currentIndex);
+    }
+  }, [currentIndex, questions]);
 
   useEffect(() => {
     if (currentIndex >= questions.length) {

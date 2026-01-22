@@ -127,6 +127,10 @@ export const homeworkService = {
     const { getSubmissions } = require('../../../apiService');
     return getSubmissions(params);
   },
+  async fetchSubmission(submissionId) {
+    const { getSubmission } = require('../../../apiService');
+    return getSubmission(submissionId);
+  },
   async startSubmission(homeworkId) {
     const response = await createSubmission({ homework: homeworkId });
     return response.data;

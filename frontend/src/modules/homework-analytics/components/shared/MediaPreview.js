@@ -41,7 +41,7 @@ const IconAlertTriangle = ({ size = 28, className = '' }) => (
  * Универсальный компонент для отображения медиа (изображения и аудио)
  * с обработкой ошибок загрузки и прогрессом
  */
-const MediaPreview = ({ type = 'image', src, alt = 'Медиа', className = '' }) => {
+const MediaPreview = ({ type = 'image', src, alt = 'Медиа', className = '', loadTimeoutMs = 12000 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadNonce, setReloadNonce] = useState(0);
@@ -121,6 +121,21 @@ const MediaPreview = ({ type = 'image', src, alt = 'Медиа', className = '' 
     return `${base}${sep}v=${reloadNonce}`;
   }, [imageSrc, reloadNonce]);
 
+  // Таймаут на загрузку, чтобы UI не "висел" бесконечно при зависших соединениях
+  React.useEffect(() => {
+    if (type !== 'image') return;
+    if (!normalizedSrc) return;
+    if (!loading || error) return;
+
+    const timeout = Math.max(3000, Number(loadTimeoutMs) || 12000);
+    const timerId = setTimeout(() => {
+      setLoading(false);
+      setError(true);
+    }, timeout);
+
+    return () => clearTimeout(timerId);
+  }, [type, normalizedSrc, loading, error, loadTimeoutMs]);
+
   const handleLoad = React.useCallback(() => {
     setLoading(false);
     setError(false);
@@ -174,6 +189,8 @@ const MediaPreview = ({ type = 'image', src, alt = 'Медиа', className = '' 
           onError={handleError}
           loading="eager"
           decoding="async"
+          referrerPolicy="no-referrer"
+          fetchPriority="high"
           style={{ display: error || loading ? 'none' : 'block' }}
           className="media-preview-img"
         />

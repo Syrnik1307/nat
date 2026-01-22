@@ -224,6 +224,12 @@
   min-height: 100vh;
   background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%);
   padding: 2rem;
+  animation: authSkeletonFadeIn 0.15s ease-out;
+}
+
+@keyframes authSkeletonFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .auth-checking-logo {

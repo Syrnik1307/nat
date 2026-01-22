@@ -12,6 +12,9 @@ const getHomeworkService = () => {
 
 const AUTO_SAVE_INTERVAL = 30000;
 
+const HOMEWORK_CACHE_TTL_MS = 60000;
+const homeworkCache = new Map(); // homeworkId -> { ts, data }
+
 const buildInitialAnswers = (homework) => {
   if (!homework?.questions) return {};
   return homework.questions.reduce((accumulator, question) => {
@@ -120,6 +123,7 @@ const convertAnswersArrayToMap = (answersArray, questions) => {
 
 const useHomeworkSession = (homeworkId, injectedService) => {
   const localDraftKey = homeworkId ? `hw_draft_${homeworkId}` : null;
+  const submissionHintKey = homeworkId ? `hw_submission_id_${homeworkId}` : null;
   const svc = injectedService || getHomeworkService();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -146,9 +150,39 @@ const useHomeworkSession = (homeworkId, injectedService) => {
     if (!homeworkId) return;
     setLoading(true);
     try {
-      const rawHomework = await svc.fetchHomework(homeworkId);
+      const hwIdNum = Number(homeworkId);
+
+      // 1) Быстрый in-memory кеш для возврата назад/вперед без повторной загрузки
+      const cacheEntry = homeworkCache.get(hwIdNum);
+      const now = Date.now();
+      if (cacheEntry && now - cacheEntry.ts < HOMEWORK_CACHE_TTL_MS) {
+        setHomework(cacheEntry.data);
+      }
+
+      // 2) Параллельно грузим homework и (если есть) подсказку submissionId
+      const homeworkPromise = svc.fetchHomework(homeworkId);
+
+      let hintedSubmissionId = null;
+      if (submissionHintKey) {
+        try {
+          const raw = localStorage.getItem(submissionHintKey);
+          const parsed = raw ? Number(raw) : null;
+          if (Number.isFinite(parsed) && parsed > 0) hintedSubmissionId = parsed;
+        } catch {}
+      }
+      const hintedSubmissionPromise = hintedSubmissionId
+        ? svc.fetchSubmission(hintedSubmissionId).catch(() => null)
+        : Promise.resolve(null);
+
+      const [rawHomework, hintedSubmissionResp] = await Promise.all([
+        homeworkPromise,
+        hintedSubmissionPromise,
+      ]);
+
       const homeworkData = rawHomework && rawHomework.data ? rawHomework.data : rawHomework;
       setHomework(homeworkData);
+      homeworkCache.set(hwIdNum, { ts: Date.now(), data: homeworkData });
+
       // Восстановить черновик из localStorage, если есть
       let initialAnswers = buildInitialAnswers(homeworkData);
       if (localDraftKey) {
@@ -159,30 +193,44 @@ const useHomeworkSession = (homeworkId, injectedService) => {
       }
       
       setError(null);
-      // Сначала проверяем, есть ли уже submission для этого ДЗ
+      // 3) Сначала пытаемся использовать ранее найденный submission по id (быстрее, чем листинг)
       let submissionData = null;
-      try {
-        const existingSubmissions = await svc.fetchSubmissions({ homework: homeworkId });
-        const submissions = existingSubmissions?.data?.results || existingSubmissions?.data || [];
-        const hwId = Number(homeworkId);
-        const matchingSubmissions = submissions.filter((sub) => Number(sub.homework) === hwId);
-        if (matchingSubmissions.length > 0) {
-          submissionData = matchingSubmissions[0];
-          // Восстановим answers из submission (для любого статуса)
-          // Backend возвращает answers как массив объектов [{question: id, text_answer, selected_choices, ...}]
-          if (Array.isArray(submissionData.answers) && submissionData.answers.length > 0) {
-            const restoredAnswers = convertAnswersArrayToMap(submissionData.answers, homeworkData?.questions);
-            initialAnswers = { ...initialAnswers, ...restoredAnswers };
+      const hintedSubmission = hintedSubmissionResp?.data ? hintedSubmissionResp.data : hintedSubmissionResp;
+      if (hintedSubmission && Number(hintedSubmission.homework) === hwIdNum) {
+        submissionData = hintedSubmission;
+      }
+
+      // 4) Если подсказка не сработала, делаем листинг как fallback
+      if (!submissionData) {
+        try {
+          const existingSubmissions = await svc.fetchSubmissions({ homework: homeworkId });
+          const submissions = existingSubmissions?.data?.results || existingSubmissions?.data || [];
+          const matchingSubmissions = submissions.filter((sub) => Number(sub.homework) === hwIdNum);
+          if (matchingSubmissions.length > 0) {
+            submissionData = matchingSubmissions[0];
           }
+        } catch (e) {
+          console.error('[useHomeworkSession] failed to fetch existing submissions:', e);
         }
-      } catch (e) {
-        console.error('[useHomeworkSession] failed to fetch existing submissions:', e);
+      }
+
+      // Восстановим answers из submission (для любого статуса)
+      if (submissionData && Array.isArray(submissionData.answers) && submissionData.answers.length > 0) {
+        const restoredAnswers = convertAnswersArrayToMap(submissionData.answers, homeworkData?.questions);
+        initialAnswers = { ...initialAnswers, ...restoredAnswers };
       }
 
       // Если submission нет или она in_progress, создаем/используем её
       if (!submissionData) {
         const rawSubmission = await svc.startSubmission(homeworkId);
         submissionData = rawSubmission && rawSubmission.data ? rawSubmission.data : rawSubmission;
+      }
+
+      // Сохраняем подсказку для следующего входа
+      if (submissionHintKey && submissionData?.id) {
+        try {
+          localStorage.setItem(submissionHintKey, String(submissionData.id));
+        } catch {}
       }
       
       setAnswers(initialAnswers);
@@ -195,7 +243,7 @@ const useHomeworkSession = (homeworkId, injectedService) => {
         setLoading(false);
       }
     }
-  }, [homeworkId, localDraftKey, svc]);
+  }, [homeworkId, localDraftKey, submissionHintKey, svc]);
 
   useEffect(() => {
     loadHomework();
