@@ -29,7 +29,6 @@ from accounts.telegram_utils import (
 )
 from django.utils import timezone
 from django.utils.crypto import get_random_string
-from support.models import SupportTicket, SupportMessage
 
 User = get_user_model()
 
@@ -59,8 +58,7 @@ ROLE_NAMES = {
 }
 
 
-# Контекст поддержки в Telegram (in-memory): {telegram_id: {'ticket_id': int|None}}
-support_context = {}
+
 
 
 def _build_frontend_url(path: str = '') -> str:
@@ -293,35 +291,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await reset_password(update, context)
             return
 
-        # Deep-link для поддержки:
-        # - support (если уже привязан)
-        # - support_<CODE> (если нужно сначала привязать)
-        if normalized_arg == 'support':
-            await support_start(update, context)
-            return
-
-        if normalized_arg.startswith('support_'):
-            code = raw_arg.split('_', 1)[1].strip().upper()
-            checking_msg = await update.message.reply_text("🔄 Проверяем код привязки...")
-            try:
-                result = await sync_to_async(link_account_with_code)(
-                    code=code,
-                    telegram_id=telegram_id,
-                    telegram_username=user.username or '',
-                    telegram_chat_id=str(update.effective_chat.id),
-                )
-                linked_user = result.user
-                await checking_msg.delete()
-                await update.message.reply_text("✅ Telegram привязан. Давайте оформим обращение в поддержку.")
-                await support_start(update, context, linked_user)
-            except TelegramVerificationError as exc:
-                await checking_msg.delete()
-                await update.message.reply_text(
-                    f"❌ Не удалось привязать Telegram ({exc}).\n"
-                    "Откройте Teaching Panel → Профиль → Безопасность и создайте новый код.",
-                )
-            return
-
         # По умолчанию — считаем аргумент кодом привязки
         code = raw_arg.upper()
         logger.info(f"[start] User {telegram_id} attempting link with code: {code}")
@@ -352,8 +321,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "/profile — ваш профиль\n"
                 "/reset — сбросить пароль\n"
                 "/notifications — настройки уведомлений\n"
-                "/support — написать в поддержку\n"
-                "/close — закрыть обращение\n"
                 "/unlink — отвязать аккаунт",
                 parse_mode='Markdown',
                 reply_markup=reply_markup,
@@ -734,8 +701,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/notifications — Настройки уведомлений\n"
         "/profile — Профиль\n"
         "/reset — Сбросить пароль\n"
-        "/support — Поддержка (создать/продолжить обращение)\n"
-        "/close — Закрыть текущее обращение\n"
         "/chatid — Показать Chat ID (для групп)\n"
         "/bindgroup <код> — Привязать текущую группу к уроку\n"
         "/unlink — Отвязать Telegram\n"
@@ -842,144 +807,6 @@ async def bindgroup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def support_start(update: Update, context: ContextTypes.DEFAULT_TYPE, user: Optional[User] = None):
-    """Запуск поддержки: просим описать проблему, дальше любые сообщения идут в тикет."""
-    if not user:
-        user = await _get_linked_user(update, context)
-        if not user:
-            return
-
-    telegram_id = str(update.effective_user.id)
-    support_context[telegram_id] = {'ticket_id': None}
-
-    await _send_response(
-        update,
-        context,
-        "🛟 *Поддержка*\n\nОпишите, пожалуйста, что случилось — одним сообщением.\n"
-        "Дальше можете дополнять детали следующими сообщениями.\n\n"
-        "Закрыть обращение: /close",
-        reply_markup=_build_section_keyboard('help', include_refresh=False),
-    )
-
-
-async def close_support(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = str(update.effective_user.id)
-    ctx = support_context.get(telegram_id)
-    if not ctx or not ctx.get('ticket_id'):
-        await _send_response(update, context, "ℹ️ Сейчас нет активного обращения. Чтобы начать: /support")
-        support_context.pop(telegram_id, None)
-        return
-
-    ticket_id = ctx['ticket_id']
-
-    def close_ticket():
-        try:
-            ticket = SupportTicket.objects.get(id=ticket_id)
-        except SupportTicket.DoesNotExist:
-            return False
-
-        ticket.status = 'closed'
-        ticket.resolved_at = timezone.now()
-        ticket.save(update_fields=['status', 'resolved_at', 'updated_at'])
-        return True
-
-    ok = await sync_to_async(close_ticket)()
-    support_context.pop(telegram_id, None)
-    await _send_response(
-        update,
-        context,
-        "✅ Обращение закрыто." if ok else "ℹ️ Не удалось найти обращение (возможно, уже закрыто).",
-    )
-
-
-async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обычные сообщения пользователя: если активен режим поддержки — пишем в тикет."""
-    if not update.message or not update.message.text:
-        return
-
-    telegram_id = str(update.effective_user.id)
-    ctx = support_context.get(telegram_id)
-    if not ctx:
-        return
-
-    user = await _get_linked_user(update, context)
-    if not user:
-        support_context.pop(telegram_id, None)
-        return
-
-    text = update.message.text.strip()
-    if not text:
-        return
-
-    def create_or_append():
-        ticket_id = ctx.get('ticket_id')
-        if not ticket_id:
-            ticket = SupportTicket.objects.create(
-                user=user,
-                subject='Обращение из Telegram',
-                description=text,
-                category='telegram',
-                priority='normal',
-                user_agent='Telegram',
-                page_url='',
-            )
-
-            msg = SupportMessage(
-                ticket=ticket,
-                author=user,
-                message=text,
-                is_staff_reply=False,
-                read_by_user=True,
-                read_by_staff=False,
-            )
-            # Уведомление о новом тикете уже отправится из SupportTicket.save().
-            # Чтобы не дублировать вторым уведомлением "новое сообщение" — пропускаем.
-            msg._skip_notify_admins = True
-            msg.save()
-
-            return ticket.id, True
-
-        try:
-            ticket = SupportTicket.objects.get(id=ticket_id)
-        except SupportTicket.DoesNotExist:
-            return None, False
-
-        msg = SupportMessage.objects.create(
-            ticket=ticket,
-            author=user,
-            message=text,
-            is_staff_reply=False,
-            read_by_user=True,
-            read_by_staff=False,
-        )
-
-        if ticket.status == 'waiting_user':
-            ticket.status = 'in_progress'
-            ticket.save(update_fields=['status', 'updated_at'])
-
-        return msg.ticket_id, False
-
-    ticket_id, is_new_ticket = await sync_to_async(create_or_append)()
-    if not ticket_id:
-        support_context.pop(telegram_id, None)
-        await _send_response(update, context, "❌ Не удалось найти обращение. Начните заново: /support")
-        return
-
-    ctx['ticket_id'] = ticket_id
-    support_context[telegram_id] = ctx
-
-    if is_new_ticket:
-        await _send_response(
-            update,
-            context,
-            f"✅ Принято! Тикет #{ticket_id} создан.\n"
-            "Можете дополнять детали следующими сообщениями.\n"
-            "Закрыть обращение: /close",
-        )
-    else:
-        await _send_response(update, context, "✅ Сообщение добавлено. Если всё решено — /close")
-
-
 def main():
     """Запуск бота"""
     if BOT_TOKEN == 'YOUR_BOT_TOKEN_HERE':
@@ -1002,8 +829,6 @@ def main():
     application.add_handler(CommandHandler("profile", show_profile))
     application.add_handler(CommandHandler("notifications", notifications_info))
     application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("support", support_start))
-    application.add_handler(CommandHandler("close", close_support))
     application.add_handler(CommandHandler("chatid", chatid_command))
     application.add_handler(CommandHandler("bindgroup", bindgroup_command))
     
@@ -1013,9 +838,6 @@ def main():
     application.add_handler(CallbackQueryHandler(cancel_unlink_callback, pattern='^cancel_unlink$'))
     application.add_handler(CallbackQueryHandler(handle_menu_callback, pattern='^menu:'))
     application.add_handler(CallbackQueryHandler(toggle_notification_callback, pattern='^notif_toggle:'))
-
-    # Текстовые сообщения: используем только для режима поддержки
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
     
     # Запускаем бота
     print("🤖 Telegram бот запущен!")
