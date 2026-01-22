@@ -242,17 +242,25 @@ class SupportTicket(models.Model):
     def _send_telegram_notification(self):
         """Отправка уведомления в Telegram о новом тикете"""
         import os
-        import asyncio
-        from telegram import Bot
-        
+
+        import requests
+
         token = os.getenv('SUPPORT_BOT_TOKEN')
         if not token:
             return
-        
-        # Получаем всех админов с Telegram ID
-        admins = CustomUser.objects.filter(is_staff=True, telegram_id__isnull=False)
-        
-        if not admins:
+
+        broadcast_chat_id = (os.getenv('SUPPORT_NOTIFICATIONS_CHAT_ID') or '').strip()
+
+        chat_ids = set()
+        if broadcast_chat_id:
+            chat_ids.add(broadcast_chat_id)
+
+        # Получаем всех админов с Telegram ID (личные уведомления)
+        admins = list(CustomUser.objects.filter(is_staff=True, telegram_id__isnull=False).exclude(telegram_id__exact=''))
+        for admin in admins:
+            chat_ids.add(str(admin.telegram_id).strip())
+
+        if not chat_ids:
             return
         
         priority_emoji = {
@@ -287,22 +295,19 @@ class SupportTicket(models.Model):
             f"{context_str}\n\n"
             f"Для просмотра: /view\\_{self.id}"
         )
-        
-        bot = Bot(token=token)
-        
-        for admin in admins:
+
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = {
+            'text': message,
+            'parse_mode': 'Markdown',
+        }
+
+        for chat_id in chat_ids:
             try:
-                # Используем синхронную версию
-                import requests
-                url = f"https://api.telegram.org/bot{token}/sendMessage"
-                data = {
-                    'chat_id': admin.telegram_id,
-                    'text': message,
-                    'parse_mode': 'Markdown'
-                }
-                requests.post(url, json=data, timeout=5)
-            except Exception as e:
-                print(f"Не удалось отправить уведомление админу {admin.id}: {e}")
+                requests.post(url, json={**payload, 'chat_id': chat_id}, timeout=5)
+            except Exception:
+                # Best-effort only
+                continue
 
 
 class SupportMessage(models.Model):

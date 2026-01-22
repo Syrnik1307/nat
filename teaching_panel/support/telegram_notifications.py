@@ -21,12 +21,14 @@ def notify_admins_new_message(*, ticket, message) -> None:
     if not token:
         return
 
+    broadcast_chat_id = (os.getenv('SUPPORT_NOTIFICATIONS_CHAT_ID') or '').strip()
+
     if ticket.assigned_to and ticket.assigned_to.telegram_id:
         admins = [ticket.assigned_to]
     else:
         admins = list(CustomUser.objects.filter(is_staff=True, telegram_id__isnull=False))
 
-    if not admins:
+    if not admins and not broadcast_chat_id:
         return
 
     user_info = ticket.user.get_full_name() if ticket.user else (ticket.email or 'Пользователь')
@@ -39,11 +41,18 @@ def notify_admins_new_message(*, ticket, message) -> None:
         f"Для ответа: /view\\_{ticket.id}"
     )
 
+    recipients = set()
+    if broadcast_chat_id:
+        recipients.add(broadcast_chat_id)
     for admin in admins:
+        if admin.telegram_id:
+            recipients.add(str(admin.telegram_id).strip())
+
+    for chat_id in recipients:
         try:
             url = f"https://api.telegram.org/bot{token}/sendMessage"
             data = {
-                'chat_id': admin.telegram_id,
+                'chat_id': chat_id,
                 'text': text,
                 'parse_mode': 'Markdown',
             }
@@ -75,11 +84,15 @@ def notify_user_staff_reply(*, ticket, message) -> None:
     if not token:
         return
 
+    site_url = (getattr(settings, 'SITE_URL', '') or os.getenv('SITE_URL', '') or '').strip()
+    hint = "Откройте Teaching Panel, чтобы продолжить диалог."
+    if site_url:
+        hint = f"Откройте {site_url}, чтобы продолжить диалог."
+
     text = (
         f"🛟 *Поддержка ответила по тикету #{ticket.id}*\n\n"
         f"{message.message[:350]}{'...' if len(message.message) > 350 else ''}\n\n"
-        "Чтобы продолжить диалог — просто ответьте следующим сообщением.\n"
-        "Закрыть обращение: /close"
+        f"{hint}"
     )
 
     try:
