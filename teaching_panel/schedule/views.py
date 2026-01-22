@@ -1101,6 +1101,7 @@ class LessonViewSet(viewsets.ModelViewSet):
     def _start_zoom_with_teacher_credentials(self, lesson, user, request):
         """Создать Zoom встречу используя персональные credentials учителя."""
         from .zoom_client import ZoomAPIClient
+        from accounts.error_tracker import track_error
         
         try:
             zoom_client = ZoomAPIClient(
@@ -1150,6 +1151,19 @@ class LessonViewSet(viewsets.ModelViewSet):
             return payload, None
         except Exception as e:
             logger.exception(f"Failed to create Zoom meeting with teacher credentials for lesson {lesson.id}: {e}")
+            track_error(
+                code='ZOOM_MEETING_CREATE_FAILED',
+                message=f'Ошибка создания Zoom встречи: {str(e)[:200]}',
+                severity='critical',
+                teacher=user,
+                request=request,
+                details={
+                    'lesson_id': lesson.id,
+                    'lesson_title': lesson.title,
+                    'group_name': lesson.group.name,
+                },
+                exc=e
+            )
             return None, Response(
                 {'detail': f'Ошибка при создании встречи: {e}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

@@ -1,0 +1,16 @@
+Updating code from Git (force sync)...
+HEAD is now at 2db92b0 Add payment notification calls in tbank webhook handler
+Installing backend dependencies...
+Skipping migrationsn
+Collecting static files...
+
+0 static files copied to '/var/www/teaching_panel/teaching_panel/staticfiles', 161 unmodified.
+Building frontend (npm install + restore lock)...
+
+up to date in 16m
+
+> frontend@0.1.0 build
+> react-scripts --max_old_space_size=2048 build
+
+Creating an optimized production build...
+The build failed because the process exited too early. This probably means the system ran out of memory or someone called `kill -9` on the process.

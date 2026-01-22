@@ -29,6 +29,7 @@ from .admin_views import (
     AdminQuickActionsView,
     AdminBusinessMetricsView,
     AdminSystemErrorsView,
+    AdminSystemErrorsCountsView,
 )
 from .chat_views import ChatViewSet, MessageViewSet, UserSearchViewSet
 from .email_views import (
@@ -116,6 +117,7 @@ urlpatterns = [
     path('api/admin/system-health/', AdminSystemHealthView.as_view(), name='admin_system_health'),
     path('api/admin/activity-log/', AdminActivityLogView.as_view(), name='admin_activity_log'),
     path('api/admin/errors/', AdminSystemErrorsView.as_view(), name='admin_system_errors'),
+    path('api/admin/errors/counts/', AdminSystemErrorsCountsView.as_view(), name='admin_system_errors_counts'),
     path('api/admin/quick-actions/', AdminQuickActionsView.as_view(), name='admin_quick_actions'),
     path('api/admin/business-metrics/', AdminBusinessMetricsView.as_view(), name='admin_business_metrics'),
     

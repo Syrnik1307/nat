@@ -29,12 +29,19 @@ def yookassa_webhook(request):
     - refund.succeeded - возврат выполнен
     """
     try:
+        from accounts.error_tracker import track_error, track_critical
+        
         # БЕЗОПАСНОСТЬ: ОБЯЗАТЕЛЬНАЯ проверка подписи webhook
         webhook_secret = getattr(settings, 'YOOKASSA_WEBHOOK_SECRET', None)
         
         if not webhook_secret:
             # В production БЕЗ секрета webhooks отключены
             logger.error("YOOKASSA_WEBHOOK_SECRET not configured - webhooks disabled for security")
+            track_critical(
+                code='YOOKASSA_WEBHOOK_SECRET_MISSING',
+                message='YooKassa webhook secret не настроен, webhook отключен',
+                details={'remote_addr': request.META.get('REMOTE_ADDR')},
+            )
             return JsonResponse({'error': 'Webhooks disabled - secret not configured'}, status=503)
         
         signature = request.headers.get('X-Yookassa-Signature', '')
@@ -48,6 +55,12 @@ def yookassa_webhook(request):
         
         if not hmac.compare_digest(signature, expected_signature):
             logger.warning(f"Invalid webhook signature from {request.META.get('REMOTE_ADDR')}")
+            track_error(
+                code='YOOKASSA_INVALID_SIGNATURE',
+                message='Невалидная подпись webhook от YooKassa',
+                severity='warning',
+                details={'remote_addr': request.META.get('REMOTE_ADDR')},
+            )
             return JsonResponse({'error': 'Invalid signature'}, status=403)
         
         # Парсим данные
@@ -62,6 +75,12 @@ def yookassa_webhook(request):
             if success:
                 return JsonResponse({'status': 'ok'})
             else:
+                track_error(
+                    code='YOOKASSA_PROCESSING_FAILED',
+                    message=f'Ошибка обработки webhook {event}',
+                    severity='critical',
+                    details={'event': event, 'payment_id': payload.get('object', {}).get('id')},
+                )
                 return JsonResponse({'error': 'Processing failed'}, status=500)
         
         # Другие события просто логируем
@@ -74,6 +93,11 @@ def yookassa_webhook(request):
     
     except Exception as e:
         logger.exception(f"Webhook error: {e}")
+        track_critical(
+            code='YOOKASSA_WEBHOOK_EXCEPTION',
+            message=f'Критическая ошибка webhook: {str(e)[:200]}',
+            details={'exception': str(e)},
+        )
         return JsonResponse({'error': 'Internal error'}, status=500)
 
 

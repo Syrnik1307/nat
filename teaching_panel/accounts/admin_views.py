@@ -294,6 +294,26 @@ class AdminSystemErrorsView(APIView):
         })
 
 
+class AdminSystemErrorsCountsView(APIView):
+    """Счётчики ошибок по severity для табов."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        from accounts.models import SystemErrorEvent
+
+        qs = SystemErrorEvent.objects.filter(resolved_at__isnull=True)
+        return Response({
+            'all': qs.count(),
+            'critical': qs.filter(severity='critical').count(),
+            'error': qs.filter(severity='error').count(),
+            'warning': qs.filter(severity='warning').count(),
+        })
+
+
 def _source_expr_for_user(prefix: str = ''):
     channel = F(f'{prefix}referral_attribution__channel')
     utm_source = F(f'{prefix}referral_attribution__utm_source')
