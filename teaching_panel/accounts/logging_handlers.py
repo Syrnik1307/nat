@@ -28,7 +28,7 @@ class DatabaseErrorLogHandler(logging.Handler):
             source = (getattr(record, 'error_source', None) or record.name or 'backend')[:80]
             code = (getattr(record, 'error_code', None) or self._extract_code(record))[:80]
 
-            teacher = self._get_teacher(SystemErrorEvent, record)
+            teacher = self._get_teacher(record)
 
             message = self.format(record)
             if not message:
@@ -46,6 +46,16 @@ class DatabaseErrorLogHandler(logging.Handler):
 
             request_path = (getattr(record, 'request_path', None) or '')[:300]
             request_method = (getattr(record, 'request_method', None) or '')[:10]
+
+            req = getattr(record, 'request', None)
+            if req is not None:
+                try:
+                    if not request_path:
+                        request_path = (getattr(req, 'path', '') or '')[:300]
+                    if not request_method:
+                        request_method = (getattr(req, 'method', '') or '')[:10]
+                except Exception:
+                    pass
             process = (getattr(record, 'process_name', None) or '')[:80]
 
             dedupe_window = timedelta(minutes=int(os.environ.get('DB_ERROR_DEDUPE_MINUTES', '60')))
@@ -120,12 +130,19 @@ class DatabaseErrorLogHandler(logging.Handler):
 
         return details
 
-    def _get_teacher(self, SystemErrorEvent, record: logging.LogRecord):
-        teacher_id = getattr(record, 'teacher_id', None)
-        if not teacher_id:
-            return None
-
+    def _get_teacher(self, record: logging.LogRecord):
         try:
+            teacher_id = getattr(record, 'teacher_id', None)
+
+            req = getattr(record, 'request', None)
+            if not teacher_id and req is not None:
+                user = getattr(req, 'user', None)
+                if user is not None and getattr(user, 'is_authenticated', False) and getattr(user, 'role', '') == 'teacher':
+                    teacher_id = getattr(user, 'id', None)
+
+            if not teacher_id:
+                return None
+
             UserModel = apps.get_model('accounts', 'CustomUser')
             return UserModel.objects.filter(id=teacher_id, role='teacher').first()
         except Exception:
