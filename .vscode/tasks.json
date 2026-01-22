@@ -947,6 +947,45 @@
 			"type": "shell",
 			"command": "ssh tp systemctl is-active teaching_panel nginx fail2ban",
 			"isBackground": false
+		},
+		{
+			"label": "prod: push monitoring telegram config",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"scripts\\push_monitoring_telegram.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "local: run safe checks",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"scripts\\run_checks.ps1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "local: enable git hooks",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"scripts\\setup_git_hooks.ps1"
+			],
+			"isBackground": false
 		}
 	]
 }

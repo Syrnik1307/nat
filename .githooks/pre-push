@@ -1,0 +1,81 @@
+#!/usr/bin/env sh
+# Safe pre-push checks (opt-in via scripts/setup_git_hooks.ps1)
+# - Runs Django checks.
+# - Frontend build is optional: set RUN_FRONTEND_CHECKS=1
+# - To bypass: export SKIP_HOOKS=1
+
+set -eu
+
+if [ "${SKIP_HOOKS:-}" = "1" ]; then
+  echo "[hooks] SKIP_HOOKS=1: skipping pre-push checks" >&2
+  exit 0
+fi
+
+# Resolve repo root
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+
+# Pick python
+if [ -f "$REPO_ROOT/venv/Scripts/python.exe" ]; then
+  PY="$REPO_ROOT/venv/Scripts/python.exe"
+elif [ -f "$REPO_ROOT/.venv/Scripts/python.exe" ]; then
+  PY="$REPO_ROOT/.venv/Scripts/python.exe"
+elif command -v python3 >/dev/null 2>&1; then
+  PY=python3
+elif command -v python >/dev/null 2>&1; then
+  PY=python
+elif command -v py >/dev/null 2>&1; then
+  PY="py -3"
+else
+  echo "[hooks] python not found; skipping checks" >&2
+  exit 0
+fi
+
+echo "[hooks] Running backend checks..." >&2
+(
+  cd "$REPO_ROOT/teaching_panel"
+
+  : "${SECRET_KEY:=ci-local-secret-key-please-change-1234567890-abcdefghijklmnopqrstuvwxyz}"
+  : "${DEBUG:=False}"
+  : "${ALLOWED_HOSTS:=localhost,127.0.0.1}"
+  : "${SECURE_SSL_REDIRECT:=True}"
+  : "${SESSION_COOKIE_SECURE:=True}"
+  : "${CSRF_COOKIE_SECURE:=True}"
+  : "${SECURE_HSTS_SECONDS:=60}"
+  : "${SECURE_HSTS_INCLUDE_SUBDOMAINS:=True}"
+  : "${SECURE_HSTS_PRELOAD:=True}"
+  : "${RECAPTCHA_ENABLED:=False}"
+  : "${RECAPTCHA_PUBLIC_KEY:=disabled}"
+  : "${RECAPTCHA_PRIVATE_KEY:=disabled}"
+  : "${USE_IN_MEMORY_CELERY:=1}"
+  : "${ZOOM_ACCOUNT_ID:=disabled}"
+  : "${ZOOM_CLIENT_ID:=disabled}"
+  : "${ZOOM_CLIENT_SECRET:=disabled}"
+
+  export SECRET_KEY DEBUG ALLOWED_HOSTS SECURE_SSL_REDIRECT SESSION_COOKIE_SECURE CSRF_COOKIE_SECURE
+  export SECURE_HSTS_SECONDS SECURE_HSTS_INCLUDE_SUBDOMAINS SECURE_HSTS_PRELOAD
+  export RECAPTCHA_ENABLED RECAPTCHA_PUBLIC_KEY RECAPTCHA_PRIVATE_KEY
+  export USE_IN_MEMORY_CELERY
+  export ZOOM_ACCOUNT_ID ZOOM_CLIENT_ID ZOOM_CLIENT_SECRET
+
+  # shellcheck disable=SC2086
+  $PY manage.py check
+  # shellcheck disable=SC2086
+  $PY manage.py check --deploy --fail-level WARNING
+)
+
+if [ "${RUN_FRONTEND_CHECKS:-}" = "1" ]; then
+  if command -v npm >/dev/null 2>&1; then
+    if [ -d "$REPO_ROOT/frontend/node_modules" ]; then
+      echo "[hooks] Running frontend build..." >&2
+      (cd "$REPO_ROOT/frontend" && npm run build)
+    else
+      echo "[hooks] frontend/node_modules missing; run 'npm ci' in frontend/" >&2
+      exit 1
+    fi
+  else
+    echo "[hooks] npm not found; skipping frontend build" >&2
+  fi
+fi
+
+echo "[hooks] OK" >&2
+exit 0

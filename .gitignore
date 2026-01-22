@@ -40,6 +40,9 @@ env/
 .env.production
 .env.*.local
 
+# Local secrets (never commit)
+.secrets/
+
 # Google Drive OAuth credentials
 client_secrets.json
 gdrive_token.json
