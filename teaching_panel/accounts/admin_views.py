@@ -216,6 +216,84 @@ class AdminStatsView(APIView):
         })
 
 
+class AdminSystemErrorsView(APIView):
+    """Список ошибок системы/процессов для админа."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        from accounts.models import SystemErrorEvent
+
+        limit = int(request.query_params.get('limit', 50))
+        limit = max(1, min(limit, 200))
+        offset = int(request.query_params.get('offset', 0))
+        offset = max(0, offset)
+
+        severity = (request.query_params.get('severity') or '').strip()
+        teacher_id = (request.query_params.get('teacher_id') or '').strip()
+        q = (request.query_params.get('q') or '').strip()
+        include_resolved = (request.query_params.get('include_resolved') or '').strip() in ('1', 'true', 'True')
+
+        qs = SystemErrorEvent.objects.select_related('teacher').all()
+        if not include_resolved:
+            qs = qs.filter(resolved_at__isnull=True)
+        if severity in ('warning', 'error', 'critical'):
+            qs = qs.filter(severity=severity)
+        if teacher_id.isdigit():
+            qs = qs.filter(teacher_id=int(teacher_id))
+        if q:
+            qs = qs.filter(
+                Q(code__icontains=q)
+                | Q(source__icontains=q)
+                | Q(message__icontains=q)
+                | Q(teacher__email__icontains=q)
+                | Q(teacher__first_name__icontains=q)
+                | Q(teacher__last_name__icontains=q)
+            )
+
+        total = qs.count()
+        items = qs.order_by('-last_seen_at')[offset:offset + limit]
+
+        def teacher_payload(t):
+            if not t:
+                return None
+            name = (t.get_full_name() or t.email or '').strip()
+            return {
+                'id': t.id,
+                'email': t.email,
+                'name': name,
+            }
+
+        results = []
+        for e in items:
+            results.append({
+                'id': str(e.id),
+                'severity': e.severity,
+                'source': e.source,
+                'code': e.code,
+                'message': e.message,
+                'details': e.details,
+                'teacher': teacher_payload(e.teacher),
+                'request_path': e.request_path,
+                'request_method': e.request_method,
+                'process': e.process,
+                'occurrences': e.occurrences,
+                'created_at': e.created_at.isoformat() if e.created_at else None,
+                'last_seen_at': e.last_seen_at.isoformat() if e.last_seen_at else None,
+                'resolved_at': e.resolved_at.isoformat() if e.resolved_at else None,
+            })
+
+        return Response({
+            'count': total,
+            'limit': limit,
+            'offset': offset,
+            'results': results,
+        })
+
+
 def _source_expr_for_user(prefix: str = ''):
     channel = F(f'{prefix}referral_attribution__channel')
     utm_source = F(f'{prefix}referral_attribution__utm_source')
