@@ -616,7 +616,14 @@ def notify_lesson_reminder_with_link(lesson, minutes_before: int) -> dict:
     return result
 
 
-def notify_admin_payment(payment, subscription, plan_name: Optional[str] = None, storage_gb: Optional[int] = None) -> bool:
+def notify_admin_payment(
+    payment,
+    subscription,
+    plan_name: Optional[str] = None,
+    storage_gb: Optional[int] = None,
+    *,
+    zoom_addon: bool = False,
+) -> bool:
     """
     Отправить уведомление админу о новом платеже.
     
@@ -644,7 +651,9 @@ def notify_admin_payment(payment, subscription, plan_name: Optional[str] = None,
     user_info = user.get_full_name() or user.email
     
     # Формируем сообщение
-    if plan_name:
+    if zoom_addon:
+        payment_type = "Zoom (подписка)"
+    elif plan_name:
         payment_type = f"Подписка ({plan_name})"
     elif storage_gb:
         payment_type = f"Хранилище (+{storage_gb} ГБ)"

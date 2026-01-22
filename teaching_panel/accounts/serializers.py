@@ -158,6 +158,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     payments = PaymentSerializer(many=True, read_only=True)
     total_storage_gb = serializers.IntegerField(read_only=True)
     gdrive_folder_link = serializers.SerializerMethodField()
+    zoom_addon_active = serializers.SerializerMethodField()
 
     class Meta:
         model = Subscription
@@ -166,6 +167,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'cancelled_at', 'payment_method', 'auto_renew',
             'next_billing_date', 'total_paid', 'last_payment_date',
             'base_storage_gb', 'extra_storage_gb', 'used_storage_gb', 'total_storage_gb',
+            'zoom_addon_expires_at', 'zoom_addon_active',
             'gdrive_folder_id', 'gdrive_folder_link',
             'created_at', 'updated_at', 'payments'
         ]
@@ -179,6 +181,12 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         if obj.gdrive_folder_id:
             return f"https://drive.google.com/drive/folders/{obj.gdrive_folder_id}"
         return None
+
+    def get_zoom_addon_active(self, obj):
+        try:
+            return bool(obj.is_zoom_addon_active())
+        except Exception:
+            return False
 
 
 class NotificationSettingsSerializer(serializers.ModelSerializer):

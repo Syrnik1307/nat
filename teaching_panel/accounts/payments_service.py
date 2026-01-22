@@ -37,6 +37,77 @@ class PaymentService:
     }
     
     STORAGE_PRICE_PER_GB = '20.00'
+
+    ZOOM_ADDON_PRICE = '990.00'
+
+    @staticmethod
+    def create_zoom_addon_payment(subscription):
+        """Создать платёж за Zoom-аддон (990 ₽ / 28 дней).
+
+        Возвращает dict: {'payment_url': str, 'payment_id': str} или None.
+        """
+        if not YOOKASSA_AVAILABLE:
+            logger.error("YooKassa not available - using mock payment URL")
+            from .models import Payment
+
+            mock_payment_id = f'mock-zoom-addon-{subscription.id}-{timezone.now().timestamp()}'
+            mock_payment = Payment.objects.create(
+                subscription=subscription,
+                amount=Decimal(PaymentService.ZOOM_ADDON_PRICE),
+                currency='RUB',
+                status=Payment.STATUS_PENDING,
+                payment_system='mock',
+                payment_id=mock_payment_id,
+                payment_url=f'{settings.FRONTEND_URL}/mock-payment?payment_id={mock_payment_id}',
+                metadata={'zoom_addon': True, 'mock': True}
+            )
+            return {
+                'payment_url': mock_payment.payment_url,
+                'payment_id': mock_payment.payment_id
+            }
+
+        try:
+            from .models import Payment
+
+            payment = YKPayment.create({
+                "amount": {
+                    "value": PaymentService.ZOOM_ADDON_PRICE,
+                    "currency": "RUB"
+                },
+                "confirmation": {
+                    "type": "redirect",
+                    "return_url": f"{settings.FRONTEND_URL}/teacher/subscription/success"
+                },
+                "capture": True,
+                "description": "Zoom (подписка) Lectio Space",
+                "metadata": {
+                    "subscription_id": subscription.id,
+                    "user_id": subscription.user.id,
+                    "zoom_addon": True,
+                }
+            })
+
+            Payment.objects.create(
+                subscription=subscription,
+                amount=Decimal(PaymentService.ZOOM_ADDON_PRICE),
+                currency='RUB',
+                status=Payment.STATUS_PENDING,
+                payment_system='yookassa',
+                payment_id=payment.id,
+                payment_url=payment.confirmation.confirmation_url,
+                metadata={'zoom_addon': True}
+            )
+
+            logger.info(f"Zoom add-on payment created: {payment.id} for subscription {subscription.id}")
+
+            return {
+                'payment_url': payment.confirmation.confirmation_url,
+                'payment_id': payment.id
+            }
+
+        except Exception as e:
+            logger.exception(f"Failed to create zoom add-on payment: {e}")
+            return None
     
     @staticmethod
     def create_subscription_payment(subscription, plan):
@@ -271,6 +342,20 @@ class PaymentService:
                         f"План: {sub.get_plan_display()}.\n"
                         f"Подписка активна до {sub.expires_at.strftime('%d.%m.%Y')}"
                     )
+
+                # Zoom add-on
+                elif metadata.get('zoom_addon'):
+                    sub.zoom_addon_expires_at = timezone.now() + timedelta(days=28)
+                    sub.total_paid += payment.amount
+                    sub.last_payment_date = timezone.now()
+                    sub.save(update_fields=['zoom_addon_expires_at', 'total_paid', 'last_payment_date', 'updated_at'])
+
+                    logger.info(f"Zoom add-on activated for subscription {sub.id}")
+
+                    message = (
+                        "Оплата Zoom-подписки прошла успешно!\n"
+                        f"Действует до {sub.zoom_addon_expires_at.strftime('%d.%m.%Y')}"
+                    )
                 
                 # Обработка хранилища
                 elif 'storage_gb' in metadata:
@@ -297,7 +382,7 @@ class PaymentService:
                 # Уведомление админа о новом платеже
                 plan_name = metadata.get('plan')
                 storage_gb = int(metadata['storage_gb']) if 'storage_gb' in metadata else None
-                notify_admin_payment(payment, sub, plan_name=plan_name, storage_gb=storage_gb)
+                notify_admin_payment(payment, sub, plan_name=plan_name, storage_gb=storage_gb, zoom_addon=bool(metadata.get('zoom_addon')))
 
                 # Реферальная комиссия: проверяем ReferralLink или referred_by
                 try:

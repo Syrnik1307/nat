@@ -15,6 +15,7 @@ from .payments_service import PaymentService
 from .tbank_service import TBankService
 from .models import Payment
 from django.conf import settings
+from django.db.models import Count
 
 
 def _get_or_create_subscription(user: "Subscription.user") -> Subscription:
@@ -195,6 +196,107 @@ class SubscriptionAddStorageView(APIView):
             'payment_url': payment_result['payment_url'],
             'provider': provider,
         }, status=status.HTTP_201_CREATED)
+
+
+class SubscriptionCreateZoomAddonPaymentView(APIView):
+    """Создать платёж за Zoom-аддон (990 ₽ / 28 дней)."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        provider = str(request.data.get('provider', '')).lower().strip()
+        if not provider:
+            provider = getattr(settings, 'DEFAULT_PAYMENT_PROVIDER', 'yookassa')
+
+        if provider not in ('yookassa', 'tbank'):
+            return Response({'detail': 'Неизвестный провайдер: yookassa или tbank'}, status=status.HTTP_400_BAD_REQUEST)
+
+        sub = get_subscription(request.user)
+
+        if provider == 'tbank':
+            payment_result = TBankService.create_zoom_addon_payment(sub)
+        else:
+            payment_result = PaymentService.create_zoom_addon_payment(sub)
+
+        if not payment_result:
+            return Response({'detail': 'Не удалось создать платёж'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        payment = Payment.objects.get(payment_id=payment_result['payment_id'])
+
+        return Response({
+            'payment': PaymentSerializer(payment).data,
+            'subscription': SubscriptionSerializer(sub).data,
+            'payment_url': payment_result['payment_url'],
+            'provider': provider,
+        }, status=status.HTTP_201_CREATED)
+
+
+class SubscriptionZoomAddonSetupView(APIView):
+    """Настройка Zoom после оплаты Zoom-аддона.
+
+    POST /api/subscription/zoom/setup/
+    body:
+      {"mode": "pool"}  -> выделить учителю аккаунт платформы (preferred_teachers)
+      {"mode": "personal", "accountId": "...", "clientId": "...", "clientSecret": "...", "userId": "me"}
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'teacher':
+            return Response({'detail': 'Только для учителей'}, status=status.HTTP_403_FORBIDDEN)
+
+        sub = get_subscription(request.user)
+        if not getattr(sub, 'is_zoom_addon_active', None) or not sub.is_zoom_addon_active():
+            return Response({'detail': 'Zoom-подписка не активна'}, status=status.HTTP_403_FORBIDDEN)
+
+        mode = str(request.data.get('mode', '')).lower().strip()
+        if mode not in ('pool', 'personal'):
+            return Response({'detail': 'mode: pool или personal'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if mode == 'personal':
+            account_id = str(request.data.get('accountId', '')).strip()
+            client_id = str(request.data.get('clientId', '')).strip()
+            client_secret = str(request.data.get('clientSecret', '')).strip()
+            user_id = str(request.data.get('userId', '')).strip() or 'me'
+
+            if not (account_id and client_id and client_secret):
+                return Response({'detail': 'Заполните Account ID, Client ID и Client Secret'}, status=status.HTTP_400_BAD_REQUEST)
+
+            request.user.zoom_account_id = account_id
+            request.user.zoom_client_id = client_id
+            request.user.zoom_client_secret = client_secret
+            request.user.zoom_user_id = user_id
+            request.user.save(update_fields=['zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_user_id', 'updated_at'])
+
+            return Response({
+                'ok': True,
+                'mode': 'personal',
+                'subscription': SubscriptionSerializer(sub).data,
+            })
+
+        # mode == pool
+        try:
+            from zoom_pool.models import ZoomAccount
+        except Exception:
+            return Response({'detail': 'Zoom pool не доступен'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Выбираем аккаунт платформы с минимальной "нагрузкой" по предпочтениям.
+        # Это не создаёт новый Zoom аккаунт в Zoom, а назначает выделенный из пула.
+        account = (
+            ZoomAccount.objects.filter(is_active=True)
+            .annotate(preferred_count=Count('preferred_teachers'))
+            .order_by('preferred_count', 'current_meetings', '-last_used_at')
+            .first()
+        )
+        if not account:
+            return Response({'detail': 'Нет доступных Zoom аккаунтов в пуле'}, status=status.HTTP_409_CONFLICT)
+
+        account.preferred_teachers.add(request.user)
+        return Response({
+            'ok': True,
+            'mode': 'pool',
+            'assigned_zoom_email': account.email,
+            'subscription': SubscriptionSerializer(sub).data,
+        })
 
 
 class AdminSubscriptionConfirmStoragePaymentView(APIView):
@@ -429,6 +531,13 @@ class SyncPendingPaymentsView(APIView):
                         sub.total_paid += payment.amount
                         sub.last_payment_date = timezone.now()
                         sub.save()
+
+                    # Zoom add-on
+                    elif metadata.get('zoom_addon'):
+                        sub.zoom_addon_expires_at = timezone.now() + timezone.timedelta(days=28)
+                        sub.total_paid += payment.amount
+                        sub.last_payment_date = timezone.now()
+                        sub.save(update_fields=['zoom_addon_expires_at', 'total_paid', 'last_payment_date', 'updated_at'])
                     
                     processed += 1
                     

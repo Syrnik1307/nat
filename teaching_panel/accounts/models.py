@@ -838,6 +838,10 @@ class Subscription(models.Model):
     base_storage_gb = models.IntegerField(default=10)
     extra_storage_gb = models.IntegerField(default=0)
     used_storage_gb = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+
+    # Zoom Add-on (платная подписка на выделенный Zoom / личный Zoom)
+    # Хранит только факт оплаты и срок действия. Настройка Zoom выполняется отдельным API.
+    zoom_addon_expires_at = models.DateTimeField(null=True, blank=True)
     
     # ID папки на Google Drive (создаётся при активации подписки)
     gdrive_folder_id = models.CharField(max_length=255, blank=True, default='')
@@ -878,6 +882,11 @@ class Subscription(models.Model):
             return
         self.extra_storage_gb += gb
         self.save(update_fields=['extra_storage_gb', 'updated_at'])
+
+    def is_zoom_addon_active(self) -> bool:
+        if not self.zoom_addon_expires_at:
+            return False
+        return self.zoom_addon_expires_at > timezone.now()
 
 
 class Payment(models.Model):

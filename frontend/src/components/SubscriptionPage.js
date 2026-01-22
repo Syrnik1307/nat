@@ -16,6 +16,16 @@ const SubscriptionPage = ({ embedded = false }) => {
   const [storageGb, setStorageGb] = useState(10);
   const [processing, setProcessing] = useState(false);
   const processingRef = useRef(false);
+
+  // Zoom add-on
+  const [zoomMode, setZoomMode] = useState('pool');
+  const [zoomPersonal, setZoomPersonal] = useState({
+    accountId: '',
+    clientId: '',
+    clientSecret: '',
+    userId: 'me',
+  });
+  const [zoomAssignedEmail, setZoomAssignedEmail] = useState('');
   
   // Состояния для модальных окон
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
@@ -179,6 +189,49 @@ const SubscriptionPage = ({ embedded = false }) => {
     }
   };
 
+  const handlePayZoomAddon = async () => {
+    if (processing) return;
+    setProcessing(true);
+    try {
+      const response = await apiClient.post('subscription/zoom/create-payment/', {});
+      const paymentUrl = response.data.payment_url;
+      window.location.href = paymentUrl;
+    } catch (error) {
+      console.error('Zoom add-on payment failed:', error);
+      setErrorModal({
+        isOpen: true,
+        message: 'Не удалось создать платёж за Zoom. Попробуйте позже.'
+      });
+      setProcessing(false);
+    }
+  };
+
+  const handleSetupZoomAddon = async () => {
+    if (processing) return;
+    setProcessing(true);
+    try {
+      setZoomAssignedEmail('');
+      const payload = zoomMode === 'personal'
+        ? { mode: 'personal', ...zoomPersonal }
+        : { mode: 'pool' };
+
+      const response = await apiClient.post('subscription/zoom/setup/', payload);
+      if (response?.data?.assigned_zoom_email) {
+        setZoomAssignedEmail(response.data.assigned_zoom_email);
+      }
+      await loadSubscription(true);
+    } catch (error) {
+      console.error('Zoom add-on setup failed:', error);
+      const detail = error?.response?.data?.detail;
+      setErrorModal({
+        isOpen: true,
+        message: detail || 'Не удалось настроить Zoom. Проверьте данные и попробуйте ещё раз.'
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '—';
     return new Date(dateString).toLocaleDateString('ru-RU', {
@@ -195,6 +248,7 @@ const SubscriptionPage = ({ embedded = false }) => {
   };
 
   const isActive = subData?.status === 'active' && getDaysLeft() > 0;
+  const isZoomAddonActive = !!subData?.zoom_addon_active;
 
   // Прогресс-бар: цикл 28 дней
   const totalCycleDays = 28;
@@ -220,7 +274,6 @@ const SubscriptionPage = ({ embedded = false }) => {
       {/* Уведомление для новых пользователей без оплаченной подписки */}
       {subData?.status === 'pending' && (
         <div className="subscription-notice pending-notice">
-          <div className="notice-icon">💡</div>
           <div className="notice-content">
             <h3>Добро пожаловать!</h3>
             <p>
@@ -228,10 +281,10 @@ const SubscriptionPage = ({ embedded = false }) => {
               необходимо оформить подписку. После оплаты вы получите доступ к:
             </p>
             <ul>
-              <li>✓ Создание и запуск Zoom-уроков</li>
-              <li>✓ Автоматическая запись занятий</li>
-              <li>✓ Хранилище для видеозаписей (10 GB)</li>
-              <li>✓ Система домашних заданий</li>
+              <li>Создание и запуск Zoom-уроков</li>
+              <li>Автоматическая запись занятий</li>
+              <li>Хранилище для видеозаписей (10 GB)</li>
+              <li>Система домашних заданий</li>
             </ul>
           </div>
         </div>
@@ -281,7 +334,7 @@ const SubscriptionPage = ({ embedded = false }) => {
                 <span className="label">Папка на Диске:</span>
                 <span className="value">
                   <a href={subData.gdrive_folder_link} target="_blank" rel="noopener noreferrer" className="gdrive-link">
-                    Открыть в Google Drive ↗
+                    Открыть в Google Drive
                   </a>
                 </span>
               </div>
@@ -343,6 +396,141 @@ const SubscriptionPage = ({ embedded = false }) => {
             >
               {subData?.auto_renew ? 'Отключить автопродление' : 'Подключить автопродление'}
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Zoom add-on */}
+      <section className="zoom-addon-section">
+        <h2>Zoom</h2>
+        <div className="zoom-addon-card">
+          <div className="zoom-addon-head">
+            <div>
+              <div className="zoom-addon-title">Подписка на Zoom</div>
+              <div className="zoom-addon-subtitle">Отдельный продукт для работы с Zoom</div>
+            </div>
+            <div className={`zoom-addon-badge ${isZoomAddonActive ? 'active' : 'inactive'}`}>
+              {isZoomAddonActive ? 'Активна' : 'Не активна'}
+            </div>
+          </div>
+
+          <div className="zoom-addon-body">
+            <div className="zoom-addon-row">
+              <div className="zoom-addon-label">Стоимость:</div>
+              <div className="zoom-addon-value">990 ₽ / 28 дней</div>
+            </div>
+            <div className="zoom-addon-row">
+              <div className="zoom-addon-label">Действует до:</div>
+              <div className="zoom-addon-value">{formatDate(subData?.zoom_addon_expires_at)}</div>
+            </div>
+
+            {!isZoomAddonActive ? (
+              <div className="zoom-addon-actions">
+                <button
+                  className={`pay-btn ${processing ? 'is-loading' : ''}`}
+                  onClick={handlePayZoomAddon}
+                  disabled={processing}
+                >
+                  Оплатить Zoom (990 ₽)
+                </button>
+                <div className="zoom-addon-hint">
+                  После оплаты выберите: подключить личный Zoom или выделить аккаунт платформы.
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="zoom-addon-mode">
+                  <div className="zoom-addon-mode-label">Вариант:</div>
+                  <div className="zoom-mode-toggle">
+                    <button
+                      type="button"
+                      className={`zoom-mode-btn ${zoomMode === 'pool' ? 'active' : ''}`}
+                      onClick={() => setZoomMode('pool')}
+                      disabled={processing}
+                    >
+                      Аккаунт платформы
+                    </button>
+                    <button
+                      type="button"
+                      className={`zoom-mode-btn ${zoomMode === 'personal' ? 'active' : ''}`}
+                      onClick={() => setZoomMode('personal')}
+                      disabled={processing}
+                    >
+                      Личный Zoom
+                    </button>
+                  </div>
+                </div>
+
+                {zoomMode === 'pool' ? (
+                  <div className="zoom-addon-form">
+                    <p className="zoom-addon-hint" style={{ marginTop: 0 }}>
+                      Мы выделим вам Zoom аккаунт из пула платформы. Ничего вводить не нужно.
+                    </p>
+                    {zoomAssignedEmail && (
+                      <div className="zoom-addon-assigned">
+                        Назначен аккаунт: <strong>{zoomAssignedEmail}</strong>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="zoom-addon-form">
+                    <p className="zoom-addon-hint" style={{ marginTop: 0 }}>
+                      Подключение личного Zoom выполняется через данные Server-to-Server OAuth.
+                    </p>
+                    <div className="zoom-addon-grid">
+                      <label className="zoom-addon-field">
+                        Account ID
+                        <input
+                          type="text"
+                          value={zoomPersonal.accountId}
+                          onChange={(e) => setZoomPersonal((p) => ({ ...p, accountId: e.target.value }))}
+                          disabled={processing}
+                          placeholder="Например: abcdEfGhIjk"
+                        />
+                      </label>
+                      <label className="zoom-addon-field">
+                        Client ID
+                        <input
+                          type="text"
+                          value={zoomPersonal.clientId}
+                          onChange={(e) => setZoomPersonal((p) => ({ ...p, clientId: e.target.value }))}
+                          disabled={processing}
+                        />
+                      </label>
+                      <label className="zoom-addon-field">
+                        Client Secret
+                        <input
+                          type="password"
+                          value={zoomPersonal.clientSecret}
+                          onChange={(e) => setZoomPersonal((p) => ({ ...p, clientSecret: e.target.value }))}
+                          disabled={processing}
+                        />
+                      </label>
+                      <label className="zoom-addon-field">
+                        User ID
+                        <input
+                          type="text"
+                          value={zoomPersonal.userId}
+                          onChange={(e) => setZoomPersonal((p) => ({ ...p, userId: e.target.value }))}
+                          disabled={processing}
+                          placeholder="me"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                <div className="zoom-addon-actions">
+                  <button
+                    className="buy-storage-btn"
+                    onClick={handleSetupZoomAddon}
+                    disabled={processing}
+                  >
+                    Применить настройки Zoom
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </section>

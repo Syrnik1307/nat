@@ -37,6 +37,81 @@ class TBankService:
     }
     
     STORAGE_PRICE_PER_GB = Decimal('20.00')
+
+    ZOOM_ADDON_PRICE = Decimal('990.00')
+
+    @staticmethod
+    def create_zoom_addon_payment(subscription):
+        """Create payment for Zoom add-on (990 ₽ / 28 days)."""
+        if not TBankService.is_available():
+            logger.warning("T-Bank not configured, using mock payment")
+            from .models import Payment
+
+            mock_payment_id = f'mock-zoom-addon-{subscription.id}-{int(timezone.now().timestamp())}'
+            mock_payment = Payment.objects.create(
+                subscription=subscription,
+                amount=TBankService.ZOOM_ADDON_PRICE,
+                currency='RUB',
+                status=Payment.STATUS_PENDING,
+                payment_system='mock',
+                payment_id=mock_payment_id,
+                payment_url=f'{settings.FRONTEND_URL}/mock-payment?payment_id={mock_payment_id}',
+                metadata={'zoom_addon': True, 'mock': True}
+            )
+
+            return {
+                'payment_url': mock_payment.payment_url,
+                'payment_id': mock_payment.payment_id
+            }
+
+        amount_kopecks = int(TBankService.ZOOM_ADDON_PRICE * 100)
+        order_id = f"zoom-addon-{subscription.id}-{int(timezone.now().timestamp())}"
+
+        request_data = {
+            'Amount': amount_kopecks,
+            'OrderId': order_id,
+            'Description': 'Zoom (подписка) Lectio Space',
+            'CustomerKey': str(subscription.user.id),
+            'SuccessURL': f"{settings.FRONTEND_URL}/teacher/subscription?status=success",
+            'FailURL': f"{settings.FRONTEND_URL}/teacher/subscription?status=fail",
+            'NotificationURL': f"{settings.SITE_URL}/api/payments/tbank/webhook/",
+            'PayType': 'O',
+            'Language': 'ru',
+            'DATA': {
+                'subscription_id': str(subscription.id),
+                'user_id': str(subscription.user.id),
+                'zoom_addon': '1',
+                'Email': subscription.user.email,
+            }
+        }
+
+        result = TBankService._make_request('Init', request_data)
+        if result.get('Success'):
+            from .models import Payment
+
+            Payment.objects.create(
+                subscription=subscription,
+                amount=TBankService.ZOOM_ADDON_PRICE,
+                currency='RUB',
+                status=Payment.STATUS_PENDING,
+                payment_system='tbank',
+                payment_id=result['PaymentId'],
+                payment_url=result['PaymentURL'],
+                metadata={
+                    'zoom_addon': True,
+                    'order_id': order_id,
+                    'terminal_key': settings.TBANK_TERMINAL_KEY,
+                }
+            )
+
+            logger.info(f"T-Bank zoom add-on payment created: {result['PaymentId']} for subscription {subscription.id}")
+            return {
+                'payment_url': result['PaymentURL'],
+                'payment_id': result['PaymentId']
+            }
+
+        logger.error(f"Failed to create T-Bank zoom add-on payment: {result.get('Message')}")
+        return None
     
     @staticmethod
     def is_available():
@@ -472,6 +547,20 @@ class TBankService:
                         "☁️ Дополнительное хранилище оплачено!\n"
                         f"Добавлено: {gb} ГБ. Общий объём: {sub.total_storage_gb} ГБ"
                     )
+
+                # Zoom add-on
+                elif metadata.get('zoom_addon'):
+                    sub.zoom_addon_expires_at = timezone.now() + timedelta(days=28)
+                    sub.total_paid += payment.amount
+                    sub.last_payment_date = timezone.now()
+                    sub.save(update_fields=['zoom_addon_expires_at', 'total_paid', 'last_payment_date', 'updated_at'])
+
+                    logger.info(f"Zoom add-on activated via T-Bank for subscription {sub.id}")
+
+                    message = (
+                        "Оплата Zoom-подписки прошла успешно!\n"
+                        f"Действует до {sub.zoom_addon_expires_at.strftime('%d.%m.%Y')}"
+                    )
                 
                 if message:
                     send_telegram_notification(
@@ -483,7 +572,7 @@ class TBankService:
                 # Уведомление админа о новом платеже
                 plan_name = metadata.get('plan')
                 storage_gb = int(metadata['storage_gb']) if 'storage_gb' in metadata else None
-                notify_admin_payment(payment, sub, plan_name=plan_name, storage_gb=storage_gb)
+                notify_admin_payment(payment, sub, plan_name=plan_name, storage_gb=storage_gb, zoom_addon=bool(metadata.get('zoom_addon')))
                 
                 # Handle referral commission
                 TBankService._process_referral_commission(payment)

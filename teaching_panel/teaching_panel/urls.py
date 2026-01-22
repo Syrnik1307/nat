@@ -41,6 +41,8 @@ from accounts.subscriptions_views import (
     SubscriptionCancelView,
     SubscriptionCreatePaymentView,
     SubscriptionAddStorageView,
+    SubscriptionCreateZoomAddonPaymentView,
+    SubscriptionZoomAddonSetupView,
     SubscriptionStorageView,
     AdminSubscriptionsListView,
     AdminSubscriptionExtendTrialView,
@@ -222,6 +224,8 @@ urlpatterns = [
     path('api/subscription/payment-status/<str:payment_id>/', SubscriptionPaymentStatusView.as_view(), name='subscription_payment_status'),
     path('api/subscription/create-payment/', SubscriptionCreatePaymentView.as_view(), name='subscription_create_payment'),
     path('api/subscription/add-storage/', SubscriptionAddStorageView.as_view(), name='subscription_add_storage'),
+    path('api/subscription/zoom/create-payment/', SubscriptionCreateZoomAddonPaymentView.as_view(), name='subscription_zoom_create_payment'),
+    path('api/subscription/zoom/setup/', SubscriptionZoomAddonSetupView.as_view(), name='subscription_zoom_setup'),
     path('api/subscription/sync-payments/', SyncPendingPaymentsView.as_view(), name='subscription_sync_payments'),
 
     # Admin Subscriptions API
