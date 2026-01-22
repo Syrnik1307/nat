@@ -19,7 +19,7 @@ param(
 )
 
 Write-Host "================================================" -ForegroundColor Cyan
-Write-Host "🚀 Teaching Panel Production Deployment" -ForegroundColor Green
+Write-Host "Teaching Panel Production Deployment" -ForegroundColor Green
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -28,7 +28,7 @@ set -e
 set -u
 set -o pipefail
 
-echo '📥 Updating code from Git (force sync)...'
+echo 'Updating code from Git (force sync)...'
 cd /var/www/teaching_panel
 
 # Важно: npm иногда модифицирует tracked package-lock.json.
@@ -39,49 +39,49 @@ sudo -u www-data git reset --hard origin/__BRANCH__
 # Удаляем известные артефакты, которые не должны жить в репозитории
 sudo rm -rf frontend_build || true
 
-echo '📦 Installing backend dependencies...'
+echo 'Installing backend dependencies...'
 cd teaching_panel
 source ../venv/bin/activate
 pip install -r requirements.txt --quiet
 
 __MIGRATIONS_BLOCK__
 
-echo '📂 Collecting static files...'
+echo 'Collecting static files...'
 python manage.py collectstatic --noinput
 
 __FRONTEND_BLOCK__
 
-echo '🔄 Restarting services...'
+echo 'Restarting services...'
 sudo systemctl restart teaching_panel nginx redis-server celery celery-beat || true
 
-echo '✅ Deployment completed!'
+echo 'Deployment completed.'
 sleep 2
 sudo systemctl status teaching_panel --no-pager || true
 echo ''
-echo '📊 Recent logs:'
+echo 'Recent logs:'
 sudo journalctl -u teaching_panel -n 15 --no-pager || true
 
 echo ''
-echo '🌐 Frontend index timestamp (tw1):'
+echo 'Frontend index timestamp:'
 ls -la /var/www/teaching_panel/frontend/build/index.html || true
 '@
 
 $remoteScript = $remoteScript.Replace('__BRANCH__', $GitBranch)
 
 if ($SkipMigrations) {
-    $remoteScript = $remoteScript.Replace('__MIGRATIONS_BLOCK__', "echo '⏭️  Skipping migrations'\n")
+    $remoteScript = $remoteScript.Replace('__MIGRATIONS_BLOCK__', "echo 'Skipping migrations'\n")
 } else {
     $remoteScript = $remoteScript.Replace('__MIGRATIONS_BLOCK__', @"
-echo '🗄️  Running database migrations...'
+echo 'Running database migrations...'
 python manage.py migrate
 "@)
 }
 
 if ($SkipFrontend) {
-    $remoteScript = $remoteScript.Replace('__FRONTEND_BLOCK__', "echo '⏭️  Skipping frontend build'\n")
+    $remoteScript = $remoteScript.Replace('__FRONTEND_BLOCK__', "echo 'Skipping frontend build'\n")
 } else {
     $remoteScript = $remoteScript.Replace('__FRONTEND_BLOCK__', @'
-echo '🎨 Building frontend (npm install + restore lock)...'
+echo 'Building frontend (npm install + restore lock)...'
 cd ../frontend
 sudo chown -R www-data:www-data .
 
@@ -110,9 +110,9 @@ cd ../teaching_panel
 '@)
 }
 
-Write-Host "📋 Running deployment on: $SSHAlias" -ForegroundColor Yellow
-Write-Host "🌿 Git branch: $GitBranch" -ForegroundColor Yellow
-Write-Host "⏭️  Skipping frontend build: $SkipFrontend" -ForegroundColor Yellow
+Write-Host "Running deployment on: $SSHAlias" -ForegroundColor Yellow
+Write-Host "Git branch: $GitBranch" -ForegroundColor Yellow
+Write-Host "Skipping frontend build: $SkipFrontend" -ForegroundColor Yellow
 Write-Host ""
 
 # Execute remote script via stdin (надёжнее, чем длинная строка с ; и quoting)
@@ -122,5 +122,5 @@ $remoteScriptLf | ssh $SSHAlias "bash -s"
 
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Green
-Write-Host "✅ DEPLOYMENT FINISHED!" -ForegroundColor Green
+Write-Host "DEPLOYMENT FINISHED" -ForegroundColor Green
 Write-Host "================================================" -ForegroundColor Green
