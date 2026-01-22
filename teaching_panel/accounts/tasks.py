@@ -1005,11 +1005,11 @@ def send_top_rating_notifications():
                     continue
                 
                 # Проверяем, не отправляли ли уже это достижение
+                from django.db.models import Q
                 already_notified = NotificationLog.objects.filter(
+                    Q(message__icontains=month_label) & Q(message__icontains=group.name),
                     user=student,
                     notification_type='achievement',
-                    message__icontains=month_label,
-                    message__icontains=group.name,
                     created_at__gte=now - timedelta(hours=TOP_RATING_COOLDOWN_HOURS),
                 ).exists()
                 
@@ -1148,11 +1148,11 @@ def send_season_top_rating_notifications():
                     continue
                 
                 # Проверяем, не отправляли ли уже
+                from django.db.models import Q
                 already_notified = NotificationLog.objects.filter(
+                    Q(message__icontains=season_label) & Q(message__icontains=group.name),
                     user=student,
                     notification_type='achievement',
-                    message__icontains=season_label,
-                    message__icontains=group.name,
                     created_at__gte=now - timedelta(hours=TOP_RATING_COOLDOWN_HOURS),
                 ).exists()
                 
