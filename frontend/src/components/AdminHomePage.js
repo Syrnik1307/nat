@@ -377,9 +377,53 @@ const AdminHomePage = () => {
           <button style={styles.iconBtn} onClick={load} title="Обновить">
             <div style={{ width: 18, height: 18 }}>{Icon.refresh}</div>
           </button>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 600 }}>
-            {user?.first_name?.charAt(0) || 'A'}
-          </div>
+          <button
+            type="button"
+            ref={profileButtonRef}
+            style={styles.profileBtn}
+            aria-label="Меню профиля"
+            aria-haspopup="true"
+            aria-expanded={showProfileMenu}
+            onClick={() => {
+              if (!showProfileMenu) updateProfileMenuPosition();
+              setShowProfileMenu((prev) => !prev);
+            }}
+          >
+            {getAdminInitial(user)}
+          </button>
+
+          {showProfileMenu && createPortal(
+            <div
+              className="animate-modal-enter"
+              style={{
+                position: 'fixed',
+                top: profileMenuPosition.top,
+                right: profileMenuPosition.right,
+                zIndex: 2147483647,
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={styles.dropdown}>
+                <div style={styles.dropdownHeader}>Администратор</div>
+                <Link
+                  to="/profile"
+                  style={styles.dropdownItemLink}
+                  onClick={() => setShowProfileMenu(false)}
+                >
+                  Профиль
+                </Link>
+                <button
+                  type="button"
+                  style={styles.dropdownItemBtn}
+                  onClick={handleLogout}
+                >
+                  Выйти
+                </button>
+              </div>
+            </div>,
+            document.body
+          )}
         </div>
       </header>
 

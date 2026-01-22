@@ -154,8 +154,10 @@ const AppRoutes = () => {
   const hideNavPaths = ['/auth-new', '/register', '/verify-email'];
   const baseNavVisible = !hideNavPaths.includes(location.pathname);
   const isStudentView = accessTokenValid && role === 'student';
+  const isAdminView = accessTokenValid && role === 'admin';
   const shouldShowStudentNav = baseNavVisible && isStudentView;
-  const shouldShowNav = baseNavVisible && !isStudentView;
+  // В админке используем собственный хедер страницы, верхний общий navbar не показываем
+  const shouldShowNav = baseNavVisible && !isStudentView && !isAdminView;
 
   // Preload страниц после авторизации
   useEffect(() => {
