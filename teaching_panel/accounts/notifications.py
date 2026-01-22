@@ -624,6 +624,39 @@ def _get_payments_bot_token() -> str:
     return token
 
 
+def _send_payments_bot_message(text: str) -> bool:
+    """
+    Отправить сообщение через бота платежей в админский чат.
+    
+    Args:
+        text: Текст сообщения
+        
+    Returns:
+        bool: True если успешно
+    """
+    token = _get_payments_bot_token()
+    chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', '')
+    
+    if not token or not chat_id:
+        logger.warning('Payments bot token or chat ID not configured')
+        return False
+    
+    url = f'https://api.telegram.org/bot{token}/sendMessage'
+    try:
+        response = requests.post(url, json={
+            'chat_id': chat_id,
+            'text': text,
+            'parse_mode': 'HTML',
+        }, timeout=10)
+        if response.status_code == 200:
+            return True
+        logger.warning('Failed to send payments bot message: %s %s', response.status_code, response.text)
+        return False
+    except requests.RequestException as exc:
+        logger.exception('Failed to send payments bot message: %s', exc)
+        return False
+
+
 def notify_admin_payment(
     payment,
     subscription,
@@ -805,6 +838,32 @@ def notify_payment_refunded(
         return False
 
 
+def notify_auto_renewal_success(subscription, user, renewal_type: str) -> bool:
+    """Уведомить пользователя об успешном автопродлении.
+
+    renewal_type:
+      - 'subscription' (основная подписка)
+      - 'zoom_addon' (Zoom-дополнение)
+    """
+    if not user:
+        return False
+
+    if renewal_type == 'zoom_addon':
+        expires_at = getattr(subscription, 'zoom_addon_expires_at', None)
+        until = expires_at.strftime('%d.%m.%Y') if expires_at else None
+        message = 'Автопродление Zoom-подписки прошло успешно.'
+        if until:
+            message += f"\nДействует до {until}"
+    else:
+        expires_at = getattr(subscription, 'expires_at', None)
+        until = expires_at.strftime('%d.%m.%Y') if expires_at else None
+        message = 'Автопродление подписки прошло успешно.'
+        if until:
+            message += f"\nДействует до {until}"
+
+    return send_telegram_notification(user, 'payment_success', message)
+
+
 def notify_student_top_rating(student, rank: int, period_type: str, period_label: str, group_name: str, total_points: int) -> bool:
     """
     Отправляет уведомление ученику о попадании в топ рейтинга.
@@ -870,4 +929,211 @@ def get_season_info(date=None):
         return ('summer', 6, 8, f"Лето {year}")
     else:  # 9, 10, 11
         return ('autumn', 9, 11, f"Осень {year}")
+
+
+# =============================================================================
+# Уведомления об автопродлениях и churn
+# =============================================================================
+
+def notify_auto_renewal_success(subscription, user, renewal_type: str = 'subscription') -> bool:
+    """
+    Уведомление админа об успешном автопродлении подписки или Zoom add-on.
+    
+    Args:
+        subscription: Subscription instance
+        user: User who owns the subscription
+        renewal_type: 'subscription' или 'zoom_addon'
+    """
+    token = _get_payments_bot_token()
+    chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', '')
+    
+    if not token or not chat_id:
+        logger.warning('Payments bot token or chat ID not configured')
+        return False
+    
+    if renewal_type == 'zoom_addon':
+        type_label = 'Zoom Add-on'
+        expires_at = subscription.zoom_addon_expires_at
+    else:
+        type_label = 'Подписка'
+        expires_at = subscription.expires_at
+    
+    expires_str = expires_at.strftime('%d.%m.%Y %H:%M') if expires_at else 'не указано'
+    
+    lines = [
+        'АВТОПРОДЛЕНИЕ УСПЕШНО',
+        '',
+        f'Тип: {type_label}',
+        f'Пользователь: {user.email}',
+        f'ID подписки: {subscription.id}',
+        f'Действует до: {expires_str}',
+    ]
+    
+    text = '\n'.join(lines)
+    return _send_payments_bot_message(text)
+
+
+def notify_auto_renewal_failed(subscription, user, renewal_type: str = 'subscription', reason: str = '') -> bool:
+    """
+    Уведомление админа о неудачном автопродлении.
+    
+    Args:
+        subscription: Subscription instance
+        user: User who owns the subscription
+        renewal_type: 'subscription' или 'zoom_addon'
+        reason: Причина неудачи
+    """
+    token = _get_payments_bot_token()
+    chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', '')
+    
+    if not token or not chat_id:
+        logger.warning('Payments bot token or chat ID not configured')
+        return False
+    
+    type_label = 'Zoom Add-on' if renewal_type == 'zoom_addon' else 'Подписка'
+    
+    lines = [
+        'АВТОПРОДЛЕНИЕ НЕ УДАЛОСЬ',
+        '',
+        f'Тип: {type_label}',
+        f'Пользователь: {user.email}',
+        f'ID подписки: {subscription.id}',
+        f'Причина: {reason or "неизвестно"}',
+        '',
+        'Автопродление отключено для этой подписки.',
+    ]
+    
+    text = '\n'.join(lines)
+    return _send_payments_bot_message(text)
+
+
+def notify_subscription_expiring_no_payment(subscription, user, days_left: int) -> bool:
+    """
+    Churn warning: уведомление админа о том, что подписка истекает без настроенного автопродления.
+    
+    Args:
+        subscription: Subscription instance
+        user: User who owns the subscription
+        days_left: Дней до истечения
+    """
+    token = _get_payments_bot_token()
+    chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', '')
+    
+    if not token or not chat_id:
+        logger.warning('Payments bot token or chat ID not configured')
+        return False
+    
+    expires_str = subscription.expires_at.strftime('%d.%m.%Y') if subscription.expires_at else 'не указано'
+    total_paid = subscription.total_paid or 0
+    
+    lines = [
+        'ПОДПИСКА ИСТЕКАЕТ (без автопродления)',
+        '',
+        f'Пользователь: {user.email}',
+        f'Осталось дней: {days_left}',
+        f'Истекает: {expires_str}',
+        f'Всего оплачено: {total_paid} RUB',
+        '',
+        'Рекомендация: связаться с пользователем.',
+    ]
+    
+    text = '\n'.join(lines)
+    return _send_payments_bot_message(text)
+
+
+def send_weekly_revenue_report() -> bool:
+    """
+    Отправляет еженедельный отчёт о выручке в Telegram бот платежей.
+    
+    Считает:
+    - Общую выручку за неделю
+    - Разбивку по типам (подписки/хранилище/zoom)
+    - Сравнение с предыдущей неделей
+    """
+    from datetime import timedelta
+    from decimal import Decimal
+    from .models import Payment
+    
+    token = _get_payments_bot_token()
+    chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', '')
+    
+    if not token or not chat_id:
+        logger.warning('Payments bot token or chat ID not configured')
+        return False
+    
+    now = timezone.now()
+    
+    # Текущая неделя (последние 7 дней)
+    week_start = now - timedelta(days=7)
+    current_week_payments = Payment.objects.filter(
+        status=Payment.STATUS_SUCCEEDED,
+        paid_at__gte=week_start,
+        paid_at__lt=now,
+    )
+    
+    # Предыдущая неделя
+    prev_week_start = week_start - timedelta(days=7)
+    prev_week_payments = Payment.objects.filter(
+        status=Payment.STATUS_SUCCEEDED,
+        paid_at__gte=prev_week_start,
+        paid_at__lt=week_start,
+    )
+    
+    # Считаем суммы по типам
+    def calc_revenue(payments):
+        subscriptions = Decimal('0')
+        storage = Decimal('0')
+        zoom = Decimal('0')
+        
+        for p in payments:
+            meta = p.metadata or {}
+            if meta.get('zoom_addon'):
+                zoom += p.amount
+            elif meta.get('storage_gb'):
+                storage += p.amount
+            else:
+                subscriptions += p.amount
+        
+        return {
+            'total': subscriptions + storage + zoom,
+            'subscriptions': subscriptions,
+            'storage': storage,
+            'zoom': zoom,
+            'count': payments.count(),
+        }
+    
+    current = calc_revenue(current_week_payments)
+    previous = calc_revenue(prev_week_payments)
+    
+    # Расчёт изменения в процентах
+    if previous['total'] > 0:
+        change_pct = ((current['total'] - previous['total']) / previous['total']) * 100
+        change_str = f"+{change_pct:.1f}%" if change_pct >= 0 else f"{change_pct:.1f}%"
+    else:
+        change_str = "N/A (прошлая неделя: 0)"
+    
+    # Форматируем даты
+    week_start_str = week_start.strftime('%d.%m.%Y')
+    now_str = now.strftime('%d.%m.%Y')
+    
+    lines = [
+        'ЕЖЕНЕДЕЛЬНЫЙ ОТЧЁТ О ВЫРУЧКЕ',
+        '',
+        f'Период: {week_start_str} - {now_str}',
+        '',
+        f'Общая выручка: {current["total"]} RUB',
+        f'Платежей: {current["count"]}',
+        '',
+        'Разбивка:',
+        f'  Подписки: {current["subscriptions"]} RUB',
+        f'  Хранилище: {current["storage"]} RUB',
+        f'  Zoom Add-on: {current["zoom"]} RUB',
+        '',
+        f'Сравнение с прошлой неделей: {change_str}',
+        f'(прошлая неделя: {previous["total"]} RUB, {previous["count"]} платежей)',
+    ]
+    
+    text = '\n'.join(lines)
+    return _send_payments_bot_message(text)
+
 
