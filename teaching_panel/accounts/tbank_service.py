@@ -703,12 +703,20 @@ class TBankService:
                 payment.save()
                 
                 logger.info(f"T-Bank payment {payment_id} failed with status: {status}")
+                
+                # Уведомление о неудачном платеже
+                notify_payment_failed(payment, sub, reason=status)
+                
                 return True
             
             elif status == 'REFUNDED':
                 payment.status = Payment.STATUS_REFUNDED
                 payment.save()
                 logger.info(f"T-Bank payment {payment_id} refunded")
+                
+                # Уведомление о возврате
+                notify_payment_refunded(payment, sub)
+                
                 return True
             
             else:

@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../auth';
 import { getAccessToken } from '../apiService';
 import {
@@ -260,13 +262,43 @@ const StatCard = ({ icon, label, value, sub, trend, color = '#6366f1' }) => (
 
 /* ========== MAIN COMPONENT ========== */
 const AdminHomePage = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [tab, setTab] = useState('overview');
   const [alerts, setAlerts] = useState([]);
   const [churn, setChurn] = useState(null);
   const [health, setHealth] = useState(null);
+
+  // Profile menu
+  const profileButtonRef = useRef(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [profileMenuPosition, setProfileMenuPosition] = useState({ top: 64, right: 24 });
+
+  const getAdminInitial = (u) => {
+    const first = (u?.first_name || '').trim();
+    const last = (u?.last_name || '').trim();
+    const email = (u?.email || '').trim();
+    const fallback = (first || last || email || 'A').charAt(0);
+    return fallback.toUpperCase();
+  };
+
+  const updateProfileMenuPosition = useCallback(() => {
+    const el = profileButtonRef.current;
+    if (!el || typeof window === 'undefined') return;
+    const rect = el.getBoundingClientRect();
+    const top = Math.round(rect.bottom + 8);
+    const right = Math.max(12, Math.round(window.innerWidth - rect.right));
+    setProfileMenuPosition({ top, right });
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      setShowProfileMenu(false);
+    } finally {
+      await logout();
+    }
+  }, [logout]);
 
   // Modals
   const [showCreate, setShowCreate] = useState(false);
@@ -310,6 +342,31 @@ const AdminHomePage = () => {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!showProfileMenu) return;
+
+    const onPointerDown = (e) => {
+      const btn = profileButtonRef.current;
+      if (btn && (btn === e.target || btn.contains(e.target))) return;
+      setShowProfileMenu(false);
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setShowProfileMenu(false);
+    };
+
+    const onResize = () => updateProfileMenuPosition();
+
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [showProfileMenu, updateProfileMenuPosition]);
 
   const quickAction = async (action) => {
     try {
