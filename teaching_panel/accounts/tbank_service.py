@@ -13,7 +13,13 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.utils import timezone
 
-from .notifications import send_telegram_notification, notify_admin_payment
+from .notifications import (
+    send_telegram_notification,
+    notify_admin_payment,
+    notify_payment_failed,
+    notify_payment_refunded,
+    notify_auto_renewal_success,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -452,6 +458,93 @@ class TBankService:
             }
     
     @staticmethod
+    def charge_zoom_addon_recurring(subscription, rebill_id: str):
+        """
+        Charge recurring payment for Zoom add-on using saved card (RebillId)
+        
+        Args:
+            subscription: Subscription instance
+            rebill_id: RebillId from previous zoom add-on payment
+            
+        Returns:
+            dict: {'payment_id': str, 'success': bool} or None
+        """
+        if not TBankService.is_available():
+            logger.error("T-Bank not configured for Zoom add-on recurring payment")
+            return None
+        
+        price = TBankService.ZOOM_ADDON_PRICE
+        amount_kopecks = int(price * 100)
+        order_id = f"zoom-addon-recur-{subscription.id}-{int(timezone.now().timestamp())}"
+        
+        # Init the payment
+        init_data = {
+            'Amount': amount_kopecks,
+            'OrderId': order_id,
+            'Description': 'Автопродление Zoom Add-on Lectio Space',
+            'CustomerKey': str(subscription.user.id),
+            'NotificationURL': f"{settings.SITE_URL}/api/payments/tbank/webhook/",
+            'PayType': 'O',
+            'Recurrent': 'Y',
+            'DATA': {
+                'subscription_id': str(subscription.id),
+                'user_id': str(subscription.user.id),
+                'zoom_addon': 'true',
+                'is_recurring': 'true',
+            }
+        }
+        
+        init_result = TBankService._make_request('Init', init_data)
+        
+        if not init_result.get('Success'):
+            logger.error(f"Failed to init Zoom add-on recurring payment: {init_result.get('Message')}")
+            return None
+        
+        payment_id = init_result['PaymentId']
+        
+        # Charge using RebillId
+        charge_data = {
+            'PaymentId': payment_id,
+            'RebillId': rebill_id,
+        }
+        
+        charge_result = TBankService._make_request('Charge', charge_data)
+        
+        if charge_result.get('Success'):
+            from .models import Payment
+            
+            Payment.objects.create(
+                subscription=subscription,
+                amount=price,
+                currency='RUB',
+                status=Payment.STATUS_PENDING,
+                payment_system='tbank',
+                payment_id=payment_id,
+                payment_url='',
+                metadata={
+                    'zoom_addon': True,
+                    'order_id': order_id,
+                    'is_recurring': True,
+                    'rebill_id': rebill_id,
+                }
+            )
+            
+            logger.info(f"T-Bank Zoom add-on recurring charge initiated: {payment_id}")
+            
+            return {
+                'payment_id': payment_id,
+                'success': True,
+                'status': charge_result.get('Status')
+            }
+        else:
+            logger.error(f"Failed to charge Zoom add-on recurring: {charge_result.get('Message')}")
+            return {
+                'payment_id': payment_id,
+                'success': False,
+                'error': charge_result.get('Message')
+            }
+    
+    @staticmethod
     def process_notification(notification_data: dict) -> bool:
         """
         Process webhook notification from T-Bank
@@ -592,6 +685,11 @@ class TBankService:
                 plan_name = metadata.get('plan')
                 storage_gb = int(metadata['storage_gb']) if 'storage_gb' in metadata else None
                 notify_admin_payment(payment, sub, plan_name=plan_name, storage_gb=storage_gb, zoom_addon=bool(metadata.get('zoom_addon')))
+                
+                # Уведомление об успешном автопродлении (если это рекуррентный платёж)
+                if metadata.get('is_recurring'):
+                    renewal_type = 'zoom_addon' if metadata.get('zoom_addon') else 'subscription'
+                    notify_auto_renewal_success(sub, sub.user, renewal_type)
                 
                 # Handle referral commission
                 TBankService._process_referral_commission(payment)
