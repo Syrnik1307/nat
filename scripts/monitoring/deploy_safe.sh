@@ -14,6 +14,13 @@
 
 set -euo pipefail
 
+# Загружаем конфигурацию (если скрипт запускается вручную, переменные могут быть не экспортированы)
+CONFIG_FILE="/opt/lectio-monitor/config.env"
+if [[ -f "$CONFIG_FILE" ]]; then
+    # shellcheck disable=SC1090
+    source "$CONFIG_FILE"
+fi
+
 # ==================== КОНФИГУРАЦИЯ ====================
 SITE_URL="https://lectio.tw1.ru"
 PROJECT_ROOT="/var/www/teaching_panel"

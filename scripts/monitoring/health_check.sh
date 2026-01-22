@@ -10,6 +10,13 @@
 
 set -euo pipefail
 
+# Загружаем конфигурацию (важно для cron: env переменные иначе не доступны)
+CONFIG_FILE="/opt/lectio-monitor/config.env"
+if [[ -f "$CONFIG_FILE" ]]; then
+    # shellcheck disable=SC1090
+    source "$CONFIG_FILE"
+fi
+
 # ==================== КОНФИГУРАЦИЯ ====================
 SITE_URL="https://lectio.tw1.ru"
 API_URL="https://lectio.tw1.ru/api/health/"
