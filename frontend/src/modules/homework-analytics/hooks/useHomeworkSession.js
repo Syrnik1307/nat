@@ -50,8 +50,8 @@ const buildInitialAnswers = (homework) => {
 
 /**
  * Convert backend Answer array to {questionId: value} map for frontend state.
- * Backend returns: [{question: 87, text_answer: "...", selected_choices: [1,2], ...}, ...]
- * Frontend expects: {87: "..." or [1,2] or {...}}
+ * Backend returns: [{question: 87, text_answer: "...", selected_choices: [1,2], attachments: [...], ...}, ...]
+ * Frontend expects: {87: "..." or [1,2] or {...}, "87_attachments": [...]}
  */
 const convertAnswersArrayToMap = (answersArray, questions) => {
   if (!Array.isArray(answersArray) || answersArray.length === 0) return {};
@@ -64,6 +64,11 @@ const convertAnswersArrayToMap = (answersArray, questions) => {
   return answersArray.reduce((acc, answer) => {
     const qId = answer.question;
     const qType = questionTypesById[qId];
+    
+    // Восстанавливаем attachments если есть
+    if (Array.isArray(answer.attachments) && answer.attachments.length > 0) {
+      acc[`${qId}_attachments`] = answer.attachments;
+    }
     
     // Determine value based on question type
     if (qType === 'TEXT' || qType === 'ESSAY') {

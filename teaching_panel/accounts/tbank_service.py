@@ -9,6 +9,7 @@ import requests
 import logging
 from decimal import Decimal
 from datetime import timedelta
+from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.utils import timezone
 
@@ -41,8 +42,8 @@ class TBankService:
     ZOOM_ADDON_PRICE = Decimal('990.00')
 
     @staticmethod
-    def create_zoom_addon_payment(subscription):
-        """Create payment for Zoom add-on (990 ₽ / 28 days)."""
+    def create_zoom_addon_payment(subscription, enable_recurrent: bool = False):
+        """Create payment for Zoom add-on (990 ₽ / 1 month)."""
         if not TBankService.is_available():
             logger.warning("T-Bank not configured, using mock payment")
             from .models import Payment
@@ -56,7 +57,7 @@ class TBankService:
                 payment_system='mock',
                 payment_id=mock_payment_id,
                 payment_url=f'{settings.FRONTEND_URL}/mock-payment?payment_id={mock_payment_id}',
-                metadata={'zoom_addon': True, 'mock': True}
+                metadata={'zoom_addon': True, 'mock': True, 'zoom_addon_auto_renew': bool(enable_recurrent)}
             )
 
             return {
@@ -81,9 +82,13 @@ class TBankService:
                 'subscription_id': str(subscription.id),
                 'user_id': str(subscription.user.id),
                 'zoom_addon': '1',
+                'zoom_addon_auto_renew': '1' if enable_recurrent else '0',
                 'Email': subscription.user.email,
             }
         }
+
+        if enable_recurrent:
+            request_data['Recurrent'] = 'Y'
 
         result = TBankService._make_request('Init', request_data)
         if result.get('Success'):
@@ -101,6 +106,7 @@ class TBankService:
                     'zoom_addon': True,
                     'order_id': order_id,
                     'terminal_key': settings.TBANK_TERMINAL_KEY,
+                    'zoom_addon_auto_renew': bool(enable_recurrent),
                 }
             )
 
@@ -490,8 +496,11 @@ class TBankService:
                 rebill_id = notification_data.get('RebillId')
                 if rebill_id:
                     metadata['rebill_id'] = rebill_id
-                    # Also save to subscription for future use
-                    sub.tbank_rebill_id = rebill_id
+                    # Сохраняем RebillId отдельно: основная подписка и Zoom add-on имеют разные циклы.
+                    if metadata.get('plan'):
+                        sub.tbank_rebill_id = rebill_id
+                    elif metadata.get('zoom_addon'):
+                        sub.zoom_addon_tbank_rebill_id = rebill_id
                 
                 payment.metadata = metadata
                 payment.save()
@@ -550,10 +559,20 @@ class TBankService:
 
                 # Zoom add-on
                 elif metadata.get('zoom_addon'):
-                    sub.zoom_addon_expires_at = timezone.now() + timedelta(days=28)
+                    now = timezone.now()
+                    base_dt = sub.zoom_addon_expires_at if sub.zoom_addon_expires_at and sub.zoom_addon_expires_at > now else now
+                    sub.zoom_addon_expires_at = base_dt + relativedelta(months=1)
+
+                    auto_renew_raw = metadata.get('zoom_addon_auto_renew', False)
+                    auto_renew = str(auto_renew_raw).strip().lower() in ('1', 'true', 'yes', 'y', 'on')
+                    if auto_renew and sub.zoom_addon_tbank_rebill_id:
+                        sub.zoom_addon_auto_renew = True
                     sub.total_paid += payment.amount
                     sub.last_payment_date = timezone.now()
-                    sub.save(update_fields=['zoom_addon_expires_at', 'total_paid', 'last_payment_date', 'updated_at'])
+                    update_fields = ['zoom_addon_expires_at', 'total_paid', 'last_payment_date', 'updated_at', 'zoom_addon_tbank_rebill_id']
+                    if auto_renew:
+                        update_fields.append('zoom_addon_auto_renew')
+                    sub.save(update_fields=update_fields)
 
                     logger.info(f"Zoom add-on activated via T-Bank for subscription {sub.id}")
 

@@ -18,6 +18,15 @@ from django.conf import settings
 from django.db.models import Count
 
 
+def _parse_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    text = str(value).strip().lower()
+    return text in ('1', 'true', 'yes', 'y', 'on')
+
+
 def _get_or_create_subscription(user: "Subscription.user") -> Subscription:
     sub = getattr(user, 'subscription', None)
     if sub:
@@ -199,7 +208,7 @@ class SubscriptionAddStorageView(APIView):
 
 
 class SubscriptionCreateZoomAddonPaymentView(APIView):
-    """Создать платёж за Zoom-аддон (990 ₽ / 28 дней)."""
+    """Создать платёж за Zoom-аддон (990 ₽ / 1 месяц)."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -212,10 +221,12 @@ class SubscriptionCreateZoomAddonPaymentView(APIView):
 
         sub = get_subscription(request.user)
 
+        enable_recurrent = _parse_bool(request.data.get('auto_renew'))
+
         if provider == 'tbank':
-            payment_result = TBankService.create_zoom_addon_payment(sub)
+            payment_result = TBankService.create_zoom_addon_payment(sub, enable_recurrent=enable_recurrent)
         else:
-            payment_result = PaymentService.create_zoom_addon_payment(sub)
+            payment_result = PaymentService.create_zoom_addon_payment(sub, enable_recurrent=enable_recurrent)
 
         if not payment_result:
             return Response({'detail': 'Не удалось создать платёж'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -235,7 +246,7 @@ class SubscriptionZoomAddonSetupView(APIView):
 
     POST /api/subscription/zoom/setup/
     body:
-      {"mode": "pool"}  -> выделить учителю аккаунт платформы (preferred_teachers)
+            {"mode": "pool", "email": "...", "random_email": true/false}  -> выделить учителю аккаунт платформы (preferred_teachers)
       {"mode": "personal", "accountId": "...", "clientId": "...", "clientSecret": "...", "userId": "me"}
     """
     permission_classes = [IsAuthenticated]
@@ -279,14 +290,22 @@ class SubscriptionZoomAddonSetupView(APIView):
         except Exception:
             return Response({'detail': 'Zoom pool не доступен'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # Выбираем аккаунт платформы с минимальной "нагрузкой" по предпочтениям.
-        # Это не создаёт новый Zoom аккаунт в Zoom, а назначает выделенный из пула.
-        account = (
-            ZoomAccount.objects.filter(is_active=True)
-            .annotate(preferred_count=Count('preferred_teachers'))
-            .order_by('preferred_count', 'current_meetings', '-last_used_at')
-            .first()
-        )
+        random_email = _parse_bool(request.data.get('random_email'))
+        requested_email = str(request.data.get('email', '')).strip()
+
+        if requested_email and not random_email:
+            account = ZoomAccount.objects.filter(is_active=True, email__iexact=requested_email).first()
+            if not account:
+                return Response({'detail': 'Аккаунт с указанной почтой не найден в пуле'}, status=status.HTTP_409_CONFLICT)
+        else:
+            # Выбираем аккаунт платформы с минимальной "нагрузкой" по предпочтениям.
+            # Это не создаёт новый Zoom аккаунт в Zoom, а назначает выделенный из пула.
+            account = (
+                ZoomAccount.objects.filter(is_active=True)
+                .annotate(preferred_count=Count('preferred_teachers'))
+                .order_by('preferred_count', 'current_meetings', '-last_used_at')
+                .first()
+            )
         if not account:
             return Response({'detail': 'Нет доступных Zoom аккаунтов в пуле'}, status=status.HTTP_409_CONFLICT)
 

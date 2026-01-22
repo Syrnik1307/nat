@@ -842,6 +842,13 @@ class Subscription(models.Model):
     # Zoom Add-on (платная подписка на выделенный Zoom / личный Zoom)
     # Хранит только факт оплаты и срок действия. Настройка Zoom выполняется отдельным API.
     zoom_addon_expires_at = models.DateTimeField(null=True, blank=True)
+
+    # Zoom Add-on: настройки регулярного платежа.
+    # Важно: хранение метода/идентификатора — база для автосписаний,
+    # но само автосписание требует отдельной логики (cron/celery).
+    zoom_addon_auto_renew = models.BooleanField(default=False)
+    zoom_addon_payment_method_id = models.CharField(max_length=255, blank=True, default='')
+    zoom_addon_tbank_rebill_id = models.CharField(max_length=100, blank=True, default='')
     
     # ID папки на Google Drive (создаётся при активации подписки)
     gdrive_folder_id = models.CharField(max_length=255, blank=True, default='')

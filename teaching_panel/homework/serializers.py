@@ -378,7 +378,7 @@ class AnswerSerializer(serializers.ModelSerializer):
         model = Answer
         fields = ['id', 'question', 'question_text', 'question_type', 'question_points', 
                   'text_answer', 'selected_choices', 'auto_score', 'teacher_score', 
-                  'teacher_feedback', 'needs_manual_review']
+                  'teacher_feedback', 'needs_manual_review', 'attachments']
         read_only_fields = ['auto_score', 'needs_manual_review']
 
 

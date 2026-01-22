@@ -576,6 +576,7 @@ const TeacherHomePage = () => {
     return (
       <div className="dashboard-container">
         <style>{globalStyles}</style>
+        <TelegramReminderToast />
         <TeacherDashboardSkeleton />
       </div>
     );
@@ -584,12 +585,11 @@ const TeacherHomePage = () => {
   return (
     <div className="dashboard-container">
       <style>{globalStyles}</style>
+
+      <TelegramReminderToast />
       
       {/* Subscription Banner */}
       <SubscriptionBanner />
-      
-      {/* Telegram Reminder Toast */}
-      <TelegramReminderToast />
 
       {/* Platform Selection Modal */}
       {showPlatformModal && (

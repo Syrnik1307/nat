@@ -270,6 +270,39 @@ const HomeworkAnswersView = () => {
                 )}
               </div>
 
+              {/* Прикреплённые файлы к ответу */}
+              {currentAnswer?.attachments?.length > 0 && (
+                <div className="hav-attachments">
+                  <div className="hav-attachments-label">Прикреплённые файлы:</div>
+                  <div className="hav-attachments-list">
+                    {currentAnswer.attachments.map((file, idx) => (
+                      <div key={file.file_id || idx} className="hav-attachment-item">
+                        {file.mime_type?.startsWith('image/') ? (
+                          <div 
+                            className="hav-attachment-preview"
+                            onClick={() => setImagePreview({ open: true, url: file.url })}
+                          >
+                            <img src={file.url} alt={file.name} />
+                          </div>
+                        ) : (
+                          <a 
+                            href={file.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="hav-attachment-link"
+                          >
+                            <span className="hav-attachment-icon">
+                              {file.name?.split('.').pop()?.toUpperCase() || 'FILE'}
+                            </span>
+                            <span className="hav-attachment-name">{file.name}</span>
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Комментарий учителя */}
               {currentAnswer?.teacher_feedback && (
                 <div className="hav-feedback">

@@ -1088,6 +1088,7 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                 'score': score,
                 'is_correct': is_correct,
                 'teacher_feedback': answer.teacher_feedback,
+                'attachments': answer.attachments or [],
             })
         
         # Вычисляем время
@@ -1180,8 +1181,22 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         questions_map = {
             q.id: q for q in homework.questions.all().prefetch_related('choices')
         }
+        
+        # Собираем attachments отдельно (ключи вида "123_attachments")
+        attachments_map = {}
+        for key, value in answers_payload.items():
+            if isinstance(key, str) and key.endswith('_attachments'):
+                try:
+                    qid = int(key.replace('_attachments', ''))
+                    attachments_map[qid] = value if isinstance(value, list) else []
+                except (TypeError, ValueError):
+                    continue
 
         for question_id, raw_value in answers_payload.items():
+            # Пропускаем ключи attachments - они обрабатываются отдельно
+            if isinstance(question_id, str) and question_id.endswith('_attachments'):
+                continue
+                
             try:
                 qid = int(question_id)
             except (TypeError, ValueError):
@@ -1195,6 +1210,10 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
 
             qtype = question.question_type
             config = question.config or {}
+            
+            # Обновляем attachments если есть
+            if qid in attachments_map:
+                answer_obj.attachments = attachments_map[qid]
             
             # Helper function to resolve choice ID (handles both numeric and legacy 'opt-X' format)
             def resolve_choice_id(val, question_obj):
@@ -1247,6 +1266,17 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
 
             answer_obj.evaluate(use_ai=use_ai)
             answer_obj.save()
+        
+        # Обрабатываем attachments для вопросов, которые ещё не были обновлены
+        # (когда есть только attachments без изменения ответа)
+        for qid, attachments in attachments_map.items():
+            question = questions_map.get(qid)
+            if not question:
+                continue
+            answer_obj, created = Answer.objects.get_or_create(submission=submission, question=question)
+            if created or answer_obj.attachments != attachments:
+                answer_obj.attachments = attachments
+                answer_obj.save(update_fields=['attachments'])
 
         submission.compute_auto_score()
 

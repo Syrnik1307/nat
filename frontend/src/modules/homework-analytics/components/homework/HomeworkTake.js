@@ -8,6 +8,7 @@ import QuestionRenderer from '../student/QuestionRenderer';
 import ProgressBar from '../student/ProgressBar';
 import QuestionNav from '../student/QuestionNav';
 import MediaPreview from '../shared/MediaPreview';
+import AnswerAttachment from '../student/AnswerAttachment';
 import './HomeworkTake.css';
 
 // Нормализация URL для картинок (включая Google Drive)
@@ -377,6 +378,22 @@ const HomeworkTake = () => {
                 disabled={isLocked}
                 homeworkId={id}
               />
+
+              {/* Прикрепление файлов к ответу (для всех типов кроме FILE_UPLOAD) */}
+              {currentQuestion.question_type !== 'FILE_UPLOAD' && (
+                <AnswerAttachment
+                  attachments={answers[`${currentQuestion.id}_attachments`] || []}
+                  onChange={(files) => {
+                    if (!isLocked) {
+                      recordAnswer(`${currentQuestion.id}_attachments`, files);
+                    }
+                  }}
+                  disabled={isLocked}
+                  homeworkId={id}
+                  maxFiles={3}
+                  maxSizeMB={10}
+                />
+              )}
 
               <div className="ht-controls">
                 <Button

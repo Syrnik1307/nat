@@ -273,6 +273,7 @@ const StudentHomePage = () => {
 
   return (
     <div className="student-home">
+      <TelegramReminderToast />
       <main className="student-main-content animate-page-enter">
         <div className="student-container">
           <div className="student-page-stage">
@@ -401,9 +402,6 @@ const StudentHomePage = () => {
       )}
 
       {!showJoinModal && <SupportWidget />}
-      
-      {/* Telegram Reminder Toast */}
-      <TelegramReminderToast />
     </div>
   );
 };

@@ -128,6 +128,7 @@ const SubmissionReview = () => {
         auto_score: answer?.auto_score ?? null,
         teacher_score: answer?.teacher_score ?? null,
         teacher_feedback: answer?.teacher_feedback || '',
+        attachments: answer?.attachments || [],
         hasAnswer: !!answer,
         index,
       };
@@ -257,6 +258,31 @@ const SubmissionReview = () => {
                   {item.hasAnswer ? getAnswerDisplay(item) : '(Ученик не ответил на этот вопрос)'}
                 </div>
               </div>
+
+              {/* Прикреплённые файлы от ученика */}
+              {item.attachments?.length > 0 && (
+                <div className="sr-student-attachments">
+                  <strong>Прикреплённые файлы:</strong>
+                  <div className="sr-attachments-list">
+                    {item.attachments.map((file, idx) => (
+                      <div key={file.file_id || idx} className="sr-attachment-item">
+                        {file.mime_type?.startsWith('image/') ? (
+                          <a href={file.url} target="_blank" rel="noopener noreferrer" className="sr-attachment-image">
+                            <img src={file.url} alt={file.name} />
+                          </a>
+                        ) : (
+                          <a href={file.url} target="_blank" rel="noopener noreferrer" className="sr-attachment-file">
+                            <span className="sr-attachment-icon">
+                              {file.name?.split('.').pop()?.toUpperCase() || 'FILE'}
+                            </span>
+                            <span className="sr-attachment-name">{file.name}</span>
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {item.auto_score !== null && (
                 <div className="sr-auto-score-info">

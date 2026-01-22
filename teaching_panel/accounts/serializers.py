@@ -168,6 +168,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'next_billing_date', 'total_paid', 'last_payment_date',
             'base_storage_gb', 'extra_storage_gb', 'used_storage_gb', 'total_storage_gb',
             'zoom_addon_expires_at', 'zoom_addon_active',
+            'zoom_addon_auto_renew',
             'gdrive_folder_id', 'gdrive_folder_link',
             'created_at', 'updated_at', 'payments'
         ]

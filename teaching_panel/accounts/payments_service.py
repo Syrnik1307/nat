@@ -7,6 +7,7 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 import logging
+from dateutil.relativedelta import relativedelta
 
 from .notifications import send_telegram_notification, notify_admin_payment
 
@@ -41,8 +42,8 @@ class PaymentService:
     ZOOM_ADDON_PRICE = '990.00'
 
     @staticmethod
-    def create_zoom_addon_payment(subscription):
-        """Создать платёж за Zoom-аддон (990 ₽ / 28 дней).
+    def create_zoom_addon_payment(subscription, enable_recurrent: bool = False):
+        """Создать платёж за Zoom-аддон (990 ₽ / 1 месяц).
 
         Возвращает dict: {'payment_url': str, 'payment_id': str} или None.
         """
@@ -59,7 +60,7 @@ class PaymentService:
                 payment_system='mock',
                 payment_id=mock_payment_id,
                 payment_url=f'{settings.FRONTEND_URL}/mock-payment?payment_id={mock_payment_id}',
-                metadata={'zoom_addon': True, 'mock': True}
+                metadata={'zoom_addon': True, 'mock': True, 'zoom_addon_auto_renew': bool(enable_recurrent)}
             )
             return {
                 'payment_url': mock_payment.payment_url,
@@ -69,7 +70,7 @@ class PaymentService:
         try:
             from .models import Payment
 
-            payment = YKPayment.create({
+            payload = {
                 "amount": {
                     "value": PaymentService.ZOOM_ADDON_PRICE,
                     "currency": "RUB"
@@ -84,8 +85,14 @@ class PaymentService:
                     "subscription_id": subscription.id,
                     "user_id": subscription.user.id,
                     "zoom_addon": True,
+                    "zoom_addon_auto_renew": '1' if enable_recurrent else '0',
                 }
-            })
+            }
+
+            if enable_recurrent:
+                payload["save_payment_method"] = True
+
+            payment = YKPayment.create(payload)
 
             Payment.objects.create(
                 subscription=subscription,
@@ -95,7 +102,7 @@ class PaymentService:
                 payment_system='yookassa',
                 payment_id=payment.id,
                 payment_url=payment.confirmation.confirmation_url,
-                metadata={'zoom_addon': True}
+                metadata={'zoom_addon': True, 'zoom_addon_auto_renew': bool(enable_recurrent)}
             )
 
             logger.info(f"Zoom add-on payment created: {payment.id} for subscription {subscription.id}")
@@ -345,10 +352,30 @@ class PaymentService:
 
                 # Zoom add-on
                 elif metadata.get('zoom_addon'):
-                    sub.zoom_addon_expires_at = timezone.now() + timedelta(days=28)
+                    now = timezone.now()
+                    base_dt = sub.zoom_addon_expires_at if sub.zoom_addon_expires_at and sub.zoom_addon_expires_at > now else now
+                    sub.zoom_addon_expires_at = base_dt + relativedelta(months=1)
+
+                    auto_renew_raw = metadata.get('zoom_addon_auto_renew', False)
+                    auto_renew = str(auto_renew_raw).strip().lower() in ('1', 'true', 'yes', 'y', 'on')
+                    if auto_renew:
+                        # Сохраняем payment_method.id если YooKassa его вернула.
+                        try:
+                            payment_method = payment_data.get('object', {}).get('payment_method', {})
+                            payment_method_id = payment_method.get('id') or ''
+                        except Exception:
+                            payment_method_id = ''
+
+                        sub.zoom_addon_auto_renew = True
+                        if payment_method_id:
+                            sub.zoom_addon_payment_method_id = payment_method_id
+
                     sub.total_paid += payment.amount
                     sub.last_payment_date = timezone.now()
-                    sub.save(update_fields=['zoom_addon_expires_at', 'total_paid', 'last_payment_date', 'updated_at'])
+                    update_fields = ['zoom_addon_expires_at', 'total_paid', 'last_payment_date', 'updated_at']
+                    if auto_renew:
+                        update_fields.extend(['zoom_addon_auto_renew', 'zoom_addon_payment_method_id'])
+                    sub.save(update_fields=update_fields)
 
                     logger.info(f"Zoom add-on activated for subscription {sub.id}")
 

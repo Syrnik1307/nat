@@ -237,6 +237,12 @@ class Answer(models.Model):
     teacher_feedback = models.TextField(blank=True, help_text='Комментарий учителя')
     needs_manual_review = models.BooleanField(default=False)
     
+    # Прикреплённые файлы к ответу (фото, документы)
+    attachments = models.JSONField(
+        default=list, blank=True,
+        help_text='Список прикреплённых файлов [{url, file_id, name, size, mime_type}]'
+    )
+    
     # === НОВЫЕ ПОЛЯ ДЛЯ АНАЛИТИКИ ===
     answered_at = models.DateTimeField(
         null=True, blank=True,

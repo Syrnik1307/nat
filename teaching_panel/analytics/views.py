@@ -1234,65 +1234,88 @@ class StudentStatsViewSet(viewsets.ViewSet):
                 'groups': []
             })
 
+        from accounts.models import AttendanceRecord
+
         # Attendance aggregates per group for this student
+        # Считаем только записи, где статус проставлен.
         att_rows = (
-            Attendance.objects
-            .filter(student=user, lesson__group_id__in=group_ids)
+            AttendanceRecord.objects
+            .filter(student=user, lesson__group_id__in=group_ids, status__isnull=False)
             .values('lesson__group')
             .annotate(
-                present=Count('id', filter=Q(status='present')),
-                total_marked=Count('id')
+                present=Count(
+                    'id',
+                    filter=Q(status__in=[AttendanceRecord.STATUS_ATTENDED, AttendanceRecord.STATUS_WATCHED_RECORDING]),
+                ),
+                total_marked=Count('id'),
             )
         )
         att_map = {r['lesson__group']: r for r in att_rows}
 
-        # Homework totals per group (published only)
-        hw_total_rows = (
+        # Homeworks: учитываем публикации как по lesson.group, так и по assigned_groups
+        homeworks_qs = (
             Homework.objects
-            .filter(status='published', lesson__group_id__in=group_ids)
-            .values('lesson__group')
-            .annotate(total=Count('id'))
+            .filter(status='published')
+            .filter(Q(lesson__group_id__in=group_ids) | Q(assigned_groups__id__in=group_ids))
+            .select_related('lesson__group')
+            .prefetch_related('assigned_groups')
+            .distinct()
         )
-        hw_total_map = {r['lesson__group']: r for r in hw_total_rows}
+        all_homework_ids = list(homeworks_qs.values_list('id', flat=True))
 
-        # Homework completed per group for this student
-        hw_done_rows = (
+        group_to_homework_ids = {gid: set() for gid in group_ids}
+        homework_to_groups = {}
+        for hw in homeworks_qs:
+            gids = set()
+            if hw.lesson_id and getattr(hw.lesson, 'group_id', None) in group_to_homework_ids:
+                gids.add(hw.lesson.group_id)
+            for ag in hw.assigned_groups.all():
+                if ag.id in group_to_homework_ids:
+                    gids.add(ag.id)
+            if not gids:
+                continue
+            homework_to_groups[hw.id] = gids
+            for gid in gids:
+                group_to_homework_ids[gid].add(hw.id)
+
+        # Completed homeworks (для ученика) — считаем по факту submission submitted/graded
+        completed_homework_ids = set(
             StudentSubmission.objects
             .filter(
                 student=user,
                 status__in=['submitted', 'graded'],
                 homework__status='published',
-                homework__lesson__group_id__in=group_ids,
+                homework_id__in=all_homework_ids,
             )
-            .values('homework__lesson__group')
-            .annotate(done=Count('id'))
+            .values_list('homework_id', flat=True)
+            .distinct()
         )
-        hw_done_map = {r['homework__lesson__group']: r for r in hw_done_rows}
 
-        # Homework errors per group for this student
-        # Error = ответ проверен (есть teacher_score или auto_score), не требует ручной проверки,
-        # и итоговый балл < max points вопроса.
+        # Ошибки/проверки считаем по домашкам (чтобы корректно разнести по группам)
+        # Error = ответ проверен (teacher_score или auto_score), не требует ручной проверки,
+        # и итоговый балл < points вопроса.
         answer_base = (
             Answer.objects
             .filter(
                 submission__student=user,
+                submission__status__in=['submitted', 'graded'],
                 submission__homework__status='published',
-                submission__homework__lesson__group_id__in=group_ids,
+                submission__homework_id__in=all_homework_ids,
                 question__points__gt=0,
+                needs_manual_review=False,
             )
-            .exclude(needs_manual_review=True, teacher_score__isnull=True)
-            .exclude(teacher_score__isnull=True, auto_score__isnull=True)
+            .filter(Q(teacher_score__isnull=False) | Q(auto_score__isnull=False))
             .annotate(resolved_score=Coalesce('teacher_score', 'auto_score'))
         )
-        err_rows = (
+        hw_err_rows = (
             answer_base
-            .values('submission__homework__lesson__group')
+            .values('submission__homework_id')
             .annotate(
                 errors=Count('id', filter=Q(resolved_score__lt=F('question__points'))),
-                checked=Count('id')
+                checked=Count('id'),
             )
         )
-        err_map = {r['submission__homework__lesson__group']: r for r in err_rows}
+        homework_err_map = {r['submission__homework_id']: r for r in hw_err_rows}
 
         groups_payload = []
         overall_present = 0
@@ -1308,13 +1331,19 @@ class StudentStatsViewSet(viewsets.ViewSet):
             total_marked = int(att.get('total_marked', 0) or 0)
             attendance_percent = round((present / total_marked) * 100, 2) if total_marked else None
 
-            hw_total = int((hw_total_map.get(g.id, {}) or {}).get('total', 0) or 0)
-            hw_done = int((hw_done_map.get(g.id, {}) or {}).get('done', 0) or 0)
+            hw_ids = group_to_homework_ids.get(g.id, set())
+            hw_total = len(hw_ids)
+            hw_done = sum(1 for hw_id in hw_ids if hw_id in completed_homework_ids)
             homework_percent = round((hw_done / hw_total) * 100, 2) if hw_total else None
 
-            err = err_map.get(g.id, {})
-            errors = int(err.get('errors', 0) or 0)
-            checked = int(err.get('checked', 0) or 0)
+            errors = 0
+            checked = 0
+            for hw_id in hw_ids:
+                row = homework_err_map.get(hw_id)
+                if not row:
+                    continue
+                errors += int(row.get('errors', 0) or 0)
+                checked += int(row.get('checked', 0) or 0)
 
             groups_payload.append({
                 'id': g.id,
