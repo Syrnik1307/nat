@@ -8,7 +8,6 @@ import {
 import TeachersManage from './TeachersManage';
 import StudentsManage from './StudentsManage';
 import StatusMessages from './StatusMessages';
-import ZoomPoolManager from '../modules/core/zoom/ZoomPoolManager';
 import SystemSettings from './SystemSettings';
 import StorageQuotaModal from '../modules/Admin/StorageQuotaModal';
 import SubscriptionsModal from '../modules/Admin/SubscriptionsModal';
@@ -272,12 +271,14 @@ const AdminHomePage = () => {
   const [showTeachers, setShowTeachers] = useState(false);
   const [showStudents, setShowStudents] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
-  const [showZoom, setShowZoom] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showStorage, setShowStorage] = useState(false);
   const [showSubs, setShowSubs] = useState(false);
   const [showStorageStats, setShowStorageStats] = useState(false);
   const [showReferrals, setShowReferrals] = useState(false);
+
+  // Sub-tabs for overview
+  const [overviewTab, setOverviewTab] = useState('moderation');
 
   // Create user
   const [userRole, setUserRole] = useState('teacher');
@@ -375,7 +376,44 @@ const AdminHomePage = () => {
         {/* OVERVIEW TAB */}
         {tab === 'overview' && (
           <>
-            {/* MODERATION */}
+            {/* SUB-TABS */}
+            <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', padding: 4, borderRadius: 10, marginBottom: 24, width: 'fit-content' }}>
+              <button
+                style={{
+                  padding: '10px 20px',
+                  background: overviewTab === 'moderation' ? 'rgba(99,102,241,0.15)' : 'transparent',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: overviewTab === 'moderation' ? '#818cf8' : 'rgba(255,255,255,0.5)',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onClick={() => setOverviewTab('moderation')}
+              >
+                Модерация
+              </button>
+              <button
+                style={{
+                  padding: '10px 20px',
+                  background: overviewTab === 'business' ? 'rgba(99,102,241,0.15)' : 'transparent',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: overviewTab === 'business' ? '#818cf8' : 'rgba(255,255,255,0.5)',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onClick={() => setOverviewTab('business')}
+              >
+                Бизнес-метрики
+              </button>
+            </div>
+
+            {/* MODERATION SUB-TAB */}
+            {overviewTab === 'moderation' && (
             <div style={{ marginBottom: 24 }}>
               <div style={styles.sectionHeaderStack}>
                 <div style={styles.sectionTitleWrap}>
@@ -421,8 +459,11 @@ const AdminHomePage = () => {
                 </button>
               </div>
             </div>
+            )}
 
-            {/* BUSINESS METRICS */}
+            {/* BUSINESS METRICS SUB-TAB */}
+            {overviewTab === 'business' && (
+            <>
             <div style={{ marginBottom: 16 }}>
               <div style={styles.sectionHeaderStack}>
                 <div style={styles.sectionTitleWrap}>
@@ -530,6 +571,8 @@ const AdminHomePage = () => {
                 </table>
               </div>
             )}
+            </>
+            )}
           </>
         )}
 
@@ -630,36 +673,41 @@ const AdminHomePage = () => {
               ))}
             </div>
 
-            {/* Zoom */}
+            {/* Storage - Real Disk Usage */}
             <div style={{ ...styles.sectionHeader, marginTop: 32 }}>
-              <h2 style={styles.sectionTitle}>Zoom Pool</h2>
+              <h2 style={styles.sectionTitle}>Хранилище сервера</h2>
             </div>
-            <div style={styles.grid(3)}>
+            <div style={styles.grid(2)}>
               <div style={styles.card}>
-                <div style={styles.cardTitle}>Всего</div>
-                <div style={{ ...styles.statValue, marginTop: 8 }}>{data?.zoom?.total || 0}</div>
+                <div style={styles.cardTitle}>Диск сервера</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, marginBottom: 8 }}>
+                  <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>
+                    Занято: {(data?.storage?.disk_used_gb || 0).toFixed(1)} ГБ
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
+                    Всего: {(data?.storage?.disk_total_gb || 0).toFixed(1)} ГБ
+                  </span>
+                </div>
+                <div style={styles.progressBar}>
+                  <div style={styles.progressFill(
+                    data?.storage?.disk_total_gb 
+                      ? (data.storage.disk_used_gb / data.storage.disk_total_gb) * 100 
+                      : 0,
+                    (data?.storage?.disk_free_gb || 0) < 5 ? '#ef4444' : '#22c55e'
+                  )} />
+                </div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>
+                  Свободно: {(data?.storage?.disk_free_gb || 0).toFixed(1)} ГБ
+                </div>
               </div>
               <div style={styles.card}>
-                <div style={styles.cardTitle}>Используется</div>
-                <div style={{ ...styles.statValue, marginTop: 8, color: '#f59e0b' }}>{data?.zoom?.in_use || 0}</div>
-              </div>
-              <div style={styles.card}>
-                <div style={styles.cardTitle}>Свободно</div>
-                <div style={{ ...styles.statValue, marginTop: 8, color: '#22c55e' }}>{data?.zoom?.available || 0}</div>
-              </div>
-            </div>
-
-            {/* Storage */}
-            <div style={{ ...styles.sectionHeader, marginTop: 32 }}>
-              <h2 style={styles.sectionTitle}>Хранилище</h2>
-            </div>
-            <div style={styles.card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                <span style={{ color: 'rgba(255,255,255,0.6)' }}>{(data?.storage?.used_gb || 0).toFixed(1)} ГБ</span>
-                <span style={{ color: 'rgba(255,255,255,0.4)' }}>{(data?.storage?.total_gb || 0).toFixed(1)} ГБ</span>
-              </div>
-              <div style={styles.progressBar}>
-                <div style={styles.progressFill(data?.storage?.total_gb ? (data.storage.used_gb / data.storage.total_gb) * 100 : 0)} />
+                <div style={styles.cardTitle}>Медиа-файлы платформы</div>
+                <div style={{ ...styles.statValue, marginTop: 12, fontSize: 28 }}>
+                  {(data?.storage?.media_used_gb || 0).toFixed(2)} ГБ
+                </div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>
+                  Записи уроков, загрузки
+                </div>
               </div>
             </div>
 
@@ -669,9 +717,6 @@ const AdminHomePage = () => {
             </div>
             <div style={styles.actionGrid}>
               <button style={styles.actionBtn} onClick={() => quickAction('send_expiring_reminders')}>Напомнить об истекающих</button>
-              <button style={styles.actionBtn} onClick={() => quickAction('cleanup_stuck_zoom')}>Очистить Zoom</button>
-              <button style={styles.actionBtn} onClick={() => quickAction('recalculate_storage')}>Пересчитать хранилище</button>
-              <button style={styles.actionBtn} onClick={() => setShowZoom(true)}>Zoom Manager</button>
               <button style={styles.actionBtn} onClick={() => setShowSettings(true)}>Настройки</button>
             </div>
           </>
@@ -715,10 +760,6 @@ const AdminHomePage = () => {
       {showSubs && <SubscriptionsModal onClose={() => setShowSubs(false)} />}
       {showStorageStats && <StorageStats onClose={() => setShowStorageStats(false)} />}
       {showReferrals && <AdminReferrals onClose={() => setShowReferrals(false)} />}
-
-      <Modal isOpen={showZoom} onClose={() => setShowZoom(false)} title="Zoom Pool" size="large">
-        <ZoomPoolManager onClose={() => setShowZoom(false)} />
-      </Modal>
     </div>
   );
 };

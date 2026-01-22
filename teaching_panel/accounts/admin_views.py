@@ -395,23 +395,37 @@ class AdminGrowthOverviewView(APIView):
             )
         )
 
-        # === ZOOM POOL STATUS ===
-        from zoom_pool.models import ZoomAccount
-        zoom_total = ZoomAccount.objects.filter(is_active=True).count()
-        zoom_in_use = ZoomAccount.objects.filter(is_active=True, current_meetings__gt=0).count()
-        zoom_available = ZoomAccount.objects.filter(
-            is_active=True,
-            current_meetings__lt=F('max_concurrent_meetings'),
-        ).count()
-
-        # === ХРАНИЛИЩЕ ===
-        storage_stats = Subscription.objects.filter(
-            status=Subscription.STATUS_ACTIVE
-        ).aggregate(
-            total_used=Sum('used_storage_gb'),
-            total_base=Sum('base_storage_gb'),
-            total_extra=Sum('extra_storage_gb'),
-        )
+        # === ДИСКОВОЕ ПРОСТРАНСТВО СЕРВЕРА ===
+        import shutil
+        import os
+        try:
+            # Получаем реальное использование диска на сервере
+            disk_path = getattr(settings, 'MEDIA_ROOT', '/var/www/teaching_panel/media')
+            if not os.path.exists(disk_path):
+                disk_path = '/'
+            total_bytes, used_bytes, free_bytes = shutil.disk_usage(disk_path)
+            disk_total_gb = total_bytes / (1024 ** 3)
+            disk_used_gb = used_bytes / (1024 ** 3)
+            disk_free_gb = free_bytes / (1024 ** 3)
+        except Exception:
+            disk_total_gb = 0
+            disk_used_gb = 0
+            disk_free_gb = 0
+        
+        # Подсчёт размера медиа-файлов (записи, uploads)
+        media_used_gb = 0
+        try:
+            media_root = getattr(settings, 'MEDIA_ROOT', None)
+            if media_root and os.path.exists(media_root):
+                total_size = 0
+                for dirpath, dirnames, filenames in os.walk(media_root):
+                    for f in filenames:
+                        fp = os.path.join(dirpath, f)
+                        if os.path.isfile(fp):
+                            total_size += os.path.getsize(fp)
+                media_used_gb = total_size / (1024 ** 3)
+        except Exception:
+            pass
 
         return Response({
             'today': {
@@ -443,14 +457,11 @@ class AdminGrowthOverviewView(APIView):
                 }
                 for p in recent_payments
             ],
-            'zoom': {
-                'total': zoom_total,
-                'in_use': zoom_in_use,
-                'available': zoom_available,
-            },
             'storage': {
-                'used_gb': float(storage_stats['total_used'] or 0),
-                'total_gb': float((storage_stats['total_base'] or 0) + (storage_stats['total_extra'] or 0)),
+                'disk_total_gb': round(disk_total_gb, 1),
+                'disk_used_gb': round(disk_used_gb, 1),
+                'disk_free_gb': round(disk_free_gb, 1),
+                'media_used_gb': round(media_used_gb, 2),
             },
         })
 
@@ -1818,10 +1829,12 @@ class AdminSystemHealthView(APIView):
         try:
             from zoom_pool.models import ZoomAccount
             total = ZoomAccount.objects.filter(is_active=True).count()
-            in_use = ZoomAccount.objects.filter(is_active=True, in_use=True).count()
+            in_use = ZoomAccount.objects.filter(is_active=True, current_meetings__gt=0).count()
             available = total - in_use
             
-            if available == 0 and total > 0:
+            if total == 0:
+                checks.append({'name': 'Zoom Pool', 'status': 'info', 'message': 'No accounts configured'})
+            elif available == 0:
                 checks.append({'name': 'Zoom Pool', 'status': 'warning', 'message': f'No available accounts ({in_use}/{total} in use)'})
                 if overall_status == 'healthy':
                     overall_status = 'degraded'
@@ -1832,15 +1845,19 @@ class AdminSystemHealthView(APIView):
 
         # 3. Google Drive check
         try:
-            if getattr(settings, 'USE_GDRIVE_STORAGE', False):
-                from .gdrive_folder_service import get_gdrive_service
-                service = get_gdrive_service()
-                if service:
-                    checks.append({'name': 'Google Drive', 'status': 'ok', 'message': 'Connected'})
-                else:
-                    checks.append({'name': 'Google Drive', 'status': 'warning', 'message': 'Service unavailable'})
+            use_gdrive = getattr(settings, 'USE_GDRIVE_STORAGE', False) or getattr(settings, 'GDRIVE_CREDENTIALS_FILE', None)
+            if use_gdrive:
+                try:
+                    from .gdrive_folder_service import get_gdrive_service
+                    service = get_gdrive_service()
+                    if service:
+                        checks.append({'name': 'Google Drive', 'status': 'ok', 'message': 'Connected'})
+                    else:
+                        checks.append({'name': 'Google Drive', 'status': 'warning', 'message': 'Service unavailable'})
+                except ImportError as ie:
+                    checks.append({'name': 'Google Drive', 'status': 'error', 'message': f'Import error: {ie}'})
             else:
-                checks.append({'name': 'Google Drive', 'status': 'info', 'message': 'Disabled'})
+                checks.append({'name': 'Google Drive', 'status': 'info', 'message': 'Not configured'})
         except Exception as e:
             checks.append({'name': 'Google Drive', 'status': 'error', 'message': str(e)})
 
