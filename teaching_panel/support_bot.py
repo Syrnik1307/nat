@@ -1,12 +1,17 @@
 """
-Telegram бот для администраторов поддержки
+Telegram бот для поддержки
 
-Функции:
+Функции для администраторов:
 1. Получение уведомлений о новых тикетах
 2. Просмотр тикетов и сообщений
 3. Ответ на тикеты прямо из Telegram
 4. Назначение тикетов себе
 5. Изменение статуса тикетов
+
+Функции для преподавателей:
+1. Создание обращений в поддержку
+2. Просмотр своих тикетов
+3. Получение уведомлений об ответах
 """
 
 import os
@@ -39,46 +44,134 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# Словарь для хранения контекста админов {telegram_id: {'ticket_id': int}}
-admin_context = {}
+# Словарь для хранения контекста {telegram_id: {'ticket_id': int, 'mode': 'admin'|'user', 'creating_ticket': {...}}}
+user_context = {}
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Команда /start - регистрация админа"""
+    """Команда /start - главное меню в зависимости от роли"""
     telegram_id = update.effective_user.id
     username = update.effective_user.username
     
-    # Проверяем, есть ли пользователь с этим telegram_id
     try:
         user = CustomUser.objects.get(telegram_id=telegram_id)
-        if not user.is_staff:
-            await update.message.reply_text(
-                "❌ Этот бот доступен только для администраторов поддержки.\n"
-                "Обратитесь к главному администратору для получения доступа."
-            )
-            return
         
-        await update.message.reply_text(
-            f"✅ Привет, {user.first_name}!\n\n"
-            f"Ты подключен как администратор поддержки.\n\n"
-            f"Команды:\n"
-            f"/tickets - Список открытых тикетов\n"
-            f"/my - Мои назначенные тикеты\n"
-            f"/stats - Статистика\n"
-            f"/help - Справка\n\n"
-            f"Чтобы ответить на тикет, используй:\n"
-            f"/reply <ticket_id> <сообщение>"
-        )
+        if user.is_staff:
+            # Меню для администраторов
+            await update.message.reply_text(
+                f"✅ Привет, {user.first_name}!\n\n"
+                f"Ты подключен как администратор поддержки.\n\n"
+                f"Команды:\n"
+                f"/tickets - Список открытых тикетов\n"
+                f"/my - Мои назначенные тикеты\n"
+                f"/stats - Статистика\n"
+                f"/help - Справка\n\n"
+                f"Чтобы ответить на тикет, используй:\n"
+                f"/reply <ticket_id> <сообщение>"
+            )
+            user_context[telegram_id] = {'mode': 'admin'}
+        else:
+            # Меню для преподавателей и учеников
+            await update.message.reply_text(
+                f"👋 Привет, {user.first_name}!\n\n"
+                f"Команды:\n"
+                f"/support_request - Создать обращение в поддержку\n"
+                f"/my_tickets - Мои обращения\n"
+                f"/help - Справка"
+            )
+            user_context[telegram_id] = {'mode': 'user'}
+            
     except CustomUser.DoesNotExist:
         await update.message.reply_text(
-            f"👋 Привет! Для регистрации как админ поддержки:\n\n"
-            f"1. Зайдите в Django Admin\n"
-            f"2. Найдите свой аккаунт в разделе 'Пользователи'\n"
+            f"👋 Привет! Для использования этого бота:\n\n"
+            f"1. Откройте Teaching Panel на платформе\n"
+            f"2. Зайдите в Профиль → Безопасность\n"
             f"3. Добавьте ваш Telegram ID: `{telegram_id}`\n"
-            f"4. Убедитесь что у вас есть права staff/superuser\n"
-            f"5. Вернитесь и отправьте /start снова\n\n"
-            f"Ваш Telegram username: @{username}"
+            f"4. Вернитесь и отправьте /start\n\n"
+            f"Ваш Telegram: @{username}"
         )
+
+
+async def support_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /support_request - создание обращения для преподов"""
+    telegram_id = update.effective_user.id
+    
+    try:
+        user = CustomUser.objects.get(telegram_id=telegram_id)
+    except CustomUser.DoesNotExist:
+        await update.message.reply_text("❌ Сначала зарегистрируйтесь через /start")
+        return
+    
+    if user.is_staff:
+        await update.message.reply_text("✅ Для администраторов используйте /tickets")
+        return
+    
+    # Инициализируем контекст создания тикета
+    user_context[telegram_id] = {
+        'mode': 'user',
+        'creating_ticket': {
+            'step': 'subject',  # subject -> category -> message
+            'subject': '',
+            'category': ''
+        }
+    }
+    
+    # Список категорий
+    categories = SupportTicket.CATEGORY_CHOICES
+    keyboard = [
+        [InlineKeyboardButton(cat_name, callback_data=f'category_{cat_code}')]
+        for cat_code, cat_name in categories
+    ]
+    
+    await update.message.reply_text(
+        "Сначала выберите категорию вашего обращения:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+async def my_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /my_tickets - мои обращения"""
+    telegram_id = update.effective_user.id
+    
+    try:
+        user = CustomUser.objects.get(telegram_id=telegram_id)
+    except CustomUser.DoesNotExist:
+        await update.message.reply_text("❌ Сначала зарегистрируйтесь через /start")
+        return
+    
+    if user.is_staff:
+        await update.message.reply_text("✅ Используйте /my для просмотра назначенных тикетов")
+        return
+    
+    # Получаем тикеты пользователя
+    my_tickets_qs = SupportTicket.objects.filter(
+        user=user,
+        status__in=['new', 'in_progress', 'waiting_user']
+    ).order_by('-updated_at')[:10]
+    
+    if not my_tickets_qs:
+        await update.message.reply_text("📭 У вас нет открытых обращений")
+        return
+    
+    message = f"📋 *Ваши обращения ({my_tickets_qs.count()}):*\n\n"
+    
+    for ticket in my_tickets_qs:
+        status_emoji = {
+            'new': '🆕',
+            'in_progress': '🔄',
+            'waiting_user': '⏳'
+        }.get(ticket.status, '❓')
+        
+        category = dict(SupportTicket.CATEGORY_CHOICES).get(ticket.category, ticket.category)
+        
+        message += (
+            f"{status_emoji} *#{ticket.id}*\n"
+            f"📝 {ticket.subject}\n"
+            f"🏷️ {category}\n"
+            f"🕐 {ticket.updated_at.strftime('%d.%m %H:%M')}\n\n"
+        )
+    
+    await update.message.reply_text(message, parse_mode='Markdown')
 
 
 async def tickets(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -209,7 +302,8 @@ async def view_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Сохраняем контекст для ответов
-    admin_context[telegram_id] = {'ticket_id': ticket_id}
+    user_context[telegram_id] = user_context.get(telegram_id, {'mode': 'admin'})
+    user_context[telegram_id]['ticket_id'] = ticket_id
     
     # Формируем информацию о тикете
     status_text = {
@@ -349,46 +443,95 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Проверяем, есть ли активный контекст
-    if telegram_id not in admin_context:
-        await update.message.reply_text(
-            "💡 Сначала откройте тикет через /view_<id>\n"
-            "Или используйте /reply <ticket_id> <сообщение>"
+    ctx = user_context.get(telegram_id, {})
+    mode = ctx.get('mode')
+    
+    # Для администраторов
+    if mode == 'admin':
+        if telegram_id not in user_context or 'ticket_id' not in ctx:
+            await update.message.reply_text(
+                "💡 Сначала откройте тикет через /view_<id>\n"
+                "Или используйте /reply <ticket_id> <сообщение>"
+            )
+            return
+        
+        ticket_id = ctx.get('ticket_id')
+        
+        try:
+            ticket = SupportTicket.objects.get(id=ticket_id)
+        except SupportTicket.DoesNotExist:
+            await update.message.reply_text(f"❌ Тикет #{ticket_id} не найден")
+            if telegram_id in user_context:
+                del user_context[telegram_id]['ticket_id']
+            return
+        
+        # Создаём ответ
+        message_text = update.message.text
+        
+        msg = SupportMessage.objects.create(
+            ticket=ticket,
+            author=user,
+            message=message_text,
+            is_staff_reply=True
         )
+        
+        # Обновляем статус
+        if ticket.status == 'new':
+            ticket.status = 'in_progress'
+        elif ticket.status in ['resolved', 'closed']:
+            ticket.status = 'in_progress'
+        
+        ticket.save()
+        
+        await update.message.reply_text(
+            f"✅ Ответ отправлен на тикет #{ticket_id}"
+        )
+    
+    # Для преподавателей (создание тикета)
+    elif mode == 'user':
+        creating = ctx.get('creating_ticket')
+        
+        if not creating:
+            return
+        
+        step = creating.get('step')
+        
+        if step == 'subject':
+            # Собираем тему обращения
+            creating['subject'] = update.message.text
+            creating['step'] = 'message'
+            await update.message.reply_text(
+                "Опишите вашу проблему или вопрос:"
+            )
+        
+        elif step == 'message':
+            # Создаём тикет
+            description = update.message.text
+            category = creating.get('category', 'other')
+            subject = creating.get('subject', 'Обращение из Telegram')
+            
+            ticket = SupportTicket.objects.create(
+                user=user,
+                subject=subject,
+                description=description,
+                category=category,
+                priority='p2',
+                status='new'
+            )
+            
+            # Очищаем контекст
+            user_context[telegram_id] = {'mode': 'user'}
+            
+            await update.message.reply_text(
+                f"✅ Ваше обращение #{ticket.id} создано!\\n\\n"
+                f"Администраторы ответят вам в ближайшее время.\\n"
+                f"Вы получите уведомление об ответе."
+            )
+        
         return
     
-    ticket_id = admin_context[telegram_id].get('ticket_id')
-    
-    if not ticket_id:
-        return
-    
-    try:
-        ticket = SupportTicket.objects.get(id=ticket_id)
-    except SupportTicket.DoesNotExist:
-        await update.message.reply_text(f"❌ Тикет #{ticket_id} не найден")
-        del admin_context[telegram_id]
-        return
-    
-    # Создаём ответ
-    message_text = update.message.text
-    
-    msg = SupportMessage.objects.create(
-        ticket=ticket,
-        author=user,
-        message=message_text,
-        is_staff_reply=True
-    )
-    
-    # Обновляем статус
-    if ticket.status == 'new':
-        ticket.status = 'in_progress'
-    elif ticket.status in ['resolved', 'closed']:
-        ticket.status = 'in_progress'
-    
-    ticket.save()
-    
-    await update.message.reply_text(
-        f"✅ Ответ отправлен на тикет #{ticket_id}"
-    )
+    # Если контекста нет, игнорируем
+    return
 
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -397,18 +540,46 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     telegram_id = update.effective_user.id
+    callback_data = query.data
     
     try:
         user = CustomUser.objects.get(telegram_id=telegram_id)
-        if not user.is_staff:
-            await query.message.reply_text("❌ Доступ запрещён")
-            return
     except CustomUser.DoesNotExist:
-        await query.message.reply_text("❌ Сначала зарегистрируйтесь")
+        await query.message.reply_text("❌ Сначала зарегистрируйтесь через /start")
         return
     
-    action, ticket_id = query.data.split('_')
-    ticket_id = int(ticket_id)
+    # Обработка выбора категории для преподов
+    if callback_data.startswith('category_'):
+        ctx = user_context.get(telegram_id, {})
+        if ctx.get('mode') != 'user':
+            return
+        
+        creating = ctx.get('creating_ticket')
+        if not creating:
+            return
+        
+        category = callback_data.replace('category_', '')
+        creating['category'] = category
+        creating['step'] = 'subject'
+        
+        cat_name = dict(SupportTicket.CATEGORY_CHOICES).get(category, category)
+        
+        await query.edit_message_text(
+            f"Вы выбрали категорию: *{cat_name}*\\n\\n"
+            f"Напишите тему вашего обращения:"
+        )
+        return
+    
+    # Обработка кнопок для админов
+    if not user.is_staff:
+        await query.message.reply_text("❌ Доступ запрещён")
+        return
+    
+    action, ticket_id = query.data.split('_', 1)
+    try:
+        ticket_id = int(ticket_id)
+    except ValueError:
+        return
     
     try:
         ticket = SupportTicket.objects.get(id=ticket_id)
@@ -417,7 +588,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     if action == 'reply':
-        admin_context[telegram_id] = {'ticket_id': ticket_id}
+        user_context[telegram_id] = user_context.get(telegram_id, {'mode': 'admin'})
+        user_context[telegram_id]['ticket_id'] = ticket_id
         await query.message.reply_text(
             f"✍️ Тикет #{ticket_id} активен.\n"
             f"Напишите ваш ответ следующим сообщением."
@@ -780,6 +952,8 @@ def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("tickets", tickets))
     application.add_handler(CommandHandler("my", my_tickets))
+    application.add_handler(CommandHandler("support_request", support_request))
+    application.add_handler(CommandHandler("my_tickets", my_tickets))
     application.add_handler(CommandHandler("stats", stats))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("reply", reply_ticket))
