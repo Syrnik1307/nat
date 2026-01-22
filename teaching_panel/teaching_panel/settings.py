@@ -582,6 +582,13 @@ TELEGRAM_PAYMENTS_BOT_TOKEN = os.environ.get('TELEGRAM_PAYMENTS_BOT_TOKEN', '')
 # Set this to your Telegram chat_id (get it from @userinfobot)
 ADMIN_PAYMENT_TELEGRAM_CHAT_ID = os.environ.get('ADMIN_PAYMENT_TELEGRAM_CHAT_ID', '')
 
+# Отдельный бот для уведомлений о заявках (регистрациях)
+TELEGRAM_REQUESTS_BOT_TOKEN = os.environ.get('TELEGRAM_REQUESTS_BOT_TOKEN', '')
+
+# Chat ID куда отправлять уведомления о заявках.
+# Если не задан — уведомления будут отправлены всем staff с telegram_id (fallback).
+TELEGRAM_REQUESTS_CHAT_ID = os.environ.get('TELEGRAM_REQUESTS_CHAT_ID', '')
+
 
 # =============================================================================
 # PRODUCTION SECURITY SETTINGS

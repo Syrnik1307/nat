@@ -22,6 +22,7 @@ from .bot_protection import (
     reset_failed_logins,
     BOT_DETECTION_CONFIG,
 )
+from .requests_notifications import notify_new_registration
 import logging
 import json
 import os
@@ -393,6 +394,21 @@ class RegisterView(APIView):
                 refresh_token = None
 
             logger.info(f"[RegisterView] User created: {email}, role={role}")
+            
+            # Отправляем уведомление о новой регистрации в отдельный канал
+            try:
+                notify_new_registration(
+                    user_id=user.id,
+                    email=user.email,
+                    role=user.role,
+                    first_name=first_name,
+                    last_name=last_name,
+                    referral_code=referral_code,
+                    utm_source=utm_source,
+                    channel=channel,
+                )
+            except Exception as notify_err:
+                logger.warning(f"[RegisterView] Failed to send registration notification: {notify_err}")
             
             return Response({
                 'detail': 'Пользователь успешно создан',
