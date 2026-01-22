@@ -451,6 +451,20 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'accounts.tasks.send_season_top_rating_notifications',
         'schedule': crontab(day_of_month='1', month_of_year='3,6,9,12', hour='11', minute='0'),  # 1 марта, июня, сентября, декабря в 11:00
     },
+    # --- Subscription Auto-Renewals ---
+    'process-auto-renewals': {
+        'task': 'accounts.tasks.process_auto_renewals',
+        'schedule': crontab(hour='9', minute='0'),  # ежедневно в 09:00
+    },
+    'process-zoom-addon-renewals': {
+        'task': 'accounts.tasks.process_zoom_addon_renewals',
+        'schedule': crontab(hour='9', minute='30'),  # ежедневно в 09:30
+    },
+    # --- Weekly Revenue Report ---
+    'send-weekly-revenue-report': {
+        'task': 'accounts.tasks.send_weekly_revenue_report_task',
+        'schedule': crontab(day_of_week='monday', hour='10', minute='0'),  # каждый понедельник в 10:00
+    },
 }
 
 # Azure Cosmos DB integration (feature-flagged)

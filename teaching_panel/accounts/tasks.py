@@ -1179,3 +1179,199 @@ def send_season_top_rating_notifications():
         'period': season_label,
         'timestamp': now.isoformat(),
     }
+
+
+# ==========================================================================
+# Автопродление подписок и Zoom add-on
+# ==========================================================================
+
+@shared_task
+def process_auto_renewals():
+    """
+    Обрабатывает автопродления подписок и Zoom add-on.
+    
+    Запускается ежедневно. Ищет подписки, которые:
+    1. Истекают в ближайшие 24 часа
+    2. Имеют auto_renew=True и сохранённый tbank_rebill_id
+    
+    Для Zoom add-on проверяет zoom_addon_auto_renew и zoom_addon_tbank_rebill_id.
+    """
+    import logging
+    from .tbank_service import TBankService
+    from .notifications import (
+        notify_auto_renewal_success, 
+        notify_auto_renewal_failed,
+        notify_subscription_expiring_no_payment
+    )
+    
+    logger = logging.getLogger(__name__)
+    now = timezone.now()
+    window_end = now + timedelta(hours=24)
+    
+    # Найти подписки для автопродления
+    subscriptions = Subscription.objects.select_related('user').filter(
+        status=Subscription.STATUS_ACTIVE,
+        expires_at__isnull=False,
+        expires_at__lte=window_end,
+        expires_at__gte=now,
+        auto_renew=True,
+        tbank_rebill_id__isnull=False,
+    ).exclude(tbank_rebill_id='')
+    
+    renewed = 0
+    failed = 0
+    churn_signals = 0
+    
+    for sub in subscriptions:
+        # Определяем план (monthly или yearly) по текущей подписке
+        days_remaining = (sub.expires_at - sub.created_at).days if sub.created_at else 30
+        plan = 'yearly' if days_remaining > 60 else 'monthly'
+        
+        logger.info(f"Processing auto-renewal for subscription {sub.id}, user {sub.user.email}, plan={plan}")
+        
+        result = TBankService.charge_recurring(sub, plan, sub.tbank_rebill_id)
+        
+        if result and result.get('success'):
+            logger.info(f"Auto-renewal initiated for subscription {sub.id}")
+            # Уведомление придёт через вебхук после CONFIRMED статуса
+            renewed += 1
+        else:
+            error_msg = result.get('error', 'Unknown error') if result else 'No response'
+            logger.error(f"Auto-renewal failed for subscription {sub.id}: {error_msg}")
+            
+            # Отключаем автопродление при ошибке
+            sub.auto_renew = False
+            sub.save(update_fields=['auto_renew'])
+            
+            # Уведомление о неудачном автопродлении
+            notify_auto_renewal_failed(
+                subscription=sub, 
+                user=sub.user, 
+                renewal_type='subscription', 
+                reason=error_msg
+            )
+            failed += 1
+    
+    # Отправляем churn signal для подписок без автопродления
+    expiring_no_payment = Subscription.objects.select_related('user').filter(
+        status=Subscription.STATUS_ACTIVE,
+        expires_at__isnull=False,
+        expires_at__lte=now + timedelta(days=3),
+        expires_at__gte=now,
+        auto_renew=False,
+    )
+    
+    for sub in expiring_no_payment:
+        # Проверяем, не отправляли ли уже
+        already_notified = NotificationLog.objects.filter(
+            user=sub.user,
+            notification_type='churn_warning',
+            created_at__gte=now - timedelta(hours=48),
+        ).exists()
+        
+        if not already_notified:
+            days_left = max((sub.expires_at - now).days, 0)
+            notify_subscription_expiring_no_payment(sub, sub.user, days_left)
+            
+            # Логируем отправку
+            NotificationLog.objects.create(
+                user=sub.user,
+                notification_type='churn_warning',
+                message=f"Churn warning sent: {days_left} days left"
+            )
+            churn_signals += 1
+    
+    logger.info(f"[Celery] process_auto_renewals: renewed={renewed}, failed={failed}, churn_signals={churn_signals}")
+    
+    return {
+        'renewed': renewed,
+        'failed': failed,
+        'churn_signals': churn_signals,
+        'timestamp': now.isoformat(),
+    }
+
+
+@shared_task
+def process_zoom_addon_renewals():
+    """
+    Обрабатывает автопродления Zoom add-on.
+    
+    Запускается ежедневно. Ищет подписки где zoom_addon_expires_at
+    истекает в ближайшие 24 часа и есть zoom_addon_auto_renew=True.
+    """
+    import logging
+    from .tbank_service import TBankService
+    from .notifications import notify_auto_renewal_success, notify_auto_renewal_failed
+    
+    logger = logging.getLogger(__name__)
+    now = timezone.now()
+    window_end = now + timedelta(hours=24)
+    
+    subscriptions = Subscription.objects.select_related('user').filter(
+        zoom_addon_expires_at__isnull=False,
+        zoom_addon_expires_at__lte=window_end,
+        zoom_addon_expires_at__gte=now,
+        zoom_addon_auto_renew=True,
+        zoom_addon_tbank_rebill_id__isnull=False,
+    ).exclude(zoom_addon_tbank_rebill_id='')
+    
+    renewed = 0
+    failed = 0
+    
+    for sub in subscriptions:
+        logger.info(f"Processing Zoom add-on renewal for subscription {sub.id}")
+        
+        result = TBankService.charge_zoom_addon_recurring(sub, sub.zoom_addon_tbank_rebill_id)
+        
+        if result and result.get('success'):
+            logger.info(f"Zoom add-on renewal initiated for subscription {sub.id}")
+            renewed += 1
+        else:
+            error_msg = result.get('error', 'Unknown error') if result else 'No response'
+            logger.error(f"Zoom add-on renewal failed for subscription {sub.id}: {error_msg}")
+            
+            # Отключаем автопродление
+            sub.zoom_addon_auto_renew = False
+            sub.save(update_fields=['zoom_addon_auto_renew'])
+            
+            notify_auto_renewal_failed(
+                subscription=sub,
+                user=sub.user,
+                renewal_type='zoom_addon',
+                reason=error_msg
+            )
+            failed += 1
+    
+    logger.info(f"[Celery] process_zoom_addon_renewals: renewed={renewed}, failed={failed}")
+    
+    return {
+        'renewed': renewed,
+        'failed': failed,
+        'timestamp': now.isoformat(),
+    }
+
+
+# ==========================================================================
+# Еженедельный отчёт о выручке
+# ==========================================================================
+
+@shared_task
+def send_weekly_revenue_report_task():
+    """
+    Отправляет еженедельный отчёт о выручке в Telegram.
+    
+    Запускается каждый понедельник в 10:00.
+    Сравнивает текущую неделю с предыдущей.
+    """
+    import logging
+    from .notifications import send_weekly_revenue_report
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        send_weekly_revenue_report()
+        logger.info("[Celery] Weekly revenue report sent successfully")
+        return {'status': 'sent', 'timestamp': timezone.now().isoformat()}
+    except Exception as e:
+        logger.exception(f"[Celery] Failed to send weekly revenue report: {e}")
+        return {'status': 'error', 'error': str(e), 'timestamp': timezone.now().isoformat()}
