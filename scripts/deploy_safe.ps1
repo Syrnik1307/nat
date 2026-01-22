@@ -100,7 +100,7 @@ function Deploy-Frontend {
     
     # 4. Backup на сервере
     Write-Step "Создание backup на сервере..."
-    ssh $SshHost "cd $RemotePath/frontend && if [ -d build ]; then cp -a build build_backup_$(date +%Y%m%d_%H%M%S); fi"
+    ssh $SshHost "cd $RemotePath/frontend && if [ -d build ]; then cp -a build build_backup_`$(date +%Y%m%d_%H%M%S); fi"
     
     # 5. Копирование новой сборки
     Write-Step "Копирование файлов на сервер..."
