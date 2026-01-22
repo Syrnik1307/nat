@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../auth';
 import { getAccessToken } from '../apiService';
 import './SupportWidget.css';
@@ -351,7 +352,7 @@ const SupportWidget = () => {
     </div>
   );
 
-  return (
+  const ui = (
     <>
       <button
         className={`support-fab ${isOpen ? 'support-fab-open' : ''}`}
@@ -378,6 +379,7 @@ const SupportWidget = () => {
             <button
               className="support-widget-close"
               onClick={() => setIsOpen(false)}
+              aria-label="Закрыть"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18"/>
@@ -396,6 +398,10 @@ const SupportWidget = () => {
       )}
     </>
   );
+
+  // Рендерим через портал, чтобы fixed-позиционирование не ломалось из-за transform/overflow у контейнеров страниц
+  if (typeof document === 'undefined') return null;
+  return createPortal(ui, document.body);
 };
 
 export default SupportWidget;

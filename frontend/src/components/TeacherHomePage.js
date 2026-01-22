@@ -6,6 +6,7 @@ import SubscriptionBanner from './SubscriptionBanner';
 import TelegramReminderToast from './TelegramReminderToast';
 import { Select, TeacherDashboardSkeleton } from '../shared/components';
 import { useAuth } from '../auth';
+import SupportWidget from './SupportWidget';
 import './TeacherHomePage.css';
 
 /* =====================================================
@@ -1192,6 +1193,7 @@ const TeacherHomePage = () => {
           </div>
         </div>
       </div>
+            <SupportWidget />
     </div>
   );
 };
