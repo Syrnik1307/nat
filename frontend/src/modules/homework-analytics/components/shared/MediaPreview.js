@@ -45,11 +45,15 @@ const MediaPreview = ({ type = 'image', src, alt = 'Медиа', className = '' 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const [imageSrc, setImageSrc] = useState(null);
+  const imgRef = React.useRef(null);
 
   // Сбрасываем состояние загрузки при смене src
   React.useEffect(() => {
     setLoading(true);
     setError(false);
+    setImageSrc(src);
+    setReloadNonce(0);
   }, [src]);
 
   // Нормализация URL - добавляем baseURL если нужно, конвертируем Google Drive
@@ -111,22 +115,22 @@ const MediaPreview = ({ type = 'image', src, alt = 'Медиа', className = '' 
   };
 
   const normalizedSrc = useMemo(() => {
-    const base = normalizeUrl(src);
+    const base = normalizeUrl(imageSrc);
     if (!base) return '';
     const sep = base.includes('?') ? '&' : '?';
     return `${base}${sep}v=${reloadNonce}`;
-  }, [src, reloadNonce]);
+  }, [imageSrc, reloadNonce]);
 
-  const handleLoad = () => {
+  const handleLoad = React.useCallback(() => {
     setLoading(false);
     setError(false);
-  };
+  }, []);
 
-  const handleError = () => {
+  const handleError = React.useCallback(() => {
     setLoading(false);
     setError(true);
     console.error(`[MediaPreview] Ошибка загрузки ${type}:`, normalizedSrc);
-  };
+  }, [type, normalizedSrc]);
 
   if (!src) {
     return (
@@ -163,10 +167,13 @@ const MediaPreview = ({ type = 'image', src, alt = 'Медиа', className = '' 
           </div>
         )}
         <img
+          ref={imgRef}
           src={normalizedSrc}
           alt={alt}
           onLoad={handleLoad}
           onError={handleError}
+          loading="eager"
+          decoding="async"
           style={{ display: error || loading ? 'none' : 'block' }}
           className="media-preview-img"
         />
