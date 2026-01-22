@@ -13,6 +13,7 @@ import StatusMessages from './StatusMessages';
 import SystemSettings from './SystemSettings';
 import StorageQuotaModal from '../modules/Admin/StorageQuotaModal';
 import SubscriptionsModal from '../modules/Admin/SubscriptionsModal';
+import SystemErrorsModal from '../modules/Admin/SystemErrorsModal';
 import StorageStats from './StorageStats';
 import AdminReferrals from '../modules/Admin/AdminReferrals';
 import BusinessMetricsDashboard from '../modules/Admin/BusinessMetricsDashboard';
@@ -311,6 +312,7 @@ const AdminHomePage = () => {
   const [showStorageStats, setShowStorageStats] = useState(false);
   const [showReferrals, setShowReferrals] = useState(false);
   const [showBusinessMetrics, setShowBusinessMetrics] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
 
   // Sub-tabs for overview
   const [overviewTab, setOverviewTab] = useState('moderation');
@@ -557,6 +559,10 @@ const AdminHomePage = () => {
                   <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.alert}</div>
                   Сообщения
                 </button>
+                <button style={styles.actionBtn} onClick={() => setShowErrors(true)}>
+                  <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.alert}</div>
+                  Ошибки
+                </button>
                 <button style={styles.actionBtn} onClick={() => setShowTeachers(true)}>
                   <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.users}</div>
                   Учителя
@@ -743,6 +749,10 @@ const AdminHomePage = () => {
                 <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.alert}</div>
                 Сообщения
               </button>
+              <button style={styles.actionBtn} onClick={() => setShowErrors(true)}>
+                <div style={{ width: 24, height: 24, color: '#6366f1' }}>{Icon.alert}</div>
+                Ошибки
+              </button>
             </div>
 
             <div style={{ marginTop: 28 }}>
@@ -900,6 +910,7 @@ const AdminHomePage = () => {
       {showTeachers && <TeachersManage onClose={() => setShowTeachers(false)} />}
       {showStudents && <StudentsManage onClose={() => setShowStudents(false)} />}
       {showMessages && <StatusMessages onClose={() => setShowMessages(false)} />}
+      {showErrors && <SystemErrorsModal onClose={() => setShowErrors(false)} />}
       {showSettings && <SystemSettings onClose={() => setShowSettings(false)} />}
       {showStorage && <StorageQuotaModal onClose={() => setShowStorage(false)} />}
       {showSubs && <SubscriptionsModal onClose={() => setShowSubs(false)} />}

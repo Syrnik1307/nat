@@ -455,4 +455,42 @@ class PaymentService:
                 
         except Exception as e:
             logger.exception(f"Webhook processing error: {e}")
+
+            # Process-level alert (best-effort, must not break webhook response)
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+
+                payment_id = None
+                status = None
+                metadata = None
+                try:
+                    payment_id = (payment_data or {}).get('object', {}).get('id')
+                    status = (payment_data or {}).get('object', {}).get('status')
+                    metadata = (payment_data or {}).get('object', {}).get('metadata')
+                except Exception:
+                    pass
+
+                teacher = None
+                try:
+                    teacher = locals().get('sub', None)
+                    teacher = getattr(teacher, 'user', None)
+                except Exception:
+                    teacher = None
+
+                emit_process_event(
+                    event_type='payment_webhook_processing_error',
+                    severity='critical',
+                    actor_user=teacher,
+                    teacher=teacher,
+                    context={
+                        'payment_system': 'yookassa',
+                        'payment_id': payment_id,
+                        'status': status,
+                        'metadata': metadata,
+                    },
+                    exc=e,
+                    dedupe_seconds=900,
+                )
+            except Exception:
+                pass
             return False

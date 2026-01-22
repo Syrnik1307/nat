@@ -427,6 +427,20 @@ def process_zoom_recording(recording_id):
             logger.error(f"Recording {recording_id} has no associated lesson")
             recording.status = 'failed'
             recording.save()
+
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+                emit_process_event(
+                    event_type='recording_processing_failed',
+                    severity='error',
+                    context={
+                        'recording_id': recording_id,
+                        'reason': 'missing_lesson',
+                    },
+                    dedupe_seconds=1800,
+                )
+            except Exception:
+                pass
             return
         
         # Получаем преподавателя
@@ -448,6 +462,23 @@ def process_zoom_recording(recording_id):
             logger.warning(f"Teacher {teacher.id} quota exceeded. Skipping recording {recording_id}")
             recording.status = 'failed'
             recording.save()
+
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+                emit_process_event(
+                    event_type='recording_processing_failed',
+                    severity='warning',
+                    actor_user=teacher,
+                    teacher=teacher,
+                    context={
+                        'recording_id': recording_id,
+                        'lesson_id': getattr(recording.lesson, 'id', None),
+                        'reason': 'quota_exceeded',
+                    },
+                    dedupe_seconds=3600,
+                )
+            except Exception:
+                pass
             
             # Отправляем уведомление преподавателю о превышении квоты
             _notify_teacher_quota_exceeded(teacher, quota)
@@ -460,6 +491,23 @@ def process_zoom_recording(recording_id):
             logger.error(f"Failed to download recording {recording_id} from Zoom")
             recording.status = 'failed'
             recording.save()
+
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+                emit_process_event(
+                    event_type='recording_processing_failed',
+                    severity='error',
+                    actor_user=teacher,
+                    teacher=teacher,
+                    context={
+                        'recording_id': recording_id,
+                        'lesson_id': getattr(recording.lesson, 'id', None),
+                        'reason': 'download_failed',
+                    },
+                    dedupe_seconds=1800,
+                )
+            except Exception:
+                pass
             return
         
         original_size = os.path.getsize(temp_file_path)
@@ -532,6 +580,26 @@ def process_zoom_recording(recording_id):
             recording.save()
             _cleanup_temp_file(upload_file_path)
             _notify_teacher_quota_exceeded(teacher, quota)
+
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+                emit_process_event(
+                    event_type='recording_processing_failed',
+                    severity='warning',
+                    actor_user=teacher,
+                    teacher=teacher,
+                    context={
+                        'recording_id': recording_id,
+                        'lesson_id': getattr(recording.lesson, 'id', None),
+                        'reason': 'insufficient_space',
+                        'final_size_bytes': final_size,
+                        'quota_total_bytes': getattr(quota, 'total_quota_bytes', None),
+                        'quota_used_bytes': getattr(quota, 'used_bytes', None),
+                    },
+                    dedupe_seconds=3600,
+                )
+            except Exception:
+                pass
             return
         
         # 3. Загружаем в Google Drive
@@ -543,6 +611,23 @@ def process_zoom_recording(recording_id):
             recording.save()
             # Удаляем временный файл
             _cleanup_temp_file(temp_file_path)
+
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+                emit_process_event(
+                    event_type='recording_processing_failed',
+                    severity='error',
+                    actor_user=teacher,
+                    teacher=teacher,
+                    context={
+                        'recording_id': recording_id,
+                        'lesson_id': getattr(recording.lesson, 'id', None),
+                        'reason': 'gdrive_upload_failed',
+                    },
+                    dedupe_seconds=1800,
+                )
+            except Exception:
+                pass
             return
         
         # 3. Обновляем запись в БД
@@ -592,6 +677,31 @@ def process_zoom_recording(recording_id):
         except:
             pass
 
+        # Best-effort process alert
+        try:
+            from teaching_panel.observability.process_events import emit_process_event
+
+            teacher = None
+            try:
+                teacher = recording.lesson.group.teacher if getattr(recording, 'lesson', None) and getattr(recording.lesson, 'group', None) else None
+            except Exception:
+                teacher = None
+
+            emit_process_event(
+                event_type='recording_processing_exception',
+                severity='critical',
+                actor_user=teacher,
+                teacher=teacher,
+                context={
+                    'recording_id': recording_id,
+                    'lesson_id': getattr(getattr(recording, 'lesson', None), 'id', None),
+                },
+                exc=e,
+                dedupe_seconds=1800,
+            )
+        except Exception:
+            pass
+
 
 @shared_task
 def process_zoom_recording_bundle(recording_id, parts):
@@ -634,12 +744,46 @@ def process_zoom_recording_bundle(recording_id, parts):
             recording.status = 'failed'
             recording.save()
             _notify_teacher_quota_exceeded(teacher, quota)
+
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+                emit_process_event(
+                    event_type='recording_bundle_processing_failed',
+                    severity='warning',
+                    actor_user=teacher,
+                    teacher=teacher,
+                    context={
+                        'recording_id': recording_id,
+                        'lesson_id': getattr(recording.lesson, 'id', None),
+                        'reason': 'quota_exceeded',
+                    },
+                    dedupe_seconds=3600,
+                )
+            except Exception:
+                pass
             return
 
         if not parts or not isinstance(parts, list):
             logger.error(f"Bundle {recording_id} has no parts")
             recording.status = 'failed'
             recording.save()
+
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+                emit_process_event(
+                    event_type='recording_bundle_processing_failed',
+                    severity='error',
+                    actor_user=teacher,
+                    teacher=teacher,
+                    context={
+                        'recording_id': recording_id,
+                        'lesson_id': getattr(recording.lesson, 'id', None),
+                        'reason': 'no_parts',
+                    },
+                    dedupe_seconds=1800,
+                )
+            except Exception:
+                pass
             return
 
         # Сортируем части по recording_start, чтобы склейка была в правильном порядке
@@ -723,6 +867,24 @@ def process_zoom_recording_bundle(recording_id, parts):
             recording.save()
             _cleanup_temp_file(upload_file_path)
             _notify_teacher_quota_exceeded(teacher, quota)
+
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+                emit_process_event(
+                    event_type='recording_bundle_processing_failed',
+                    severity='warning',
+                    actor_user=teacher,
+                    teacher=teacher,
+                    context={
+                        'recording_id': recording_id,
+                        'lesson_id': getattr(recording.lesson, 'id', None),
+                        'reason': 'insufficient_space',
+                        'final_size_bytes': final_size,
+                    },
+                    dedupe_seconds=3600,
+                )
+            except Exception:
+                pass
             return
 
         # 4) Загружаем в Google Drive
@@ -732,6 +894,23 @@ def process_zoom_recording_bundle(recording_id, parts):
             recording.status = 'failed'
             recording.save()
             _cleanup_temp_file(upload_file_path)
+
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+                emit_process_event(
+                    event_type='recording_bundle_processing_failed',
+                    severity='error',
+                    actor_user=teacher,
+                    teacher=teacher,
+                    context={
+                        'recording_id': recording_id,
+                        'lesson_id': getattr(recording.lesson, 'id', None),
+                        'reason': 'gdrive_upload_failed',
+                    },
+                    dedupe_seconds=1800,
+                )
+            except Exception:
+                pass
             return
 
         # 5) Обновляем запись в БД

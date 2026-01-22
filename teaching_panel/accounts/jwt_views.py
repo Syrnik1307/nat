@@ -119,6 +119,25 @@ class CaseInsensitiveTokenObtainPairView(TokenObtainPairView):
         is_banned, ban_reason = is_fingerprint_banned(fingerprint)
         if is_banned:
             logger.warning(f"[Login] Banned device: {fingerprint[:8]}..., ip={client_ip}")
+
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+
+                email = (request.data.get('email') or request.data.get('username') or '').strip()
+                emit_process_event(
+                    event_type='login_device_banned',
+                    severity='warning',
+                    context={
+                        'email': email,
+                        'ip': client_ip,
+                        'fingerprint_prefix': f"{fingerprint[:8]}..." if fingerprint else None,
+                        'ban_reason': ban_reason,
+                    },
+                    dedupe_seconds=1800,
+                )
+            except Exception:
+                pass
+
             return Response(
                 {'detail': 'Доступ с этого устройства заблокирован', 'error': 'device_banned'},
                 status=status.HTTP_403_FORBIDDEN
@@ -128,6 +147,26 @@ class CaseInsensitiveTokenObtainPairView(TokenObtainPairView):
         if not check_failed_login_limit(fingerprint):
             logger.warning(f"[Login] Too many failed attempts: {fingerprint[:8]}...")
             ban_fingerprint(fingerprint, 'too_many_failed_logins', duration_hours=1)
+
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+
+                email = (request.data.get('email') or request.data.get('username') or '').strip()
+                emit_process_event(
+                    event_type='login_device_rate_limited',
+                    severity='warning',
+                    context={
+                        'email': email,
+                        'ip': client_ip,
+                        'fingerprint_prefix': f"{fingerprint[:8]}..." if fingerprint else None,
+                        'reason': 'too_many_failed_logins',
+                        'ban_hours': 1,
+                    },
+                    dedupe_seconds=1800,
+                )
+            except Exception:
+                pass
+
             return Response(
                 {'detail': 'Слишком много неудачных попыток. Устройство временно заблокировано.', 'error': 'rate_limit'},
                 status=status.HTTP_429_TOO_MANY_REQUESTS

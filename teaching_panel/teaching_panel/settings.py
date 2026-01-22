@@ -603,6 +603,11 @@ TELEGRAM_REQUESTS_BOT_TOKEN = os.environ.get('TELEGRAM_REQUESTS_BOT_TOKEN', '')
 # Если не задан — уведомления будут отправлены всем staff с telegram_id (fallback).
 TELEGRAM_REQUESTS_CHAT_ID = os.environ.get('TELEGRAM_REQUESTS_CHAT_ID', '')
 
+# Бот/чат для процессных алертов (ошибки бизнес-флоу: оплаты/ДЗ/записи и т.д.)
+# По умолчанию можно переиспользовать ERRORS_* если эти переменные проброшены в env сервиса.
+PROCESS_ALERTS_BOT_TOKEN = os.environ.get('PROCESS_ALERTS_BOT_TOKEN', '') or os.environ.get('ERRORS_BOT_TOKEN', '')
+PROCESS_ALERTS_CHAT_ID = os.environ.get('PROCESS_ALERTS_CHAT_ID', '') or os.environ.get('ERRORS_CHAT_ID', '')
+
 
 # =============================================================================
 # PRODUCTION SECURITY SETTINGS
@@ -740,11 +745,26 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
+        'db_errors': {
+            'level': os.environ.get('DJANGO_DB_ERRORS_LOG_LEVEL', 'ERROR'),
+            'class': 'accounts.logging_handlers.DatabaseErrorLogHandler',
+            'formatter': 'verbose',
+        },
     },
     'loggers': {
         'django': {
             'handlers': ['console'],
             'level': os.environ.get('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console', 'db_errors'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'celery': {
+            'handlers': ['console', 'db_errors'],
+            'level': 'ERROR',
             'propagate': False,
         },
         'django.db.backends': {
@@ -754,7 +774,7 @@ LOGGING = {
         },
     },
     'root': {
-        'handlers': ['console'],
+        'handlers': ['console', 'db_errors'],
         'level': os.environ.get('DJANGO_ROOT_LOG_LEVEL', 'INFO'),
     },
 }

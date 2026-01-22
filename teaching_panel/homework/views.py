@@ -229,6 +229,26 @@ class HomeworkViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             logger.error(f"Failed to upload homework file: {e}", exc_info=True)
+
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+
+                emit_process_event(
+                    event_type='homework_file_upload_failed',
+                    severity='error',
+                    actor_user=request.user if getattr(request, 'user', None) and request.user.is_authenticated else None,
+                    teacher=request.user if getattr(request, 'user', None) and request.user.is_authenticated else None,
+                    context={
+                        'reason': 'exception',
+                        'mime_type': mime_type,
+                        'file_name': getattr(uploaded_file, 'name', None),
+                        'file_size': getattr(uploaded_file, 'size', None),
+                    },
+                    exc=e,
+                    dedupe_seconds=900,
+                )
+            except Exception:
+                pass
             return Response({'detail': f'Ошибка загрузки файла: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['post'], url_path='upload-document-direct')
@@ -555,6 +575,27 @@ class HomeworkViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             logger.error(f"Failed to upload student answer file: {e}", exc_info=True)
+
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+
+                emit_process_event(
+                    event_type='homework_student_answer_upload_failed',
+                    severity='error',
+                    actor_user=request.user if getattr(request, 'user', None) and request.user.is_authenticated else None,
+                    teacher=teacher,
+                    context={
+                        'homework_id': homework_id,
+                        'reason': 'exception',
+                        'mime_type': mime_type,
+                        'file_name': getattr(uploaded_file, 'name', None),
+                        'file_size': getattr(uploaded_file, 'size', None),
+                    },
+                    exc=e,
+                    dedupe_seconds=900,
+                )
+            except Exception:
+                pass
             return Response({'detail': f'Ошибка загрузки файла: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _notify_students_about_new_homework(self, homework: Homework):
@@ -1302,36 +1343,59 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         if submission.status in ('submitted', 'graded'):
             return Response({'error': 'Работа уже отправлена'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Если ответы переданы вместе с submit — сначала сохраним их
-        answers_payload = request.data.get('answers')
-        if answers_payload:
-            self._upsert_answers(submission, answers_payload)
+        try:
+            # Если ответы переданы вместе с submit — сначала сохраним их
+            answers_payload = request.data.get('answers')
+            if answers_payload:
+                self._upsert_answers(submission, answers_payload)
 
-        submission.submitted_at = timezone.now()
-        
-        # Проверяем, есть ли ответы требующие ручной проверки
-        needs_manual = submission.answers.filter(needs_manual_review=True).exists()
-        
-        if needs_manual:
-            # Есть ответы для ручной проверки — статус submitted
-            submission.status = 'submitted'
-            submission.save(update_fields=['status', 'submitted_at', 'total_score'])
-            # Уведомляем учителя о необходимости проверки
-            self._notify_teacher_submission(submission)
-        else:
-            # Все ответы проверены автоматически — сразу graded
-            submission.status = 'graded'
-            submission.graded_at = timezone.now()
-            submission.save(update_fields=['status', 'submitted_at', 'graded_at', 'total_score'])
-            # Уведомляем ученика о результате
-            self._notify_student_graded(submission)
-            # Уведомляем учителя что работа автоматически проверена
-            self._notify_teacher_auto_graded(submission)
+            submission.submitted_at = timezone.now()
+            
+            # Проверяем, есть ли ответы требующие ручной проверки
+            needs_manual = submission.answers.filter(needs_manual_review=True).exists()
+            
+            if needs_manual:
+                # Есть ответы для ручной проверки — статус submitted
+                submission.status = 'submitted'
+                submission.save(update_fields=['status', 'submitted_at', 'total_score'])
+                # Уведомляем учителя о необходимости проверки
+                self._notify_teacher_submission(submission)
+            else:
+                # Все ответы проверены автоматически — сразу graded
+                submission.status = 'graded'
+                submission.graded_at = timezone.now()
+                submission.save(update_fields=['status', 'submitted_at', 'graded_at', 'total_score'])
+                # Уведомляем ученика о результате
+                self._notify_student_graded(submission)
+                # Уведомляем учителя что работа автоматически проверена
+                self._notify_teacher_auto_graded(submission)
 
-        self._recalculate_ratings_for_submission(submission)
+            self._recalculate_ratings_for_submission(submission)
 
-        serializer = self.get_serializer(submission)
-        return Response(serializer.data)
+            serializer = self.get_serializer(submission)
+            return Response(serializer.data)
+        except Exception as e:
+            try:
+                from teaching_panel.observability.process_events import emit_process_event
+
+                teacher = getattr(getattr(submission, 'homework', None), 'teacher', None)
+
+                emit_process_event(
+                    event_type='homework_submit_failed',
+                    severity='error',
+                    actor_user=request.user if getattr(request, 'user', None) and request.user.is_authenticated else None,
+                    teacher=teacher,
+                    context={
+                        'submission_id': getattr(submission, 'id', None),
+                        'homework_id': getattr(getattr(submission, 'homework', None), 'id', None),
+                        'reason': 'exception',
+                    },
+                    exc=e,
+                    dedupe_seconds=900,
+                )
+            except Exception:
+                pass
+            raise
 
     @staticmethod
     def _recalculate_ratings_for_submission(submission: StudentSubmission):

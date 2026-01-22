@@ -1833,3 +1833,64 @@ class ChatAnalyticsSummary(models.Model):
         else:
             self.detected_role = 'silent'
         return self.detected_role
+
+
+class SystemErrorEvent(models.Model):
+    """Ошибки и сбои системы/процессов для админ-модерации."""
+
+    SEVERITY_CHOICES = (
+        ('warning', 'Warning'),
+        ('error', 'Error'),
+        ('critical', 'Critical'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='error', db_index=True)
+    source = models.CharField(max_length=80, default='backend', db_index=True)
+    code = models.CharField(max_length=80, default='', db_index=True)
+
+    message = models.TextField(default='')
+    details = models.JSONField(default=dict, blank=True)
+
+    teacher = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='system_errors',
+        limit_choices_to={'role': 'teacher'},
+        db_index=True,
+    )
+
+    request_path = models.CharField(max_length=300, blank=True, default='')
+    request_method = models.CharField(max_length=10, blank=True, default='')
+    process = models.CharField(max_length=80, blank=True, default='')
+
+    fingerprint = models.CharField(max_length=64, db_index=True)
+    occurrences = models.PositiveIntegerField(default=1)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='resolved_system_errors',
+        limit_choices_to={'role': 'admin'},
+    )
+
+    class Meta:
+        ordering = ['-last_seen_at']
+        indexes = [
+            models.Index(fields=['severity', 'last_seen_at'], name='sys_err_sev_ts_idx'),
+            models.Index(fields=['teacher', 'last_seen_at'], name='sys_err_teacher_ts_idx'),
+            models.Index(fields=['fingerprint', 'resolved_at'], name='sys_err_fp_res_idx'),
+        ]
+
+    def __str__(self):
+        t = getattr(self.teacher, 'email', None) or 'no-teacher'
+        return f"{self.severity}:{self.source}:{self.code} ({t})"
