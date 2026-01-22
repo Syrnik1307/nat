@@ -52,7 +52,7 @@ chmod +x "$INSTALL_DIR"/*.sh
 if [[ ! -f "$INSTALL_DIR/config.env" ]]; then
     cp "$SCRIPT_DIR/config.env.example" "$INSTALL_DIR/config.env"
     echo "⚠️  ВАЖНО: Отредактируйте $INSTALL_DIR/config.env"
-    echo "   Добавьте TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID"
+    echo "   Добавьте ERRORS_BOT_TOKEN и ERRORS_CHAT_ID для бота ошибок"
 fi
 
 # ==================== SYSTEMD SERVICES ====================

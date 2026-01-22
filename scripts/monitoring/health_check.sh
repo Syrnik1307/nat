@@ -21,9 +21,11 @@ ALERT_LOG="/var/log/lectio-monitor/alerts.log"
 STATE_FILE="/var/run/lectio-monitor/state"
 LOCK_FILE="/var/run/lectio-monitor/health.lock"
 
-# Telegram настройки (заполнить при деплое)
-TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
-TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}"
+# Telegram настройки для бота ошибок (заполнить при деплое)
+# ERRORS_BOT_TOKEN - отдельный бот для уведомлений об ошибках сайта
+# Fallback на старые переменные для обратной совместимости
+ERRORS_BOT_TOKEN="${ERRORS_BOT_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}"
+ERRORS_CHAT_ID="${ERRORS_CHAT_ID:-${TELEGRAM_CHAT_ID:-}}"
 
 # Thresholds
 MAX_RESPONSE_TIME=5          # секунды
@@ -50,8 +52,8 @@ send_telegram() {
     local message="$1"
     local priority="${2:-normal}"  # normal, high, critical
     
-    if [[ -z "$TELEGRAM_BOT_TOKEN" ]] || [[ -z "$TELEGRAM_CHAT_ID" ]]; then
-        log_warn "Telegram не настроен, пропуск отправки алерта"
+    if [[ -z "$ERRORS_BOT_TOKEN" ]] || [[ -z "$ERRORS_CHAT_ID" ]]; then
+        log_warn "Telegram Errors Bot не настроен, пропуск отправки алерта"
         return 0
     fi
     
@@ -69,8 +71,8 @@ $message
 🕐 $(date '+%Y-%m-%d %H:%M:%S')
 🖥️ Server: $(hostname)"
 
-    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d "chat_id=${TELEGRAM_CHAT_ID}" \
+    curl -s -X POST "https://api.telegram.org/bot${ERRORS_BOT_TOKEN}/sendMessage" \
+        -d "chat_id=${ERRORS_CHAT_ID}" \
         -d "text=${full_message}" \
         -d "parse_mode=HTML" \
         > /dev/null 2>&1 || log_warn "Не удалось отправить Telegram алерт"

@@ -27,9 +27,10 @@ LOG_FILE="/var/log/lectio-monitor/deploy.log"
 BACKEND_SERVICE="teaching_panel"
 NGINX_SERVICE="nginx"
 
-# Telegram
-TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
-TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}"
+# Telegram - используем отдельный бот для ошибок/деплоя
+# Fallback на старые переменные для обратной совместимости
+ERRORS_BOT_TOKEN="${ERRORS_BOT_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}"
+ERRORS_CHAT_ID="${ERRORS_CHAT_ID:-${TELEGRAM_CHAT_ID:-}}"
 
 # Rollback settings
 HEALTH_CHECK_RETRIES=5
@@ -53,7 +54,7 @@ send_telegram() {
     local message="$1"
     local emoji="${2:-ℹ️}"
     
-    if [[ -z "$TELEGRAM_BOT_TOKEN" ]] || [[ -z "$TELEGRAM_CHAT_ID" ]]; then
+    if [[ -z "$ERRORS_BOT_TOKEN" ]] || [[ -z "$ERRORS_CHAT_ID" ]]; then
         return 0
     fi
     
@@ -63,8 +64,8 @@ $message
 
 🕐 $(date '+%Y-%m-%d %H:%M:%S')"
 
-    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d "chat_id=${TELEGRAM_CHAT_ID}" \
+    curl -s -X POST "https://api.telegram.org/bot${ERRORS_BOT_TOKEN}/sendMessage" \
+        -d "chat_id=${ERRORS_CHAT_ID}" \
         -d "text=${full_message}" \
         -d "parse_mode=HTML" \
         > /dev/null 2>&1 || true

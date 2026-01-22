@@ -15,11 +15,13 @@ if [[ -f "$CONFIG_FILE" ]]; then
     source "$CONFIG_FILE"
 fi
 
-TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
-TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}"
+# Используем отдельный бот для ошибок
+# Fallback на старые переменные для обратной совместимости
+ERRORS_BOT_TOKEN="${ERRORS_BOT_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}"
+ERRORS_CHAT_ID="${ERRORS_CHAT_ID:-${TELEGRAM_CHAT_ID:-}}"
 
-if [[ -z "$TELEGRAM_BOT_TOKEN" ]] || [[ -z "$TELEGRAM_CHAT_ID" ]]; then
-    echo "Telegram не настроен"
+if [[ -z "$ERRORS_BOT_TOKEN" ]] || [[ -z "$ERRORS_CHAT_ID" ]]; then
+    echo "Telegram Errors Bot не настроен"
     exit 0
 fi
 
@@ -42,9 +44,9 @@ $(echo "$JOURNAL_LOGS" | tail -5)
 
 ⚡ Действие: Автоматический перезапуск..."
 
-# Отправляем в Telegram
-curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-    -d "chat_id=${TELEGRAM_CHAT_ID}" \
+# Отправляем в Telegram (бот ошибок)
+curl -s -X POST "https://api.telegram.org/bot${ERRORS_BOT_TOKEN}/sendMessage" \
+    -d "chat_id=${ERRORS_CHAT_ID}" \
     -d "text=${MESSAGE}" \
     -d "parse_mode=HTML" \
     > /dev/null 2>&1
