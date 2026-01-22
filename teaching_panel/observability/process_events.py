@@ -6,7 +6,7 @@ import traceback
 from dataclasses import dataclass
 from datetime import datetime
 from html import escape
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import requests
 from django.conf import settings
@@ -32,7 +32,7 @@ class ProcessEvent:
     error_hash: str = ''
 
 
-def _get_process_alerts_config() -> tuple[str, str]:
+def _get_process_alerts_config() -> Tuple[str, str]:
     token = getattr(settings, 'PROCESS_ALERTS_BOT_TOKEN', '') or os.environ.get('PROCESS_ALERTS_BOT_TOKEN', '')
     chat_id = getattr(settings, 'PROCESS_ALERTS_CHAT_ID', '') or os.environ.get('PROCESS_ALERTS_CHAT_ID', '')
 
