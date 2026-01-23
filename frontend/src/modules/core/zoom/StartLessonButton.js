@@ -135,6 +135,7 @@ const StartLessonButton = ({ lessonId, lesson, onSuccess }) => {
   const handleStartLesson = async () => {
     setLoading(true);
     setError(null);
+    const popupRef = window.open('', '_blank', 'noopener,noreferrer');
     try {
       const recordFlagChanged = lesson && recordLesson !== lesson.record_lesson;
       // Update record_lesson flag before starting
@@ -162,11 +163,18 @@ const StartLessonButton = ({ lessonId, lesson, onSuccess }) => {
         startUrl = response.data?.zoom_start_url || response.data?.start_url;
       }
       if (startUrl) {
-        window.open(startUrl, '_blank', 'noopener,noreferrer');
+        if (popupRef && !popupRef.closed) {
+          popupRef.location.href = startUrl;
+        } else {
+          window.location.href = startUrl;
+        }
       }
       if (onSuccess) onSuccess(response.data);
       setShowModal(false);
     } catch (err) {
+      if (popupRef && !popupRef.closed) {
+        popupRef.close();
+      }
       if (err.response?.status === 503) {
         setError('Все аккаунты заняты. Попробуйте позже.');
       } else if (err.response?.status === 400 || err.response?.status === 403) {

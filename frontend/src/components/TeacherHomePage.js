@@ -343,6 +343,7 @@ const TeacherHomePage = () => {
     if (starting) return;
     setStarting(true);
     setStartError(null);
+    const popupRef = window.open('', '_blank', 'noopener,noreferrer');
     try {
       // Преобразуем 'zoom' → 'zoom_pool' для бэкенда
       const providerForBackend = selectedPlatform === 'zoom' ? 'zoom_pool' : selectedPlatform;
@@ -365,10 +366,17 @@ const TeacherHomePage = () => {
       }
       
       if (startUrl) {
-        window.open(startUrl, '_blank');
+        if (popupRef && !popupRef.closed) {
+          popupRef.location.href = startUrl;
+        } else {
+          window.location.href = startUrl;
+        }
         setShowStartModal(false);
       }
     } catch (err) {
+      if (popupRef && !popupRef.closed) {
+        popupRef.close();
+      }
       setStartError(err.response?.data?.detail || 'Ошибка запуска урока');
     } finally {
       setStarting(false);
@@ -451,6 +459,7 @@ const TeacherHomePage = () => {
     if (lessonStarting || !selectedLesson) return;
     setLessonStarting(true);
     setLessonStartError(null);
+    const popupRef = window.open('', '_blank', 'noopener,noreferrer');
     
     try {
       const providerForBackend = selectedPlatform === 'zoom' ? 'zoom_pool' : selectedPlatform;
@@ -483,7 +492,11 @@ const TeacherHomePage = () => {
       }
 
       if (startUrl) {
-        window.open(startUrl, '_blank', 'noopener,noreferrer');
+        if (popupRef && !popupRef.closed) {
+          popupRef.location.href = startUrl;
+        } else {
+          window.location.href = startUrl;
+        }
         setShowLessonStartModal(false);
 
         // Обновляем список уроков (Zoom ссылки есть только для Zoom)
@@ -496,6 +509,9 @@ const TeacherHomePage = () => {
         }
       }
     } catch (err) {
+      if (popupRef && !popupRef.closed) {
+        popupRef.close();
+      }
       if (err.response?.status === 503) {
         setLessonStartError('Все Zoom аккаунты заняты. Попробуйте позже.');
       } else if (err.response?.status === 400 || err.response?.status === 403) {

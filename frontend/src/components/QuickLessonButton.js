@@ -152,6 +152,7 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
   const handleStartQuickLesson = async () => {
     setLoading(true);
     setError(null);
+    const popupRef = window.open('', '_blank', 'noopener,noreferrer');
 
     // Валидация
     if (recordLesson && privacyType === 'groups' && selectedGroups.length === 0) {
@@ -184,7 +185,11 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
       const response = await startQuickLesson(payload);
       
       if (response.data?.zoom_start_url) {
-        window.open(response.data.zoom_start_url, '_blank', 'noopener,noreferrer');
+        if (popupRef && !popupRef.closed) {
+          popupRef.location.href = response.data.zoom_start_url;
+        } else {
+          window.location.href = response.data.zoom_start_url;
+        }
       }
       
       if (onSuccess) {
@@ -199,6 +204,9 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
       setSelectedGroups([]);
       setSelectedStudents([]);
     } catch (err) {
+      if (popupRef && !popupRef.closed) {
+        popupRef.close();
+      }
       if (err.response?.status === 503) {
         setError('Все Zoom аккаунты заняты. Попробуйте позже.');
       } else if (err.response?.status === 400 || err.response?.status === 403) {
