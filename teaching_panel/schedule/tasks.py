@@ -21,10 +21,10 @@ def warmup_zoom_oauth_tokens():
     Запускается каждые 55 минут чтобы токены всегда были в кеше.
     Это экономит ~10 секунд на каждом запуске урока.
     """
-    from accounts.models import User
+    from accounts.models import CustomUser
     from .zoom_client import ZoomAPIClient
     
-    teachers_with_zoom = User.objects.filter(
+    teachers_with_zoom = CustomUser.objects.filter(
         role='teacher',
         zoom_account_id__isnull=False,
         zoom_client_id__isnull=False,
