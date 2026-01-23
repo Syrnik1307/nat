@@ -1185,10 +1185,15 @@ class LessonViewSet(viewsets.ModelViewSet):
         # 1. Проверяем персональные credentials учителя
         if user.zoom_account_id and user.zoom_client_id and user.zoom_client_secret:
             logger.info(f"Using personal Zoom credentials for teacher {user.email}")
-            return self._start_zoom_with_teacher_credentials(lesson, user, request)
+            payload, error_response = self._start_zoom_with_teacher_credentials(lesson, user, request)
+            if not error_response:
+                return payload, None
+            logger.warning(
+                f"Personal Zoom credentials failed for teacher {user.email}. Falling back to pool."
+            )
         
         # 2. Fallback: используем пул ZoomAccount с глобальными credentials
-        logger.info(f"Using Zoom pool for teacher {user.email} (no personal credentials)")
+        logger.info(f"Using Zoom pool for teacher {user.email} (no personal credentials or fallback)")
         
         # Проверяем наличие глобальных credentials
         global_account_id = getattr(settings, 'ZOOM_ACCOUNT_ID', None)
