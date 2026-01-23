@@ -1184,26 +1184,146 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     def _start_zoom_via_pool(self, lesson, user, request):
         """
-        Создать Zoom встречу используя персональные credentials учителя.
-        Пул Zoom аккаунтов не используется.
+        Создать Zoom встречу.
+        Приоритет:
+        1) персональные credentials учителя
+        2) Zoom pool (fallback) с глобальными credentials
         """
-        # Проверяем, есть ли у учителя персональные Zoom credentials
+        from .zoom_client import ZoomAPIClient
+        from zoom_pool.models import ZoomAccount
+        from accounts.error_tracker import track_error
+        from django.db import transaction
+        from django.db.models import F
+        from django.conf import settings
+
+        # 1) Персональные credentials учителя
         if user.zoom_account_id and user.zoom_client_id and user.zoom_client_secret:
             logger.info(f"Using personal Zoom credentials for teacher {user.email}")
             payload, error_response = self._start_zoom_with_teacher_credentials(lesson, user, request)
             if error_response:
                 return None, error_response
             return payload, None
-        
-        # НЕТ персональных credentials = нельзя создать встречу
-        logger.warning(f"Teacher {user.email} has no Zoom credentials configured")
-        return None, Response(
-            {
-                'detail': 'Zoom не настроен. Укажите credentials в профиле преподавателя.',
-                'error_code': 'zoom_not_configured'
-            },
-            status=status.HTTP_400_BAD_REQUEST
-        )
+
+        # 2) Fallback: Zoom pool
+        logger.info(f"Using Zoom pool for teacher {user.email} (no personal credentials)")
+
+        global_account_id = getattr(settings, 'ZOOM_ACCOUNT_ID', '')
+        global_client_id = getattr(settings, 'ZOOM_CLIENT_ID', '')
+        global_client_secret = getattr(settings, 'ZOOM_CLIENT_SECRET', '')
+        if not all([global_account_id, global_client_id, global_client_secret]):
+            logger.error("Global Zoom credentials not configured in settings")
+            return None, Response(
+                {'detail': 'Zoom не настроен на сервере. Обратитесь к администратору.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+        zoom_account = None
+        try:
+            with transaction.atomic():
+                preferred_account = (
+                    ZoomAccount.objects.select_for_update()
+                    .filter(
+                        is_active=True,
+                        current_meetings__lt=F('max_concurrent_meetings'),
+                        preferred_teachers=user
+                    )
+                    .order_by('current_meetings', '-last_used_at')
+                    .first()
+                )
+
+                zoom_account = preferred_account or (
+                    ZoomAccount.objects.select_for_update()
+                    .filter(
+                        is_active=True,
+                        current_meetings__lt=F('max_concurrent_meetings')
+                    )
+                    .order_by('current_meetings', '-last_used_at')
+                    .first()
+                )
+
+                if not zoom_account:
+                    return None, Response(
+                        {'detail': 'Все Zoom аккаунты заняты. Попробуйте позже.'},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE
+                    )
+
+                zoom_account.acquire()
+
+                account_id = zoom_account.zoom_account_id or global_account_id
+                client_id = zoom_account.api_key or global_client_id
+                client_secret = zoom_account.api_secret or global_client_secret
+
+                zoom_client = ZoomAPIClient(
+                    account_id=account_id,
+                    client_id=client_id,
+                    client_secret=client_secret
+                )
+
+                zoom_user_id = zoom_account.zoom_user_id or 'me'
+                meeting_data = zoom_client.create_meeting(
+                    user_id=zoom_user_id,
+                    topic=f"{lesson.group.name} - {lesson.title}",
+                    start_time=lesson.start_time,
+                    duration=lesson.duration(),
+                    auto_record=lesson.record_lesson
+                )
+
+                lesson.zoom_meeting_id = meeting_data['id']
+                lesson.zoom_join_url = meeting_data['join_url']
+                lesson.zoom_start_url = meeting_data['start_url']
+                lesson.zoom_password = meeting_data.get('password', '')
+                lesson.zoom_account = zoom_account
+                lesson.save()
+
+                log_audit(
+                    user=user,
+                    action='lesson_start',
+                    resource_type='Lesson',
+                    resource_id=lesson.id,
+                    request=request,
+                    details={
+                        'lesson_title': lesson.title,
+                        'group_name': lesson.group.name,
+                        'zoom_account_email': zoom_account.email,
+                        'zoom_meeting_id': meeting_data['id'],
+                        'start_time': lesson.start_time.isoformat(),
+                        'using_pool': True,
+                    }
+                )
+
+            payload = {
+                'zoom_join_url': lesson.zoom_join_url,
+                'zoom_start_url': lesson.zoom_start_url,
+                'zoom_meeting_id': lesson.zoom_meeting_id,
+                'zoom_password': lesson.zoom_password,
+                'account_email': zoom_account.email,
+            }
+            return payload, None
+
+        except Exception as e:
+            logger.exception(f"Failed to create Zoom meeting via pool for lesson {lesson.id}: {e}")
+            if zoom_account:
+                try:
+                    zoom_account.release()
+                except Exception:
+                    logger.exception('Failed to release Zoom account after error')
+            track_error(
+                code='ZOOM_POOL_MEETING_FAILED',
+                message=f'Ошибка создания Zoom встречи через пул: {str(e)[:200]}',
+                severity='critical',
+                teacher=user,
+                request=request,
+                details={
+                    'lesson_id': lesson.id,
+                    'lesson_title': lesson.title,
+                    'group_name': lesson.group.name,
+                },
+                exc=e
+            )
+            return None, Response(
+                {'detail': f'Ошибка при создании встречи: {e}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @action(detail=True, methods=['post'])
     def mark_attendance(self, request, pk=None):
