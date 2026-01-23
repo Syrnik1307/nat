@@ -144,7 +144,7 @@ const RoleRouter = () => {
   if (!accessTokenValid) return <Navigate to="/auth-new" replace />;
   if (role === 'teacher') return <Navigate to="/teacher" replace />;
   if (role === 'student') return <Navigate to="/student" replace />;
-  if (role === 'admin') return <Navigate to="/admin" replace />;
+  if (role === 'admin') return <Navigate to="/admin-home" replace />;
   return <div style={{ padding:'2rem' }}>Роль не поддерживается: {role}</div>;
 };
 
@@ -154,10 +154,10 @@ const AppRoutes = () => {
   const hideNavPaths = ['/auth-new', '/register', '/verify-email'];
   const baseNavVisible = !hideNavPaths.includes(location.pathname);
   const isStudentView = accessTokenValid && role === 'student';
-  const isAdminView = accessTokenValid && role === 'admin';
+  const isAdminHomeView = accessTokenValid && role === 'admin' && location.pathname.startsWith('/admin-home');
   const shouldShowStudentNav = baseNavVisible && isStudentView;
   // В админке используем собственный хедер страницы, верхний общий navbar не показываем
-  const shouldShowNav = baseNavVisible && !isStudentView && !isAdminView;
+  const shouldShowNav = baseNavVisible && !isStudentView && !isAdminHomeView;
 
   // Preload страниц после авторизации
   useEffect(() => {

@@ -486,7 +486,7 @@ const NavBar = () => {
               <div className="status-split">
                 {/* Левая часть - для учителей */}
                 <div className="status-half status-teachers">
-                  <div className="status-label">👨‍🏫 Учителям</div>
+                  <div className="status-label">Учителям</div>
                   {teacherMessages.length > 0 ? (
                     <span className="status-message">{teacherMessages[0].message}</span>
                   ) : (
