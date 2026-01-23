@@ -152,7 +152,8 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
   const handleStartQuickLesson = async () => {
     setLoading(true);
     setError(null);
-    const popupRef = window.open('', '_blank', 'noopener,noreferrer');
+    // Pre-open window immediately on user click to avoid popup blocker
+    const popupRef = window.open('about:blank', '_blank');
 
     // Валидация
     if (recordLesson && privacyType === 'groups' && selectedGroups.length === 0) {

@@ -202,7 +202,8 @@ const QuickLessonButton = ({ onSuccess, className = '', text = 'Быстрый �
 
     setIsLoading(true);
     setError(null);
-    const popupRef = window.open('', '_blank', 'noopener,noreferrer');
+    // Pre-open window immediately on user click to avoid popup blocker
+    const popupRef = window.open('about:blank', '_blank');
 
     try {
       const response = await startQuickLesson();
@@ -249,7 +250,7 @@ const QuickLessonButton = ({ onSuccess, className = '', text = 'Быстрый �
 
   const handleConfirm = () => {
     if (lessonData?.zoom_start_url) {
-      const popupRef = window.open('', '_blank', 'noopener,noreferrer');
+      const popupRef = window.open('about:blank', '_blank');
       if (popupRef && !popupRef.closed) {
         popupRef.location.href = lessonData.zoom_start_url;
       } else {

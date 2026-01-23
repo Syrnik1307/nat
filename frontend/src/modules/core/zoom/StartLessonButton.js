@@ -135,7 +135,8 @@ const StartLessonButton = ({ lessonId, lesson, onSuccess }) => {
   const handleStartLesson = async () => {
     setLoading(true);
     setError(null);
-    const popupRef = window.open('', '_blank', 'noopener,noreferrer');
+    // Pre-open window immediately on user click to avoid popup blocker
+    const popupRef = window.open('about:blank', '_blank');
     try {
       const recordFlagChanged = lesson && recordLesson !== lesson.record_lesson;
       // Update record_lesson flag before starting

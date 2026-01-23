@@ -343,7 +343,8 @@ const TeacherHomePage = () => {
     if (starting) return;
     setStarting(true);
     setStartError(null);
-    const popupRef = window.open('', '_blank', 'noopener,noreferrer');
+    // Pre-open window immediately on user click to avoid popup blocker
+    const popupRef = window.open('about:blank', '_blank');
     try {
       // Преобразуем 'zoom' → 'zoom_pool' для бэкенда
       const providerForBackend = selectedPlatform === 'zoom' ? 'zoom_pool' : selectedPlatform;
@@ -459,7 +460,8 @@ const TeacherHomePage = () => {
     if (lessonStarting || !selectedLesson) return;
     setLessonStarting(true);
     setLessonStartError(null);
-    const popupRef = window.open('', '_blank', 'noopener,noreferrer');
+    // Pre-open window immediately on user click to avoid popup blocker
+    const popupRef = window.open('about:blank', '_blank');
     
     try {
       const providerForBackend = selectedPlatform === 'zoom' ? 'zoom_pool' : selectedPlatform;
