@@ -243,6 +243,7 @@ const AppRoutes = () => {
           <Route path="/homework/:id/answers" element={<Protected allowRoles={['student']}><HomeworkAnswersView /></Protected>} />
         
           {/* Admin */}
+          <Route path="/admin" element={<Navigate to="/admin-home" replace />} />
           <Route path="/admin-home" element={<Protected allowRoles={['admin']}><AdminHomePage /></Protected>} />
           
           {/* Common */}
