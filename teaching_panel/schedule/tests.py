@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
@@ -93,6 +93,7 @@ class LessonValidationTests(TestCase):
 		self.assertTrue('пересекающийся' in str(resp.json()))
 
 
+@override_settings(ZOOM_ACCOUNT_ID='test_acc_id', ZOOM_CLIENT_ID='test_client_id', ZOOM_CLIENT_SECRET='test_secret')
 class LessonStartNewAPITests(TestCase):
 	def setUp(self):
 		self.User = get_user_model()
@@ -105,6 +106,13 @@ class LessonStartNewAPITests(TestCase):
 		self.lesson = Lesson.objects.create(title='Geometry', group=self.group, teacher=self.teacher, start_time=start, end_time=end)
 		self.client = APIClient()
 		self.client.force_authenticate(user=self.teacher)
+		# Создаём активную подписку для учителя
+		from accounts.models import Subscription
+		Subscription.objects.create(
+			user=self.teacher,
+			status='active',
+			expires_at=timezone.now() + timedelta(days=30)
+		)
 
 	def test_start_new_returns_400_if_too_early(self):
 		# Сдвигаем время урока дальше чем за 15 минут (например +30)
@@ -116,9 +124,11 @@ class LessonStartNewAPITests(TestCase):
 		self.assertIn('15 минут', resp.data['detail'])
 
 	def test_start_new_503_without_accounts(self):
-		# Сдвигаем время урока чтобы можно было стартовать
+		# Тест: когда нет ZoomAccount в пуле, возвращаем 503
 		self.lesson.start_time = timezone.now() + timedelta(minutes=5)
 		self.lesson.save()
+		# Убедимся что нет аккаунтов в пуле
+		ZoomAccount.objects.all().delete()
 		url = reverse('schedule-lesson-start-new', args=[self.lesson.id])
 		resp = self.client.post(url, {})
 		self.assertEqual(resp.status_code, 503)
@@ -129,7 +139,7 @@ class LessonStartNewAPITests(TestCase):
 		self.lesson.save()
 		ZoomAccount.objects.create(email='zoom@test.com', api_key='k', api_secret='s', max_concurrent_meetings=1)
 		url = reverse('schedule-lesson-start-new', args=[self.lesson.id])
-		with patch('schedule.views.my_zoom_api_client.create_meeting') as mocked:
+		with patch('schedule.zoom_client.ZoomAPIClient.create_meeting') as mocked:
 			mocked.return_value = {
 				'id': '12345678901',
 				'join_url': 'https://zoom.us/j/12345678901?pwd=mockpassword',

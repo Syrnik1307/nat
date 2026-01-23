@@ -1,7 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import './TeacherMaterialsPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
-import { ConfirmModal, Select, SearchableSelect, ToastContainer, Modal, RichTextEditor } from '../../shared/components';
+import { ConfirmModal, Select, SearchableSelect, ToastContainer, Modal } from '../../shared/components';
+import { getCached } from '../../utils/dataCache';
+
+// Ленивая загрузка RichTextEditor - он используется только в модалках
+const RichTextEditor = lazy(() => import('../../shared/components').then(m => ({ default: m.RichTextEditor })));
 
 /**
  * TeacherMaterialsPage - Страница материалов урока
@@ -95,8 +99,8 @@ function TeacherMaterialsPage() {
       await Promise.all([
         loadMaterials(),
         loadLessons(),
-        loadGroups(),
-        loadStudents()
+        loadGroups()
+        // loadStudents() - отложена до клика на модаль (оптимизация рендера)
       ]);
     } catch (err) {
       console.error('Error loading data:', err);
@@ -108,14 +112,19 @@ function TeacherMaterialsPage() {
 
   const loadMaterials = async () => {
     try {
-      const response = await api.get('lesson-materials/teacher_materials/', withScheduleApiBase());
-      if (response.data.materials) {
-        const m = response.data.materials;
-        setMaterials({
-          miro: m.miro || [],
-          notes: m.notes || [],
-        });
-      }
+      const cachedMaterials = await getCached('teacher:materials', async () => {
+        const response = await api.get('lesson-materials/teacher_materials/', withScheduleApiBase());
+        if (response.data.materials) {
+          const m = response.data.materials;
+          return {
+            miro: m.miro || [],
+            notes: m.notes || [],
+          };
+        }
+        return { miro: [], notes: [] };
+      }, 30000); // кэш на 30 сек
+      
+      setMaterials(cachedMaterials);
     } catch (err) {
       console.error('Error loading materials:', err);
     }
@@ -156,15 +165,19 @@ function TeacherMaterialsPage() {
 
   const loadLessons = async () => {
     try {
-      const response = await api.get('lessons', withScheduleApiBase());
-      const data = response.data.results || response.data;
-      const now = new Date();
-      const pastWindow = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-      const filtered = (Array.isArray(data) ? data : []).filter(l => {
-        const dt = l.start_time ? new Date(l.start_time) : null;
-        return dt && dt >= pastWindow;
-      });
-      setLessons(filtered);
+      const cachedLessons = await getCached('teacher:lessons', async () => {
+        const response = await api.get('lessons', withScheduleApiBase());
+        const data = response.data.results || response.data;
+        const now = new Date();
+        const pastWindow = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+        const filtered = (Array.isArray(data) ? data : []).filter(l => {
+          const dt = l.start_time ? new Date(l.start_time) : null;
+          return dt && dt >= pastWindow;
+        });
+        return filtered;
+      }, 30000); // кэш на 30 сек
+      
+      setLessons(cachedLessons);
     } catch (err) {
       console.error('Error loading lessons:', err);
     }
@@ -172,9 +185,13 @@ function TeacherMaterialsPage() {
 
   const loadGroups = async () => {
     try {
-      const response = await api.get('groups', withScheduleApiBase());
-      const data = response.data.results || response.data;
-      setGroups(Array.isArray(data) ? data : []);
+      const cachedGroups = await getCached('teacher:groups', async () => {
+        const response = await api.get('groups', withScheduleApiBase());
+        const data = response.data.results || response.data;
+        return Array.isArray(data) ? data : [];
+      }, 30000); // кэш на 30 сек
+      
+      setGroups(cachedGroups);
     } catch (err) {
       console.error('Error loading groups:', err);
     }
@@ -182,9 +199,13 @@ function TeacherMaterialsPage() {
 
   const loadStudents = async () => {
     try {
-      const response = await api.get('groups/all_students/', withScheduleApiBase());
-      const data = response.data || [];
-      setStudents(Array.isArray(data) ? data : []);
+      const cachedStudents = await getCached('teacher:students', async () => {
+        const response = await api.get('groups/all_students/', withScheduleApiBase());
+        const data = response.data || [];
+        return Array.isArray(data) ? data : [];
+      }, 30000); // кэш на 30 сек
+      
+      setStudents(cachedStudents);
     } catch (err) {
       console.error('Error loading students:', err);
     }
@@ -318,13 +339,22 @@ function TeacherMaterialsPage() {
     }
   };
 
-  const openCreateNotes = () => {
+  // Ленивая загрузка студентов при открытии модала
+  const ensureStudentsLoaded = async () => {
+    if (students.length === 0) {
+      await loadStudents();
+    }
+  };
+
+  const openCreateNotes = async () => {
+    await ensureStudentsLoaded();
     setEditingNoteId(null);
     resetNotesForm();
     setShowAddNotesModal(true);
   };
 
-  const openEditNotes = (note) => {
+  const openEditNotes = async (note) => {
+    await ensureStudentsLoaded();
     setEditingNoteId(note.id);
     setNotesForm({
       title: note.title || '',
@@ -891,13 +921,15 @@ function TeacherMaterialsPage() {
             
             <div className="form-group">
               <label>Содержание</label>
-              <RichTextEditor
-                value={notesForm.content}
-                onChange={(html) => setNotesForm({ ...notesForm, content: html })}
-                placeholder="Напишите конспект…"
-                onUploadImage={uploadImage}
-                onUploadFile={uploadFile}
-              />
+              <Suspense fallback={<div className="editor-loading">Загрузка редактора...</div>}>
+                <RichTextEditor
+                  value={notesForm.content}
+                  onChange={(html) => setNotesForm({ ...notesForm, content: html })}
+                  placeholder="Напишите конспект…"
+                  onUploadImage={uploadImage}
+                  onUploadFile={uploadFile}
+                />
+              </Suspense>
               <small>Можно вставлять изображения и прикреплять файлы прямо в текст</small>
             </div>
             
@@ -1056,7 +1088,9 @@ function TeacherMaterialsPage() {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {previewNote.description && <div style={{ color: 'var(--text-secondary)' }}>{previewNote.description}</div>}
-            <RichTextEditor value={previewNote.content || ''} readOnly={true} />
+            <Suspense fallback={<div className="editor-loading">Загрузка редактора...</div>}>
+              <RichTextEditor value={previewNote.content || ''} readOnly={true} />
+            </Suspense>
           </div>
         </Modal>
       )}

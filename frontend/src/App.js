@@ -69,6 +69,8 @@ const groupsManageImport = () => import('./components/GroupsManage');
 const homeworkPageImport = () => import('./modules/homework-analytics/components/HomeworkPage');
 const recordingsImport = () => import('./modules/Recordings/RecordingsPage');
 const teacherRecordingsImport = () => import('./modules/Recordings/TeacherRecordingsPage');
+const teacherMaterialsImport = () => import('./modules/Recordings/TeacherMaterialsPage');
+const studentMaterialsImport = () => import('./modules/Recordings/StudentMaterialsPage');
 const studentDashboardImport = () => import('./components/StudentDashboard');
 
 // Lazy-loaded компоненты - грузятся по требованию
@@ -84,7 +86,7 @@ const StatusPage = lazy(() => import('./components/StatusPage'));
 const TeacherHomePage = lazy(teacherHomeImport);
 const AttendanceLogPage = lazy(() => import('./components/AttendanceLogPage'));
 const TeacherRecordingsPage = lazy(teacherRecordingsImport);
-const TeacherMaterialsPage = lazy(() => import('./modules/Recordings/TeacherMaterialsPage'));
+const TeacherMaterialsPage = lazy(teacherMaterialsImport);
 const AnalyticsPage = lazy(analyticsImport);
 const HomeworkManage = lazy(() => import('./components/HomeworkManage'));
 const HomeworkPage = lazy(homeworkPageImport);
@@ -99,7 +101,7 @@ const CalendarIntegrationPage = lazy(() => import('./components/CalendarIntegrat
 const StudentHomePage = lazy(studentHomeImport);
 const StudentDashboard = lazy(studentDashboardImport);
 const RecordingsPage = lazy(recordingsImport);
-const StudentMaterialsPage = lazy(() => import('./modules/Recordings/StudentMaterialsPage'));
+const StudentMaterialsPage = lazy(studentMaterialsImport);
 const HomeworkList = lazy(() => import('./components/HomeworkList'));
 const HomeworkTake = lazy(() => import('./modules/homework-analytics/components/homework/HomeworkTake'));
 const HomeworkAnswersView = lazy(() => import('./modules/homework-analytics/components/homework/HomeworkAnswersView'));
@@ -130,10 +132,12 @@ const preloadPages = (role) => {
     scheduleLoad(homeworkPageImport);
     scheduleLoad(profileImport);
     scheduleLoad(teacherRecordingsImport);
+    scheduleLoad(teacherMaterialsImport); // Предзагрузка Материалов учителя
   } else if (role === 'student') {
     scheduleLoad(studentHomeImport);
     scheduleLoad(studentDashboardImport);
     scheduleLoad(recordingsImport);
+    scheduleLoad(studentMaterialsImport); // Предзагрузка Материалов ученика
     scheduleLoad(profileImport);
   }
 };
