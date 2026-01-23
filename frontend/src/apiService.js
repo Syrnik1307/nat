@@ -47,9 +47,9 @@ const SCHEDULE_API_BASE_URL = FIXED_ROOT_ORIGIN
     : '/schedule/api/';
 
 const apiClient = axios.create({
-    baseURL: FIXED_API_BASE_URL,
-    timeout: 15000,
-    headers: { 'Content-Type': 'application/json' }
+  baseURL: FIXED_API_BASE_URL,
+  timeout: 120000,
+  headers: { 'Content-Type': 'application/json' }
 });
 // Debug log (remove later)
 if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
