@@ -3,13 +3,28 @@ Zoom API Client для создания встреч
 Использует Server-to-Server OAuth (рекомендуемый метод)
 """
 import requests
-import time
+import time as _time
 import logging
+import socket
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
+
+# ============================================================
+# CRITICAL: Force IPv4 for Zoom API requests
+# IPv6 causes 10+ second delays due to connection timeouts
+# ============================================================
+_original_getaddrinfo = socket.getaddrinfo
+
+def _ipv4_only_getaddrinfo(*args, **kwargs):
+    """Filter to only return IPv4 addresses to avoid IPv6 timeout issues"""
+    responses = _original_getaddrinfo(*args, **kwargs)
+    return [r for r in responses if r[0] == socket.AF_INET]
+
+# Apply the patch globally for this module
+socket.getaddrinfo = _ipv4_only_getaddrinfo
 
 
 class ZoomAPIClient:
