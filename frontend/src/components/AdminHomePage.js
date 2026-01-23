@@ -84,6 +84,23 @@ const styles = {
     display: 'flex',
     gap: 8,
   },
+  actionTextBtn: {
+    height: 40,
+    padding: '0 14px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: 10,
+    color: 'rgba(255,255,255,0.8)',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    fontSize: 13,
+    fontWeight: 600,
+    textDecoration: 'none',
+    userSelect: 'none',
+  },
   iconBtn: {
     width: 40,
     height: 40,
@@ -96,6 +113,58 @@ const styles = {
     color: 'rgba(255,255,255,0.6)',
     cursor: 'pointer',
     transition: 'all 0.2s',
+  },
+  profileBtn: {
+    width: 40,
+    height: 40,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(99,102,241,0.16)',
+    border: '1px solid rgba(99,102,241,0.35)',
+    borderRadius: 10,
+    color: '#c7d2fe',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    fontSize: 14,
+    fontWeight: 800,
+    lineHeight: 1,
+  },
+  dropdown: {
+    width: 220,
+    background: '#0f1118',
+    border: '1px solid rgba(255,255,255,0.10)',
+    borderRadius: 12,
+    overflow: 'hidden',
+    boxShadow: '0 12px 40px rgba(0,0,0,0.55)',
+  },
+  dropdownHeader: {
+    padding: '10px 12px',
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.55)',
+    borderBottom: '1px solid rgba(255,255,255,0.08)',
+  },
+  dropdownItemLink: {
+    display: 'block',
+    padding: '10px 12px',
+    color: 'rgba(255,255,255,0.85)',
+    textDecoration: 'none',
+    fontSize: 13,
+    fontWeight: 600,
+  },
+  dropdownItemBtn: {
+    width: '100%',
+    textAlign: 'left',
+    padding: '10px 12px',
+    background: 'transparent',
+    border: 'none',
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
   },
   main: {
     padding: '24px 32px',
@@ -435,6 +504,15 @@ const AdminHomePage = () => {
           <button style={styles.iconBtn} onClick={load} title="Обновить">
             <div style={{ width: 18, height: 18 }}>{Icon.refresh}</div>
           </button>
+
+          <Link to="/profile" style={styles.actionTextBtn}>
+            Профиль
+          </Link>
+
+          <button type="button" style={styles.actionTextBtn} onClick={handleLogout}>
+            Выйти
+          </button>
+
           <button
             type="button"
             ref={profileButtonRef}
