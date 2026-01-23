@@ -202,8 +202,6 @@ const QuickLessonButton = ({ onSuccess, className = '', text = 'Быстрый �
 
     setIsLoading(true);
     setError(null);
-    // Pre-open window immediately on user click to avoid popup blocker
-    const popupRef = window.open('about:blank', '_blank');
 
     try {
       const response = await startQuickLesson();
@@ -218,21 +216,13 @@ const QuickLessonButton = ({ onSuccess, className = '', text = 'Быстрый �
           onSuccess(response.data);
         }
         
-        if (response.data.zoom_start_url) {
-          if (popupRef && !popupRef.closed) {
-            popupRef.location.href = response.data.zoom_start_url;
-          } else {
-            window.location.href = response.data.zoom_start_url;
-          }
-        }
+        // Открываем ссылку СРАЗУ после получения ответа (как было раньше)
+        window.open(response.data.zoom_start_url, '_blank');
       } else {
         setError('Не удалось запустить урок');
         setShowModal(true);
       }
     } catch (err) {
-      if (popupRef && !popupRef.closed) {
-        popupRef.close();
-      }
       console.error('Quick lesson error:', err);
       const errorMessage = err.response?.data?.detail || err.response?.data?.error || err.message || 'Произошла ошибка';
       setError(errorMessage);
@@ -250,12 +240,7 @@ const QuickLessonButton = ({ onSuccess, className = '', text = 'Быстрый �
 
   const handleConfirm = () => {
     if (lessonData?.zoom_start_url) {
-      const popupRef = window.open('about:blank', '_blank');
-      if (popupRef && !popupRef.closed) {
-        popupRef.location.href = lessonData.zoom_start_url;
-      } else {
-        window.location.href = lessonData.zoom_start_url;
-      }
+      window.open(lessonData.zoom_start_url, '_blank');
       handleModalClose();
     } else {
       handleModalClose();

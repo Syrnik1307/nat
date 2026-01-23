@@ -135,8 +135,6 @@ const StartLessonButton = ({ lessonId, lesson, onSuccess }) => {
   const handleStartLesson = async () => {
     setLoading(true);
     setError(null);
-    // Pre-open window immediately on user click to avoid popup blocker
-    const popupRef = window.open('about:blank', '_blank');
     try {
       const recordFlagChanged = lesson && recordLesson !== lesson.record_lesson;
       // Update record_lesson flag before starting
@@ -149,33 +147,20 @@ const StartLessonButton = ({ lessonId, lesson, onSuccess }) => {
       const response = await startLessonNew(lessonId, {
         record_lesson: recordLesson,
         force_new_meeting: recordFlagChanged && recordLesson && Boolean(lesson?.zoom_meeting_id),
-        provider: selectedPlatform, // Новый параметр: zoom_pool | google_meet
+        provider: selectedPlatform,
       });
       
-      // Открываем ссылку в зависимости от платформы
-      // ВАЖНО: Используем provider из ответа бэкенда, чтобы открыть правильную ссылку
-      const responseProvider = response.data?.provider;
-      let startUrl;
-      if (responseProvider === 'google_meet') {
-        // Google Meet - используем meet_link или start_url
-        startUrl = response.data?.meet_link || response.data?.start_url;
-      } else {
-        // Zoom - используем zoom_start_url
-        startUrl = response.data?.zoom_start_url || response.data?.start_url;
-      }
-      if (startUrl) {
-        if (popupRef && !popupRef.closed) {
-          popupRef.location.href = startUrl;
-        } else {
-          window.location.href = startUrl;
-        }
+      // Открываем ссылку СРАЗУ после получения ответа (как было раньше)
+      if (response.data?.zoom_start_url) {
+        window.open(response.data.zoom_start_url, '_blank');
+      } else if (response.data?.meet_link) {
+        window.open(response.data.meet_link, '_blank');
+      } else if (response.data?.start_url) {
+        window.open(response.data.start_url, '_blank');
       }
       if (onSuccess) onSuccess(response.data);
       setShowModal(false);
     } catch (err) {
-      if (popupRef && !popupRef.closed) {
-        popupRef.close();
-      }
       if (err.response?.status === 503) {
         setError('Все аккаунты заняты. Попробуйте позже.');
       } else if (err.response?.status === 400 || err.response?.status === 403) {

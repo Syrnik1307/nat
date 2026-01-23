@@ -343,8 +343,6 @@ const TeacherHomePage = () => {
     if (starting) return;
     setStarting(true);
     setStartError(null);
-    // Pre-open window immediately on user click to avoid popup blocker
-    const popupRef = window.open('about:blank', '_blank');
     try {
       // Преобразуем 'zoom' → 'zoom_pool' для бэкенда
       const providerForBackend = selectedPlatform === 'zoom' ? 'zoom_pool' : selectedPlatform;
@@ -353,31 +351,22 @@ const TeacherHomePage = () => {
       const res = await startQuickLesson({
         record_lesson: recordForBackend,
         group_id: selectedGroupId || undefined,
-        provider: providerForBackend, // Передаём выбранную платформу
-        title: quickLessonTitle.trim() || undefined, // Передаём название урока
+        provider: providerForBackend,
+        title: quickLessonTitle.trim() || undefined,
       });
       
-      // Открываем правильную ссылку в зависимости от платформы
-      const responseProvider = res.data?.provider;
-      let startUrl;
-      if (responseProvider === 'google_meet') {
-        startUrl = res.data?.meet_link || res.data?.start_url;
-      } else {
-        startUrl = res.data?.zoom_start_url || res.data?.start_url;
-      }
-      
-      if (startUrl) {
-        if (popupRef && !popupRef.closed) {
-          popupRef.location.href = startUrl;
-        } else {
-          window.location.href = startUrl;
-        }
+      // Открываем ссылку СРАЗУ после получения ответа (как было раньше)
+      if (res.data?.zoom_start_url) {
+        window.open(res.data.zoom_start_url, '_blank');
+        setShowStartModal(false);
+      } else if (res.data?.meet_link) {
+        window.open(res.data.meet_link, '_blank');
+        setShowStartModal(false);
+      } else if (res.data?.start_url) {
+        window.open(res.data.start_url, '_blank');
         setShowStartModal(false);
       }
     } catch (err) {
-      if (popupRef && !popupRef.closed) {
-        popupRef.close();
-      }
       setStartError(err.response?.data?.detail || 'Ошибка запуска урока');
     } finally {
       setStarting(false);
@@ -460,8 +449,6 @@ const TeacherHomePage = () => {
     if (lessonStarting || !selectedLesson) return;
     setLessonStarting(true);
     setLessonStartError(null);
-    // Pre-open window immediately on user click to avoid popup blocker
-    const popupRef = window.open('about:blank', '_blank');
     
     try {
       const providerForBackend = selectedPlatform === 'zoom' ? 'zoom_pool' : selectedPlatform;
@@ -485,35 +472,24 @@ const TeacherHomePage = () => {
         provider: providerForBackend,
       });
 
-      const responseProvider = response.data?.provider;
-      let startUrl;
-      if (responseProvider === 'google_meet') {
-        startUrl = response.data?.meet_link || response.data?.start_url;
-      } else {
-        startUrl = response.data?.zoom_start_url || response.data?.start_url;
-      }
-
-      if (startUrl) {
-        if (popupRef && !popupRef.closed) {
-          popupRef.location.href = startUrl;
-        } else {
-          window.location.href = startUrl;
-        }
+      // Открываем ссылку СРАЗУ после получения ответа (как было раньше)
+      if (response.data?.zoom_start_url) {
+        window.open(response.data.zoom_start_url, '_blank');
         setShowLessonStartModal(false);
-
-        // Обновляем список уроков (Zoom ссылки есть только для Zoom)
-        if (response.data?.zoom_start_url) {
-          setLessons(prev => prev.map(l => 
-            l.id === selectedLesson.id 
-              ? { ...l, zoom_start_url: response.data.zoom_start_url, zoom_join_url: response.data.zoom_join_url }
-              : l
-          ));
-        }
+        // Обновляем список уроков
+        setLessons(prev => prev.map(l => 
+          l.id === selectedLesson.id 
+            ? { ...l, zoom_start_url: response.data.zoom_start_url, zoom_join_url: response.data.zoom_join_url }
+            : l
+        ));
+      } else if (response.data?.meet_link) {
+        window.open(response.data.meet_link, '_blank');
+        setShowLessonStartModal(false);
+      } else if (response.data?.start_url) {
+        window.open(response.data.start_url, '_blank');
+        setShowLessonStartModal(false);
       }
     } catch (err) {
-      if (popupRef && !popupRef.closed) {
-        popupRef.close();
-      }
       if (err.response?.status === 503) {
         setLessonStartError('Все Zoom аккаунты заняты. Попробуйте позже.');
       } else if (err.response?.status === 400 || err.response?.status === 403) {
