@@ -1224,10 +1224,24 @@ class LessonViewSet(viewsets.ModelViewSet):
                 
                 zoom_account.acquire()
                 
-                # Используем credentials из ZoomAccount или глобальные
-                account_id = zoom_account.zoom_account_id or global_account_id
-                client_id = zoom_account.api_key or global_client_id
-                client_secret = zoom_account.api_secret or global_client_secret
+                # Используем credentials из ZoomAccount только если они валидные (не тестовые)
+                # Иначе fallback на глобальные credentials
+                has_valid_account_credentials = (
+                    zoom_account.zoom_account_id and 
+                    zoom_account.api_key and 
+                    zoom_account.api_secret and
+                    not zoom_account.api_key.startswith('test')  # Игнорируем тестовые ключи
+                )
+                
+                if has_valid_account_credentials:
+                    account_id = zoom_account.zoom_account_id
+                    client_id = zoom_account.api_key
+                    client_secret = zoom_account.api_secret
+                else:
+                    # Используем глобальные credentials
+                    account_id = global_account_id
+                    client_id = global_client_id
+                    client_secret = global_client_secret
                 
                 zoom_client = ZoomAPIClient(
                     account_id=account_id,
