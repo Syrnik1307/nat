@@ -90,9 +90,10 @@ class ZoomAPIClient:
             data = response.json()
             access_token = data['access_token']
             
-            # Кешируем на 50 минут (токен действует 60 минут)
-            cache.set(cache_key, access_token, 3000)
-            logger.info("Generated new Zoom OAuth token")
+            # Кешируем на 58 минут (токен действует 60 минут)
+            # Максимум чтобы токен почти никогда не истекал между запросами
+            cache.set(cache_key, access_token, 3480)
+            logger.info(f"[ZOOM_PERF] Cached new Zoom OAuth token for 58 minutes")
             
             return access_token
             

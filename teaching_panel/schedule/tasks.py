@@ -8,10 +8,52 @@ from datetime import timedelta
 from accounts.notifications import send_telegram_notification
 from .models import ZoomAccount, Lesson
 from zoom_pool.models import ZoomAccount as PoolZoomAccount
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
-def release_stuck_zoom_accounts():
+def warmup_zoom_oauth_tokens():
+    """
+    Прогрев OAuth токенов Zoom для всех учителей с credentials.
+    
+    Запускается каждые 55 минут чтобы токены всегда были в кеше.
+    Это экономит ~10 секунд на каждом запуске урока.
+    """
+    from accounts.models import User
+    from .zoom_client import ZoomAPIClient
+    
+    teachers_with_zoom = User.objects.filter(
+        role='teacher',
+        zoom_account_id__isnull=False,
+        zoom_client_id__isnull=False,
+        zoom_client_secret__isnull=False
+    ).exclude(
+        zoom_account_id='',
+        zoom_client_id='',
+        zoom_client_secret=''
+    )
+    
+    warmed_count = 0
+    for teacher in teachers_with_zoom:
+        if not teacher.zoom_account_id or not teacher.zoom_client_id or not teacher.zoom_client_secret:
+            continue
+        try:
+            client = ZoomAPIClient(
+                account_id=teacher.zoom_account_id,
+                client_id=teacher.zoom_client_id,
+                client_secret=teacher.zoom_client_secret
+            )
+            # Просто получаем токен - он закешируется
+            client._get_access_token()
+            warmed_count += 1
+            logger.info(f"[ZOOM_WARMUP] Warmed token for teacher {teacher.email}")
+        except Exception as e:
+            logger.warning(f"[ZOOM_WARMUP] Failed to warm token for {teacher.email}: {e}")
+    
+    logger.info(f"[ZOOM_WARMUP] Warmed {warmed_count} Zoom OAuth tokens")
+    return warmed_count
     """
     Освобождение зависших Zoom-аккаунтов
     

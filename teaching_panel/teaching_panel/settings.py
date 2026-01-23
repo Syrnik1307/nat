@@ -384,6 +384,10 @@ if sys.platform == 'win32':
 
 # Celery Beat расписание
 CELERY_BEAT_SCHEDULE = {
+    'warmup-zoom-oauth-tokens': {
+        'task': 'schedule.tasks.warmup_zoom_oauth_tokens',
+        'schedule': 3300.0,  # каждые 55 минут - держим токены горячими
+    },
     'release-stuck-zoom-accounts': {
         'task': 'schedule.tasks.release_stuck_zoom_accounts',
         'schedule': 600.0,  # каждые 10 минут
