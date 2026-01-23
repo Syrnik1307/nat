@@ -47,15 +47,23 @@ class ZoomAPIClient:
         Получить OAuth токен с кешированием.
         Токены Zoom действуют 1 час, кешируем на 50 минут.
         """
+        import time as _time
+        start = _time.time()
+        
         # Уникальный ключ кеша для каждого аккаунта
         cache_key = f'zoom_oauth_token_{self.account_id}'
+        logger.info(f"[ZOOM_PERF] Checking cache with key: {cache_key}")
+        
         cached_token = cache.get(cache_key)
+        cache_check_time = _time.time() - start
+        logger.info(f"[ZOOM_PERF] Cache check took {cache_check_time:.3f}s, found: {bool(cached_token)}")
         
         if cached_token:
-            logger.debug(f"Using cached Zoom OAuth token for account {self.account_id}")
+            logger.info(f"[ZOOM_PERF] Using cached Zoom OAuth token for account {self.account_id}")
             return cached_token
         
         try:
+            oauth_start = _time.time()
             response = requests.post(
                 self.TOKEN_URL,
                 params={
@@ -65,6 +73,8 @@ class ZoomAPIClient:
                 auth=(self.client_id, self.client_secret),
                 timeout=10
             )
+            oauth_time = _time.time() - oauth_start
+            logger.info(f"[ZOOM_PERF] OAuth request took {oauth_time:.3f}s")
             
             # Подробное логирование для отладки
             logger.info(f"Zoom OAuth request: POST {self.TOKEN_URL}")
@@ -109,8 +119,15 @@ class ZoomAPIClient:
                 'password': пароль встречи
             }
         """
+        import time as _time
+        total_start = _time.time()
+        logger.info("[ZOOM_PERF] Starting create_meeting")
+        
         try:
+            token_start = _time.time()
             access_token = self._get_access_token()
+            token_time = _time.time() - token_start
+            logger.info(f"[ZOOM_PERF] Token acquisition took {token_time:.3f}s")
             
             # Форматируем время начала
             if isinstance(start_time, datetime):
@@ -145,6 +162,7 @@ class ZoomAPIClient:
             }
             
             # Создаем встречу
+            api_start = _time.time()
             response = requests.post(
                 f'{self.BASE_URL}/users/{user_id}/meetings',
                 headers={
@@ -154,10 +172,14 @@ class ZoomAPIClient:
                 json=meeting_data,
                 timeout=30
             )
+            api_time = _time.time() - api_start
+            logger.info(f"[ZOOM_PERF] API request took {api_time:.3f}s")
             
             response.raise_for_status()
             result = response.json()
             
+            total_time = _time.time() - total_start
+            logger.info(f"[ZOOM_PERF] create_meeting total time: {total_time:.3f}s")
             logger.info(f"Created Zoom meeting: {result['id']}")
             
             return {
