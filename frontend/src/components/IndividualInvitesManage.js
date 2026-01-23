@@ -623,5 +623,19 @@ const IndividualInvitesManage = ({ mode = 'full', data: providedData, navigate: 
   );
 };
 
+export const IndividualInvitesPanel = ({ navigate, allGroups = [], onGroupsChanged }) => {
+  const data = useIndividualInvitesData();
+  return (
+    <div className="groups-manage-grid">
+      <div className="groups-manage-column">
+        <IndividualInviteForm data={data} />
+      </div>
+      <div className="groups-manage-column">
+        <IndividualInviteList data={data} navigate={navigate} allGroups={allGroups} onGroupsChanged={onGroupsChanged} />
+      </div>
+    </div>
+  );
+};
+
 export { IndividualInviteForm, IndividualInviteList };
 export default IndividualInvitesManage;

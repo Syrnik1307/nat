@@ -4,11 +4,11 @@
  * Красивый дизайн в стиле приложения
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Modal from '../shared/components/Modal';
 import { ConfirmModal } from '../shared/components';
 import Select from '../shared/components/Select';
-import { removeStudentsFromGroup, addStudentsToGroup } from '../apiService';
+import { removeStudentsFromGroup, addStudentsToGroup, getGroupStudents } from '../apiService';
 import './GroupStudentsModal.css';
 
 const GroupStudentsModal = ({ group, allGroups = [], isOpen, onClose, onStudentsRemoved }) => {
@@ -18,10 +18,39 @@ const GroupStudentsModal = ({ group, allGroups = [], isOpen, onClose, onStudents
   const [showTransferSelect, setShowTransferSelect] = useState(false);
   const [targetGroupId, setTargetGroupId] = useState('');
   const [confirmModal, setConfirmModal] = useState({ isOpen: false });
+  const [students, setStudents] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !group) return;
+    const hasInlineStudents = Array.isArray(group.students);
+    if (hasInlineStudents) {
+      setStudents(group.students || []);
+      return;
+    }
+    let cancelled = false;
+    setLoadingStudents(true);
+    getGroupStudents(group.id)
+      .then((res) => {
+        if (cancelled) return;
+        const data = res?.data?.results || res?.data || [];
+        setStudents(Array.isArray(data) ? data : []);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error('Error loading group students:', error);
+          setStudents([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingStudents(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, group?.id]);
 
   if (!isOpen || !group) return null;
-
-  const students = Array.isArray(group.students) ? group.students : [];
 
   const toggleStudent = (id) => {
     setSelectedIds(prev => {
@@ -121,7 +150,7 @@ const GroupStudentsModal = ({ group, allGroups = [], isOpen, onClose, onStudents
     return name || student.email || `Ученик #${student.id}`;
   };
 
-  const footer = students.length > 0 ? (
+  const footer = !loadingStudents && students.length > 0 ? (
     <div className="gsm-footer">
       <div className="gsm-footer-info">
         {selectedIds.size > 0 && (
@@ -175,7 +204,13 @@ const GroupStudentsModal = ({ group, allGroups = [], isOpen, onClose, onStudents
         <div className="gsm-content">
           <div className="gsm-group-name">{group.name}</div>
           
-          {students.length === 0 ? (
+          {loadingStudents ? (
+            <div className="gsm-empty">
+              <div className="gsm-empty-icon" />
+              <h4>Загрузка учеников...</h4>
+              <p>Пожалуйста, подождите</p>
+            </div>
+          ) : students.length === 0 ? (
             <div className="gsm-empty">
               <div className="gsm-empty-icon">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

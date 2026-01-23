@@ -1,11 +1,18 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../auth';
-import { HomeworkConstructor } from '../index';
-import SubmissionsList from './teacher/SubmissionsList';
-import GradedSubmissionsList from './teacher/GradedSubmissionsList';
-import MyHomeworksList from './teacher/MyHomeworksList';
 import './HomeworkPage.css';
+
+// Ленивая загрузка вкладок для ускорения переключений
+const loadHomeworkConstructor = () => import('../index').then((m) => ({ default: m.HomeworkConstructor }));
+const loadSubmissionsList = () => import('./teacher/SubmissionsList');
+const loadGradedSubmissionsList = () => import('./teacher/GradedSubmissionsList');
+const loadMyHomeworksList = () => import('./teacher/MyHomeworksList');
+
+const HomeworkConstructor = lazy(loadHomeworkConstructor);
+const SubmissionsList = lazy(loadSubmissionsList);
+const GradedSubmissionsList = lazy(loadGradedSubmissionsList);
+const MyHomeworksList = lazy(loadMyHomeworksList);
 
 /**
  * Главная страница домашних заданий с четырьмя вкладками:
@@ -32,6 +39,22 @@ const HomeworkPage = () => {
   // Состояние для редактирования ДЗ
   const [editingHomework, setEditingHomework] = useState(null);
   const [isDuplicating, setIsDuplicating] = useState(false);
+
+  const schedulePreload = (fn) => {
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      window.requestIdleCallback(() => fn(), { timeout: 2000 });
+    } else {
+      setTimeout(fn, 100);
+    }
+  };
+
+  // Предзагрузка всех вкладок в фоне для мгновенного переключения
+  useEffect(() => {
+    schedulePreload(loadHomeworkConstructor);
+    schedulePreload(loadMyHomeworksList);
+    schedulePreload(loadSubmissionsList);
+    schedulePreload(loadGradedSubmissionsList);
+  }, []);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -81,24 +104,28 @@ const HomeworkPage = () => {
         <button
           className={`homework-tab ${activeTab === 'constructor' ? 'active' : ''}`}
           onClick={() => handleTabChange('constructor')}
+          onMouseEnter={() => schedulePreload(loadHomeworkConstructor)}
         >
           <span className="tab-label">Конструктор</span>
         </button>
         <button
           className={`homework-tab ${activeTab === 'my' ? 'active' : ''}`}
           onClick={() => handleTabChange('my')}
+          onMouseEnter={() => schedulePreload(loadMyHomeworksList)}
         >
           <span className="tab-label">Мои ДЗ</span>
         </button>
         <button
           className={`homework-tab ${activeTab === 'review' ? 'active' : ''}`}
           onClick={() => handleTabChange('review')}
+          onMouseEnter={() => schedulePreload(loadSubmissionsList)}
         >
           <span className="tab-label">На проверку</span>
         </button>
         <button
           className={`homework-tab ${activeTab === 'graded' ? 'active' : ''}`}
           onClick={() => handleTabChange('graded')}
+          onMouseEnter={() => schedulePreload(loadGradedSubmissionsList)}
         >
           <span className="tab-label">Проверенные</span>
         </button>
@@ -106,19 +133,21 @@ const HomeworkPage = () => {
 
       {/* Контент вкладок */}
       <div className="homework-content">
-        {activeTab === 'constructor' && (
-          <HomeworkConstructor 
-            editingHomework={editingHomework}
-            isDuplicating={isDuplicating}
-            onClearEditing={() => {
-              setEditingHomework(null);
-              setIsDuplicating(false);
-            }}
-          />
-        )}
-        {activeTab === 'my' && <MyHomeworksList onEditHomework={handleEditHomework} />}
-        {activeTab === 'review' && <SubmissionsList filterStatus="submitted" />}
-        {activeTab === 'graded' && <GradedSubmissionsList />}
+        <Suspense fallback={<div className="homework-tab-loading">Загрузка раздела...</div>}>
+          {activeTab === 'constructor' && (
+            <HomeworkConstructor 
+              editingHomework={editingHomework}
+              isDuplicating={isDuplicating}
+              onClearEditing={() => {
+                setEditingHomework(null);
+                setIsDuplicating(false);
+              }}
+            />
+          )}
+          {activeTab === 'my' && <MyHomeworksList onEditHomework={handleEditHomework} />}
+          {activeTab === 'review' && <SubmissionsList filterStatus="submitted" />}
+          {activeTab === 'graded' && <GradedSubmissionsList />}
+        </Suspense>
       </div>
     </div>
   );

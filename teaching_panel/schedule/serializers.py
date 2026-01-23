@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db.models import Count
 from django.utils import timezone
 from .models import Group, Lesson, Attendance, RecurringLesson, LessonRecording, TeacherStorageQuota, IndividualInviteCode, LessonMaterial
 from zoom_pool.models import ZoomAccount
@@ -55,6 +56,26 @@ class GroupSerializer(serializers.ModelSerializer):
         if hasattr(obj, '_student_count'):
             return obj._student_count
         # Если students уже prefetched, используем len() вместо count() для избежания запроса
+        if hasattr(obj, '_prefetched_objects_cache') and 'students' in obj._prefetched_objects_cache:
+            return len(obj.students.all())
+        return obj.students.count()
+
+
+class GroupListSerializer(serializers.ModelSerializer):
+    """Лёгкий сериализатор для списка групп (без списка учеников)."""
+    student_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Group
+        fields = [
+            'id', 'name', 'description',
+            'student_count', 'invite_code',
+            'telegram_chat_id', 'created_at', 'updated_at'
+        ]
+
+    def get_student_count(self, obj):
+        if hasattr(obj, '_student_count'):
+            return obj._student_count
         if hasattr(obj, '_prefetched_objects_cache') and 'students' in obj._prefetched_objects_cache:
             return len(obj.students.all())
         return obj.students.count()

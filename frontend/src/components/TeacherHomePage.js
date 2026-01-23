@@ -740,6 +740,12 @@ const TeacherHomePage = () => {
               <div className="start-modal-error">{startError}</div>
             )}
 
+            {starting && (
+              <div className="start-modal-hint" style={{ color: '#0369a1', backgroundColor: '#f0f9ff', border: '1px solid #bae6fd' }}>
+                <span>Подключение к Zoom... Это может занять до 30 секунд</span>
+              </div>
+            )}
+
             <div className="start-modal-actions">
               <button
                 className="start-modal-btn primary"
@@ -747,7 +753,7 @@ const TeacherHomePage = () => {
                 disabled={starting}
               >
                 <IconPlay size={16} />
-                <span>{starting ? 'Запуск...' : 'Начать урок'}</span>
+                <span>{starting ? 'Подключение...' : 'Начать урок'}</span>
               </button>
               <button
                 className="start-modal-btn secondary"
@@ -830,6 +836,12 @@ const TeacherHomePage = () => {
               <div className="start-modal-error">{lessonStartError}</div>
             )}
 
+            {lessonStarting && (
+              <div className="start-modal-hint" style={{ color: '#0369a1', backgroundColor: '#f0f9ff', border: '1px solid #bae6fd' }}>
+                <span>Подключение к Zoom... Это может занять до 30 секунд</span>
+              </div>
+            )}
+
             <div className="start-modal-actions">
               <button
                 className="start-modal-btn primary"
@@ -837,7 +849,7 @@ const TeacherHomePage = () => {
                 disabled={lessonStarting}
               >
                 <IconPlay size={16} />
-                <span>{lessonStarting ? 'Запуск...' : 'Начать занятие'}</span>
+                <span>{lessonStarting ? 'Подключение...' : 'Начать занятие'}</span>
               </button>
               <button
                 className="start-modal-btn secondary"

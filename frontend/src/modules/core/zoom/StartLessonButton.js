@@ -371,6 +371,16 @@ const StartLessonButton = ({ lessonId, lesson, onSuccess }) => {
                 </div>
               )}
 
+              {/* Loading indicator */}
+              {loading && (
+                <div style={{
+                  fontSize: '0.8rem', color: '#0369a1', padding: '0.75rem',
+                  backgroundColor: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd',
+                }}>
+                  Подключение к Zoom... Это может занять до 30 секунд
+                </div>
+              )}
+
               {/* Кнопки */}
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button
@@ -388,7 +398,7 @@ const StartLessonButton = ({ lessonId, lesson, onSuccess }) => {
                       : '0 3px 10px rgba(11, 43, 101, 0.28)',
                   }}
                 >
-                  {loading ? 'Начинаем...' : 'Начать урок'}
+                  {loading ? 'Подключение...' : 'Начать урок'}
                 </button>
                 <button
                   type="button"

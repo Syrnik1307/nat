@@ -7,6 +7,7 @@ from django.utils.dateparse import parse_datetime
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+from django.db.models import Count
 from django.http import JsonResponse
 from django.db import transaction
 from django.db.models import Q
@@ -24,7 +25,8 @@ from zoom_pool.models import ZoomAccount
 from django.db.models import F
 from .permissions import IsLessonOwnerOrReadOnly, IsGroupOwnerOrReadOnly, IsTeacherOrReadOnly
 from .serializers import (
-    GroupSerializer, 
+    GroupSerializer,
+    GroupListSerializer,
     LessonSerializer, 
     LessonCalendarSerializer,
     LessonDetailSerializer,
@@ -180,8 +182,13 @@ class GroupViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Фильтруем группы по преподавателю для аутентифицированных пользователей"""
-        # ОПТИМИЗАЦИЯ: prefetch students и select_related teacher для избежания N+1
-        queryset = super().get_queryset().select_related('teacher').prefetch_related('students')
+        # ОПТИМИЗАЦИЯ: light-режим без списка студентов
+        light_mode = self.action == 'list' and self.request.query_params.get('light') == '1'
+        if light_mode:
+            queryset = super().get_queryset().select_related('teacher').annotate(_student_count=Count('students'))
+        else:
+            # ОПТИМИЗАЦИЯ: prefetch students и select_related teacher для избежания N+1
+            queryset = super().get_queryset().select_related('teacher').prefetch_related('students')
         user = self.request.user
         if not user.is_authenticated:
             return queryset.none()
@@ -190,6 +197,11 @@ class GroupViewSet(viewsets.ModelViewSet):
         if getattr(user, 'role', None) == 'student':
             return queryset.filter(students=user)
         return queryset.none()
+
+    def get_serializer_class(self):
+        if self.action == 'list' and self.request.query_params.get('light') == '1':
+            return GroupListSerializer
+        return super().get_serializer_class()
     
     @action(detail=True, methods=['post'])
     def add_students(self, request, pk=None):
