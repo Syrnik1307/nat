@@ -295,7 +295,7 @@ export const startLesson = (id) => apiClient.post(`schedule/lessons/${id}/start/
 export const startLessonNew = (id, data = {}) => apiClient.post(
   `schedule/lessons/${id}/start-new/`,
   data,
-  { timeout: 60000 }
+  { timeout: 120000 }
 );
 export const endLesson = (id) => apiClient.post(`schedule/lessons/${id}/end/`);
 export const joinLesson = (id) => apiClient.post(`schedule/lessons/${id}/join/`);
@@ -303,7 +303,7 @@ export const logLessonJoin = (id, platform) => apiClient.post(`schedule/lessons/
 export const startQuickLesson = (payload = {}) => apiClient.post(
   'schedule/lessons/quick-start/',
   payload,
-  { timeout: 60000 }
+  { timeout: 120000 }
 );
 export const addLessonRecording = (id, url) => apiClient.post(`schedule/lessons/${id}/add_recording/`, { url });
 export const getLessonAnalytics = (id) => apiClient.get(`schedule/lessons/${id}/analytics/`);
