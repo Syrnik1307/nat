@@ -621,6 +621,9 @@ PROCESS_ALERTS_CHAT_ID = os.environ.get('PROCESS_ALERTS_CHAT_ID', '') or os.envi
 # HTTPS/SSL Redirect
 SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False').lower() in ('true', '1', 'yes')
 
+# Trust X-Forwarded-Proto header from nginx (required when behind reverse proxy)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Exempt healthcheck from SSL redirect (for internal monitoring)
 SECURE_REDIRECT_EXEMPT = [r'^api/health/$']
 
