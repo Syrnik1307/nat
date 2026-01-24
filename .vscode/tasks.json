@@ -1005,6 +1005,11 @@
 			"type": "shell",
 			"command": "ssh tp 'cd /var/www/teaching_panel && git pull origin main && sudo cp scripts/monitoring/*.sh /opt/lectio-monitor/ && sudo chmod +x /opt/lectio-monitor/*.sh && echo SYNC_OK'",
 			"isBackground": false
+		},
+		{
+			"label": "check recording 14",
+			"type": "shell",
+			"command": "ssh tp \"cd /var/www/teaching_panel && source venv/bin/activate && python manage.py shell --command='from schedule.models import LessonRecording; r=LessonRecording.objects.get(id=14); print(r.play_url); print(r.gdrive_file_id)'\""
 		}
 	]
 }
