@@ -35,7 +35,16 @@ def _ensure_subscription_instance(user) -> Subscription:
 
 
 def get_subscription(user) -> Subscription:
-    return _ensure_subscription_instance(user)
+    sub = _ensure_subscription_instance(user)
+    now = timezone.now()
+    if sub.expires_at:
+        if sub.status == Subscription.STATUS_PENDING and sub.expires_at > now:
+            sub.status = Subscription.STATUS_ACTIVE
+            sub.save(update_fields=['status', 'updated_at'])
+        elif sub.status == Subscription.STATUS_ACTIVE and sub.expires_at <= now:
+            sub.status = Subscription.STATUS_EXPIRED
+            sub.save(update_fields=['status', 'updated_at'])
+    return sub
 
 
 def is_subscription_active(user) -> bool:
