@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api, { withScheduleApiBase } from '../../apiService';
 import { getCached } from '../../utils/dataCache';
 import RecordingCard from './RecordingCard';
-import RecordingPlayer from './RecordingPlayer';
+import FastVideoModal from './FastVideoModal';
 import './RecordingsPage.css';
 
 function RecordingsPage() {
@@ -270,7 +270,7 @@ function RecordingsPage() {
 
       {/* Модальное окно с плеером */}
       {selectedRecording && (
-        <RecordingPlayer
+        <FastVideoModal
           recording={selectedRecording}
           onClose={closePlayer}
         />

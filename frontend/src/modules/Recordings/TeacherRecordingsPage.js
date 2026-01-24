@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './TeacherRecordingsPage.css';
 import api, { withScheduleApiBase } from '../../apiService';
 import RecordingCard from './RecordingCard';
-import RecordingPlayer from './RecordingPlayer';
+import FastVideoModal from './FastVideoModal';
 import { ConfirmModal, Select, SearchableSelect, ToastContainer } from '../../shared/components';
 
 function TeacherRecordingsPage() {
@@ -659,7 +659,7 @@ function TeacherRecordingsPage() {
 
       {/* Плеер */}
       {selectedRecording && (
-        <RecordingPlayer
+        <FastVideoModal
           recording={selectedRecording}
           onClose={closePlayer}
         />
