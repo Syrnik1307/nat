@@ -3285,20 +3285,6 @@ def stream_recording(request, recording_id):
         from .gdrive_utils import get_gdrive_manager
         gdrive = get_gdrive_manager()
         
-        # Получаем метаданные файла для определения размера
-        try:
-            file_metadata = gdrive.service.files().get(
-                fileId=recording.gdrive_file_id,
-                fields='size,mimeType,name'
-            ).execute()
-            file_size = int(file_metadata.get('size', 0))
-            mime_type = file_metadata.get('mimeType', 'video/mp4')
-        except Exception as e:
-            logger.error(f"Failed to get file metadata from GDrive: {e}")
-            return Response({
-                'error': 'Не удалось получить информацию о файле'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
         # Проксируем скачивание через AuthorizedSession, поддерживаем Range (перемотка)
         range_header = request.META.get('HTTP_RANGE')
 
@@ -3323,6 +3309,8 @@ def stream_recording(request, recording_id):
         if upstream.status_code not in (200, 206):
             logger.warning(f"GDrive stream returned {upstream.status_code}: {upstream.text[:200]}")
             return Response({'error': 'Не удалось загрузить видео'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        mime_type = upstream.headers.get('Content-Type', 'video/mp4')
 
         response = StreamingHttpResponse(
             upstream.iter_content(chunk_size=1024 * 1024),
