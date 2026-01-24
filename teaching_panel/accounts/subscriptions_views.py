@@ -140,6 +140,15 @@ class SubscriptionCreatePaymentView(APIView):
 
         sub = get_subscription(request.user)
 
+        # Проверяем: если подписка уже активна и не истекла, не нужно её менять
+        if sub.is_active():
+            # У пользователя уже есть активная подписка
+            return Response({
+                'subscription': SubscriptionSerializer(sub).data,
+                'message': 'У вас уже есть активная подписка, продление доступно после истечения',
+                'status': 'already_active'
+            }, status=status.HTTP_200_OK)
+
         # Переводим подписку в ожидающую оплаты выбранного плана
         sub.plan = plan
         sub.status = Subscription.STATUS_PENDING

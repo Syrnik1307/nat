@@ -84,7 +84,10 @@ const PaymentResultPage = () => {
       }
       
       // Проверяем статус подписки
-      if (subscription.status === 'active') {
+      const isSubscriptionActive = subscription.status === 'active' && 
+                                   new Date(subscription.expires_at) > new Date();
+      
+      if (isSubscriptionActive) {
         setStatus('success');
         setMessage('Оплата прошла успешно');
         setDetails({
@@ -98,6 +101,10 @@ const PaymentResultPage = () => {
       } else if (subscription.status === 'pending') {
         setStatus('pending');
         setMessage('Платёж обрабатывается');
+      } else if (subscription.status === 'active' && new Date(subscription.expires_at) <= new Date()) {
+        // Подписка была активна, но уже истекла - нужно продлить
+        setStatus('pending');
+        setMessage('Подписка истекла. Продлите её чтобы продолжить пользование');
       } else {
         // Подписка не активна - возможно платёж не прошёл
         // Но не показываем ошибку сразу, платёж может ещё обрабатываться

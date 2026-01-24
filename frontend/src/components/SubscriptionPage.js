@@ -177,6 +177,17 @@ const SubscriptionPage = ({ embedded = false }) => {
     setProcessing(true);
     try {
       const response = await apiClient.post('subscription/create-payment/', { plan: 'monthly' });
+      
+      // Если подписка уже активна, показываем сообщение
+      if (response.data.status === 'already_active') {
+        setErrorModal({ 
+          isOpen: true, 
+          message: 'У вас уже есть активная подписка. Продление будет доступно после её истечения.' 
+        });
+        setProcessing(false);
+        return;
+      }
+      
       const paymentUrl = response.data.payment_url;
       window.location.href = paymentUrl;
     } catch (error) {
