@@ -181,6 +181,64 @@
 }
 
 /* ========================================
+   LOADING OVERLAY
+   ======================================== */
+
+.fast-video-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  color: rgba(226, 232, 240, 0.92);
+  background: radial-gradient(
+    circle at 50% 30%,
+    rgba(2, 6, 23, 0.75) 0%,
+    rgba(2, 6, 23, 0.92) 55%,
+    rgba(2, 6, 23, 0.96) 100%
+  );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.fast-video-loading-spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 3px solid rgba(148, 163, 184, 0.28);
+  border-top-color: rgba(99, 102, 241, 0.95);
+  animation: fastVideoSpin 900ms linear infinite;
+}
+
+@keyframes fastVideoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fast-video-loading-text {
+  max-width: 520px;
+}
+
+.fast-video-loading-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.fast-video-loading-hint {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: rgba(148, 163, 184, 0.95);
+}
+
+/* ========================================
    ERROR STATE
    ======================================== */
 

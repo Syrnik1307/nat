@@ -20,6 +20,9 @@ function FastVideoModal({ recording, onClose }) {
   const modalRef = useRef(null);
   const [showDetails, setShowDetails] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [videoErrorText, setVideoErrorText] = useState('');
+  const [videoState, setVideoState] = useState('idle'); // idle | loading | ready | error
+  const [showSlowHint, setShowSlowHint] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
   // Быстрое получение URL для стриминга
@@ -33,6 +36,19 @@ function FastVideoModal({ recording, onClose }) {
   }, [recording?.id]);
 
   const videoUrl = getVideoUrl();
+
+  // Если загрузка видео затянулась, показываем подсказку
+  useEffect(() => {
+    if (!videoUrl || videoError) return;
+
+    if (videoState !== 'loading') {
+      setShowSlowHint(false);
+      return;
+    }
+
+    const timer = setTimeout(() => setShowSlowHint(true), 8000);
+    return () => clearTimeout(timer);
+  }, [videoUrl, videoError, videoState]);
 
   // Закрытие по Escape
   useEffect(() => {
@@ -63,18 +79,54 @@ function FastVideoModal({ recording, onClose }) {
   }, [onClose]);
 
   // Обработка ошибки видео
-  const handleVideoError = useCallback(() => {
+  const handleVideoError = useCallback((e) => {
+    const video = videoRef.current;
+    let errorMsg = 'Не удалось загрузить видео';
+
+    if (video?.error) {
+      switch (video.error.code) {
+        case MediaError.MEDIA_ERR_ABORTED:
+          errorMsg = 'Загрузка прервана';
+          break;
+        case MediaError.MEDIA_ERR_NETWORK:
+          errorMsg = 'Ошибка сети. Проверьте подключение';
+          break;
+        case MediaError.MEDIA_ERR_DECODE:
+          errorMsg = 'Ошибка декодирования видео';
+          break;
+        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMsg = 'Формат видео не поддерживается';
+          break;
+        default:
+          break;
+      }
+    }
+
+    setVideoErrorText(errorMsg);
+    setVideoState('error');
     setVideoError(true);
   }, []);
 
   // Обработка успешной загрузки
-  const handleVideoLoaded = useCallback(() => {
+  const handleVideoCanPlay = useCallback(() => {
     setVideoError(false);
+    setVideoErrorText('');
+    setVideoState('ready');
+  }, []);
+
+  const handleVideoLoadStart = useCallback(() => {
+    setVideoState('loading');
+    setShowSlowHint(false);
   }, []);
 
   // Play/Pause отслеживание
   const handlePlay = useCallback(() => setIsPlaying(true), []);
   const handlePause = useCallback(() => setIsPlaying(false), []);
+
+  const handleOpenInNewTab = useCallback(() => {
+    if (!videoUrl || typeof window === 'undefined') return;
+    window.open(videoUrl, '_blank', 'noopener,noreferrer');
+  }, [videoUrl]);
 
   // Получаем базовую информацию
   const title = recording?.title || recording?.lesson_info?.subject || 'Запись урока';
@@ -118,21 +170,43 @@ function FastVideoModal({ recording, onClose }) {
         {/* Видеоплеер */}
         <div className={`fast-video-player ${isPlaying ? 'is-playing' : ''}`}>
           {videoUrl && !videoError ? (
-            <video
-              ref={videoRef}
-              src={videoUrl}
-              controls
-              autoPlay
-              playsInline
-              preload="auto"
-              onError={handleVideoError}
-              onLoadedData={handleVideoLoaded}
-              onPlay={handlePlay}
-              onPause={handlePause}
-              className="fast-video-element"
-            >
-              Ваш браузер не поддерживает воспроизведение видео.
-            </video>
+            <>
+              {videoState === 'loading' && (
+                <div className="fast-video-loading" role="status" aria-live="polite">
+                  <div className="fast-video-loading-spinner" aria-hidden="true" />
+                  <div className="fast-video-loading-text">
+                    <div className="fast-video-loading-title">Загрузка видео…</div>
+                    {showSlowHint && (
+                      <div className="fast-video-loading-hint">
+                        Видео загружается дольше обычного. Если не запускается, откройте в новой вкладке.
+                      </div>
+                    )}
+                  </div>
+                  {showSlowHint && (
+                    <button type="button" className="fast-video-retry" onClick={handleOpenInNewTab}>
+                      Открыть в новой вкладке
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                controls
+                autoPlay={false}
+                playsInline
+                preload="metadata"
+                onError={handleVideoError}
+                onCanPlay={handleVideoCanPlay}
+                onLoadStart={handleVideoLoadStart}
+                onPlay={handlePlay}
+                onPause={handlePause}
+                className="fast-video-element"
+              >
+                Ваш браузер не поддерживает воспроизведение видео.
+              </video>
+            </>
           ) : (
             <div className="fast-video-error">
               <div className="fast-video-error-icon">
@@ -141,16 +215,27 @@ function FastVideoModal({ recording, onClose }) {
                   <path d="M12 8v4M12 16h.01" />
                 </svg>
               </div>
-              <p>Не удалось загрузить видео</p>
+              <p>{videoErrorText || 'Не удалось загрузить видео'}</p>
               <button 
                 className="fast-video-retry"
                 onClick={() => {
                   setVideoError(false);
-                  videoRef.current?.load();
+                  setVideoErrorText('');
+                  setVideoState('loading');
+                  setShowSlowHint(false);
+                  if (videoRef.current) {
+                    videoRef.current.load();
+                  }
                 }}
               >
                 Попробовать снова
               </button>
+
+              {videoUrl && (
+                <button type="button" className="fast-video-retry" onClick={handleOpenInNewTab}>
+                  Открыть в новой вкладке
+                </button>
+              )}
             </div>
           )}
         </div>
