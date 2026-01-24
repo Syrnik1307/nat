@@ -127,13 +127,14 @@ function RecordingPlayer({ recording, onClose }) {
 
   const streamingUrl = getStreamingUrl();
   const directViewUrl = getDirectViewUrl(recording.play_url);
+  const videoSource = streamingUrl || recording.play_url || null;
 
   const handleOpenInNewTab = () => {
     if (typeof window === 'undefined') {
       return;
     }
 
-    const urlToOpen = isGoogleDriveUrl ? directViewUrl : recording.play_url;
+    const urlToOpen = streamingUrl || (isGoogleDriveUrl ? directViewUrl : recording.play_url);
     if (!urlToOpen) {
       return;
     }
@@ -142,7 +143,7 @@ function RecordingPlayer({ recording, onClose }) {
   };
 
   const handleCopyLink = async () => {
-    const urlToCopy = isGoogleDriveUrl ? directViewUrl : recording.play_url;
+    const urlToCopy = streamingUrl || (isGoogleDriveUrl ? directViewUrl : recording.play_url);
     if (!urlToCopy) {
       return;
     }
@@ -217,26 +218,17 @@ function RecordingPlayer({ recording, onClose }) {
         <div className="recording-player-body">
           <div className="player-media-column">
             <div className="player-video-wrapper">
-              {recording.play_url ? (
-                isGoogleDriveUrl && streamingUrl ? (
-                  <video
-                    src={streamingUrl}
-                    controls
-                    autoPlay={false}
-                    playsInline
-                    preload="metadata"
-                    style={{ width: '100%', height: '100%', backgroundColor: '#000' }}
-                  >
-                    Ваш браузер не поддерживает воспроизведение видео.
-                  </video>
-                ) : (
-                  <video
-                    src={recording.play_url}
-                    controls
-                    autoPlay={false}
-                    style={{ width: '100%', height: '100%', backgroundColor: '#000' }}
-                  />
-                )
+              {videoSource ? (
+                <video
+                  src={videoSource}
+                  controls
+                  autoPlay={false}
+                  playsInline
+                  preload="metadata"
+                  style={{ width: '100%', height: '100%', backgroundColor: '#000' }}
+                >
+                  Ваш браузер не поддерживает воспроизведение видео.
+                </video>
               ) : (
                 <div className="player-video-placeholder">
                   <span className="placeholder-icon"></span>
@@ -284,7 +276,7 @@ function RecordingPlayer({ recording, onClose }) {
                   type="button"
                   className="player-action-btn primary"
                   onClick={handleOpenInNewTab}
-                  disabled={!recording.play_url}
+                  disabled={!videoSource}
                 >
                   Открыть плеер
                 </button>
@@ -305,7 +297,7 @@ function RecordingPlayer({ recording, onClose }) {
                   type="button"
                   className="player-action-btn ghost"
                   onClick={handleCopyLink}
-                  disabled={!recording.play_url}
+                  disabled={!videoSource}
                 >
                   {copyState === 'copied' ? 'Ссылка скопирована' : 'Скопировать ссылку'}
                 </button>
