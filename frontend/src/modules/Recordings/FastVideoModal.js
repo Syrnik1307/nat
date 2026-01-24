@@ -29,9 +29,7 @@ function FastVideoModal({ recording, onClose }) {
     // ВСЕГДА используем backend stream endpoint для надежного стриминга
     // Backend проксирует Google Drive с авторизацией и поддержкой Range requests
     const token = getAccessToken();
-    const url = `/api/schedule/recordings/${recording.id}/stream/?token=${encodeURIComponent(token)}`;
-    console.log('[FastVideoModal] Video URL:', url);
-    return url;
+    return `/schedule/api/recordings/${recording.id}/stream/?token=${encodeURIComponent(token)}`;
   }, [recording?.id]);
 
   const videoUrl = getVideoUrl();
