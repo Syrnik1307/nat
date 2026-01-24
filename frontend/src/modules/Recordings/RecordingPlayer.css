@@ -212,6 +212,66 @@
   font-size: 1.1rem;
 }
 
+/* Video loading state */
+.player-video-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.8);
+  color: var(--text-light);
+  font-size: 1rem;
+  z-index: 5;
+  border-radius: 16px;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Video error state */
+.player-video-error {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.9);
+  color: var(--text-light);
+  font-size: 1rem;
+  z-index: 5;
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.player-video-error p {
+  margin: 0;
+  color: #ff6b6b;
+}
+
 .placeholder-icon {
   font-size: 2.5rem;
 }

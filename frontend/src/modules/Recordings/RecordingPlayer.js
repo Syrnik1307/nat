@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import './RecordingPlayer.css';
 
 // Получаем токен для авторизации стриминга
@@ -8,6 +8,9 @@ const getAccessToken = () => {
 
 function RecordingPlayer({ recording, onClose }) {
   const [copyState, setCopyState] = useState('idle');
+  const [videoState, setVideoState] = useState('loading'); // loading, ready, error
+  const [videoError, setVideoError] = useState(null);
+  const videoRef = useRef(null);
   const copyTimeoutRef = useRef(null);
   const lessonInfo = recording.lesson_info || {};
   // Приоритет: recording.title > lesson_info.subject > 'Запись урока'
@@ -129,6 +132,44 @@ function RecordingPlayer({ recording, onClose }) {
   const directViewUrl = getDirectViewUrl(recording.play_url);
   const videoSource = streamingUrl || recording.play_url || null;
 
+  // Video event handlers
+  const handleVideoCanPlay = useCallback(() => {
+    setVideoState('ready');
+    setVideoError(null);
+  }, []);
+
+  const handleVideoError = useCallback((e) => {
+    console.error('Video error:', e);
+    const video = videoRef.current;
+    let errorMsg = 'Не удалось загрузить видео';
+    
+    if (video?.error) {
+      switch (video.error.code) {
+        case MediaError.MEDIA_ERR_ABORTED:
+          errorMsg = 'Загрузка прервана';
+          break;
+        case MediaError.MEDIA_ERR_NETWORK:
+          errorMsg = 'Ошибка сети. Проверьте подключение';
+          break;
+        case MediaError.MEDIA_ERR_DECODE:
+          errorMsg = 'Ошибка декодирования видео';
+          break;
+        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMsg = 'Формат видео не поддерживается';
+          break;
+        default:
+          break;
+      }
+    }
+    
+    setVideoState('error');
+    setVideoError(errorMsg);
+  }, []);
+
+  const handleVideoLoadStart = useCallback(() => {
+    setVideoState('loading');
+  }, []);
+
   const handleOpenInNewTab = () => {
     if (typeof window === 'undefined') {
       return;
@@ -219,16 +260,45 @@ function RecordingPlayer({ recording, onClose }) {
           <div className="player-media-column">
             <div className="player-video-wrapper">
               {videoSource ? (
-                <video
-                  src={videoSource}
-                  controls
-                  autoPlay={false}
-                  playsInline
-                  preload="metadata"
-                  style={{ width: '100%', height: '100%', backgroundColor: '#000' }}
-                >
-                  Ваш браузер не поддерживает воспроизведение видео.
-                </video>
+                <>
+                  {videoState === 'loading' && (
+                    <div className="player-video-loading">
+                      <div className="loading-spinner"></div>
+                      <p>Загрузка видео...</p>
+                    </div>
+                  )}
+                  {videoState === 'error' && (
+                    <div className="player-video-error">
+                      <p>{videoError || 'Ошибка загрузки видео'}</p>
+                      <button 
+                        type="button"
+                        className="player-action-btn secondary"
+                        onClick={handleOpenInNewTab}
+                      >
+                        Открыть в новой вкладке
+                      </button>
+                    </div>
+                  )}
+                  <video
+                    ref={videoRef}
+                    src={videoSource}
+                    controls
+                    autoPlay={false}
+                    playsInline
+                    preload="auto"
+                    onCanPlay={handleVideoCanPlay}
+                    onError={handleVideoError}
+                    onLoadStart={handleVideoLoadStart}
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      backgroundColor: '#000',
+                      display: videoState === 'error' ? 'none' : 'block'
+                    }}
+                  >
+                    Ваш браузер не поддерживает воспроизведение видео.
+                  </video>
+                </>
               ) : (
                 <div className="player-video-placeholder">
                   <span className="placeholder-icon"></span>

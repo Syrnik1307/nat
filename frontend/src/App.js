@@ -4,6 +4,7 @@ import './App.css';
 import { AuthProvider, useAuth, Protected } from './auth';
 import { NotificationProvider } from './shared/context/NotificationContext';
 import { AuthCheckingSkeleton } from './shared/components';
+import SubmissionReview from './modules/homework-analytics/components/teacher/SubmissionReview';
 
 // Навбары загружаются синхронно - они нужны сразу
 // Мемоизируем их чтобы избежать ререндеров при смене страницы
@@ -91,7 +92,6 @@ const AnalyticsPage = lazy(analyticsImport);
 const HomeworkManage = lazy(() => import('./components/HomeworkManage'));
 const HomeworkPage = lazy(homeworkPageImport);
 const SubmissionsList = lazy(() => import('./modules/homework-analytics/components/teacher/SubmissionsList'));
-const SubmissionReview = lazy(() => import('./modules/homework-analytics/components/teacher/SubmissionReview'));
 const RecurringLessonsManage = lazy(() => import('./components/RecurringLessonsManage'));
 const GroupsManage = lazy(groupsManageImport);
 const StudentAIReports = lazy(() => import('./components/StudentAIReports'));

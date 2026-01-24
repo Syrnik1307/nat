@@ -3846,9 +3846,17 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         
+        # Оптимизация: select_related и prefetch_related для избежания N+1 запросов
         materials = LessonMaterial.objects.filter(uploaded_by=request.user).exclude(
             material_type__in=['document', 'link', 'image']
+        ).select_related(
+            'lesson', 'lesson__group', 'uploaded_by'
+        ).prefetch_related(
+            'allowed_groups', 'allowed_students'
         ).order_by('order', '-uploaded_at')
+        
+        # Загружаем в память один раз
+        materials_list = list(materials)
         
         # Группируем по типу
         grouped = {
@@ -3856,14 +3864,14 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
             'notes': [],
         }
         
-        for material in materials:
+        for material in materials_list:
             serialized = LessonMaterialSerializer(material).data
             if material.material_type in grouped:
                 grouped[material.material_type].append(serialized)
         
-        # Статистика
+        # Статистика (без дополнительных запросов)
         stats = {
-            'total': materials.count(),
+            'total': len(materials_list),
             'miro_count': len(grouped['miro']),
             'notes_count': len(grouped['notes']),
         }
@@ -3893,7 +3901,14 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
             Q(visibility='custom_students', allowed_students=request.user)
         ).exclude(
             material_type__in=['document', 'link', 'image']
-        ).select_related('lesson', 'uploaded_by', 'lesson__group').distinct().order_by('-uploaded_at')
+        ).select_related(
+            'lesson', 'uploaded_by', 'lesson__group'
+        ).prefetch_related(
+            'allowed_groups', 'allowed_students'
+        ).distinct().order_by('-uploaded_at')
+        
+        # Загружаем в память один раз
+        materials_list = list(materials)
         
         # Группируем по типу
         grouped = {
@@ -3901,7 +3916,7 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
             'notes': [],
         }
         
-        for material in materials:
+        for material in materials_list:
             serialized = LessonMaterialSerializer(material).data
             # Добавим информацию об учителе
             if material.uploaded_by:
@@ -3911,9 +3926,9 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
             if material.material_type in grouped:
                 grouped[material.material_type].append(serialized)
         
-        # Статистика
+        # Статистика (без дополнительных запросов)
         stats = {
-            'total': materials.count(),
+            'total': len(materials_list),
             'miro_count': len(grouped['miro']),
             'notes_count': len(grouped['notes']),
         }
