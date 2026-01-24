@@ -426,6 +426,9 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
     
     def get_questions(self, obj):
         """Возвращаем список вопросов домашки для отображения в проверке."""
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        allow_correct = getattr(user, 'role', None) in ('teacher', 'admin') if user else False
         questions = obj.homework.questions.all().order_by('order')
         return [
             {
@@ -434,7 +437,15 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
                 'question_type': 'MULTIPLE_CHOICE' if q.question_type == 'MULTI_CHOICE' else q.question_type,
                 'points': q.points,
                 'order': q.order,
-                'config': q.config or {},
+                'config': (q.config or {}) if allow_correct else sanitize_question_config(q),
+                'choices': [
+                    {
+                        'id': c.id,
+                        'text': c.text,
+                        **({'is_correct': c.is_correct} if allow_correct else {})
+                    }
+                    for c in q.choices.all()
+                ],
             }
             for q in questions
         ]

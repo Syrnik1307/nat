@@ -76,16 +76,232 @@ const SubmissionReview = () => {
     }
   };
 
-  const getAnswerDisplay = (answer) => {
-    if (answer.question_type === 'TEXT') {
-      return answer.text_answer || '(Нет ответа)';
+  const normalizeText = (value) => (value ?? '').toString().trim().toLowerCase();
+
+  const parseJsonValue = (value, fallback) => {
+    if (!value) return fallback;
+    try {
+      return typeof value === 'string' ? JSON.parse(value) : value;
+    } catch {
+      return fallback;
+    }
+  };
+
+  const getChoiceTextMap = (item) => {
+    const map = {};
+    (item.choices || []).forEach((choice) => {
+      map[String(choice.id)] = choice.text;
+    });
+    return map;
+  };
+
+  const getSelectedChoiceTexts = (item) => {
+    const choiceMap = getChoiceTextMap(item);
+    return (item.selected_choices || [])
+      .map((id) => choiceMap[String(id)] || String(id))
+      .filter(Boolean);
+  };
+
+  const formatComplexValue = (value) => {
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+    if (value && typeof value === 'object') {
+      return Object.entries(value)
+        .map(([key, val]) => `${key}: ${val}`)
+        .join(', ');
+    }
+    return value ? String(value) : '(Нет ответа)';
+  };
+
+  const getAnswerDisplay = (item) => {
+    if (item.question_type === 'TEXT') {
+      return item.text_answer || '(Нет ответа)';
     }
     
-    if (answer.question_type === 'SINGLE_CHOICE' || answer.question_type === 'MULTI_CHOICE') {
-      return `Выбранные варианты: ${answer.selected_choices?.length || 0}`;
+    if (item.question_type === 'SINGLE_CHOICE' || item.question_type === 'MULTI_CHOICE' || item.question_type === 'MULTIPLE_CHOICE') {
+      const selectedText = getSelectedChoiceTexts(item);
+      return selectedText.length > 0 ? selectedText.join(', ') : '(Нет ответа)';
+    }
+
+    if (item.question_type === 'MATCHING' || item.question_type === 'LISTENING') {
+      const parsed = parseJsonValue(item.text_answer, {});
+      return formatComplexValue(parsed);
+    }
+
+    if (item.question_type === 'DRAG_DROP' || item.question_type === 'FILL_BLANKS' || item.question_type === 'HOTSPOT') {
+      const parsed = parseJsonValue(item.text_answer, []);
+      return formatComplexValue(parsed);
+    }
+
+    if (item.question_type === 'CODE') {
+      const parsed = parseJsonValue(item.text_answer, {});
+      if (parsed && typeof parsed === 'object' && parsed.code) {
+        return parsed.code;
+      }
+      return formatComplexValue(parsed);
     }
     
-    return 'Ответ предоставлен';
+    return item.text_answer || 'Ответ предоставлен';
+  };
+
+  const getCorrectChoiceIds = (item) => {
+    const config = item.config || {};
+    if (config.correctOptionId) {
+      return [String(config.correctOptionId)];
+    }
+    if (Array.isArray(config.correctOptionIds) && config.correctOptionIds.length > 0) {
+      return config.correctOptionIds.map((id) => String(id));
+    }
+    const correctFromChoices = (item.choices || [])
+      .filter((choice) => choice.is_correct)
+      .map((choice) => String(choice.id));
+    return correctFromChoices;
+  };
+
+  const isSameSet = (a, b) => {
+    if (a.length !== b.length) return false;
+    const setA = new Set(a);
+    return b.every((val) => setA.has(val));
+  };
+
+  const getCorrectAnswerInfo = (item) => {
+    const config = item.config || {};
+
+    if (item.question_type === 'TEXT') {
+      const correct = (config.correctAnswer || '').trim();
+      if (!correct) return { hasCorrect: false };
+      const student = (item.text_answer || '').trim();
+      return {
+        hasCorrect: true,
+        correctText: correct,
+        isMatch: normalizeText(student) === normalizeText(correct),
+      };
+    }
+
+    if (item.question_type === 'SINGLE_CHOICE' || item.question_type === 'MULTI_CHOICE' || item.question_type === 'MULTIPLE_CHOICE') {
+      const correctIds = getCorrectChoiceIds(item);
+      if (!correctIds.length) return { hasCorrect: false };
+      const studentIds = (item.selected_choices || []).map((id) => String(id));
+      const choiceMap = getChoiceTextMap(item);
+      const correctText = correctIds.map((id) => choiceMap[id]).filter(Boolean).join(', ');
+      return {
+        hasCorrect: true,
+        correctText: correctText || correctIds.join(', '),
+        isMatch: isSameSet(correctIds, studentIds),
+      };
+    }
+
+    if (item.question_type === 'MATCHING') {
+      const pairs = Array.isArray(config.pairs) ? config.pairs : [];
+      if (!pairs.length) return { hasCorrect: false };
+      const studentMatches = parseJsonValue(item.text_answer, {});
+      let allMatch = true;
+      const correctText = pairs
+        .map((pair) => {
+          const left = (pair.left || '').toString();
+          const right = (pair.right || '').toString();
+          if (right) {
+            const studentRight = (studentMatches[String(pair.id)] || '').toString();
+            if (studentRight !== right) {
+              allMatch = false;
+            }
+          }
+          return right ? `${left} — ${right}` : left;
+        })
+        .join('\n');
+      return {
+        hasCorrect: true,
+        correctText: correctText || '(Нет правильных ответов)',
+        isMatch: allMatch,
+      };
+    }
+
+    if (item.question_type === 'DRAG_DROP') {
+      const correctOrder = Array.isArray(config.correctOrder) ? config.correctOrder.map(String) : [];
+      if (!correctOrder.length) return { hasCorrect: false };
+      const studentOrder = parseJsonValue(item.text_answer, []).map(String);
+      const items = Array.isArray(config.items) ? config.items : [];
+      const itemMap = items.reduce((acc, cur) => {
+        acc[String(cur.id)] = cur.text || String(cur.id);
+        return acc;
+      }, {});
+      const correctText = correctOrder.map((id) => itemMap[id] || id).join(' → ');
+      return {
+        hasCorrect: true,
+        correctText,
+        isMatch: correctOrder.join('|') === studentOrder.join('|'),
+      };
+    }
+
+    if (item.question_type === 'FILL_BLANKS') {
+      const correctAnswers = Array.isArray(config.answers) ? config.answers : [];
+      if (!correctAnswers.length) return { hasCorrect: false };
+      const studentAnswers = parseJsonValue(item.text_answer, []);
+      const caseSensitive = !!config.caseSensitive;
+      let allMatch = true;
+      correctAnswers.forEach((correct, index) => {
+        const student = studentAnswers[index];
+        if (caseSensitive) {
+          if ((student ?? '') !== (correct ?? '')) allMatch = false;
+        } else {
+          if (normalizeText(student) !== normalizeText(correct)) allMatch = false;
+        }
+      });
+      return {
+        hasCorrect: true,
+        correctText: correctAnswers.join(', '),
+        isMatch: allMatch,
+      };
+    }
+
+    if (item.question_type === 'LISTENING') {
+      const subQuestions = Array.isArray(config.subQuestions) ? config.subQuestions : [];
+      if (!subQuestions.length) return { hasCorrect: false };
+      const studentAnswers = parseJsonValue(item.text_answer, {});
+      let allMatch = true;
+      const correctText = subQuestions
+        .map((sq) => {
+          const expected = (sq.answer || '').toString();
+          const student = (studentAnswers[String(sq.id)] || '').toString();
+          if (expected && normalizeText(student) !== normalizeText(expected)) {
+            allMatch = false;
+          }
+          return expected ? `${sq.prompt || ''}: ${expected}` : (sq.prompt || '').toString();
+        })
+        .join('\n');
+      return {
+        hasCorrect: true,
+        correctText,
+        isMatch: allMatch,
+      };
+    }
+
+    if (item.question_type === 'HOTSPOT') {
+      const hotspots = Array.isArray(config.hotspots) ? config.hotspots : [];
+      const correctIds = hotspots.filter((h) => h.isCorrect).map((h) => String(h.id));
+      if (!correctIds.length) return { hasCorrect: false };
+      const studentSelections = parseJsonValue(item.text_answer, []).map(String);
+      return {
+        hasCorrect: true,
+        correctText: correctIds.join(', '),
+        isMatch: isSameSet(correctIds, studentSelections),
+      };
+    }
+
+    if (item.question_type === 'CODE') {
+      const solution = (config.solutionCode || '').trim();
+      if (!solution) return { hasCorrect: false };
+      const parsed = parseJsonValue(item.text_answer, {});
+      const studentCode = (parsed?.code || '').trim();
+      return {
+        hasCorrect: true,
+        correctText: solution,
+        isMatch: normalizeText(studentCode) === normalizeText(solution),
+      };
+    }
+
+    return { hasCorrect: false };
   };
 
   const getCurrentScore = (answer) => {
@@ -123,6 +339,7 @@ const SubmissionReview = () => {
         question_type: q.question_type,
         question_points: q.points,
         config: q.config || {},
+        choices: q.choices || [],
         text_answer: answer?.text_answer || null,
         selected_choices: answer?.selected_choices || [],
         auto_score: answer?.auto_score ?? null,
@@ -210,8 +427,13 @@ const SubmissionReview = () => {
           if (reviewItems.length === 0) {
             return <div className="sr-empty">Нет вопросов в этом задании</div>;
           }
-          return reviewItems.map((item) => (
-            <div key={item.id} className={`sr-answer-card ${!item.hasAnswer ? 'sr-no-answer' : ''}`}>
+          return reviewItems.map((item) => {
+            const correctInfo = getCorrectAnswerInfo(item);
+            const answerClassName = item.hasAnswer && correctInfo.hasCorrect
+              ? (correctInfo.isMatch ? 'is-correct' : 'is-incorrect')
+              : '';
+            return (
+              <div key={item.id} className={`sr-answer-card ${!item.hasAnswer ? 'sr-no-answer' : ''}`}>
               <div className="sr-answer-header">
                 <div className="sr-question-number">Вопрос {item.index + 1}</div>
                 <div className="sr-question-type-badge">
@@ -254,10 +476,19 @@ const SubmissionReview = () => {
 
               <div className="sr-student-answer">
                 <strong>Ответ ученика:</strong>
-                <div className="sr-answer-content">
+                <div className={`sr-answer-content ${answerClassName}`}>
                   {item.hasAnswer ? getAnswerDisplay(item) : '(Ученик не ответил на этот вопрос)'}
                 </div>
               </div>
+
+              {correctInfo.hasCorrect && (
+                <div className="sr-correct-answer">
+                  <strong>Правильный ответ:</strong>
+                  <div className="sr-answer-content sr-correct-content">
+                    {correctInfo.correctText || '(Не задан)'}
+                  </div>
+                </div>
+              )}
 
               {/* Прикреплённые файлы от ученика */}
               {item.attachments?.length > 0 && (
@@ -362,7 +593,8 @@ const SubmissionReview = () => {
                 </div>
               )}
             </div>
-          ));
+            );
+          });
         })()}
       </div>
 
