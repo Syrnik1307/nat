@@ -140,6 +140,9 @@ urlpatterns = [
     
     # Schedule (web UI + API)
     path('schedule/', include('schedule.urls')),
+
+    # Recording video stream alias (served behind /api/* nginx proxy)
+    path('api/schedule/recordings/<int:recording_id>/stream/', schedule_views.stream_recording, name='stream_recording_api_alias'),
     
     # Zoom Pool API
     path('api/zoom-pool/', include('zoom_pool.urls')),
