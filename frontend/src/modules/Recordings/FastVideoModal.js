@@ -26,25 +26,11 @@ function FastVideoModal({ recording, onClose }) {
   const getVideoUrl = useCallback(() => {
     if (!recording?.id) return null;
     
-    // Приоритет: streaming_url > play_url (прямая ссылка) > stream endpoint
-    if (recording.streaming_url) {
-      return recording.streaming_url;
-    }
-    
-    // Если есть play_url и это НЕ Google Drive - используем его
-    const isGoogleDriveUrl = recording.play_url && (
-      recording.play_url.includes('drive.google.com') ||
-      recording.play_url.includes('docs.google.com')
-    );
-    
-    if (recording.play_url && !isGoogleDriveUrl) {
-      return recording.play_url;
-    }
-    
-    // Для Google Drive или отсутствия play_url используем backend stream endpoint
+    // ВСЕГДА используем backend stream endpoint для надежного стриминга
+    // Backend проксирует Google Drive с авторизацией и поддержкой Range requests
     const token = getAccessToken();
     return `/schedule/api/recordings/${recording.id}/stream/?token=${encodeURIComponent(token)}`;
-  }, [recording?.id, recording?.streaming_url, recording?.play_url]);
+  }, [recording?.id]);
 
   const videoUrl = getVideoUrl();
 
