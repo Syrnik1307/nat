@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import ReactDOM from 'react-dom';
 import './FastVideoModal.css';
+import { ensureFreshAccessToken } from '../../apiService';
 
 /**
  * FastVideoModal - Быстрое модальное окно для просмотра записей
@@ -12,9 +13,6 @@ import './FastVideoModal.css';
  * 4. Lazy-loaded детали (подгружаются после открытия)
  */
 
-// Токен для авторизации
-const getAccessToken = () => localStorage.getItem('tp_access_token') || '';
-
 function FastVideoModal({ recording, onClose }) {
   const videoRef = useRef(null);
   const modalRef = useRef(null);
@@ -24,18 +22,49 @@ function FastVideoModal({ recording, onClose }) {
   const [videoState, setVideoState] = useState('idle'); // idle | loading | ready | error
   const [showSlowHint, setShowSlowHint] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [authToken, setAuthToken] = useState('');
 
-  // Быстрое получение URL для стриминга
-  const getVideoUrl = useCallback(() => {
-    if (!recording?.id) return null;
-    
-    // ВСЕГДА используем backend stream endpoint для надежного стриминга
-    // Backend проксирует Google Drive с авторизацией и поддержкой Range requests
-    const token = getAccessToken();
-    return `/api/schedule/recordings/${recording.id}/stream/?token=${encodeURIComponent(token)}`;
+  // Гарантируем свежий access token перед выдачей video src.
+  // Важно: <video> не делает refresh как axios interceptor.
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const token = await ensureFreshAccessToken(90);
+      if (cancelled) return;
+
+      if (!token) {
+        setAuthToken('');
+        setVideoError(true);
+        setVideoErrorText('Сессия истекла. Обновите страницу и войдите снова.');
+        setVideoState('error');
+        return;
+      }
+
+      setAuthToken(token);
+      setVideoError(false);
+      setVideoErrorText('');
+
+      // Если video уже смонтирован — перезагрузим, чтобы подхватил новый токен
+      if (videoRef.current) {
+        try {
+          videoRef.current.load();
+        } catch (_) {
+          // ignore
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [recording?.id]);
 
-  const videoUrl = getVideoUrl();
+  const videoUrl = useCallback(() => {
+    if (!recording?.id) return null;
+    if (!authToken) return null;
+    return `/api/schedule/recordings/${recording.id}/stream/?token=${encodeURIComponent(authToken)}`;
+  }, [recording?.id, authToken])();
 
   // Если загрузка видео затянулась, показываем подсказку
   useEffect(() => {

@@ -208,6 +208,50 @@ export const verifyToken = () => {
         .catch(() => false);
 };
 
+  // =====================
+  // Token helper for non-Axios consumers (e.g., <video> src)
+  // =====================
+  const isJwtExpiringSoon = (token, minTtlSeconds = 60) => {
+    if (!token) return true;
+    try {
+      const part = token.split('.')[1];
+      if (!part) return true;
+      const base64 = part.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+      const payload = JSON.parse(atob(padded));
+      if (!payload.exp) return true;
+      const nowSec = Date.now() / 1000;
+      return payload.exp <= (nowSec + minTtlSeconds);
+    } catch (_) {
+      return true;
+    }
+  };
+
+  export const ensureFreshAccessToken = async (minTtlSeconds = 60) => {
+    const access = getAccessToken();
+    if (access && !isJwtExpiringSoon(access, minTtlSeconds)) {
+      return access;
+    }
+
+    const refresh = getRefreshToken();
+    if (!refresh) {
+      return null;
+    }
+
+    try {
+      const refreshUrl = apiClient.defaults.baseURL + 'jwt/refresh/';
+      const res = await axios.post(refreshUrl, { refresh });
+      const newAccess = res?.data?.access;
+      if (typeof newAccess === 'string' && newAccess.length > 0) {
+        setTokens({ access: newAccess });
+        return newAccess;
+      }
+    } catch (_) {
+      // ignore; caller will handle null
+    }
+    return null;
+  };
+
 // =====================
 // User profile
 // =====================
