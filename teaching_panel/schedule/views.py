@@ -3287,6 +3287,8 @@ def stream_recording(request, recording_id):
         
         # Проксируем скачивание через AuthorizedSession, поддерживаем Range (перемотка)
         range_header = request.META.get('HTTP_RANGE')
+        
+        logger.error(f"STREAM_DEBUG: START Rec={recording.id} File={recording.gdrive_file_id} Range={range_header}")
 
         creds = getattr(getattr(gdrive.service, '_http', None), 'credentials', None)
         if not creds:
@@ -3299,10 +3301,14 @@ def stream_recording(request, recording_id):
         headers = {}
         if range_header:
             headers['Range'] = range_header
+            
+        logger.error(f"STREAM_DEBUG: Requesting {drive_url} Headers={headers}")
 
         try:
             upstream = session.get(drive_url, headers=headers, stream=True, timeout=300)
+            logger.error(f"STREAM_DEBUG: Response Status={upstream.status_code} Content-Type={upstream.headers.get('Content-Type')}")
         except Exception as e:
+
             logger.error(f"Failed to open upstream stream from GDrive: {e}")
             return Response({'error': 'Не удалось открыть видео'}, status=status.HTTP_502_BAD_GATEWAY)
 
