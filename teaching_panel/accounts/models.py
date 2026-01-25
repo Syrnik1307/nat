@@ -509,6 +509,46 @@ class MessageReadStatus(models.Model):
         return f"{self.user.get_full_name()} - {self.message.text[:30]} ({'✓' if self.is_read else '✗'})"
 
 
+class AttendanceAlertRead(models.Model):
+    """Отметка о прочтении оповещений о посещаемости"""
+
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='attendance_alert_reads',
+        verbose_name='Пользователь'
+    )
+    student = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='attendance_alert_as_student_reads',
+        verbose_name='Ученик'
+    )
+    group = models.ForeignKey(
+        'schedule.Group',
+        on_delete=models.CASCADE,
+        related_name='attendance_alert_reads',
+        verbose_name='Группа'
+    )
+    last_seen_absences = models.PositiveIntegerField(
+        'Максимум пропусков на момент прочтения',
+        default=0
+    )
+    read_at = models.DateTimeField('Прочитано', null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Прочитанное оповещение о посещаемости'
+        verbose_name_plural = 'Прочитанные оповещения о посещаемости'
+        unique_together = ['user', 'student', 'group']
+        indexes = [
+            models.Index(fields=['user', 'group'], name='att_alert_read_user_group'),
+            models.Index(fields=['user', 'student'], name='att_alert_read_user_student'),
+        ]
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.student.get_full_name()} ({self.group.name})"
+
+
 class EmailVerification(models.Model):
     """Модель для верификации email адреса"""
     

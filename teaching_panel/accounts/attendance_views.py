@@ -14,7 +14,8 @@ from accounts.models import (
     AttendanceRecord, 
     UserRating, 
     IndividualStudent,
-    CustomUser
+    CustomUser,
+    AttendanceAlertRead
 )
 from accounts.attendance_service import AttendanceService, RatingService
 from accounts.attendance_serializers import (
@@ -1061,6 +1062,23 @@ class AttendanceAlertsViewSet(viewsets.ViewSet):
                 alert['group_id'] = group.id
                 alert['group_name'] = group.name
                 all_alerts.append(alert)
+
+        if all_alerts:
+            student_ids = {a['student_id'] for a in all_alerts}
+            group_ids = {a['group_id'] for a in all_alerts}
+            read_entries = AttendanceAlertRead.objects.filter(
+                user=user,
+                student_id__in=student_ids,
+                group_id__in=group_ids
+            )
+            read_map = {
+                (entry.student_id, entry.group_id): entry.last_seen_absences
+                for entry in read_entries
+            }
+            all_alerts = [
+                a for a in all_alerts
+                if read_map.get((a['student_id'], a['group_id']), 0) < a['consecutive_absences']
+            ]
         
         # Сортируем по количеству пропусков (критичные вверху)
         all_alerts.sort(key=lambda x: -x['consecutive_absences'])
@@ -1071,3 +1089,57 @@ class AttendanceAlertsViewSet(viewsets.ViewSet):
             'critical_count': sum(1 for a in all_alerts if a['severity'] == 'critical'),
             'warning_count': sum(1 for a in all_alerts if a['severity'] == 'warning'),
         })
+
+    @action(detail=False, methods=['post'], url_path='mark-read')
+    def mark_read(self, request):
+        """POST /api/attendance-alerts/mark-read/"""
+        user = request.user
+        if user.role not in ['teacher', 'admin']:
+            return Response(
+                {'error': 'Только для преподавателей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        payload = request.data or {}
+        items = payload.get('items')
+        if not items and all(k in payload for k in ('student_id', 'group_id', 'consecutive_absences')):
+            items = [payload]
+        if not items:
+            return Response({'error': 'Пустой список'}, status=status.HTTP_400_BAD_REQUEST)
+
+        group_ids = {int(i.get('group_id')) for i in items if i.get('group_id')}
+        if user.role == 'teacher':
+            allowed_group_ids = set(Group.objects.filter(teacher=user, id__in=group_ids).values_list('id', flat=True))
+        else:
+            allowed_group_ids = group_ids
+
+        now = timezone.now()
+        updated = 0
+        for item in items:
+            try:
+                student_id = int(item.get('student_id'))
+                group_id = int(item.get('group_id'))
+                consecutive_absences = int(item.get('consecutive_absences'))
+            except (TypeError, ValueError):
+                continue
+
+            if group_id not in allowed_group_ids:
+                continue
+
+            entry, created = AttendanceAlertRead.objects.get_or_create(
+                user=user,
+                student_id=student_id,
+                group_id=group_id,
+                defaults={
+                    'last_seen_absences': consecutive_absences,
+                    'read_at': now
+                }
+            )
+
+            if not created and consecutive_absences > entry.last_seen_absences:
+                entry.last_seen_absences = consecutive_absences
+                entry.read_at = now
+                entry.save(update_fields=['last_seen_absences', 'read_at'])
+            updated += 1
+
+        return Response({'detail': 'Отмечено как прочитанное', 'updated': updated})

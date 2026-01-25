@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { getAccessToken } from '../apiService';
+import { getAccessToken, getTeacherStatsSummary } from '../apiService';
 import './NavBar.css';
 
 const NavBar = () => {
@@ -9,6 +9,7 @@ const NavBar = () => {
   const [messages, setMessages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hideStatus, setHideStatus] = useState(false);
+  const [pendingHomeworkCount, setPendingHomeworkCount] = useState(0);
 
   useEffect(() => {
     if (accessTokenValid) {
@@ -17,6 +18,28 @@ const NavBar = () => {
       return () => clearInterval(interval);
     }
   }, [accessTokenValid]);
+
+  useEffect(() => {
+    if (!accessTokenValid || role !== 'teacher') return;
+
+    let isMounted = true;
+    const loadPendingHomework = async () => {
+      try {
+        const res = await getTeacherStatsSummary();
+        const pending = Number(res?.data?.pending_submissions || 0);
+        if (isMounted) setPendingHomeworkCount(pending);
+      } catch (error) {
+        if (isMounted) setPendingHomeworkCount(0);
+      }
+    };
+
+    loadPendingHomework();
+    const interval = setInterval(loadPendingHomework, 60000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [accessTokenValid, role]);
 
   useEffect(() => {
     if (messages.length > 1) {
@@ -65,7 +88,12 @@ const NavBar = () => {
             {accessTokenValid && role === 'teacher' && (
               <>
                 <Link className="navbar-link" to="/groups/manage">Занятия</Link>
-                <Link className="navbar-link" to="/homework/manage">ДЗ</Link>
+                <Link className="navbar-link" to="/homework/manage">
+                  ДЗ
+                  {pendingHomeworkCount > 0 && (
+                    <span className="navbar-link-badge">{pendingHomeworkCount}</span>
+                  )}
+                </Link>
                 <Link className="navbar-link" to="/recurring-lessons/manage">Расписание</Link>
                 <Link className="navbar-link" to="/calendar">Календарь</Link>
                 <Link className="navbar-link" to="/teacher-recordings">Записи</Link>

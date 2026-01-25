@@ -44,7 +44,10 @@
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-muted);
-  transition: all 0.2s ease;
+  transition: color var(--duration-fast) var(--ease-smooth),
+    background var(--duration-fast) var(--ease-smooth),
+    border-color var(--duration-fast) var(--ease-smooth),
+    transform var(--duration-fast) var(--ease-smooth);
 }
 
 .homework-tab:hover {
@@ -64,6 +67,29 @@
 
 .tab-label {
   font-size: 0.875rem;
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  margin-left: 2px;
+  transition: transform var(--duration-fast) var(--ease-smooth),
+    background var(--duration-fast) var(--ease-smooth);
+}
+
+.homework-tab.active .tab-badge {
+  background: #ffffff;
+  color: #4f46e5;
 }
 
 /* Контент */

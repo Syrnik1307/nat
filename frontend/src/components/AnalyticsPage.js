@@ -165,6 +165,9 @@ const AnalyticsPage = () => {
             const alertsList = (data.alerts || []).map(alert => ({
                 type: 'consecutive_absences',
                 severity: alert.severity,
+                student_id: alert.student_id,
+                group_id: alert.group_id,
+                consecutive_absences: alert.consecutive_absences,
                 student: {
                     id: alert.student_id,
                     first_name: alert.student_name?.split(' ')[0] || '',
@@ -183,6 +186,23 @@ const AnalyticsPage = () => {
         } catch (e) {
             console.error('Error loading alerts:', e);
             setAlerts([]);
+        }
+    };
+
+    const buildReadItem = (alert) => ({
+        student_id: alert.student_id,
+        group_id: alert.group_id,
+        consecutive_absences: alert.consecutive_absences,
+    });
+
+    const markAlertsRead = async (items) => {
+        if (!items?.length) return;
+        try {
+            await apiClient.post('/attendance-alerts/mark-read/', { items });
+            const keySet = new Set(items.map(i => `${i.student_id}:${i.group_id}:${i.consecutive_absences}`));
+            setAlerts(prev => prev.filter(a => !keySet.has(`${a.student_id}:${a.group_id}:${a.consecutive_absences}`)));
+        } catch (e) {
+            console.error('Error marking alerts read:', e);
         }
     };
 
@@ -773,6 +793,15 @@ const AnalyticsPage = () => {
                 {alerts.length > 0 && (
                     <span className="section-badge section-badge--warning">{alerts.length}</span>
                 )}
+                {alerts.length > 0 && (
+                    <button
+                        type="button"
+                        className="section-header-button"
+                        onClick={() => markAlertsRead(alerts.map(buildReadItem))}
+                    >
+                        Прочитать все
+                    </button>
+                )}
             </div>
             
             {alerts.length === 0 ? (
@@ -797,19 +826,27 @@ const AnalyticsPage = () => {
                                 <div className="alert-item-title">{alert.message}</div>
                                 <div className="alert-item-meta">Группа: {alert.group.name}</div>
                             </div>
-                            <button 
-                                className="alert-item-action"
-                                onClick={() => {
-                                    setSelectedStudent({
-                                        ...alert.student,
-                                        groupId: alert.group.id,
-                                        groupName: alert.group.name
-                                    });
-                                    setActiveTab('students');
-                                }}
-                            >
-                                Подробнее
-                            </button>
+                            <div className="alert-item-actions">
+                                <button 
+                                    className="alert-item-dismiss"
+                                    onClick={() => markAlertsRead([buildReadItem(alert)])}
+                                >
+                                    Прочитано
+                                </button>
+                                <button 
+                                    className="alert-item-action"
+                                    onClick={() => {
+                                        setSelectedStudent({
+                                            ...alert.student,
+                                            groupId: alert.group.id,
+                                            groupName: alert.group.name
+                                        });
+                                        setActiveTab('students');
+                                    }}
+                                >
+                                    Подробнее
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>

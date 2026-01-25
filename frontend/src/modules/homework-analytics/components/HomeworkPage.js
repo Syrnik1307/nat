@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../auth';
+import { getTeacherStatsSummary } from '../../../apiService';
 import './HomeworkPage.css';
 
 // Ленивая загрузка вкладок для ускорения переключений
@@ -35,6 +36,7 @@ const HomeworkPage = () => {
   };
   
   const [activeTab, setActiveTab] = useState(getActiveTabFromPath());
+  const [pendingReviewCount, setPendingReviewCount] = useState(0);
   
   // Состояние для редактирования ДЗ
   const [editingHomework, setEditingHomework] = useState(null);
@@ -55,6 +57,28 @@ const HomeworkPage = () => {
     schedulePreload(loadSubmissionsList);
     schedulePreload(loadGradedSubmissionsList);
   }, []);
+
+  useEffect(() => {
+    if (role !== 'teacher') return;
+
+    let isMounted = true;
+    const loadPending = async () => {
+      try {
+        const res = await getTeacherStatsSummary();
+        const pending = Number(res?.data?.pending_submissions || 0);
+        if (isMounted) setPendingReviewCount(pending);
+      } catch (e) {
+        if (isMounted) setPendingReviewCount(0);
+      }
+    };
+
+    loadPending();
+    const interval = setInterval(loadPending, 60000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [role]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -121,6 +145,9 @@ const HomeworkPage = () => {
           onMouseEnter={() => schedulePreload(loadSubmissionsList)}
         >
           <span className="tab-label">На проверку</span>
+          {pendingReviewCount > 0 && (
+            <span className="tab-badge">{pendingReviewCount}</span>
+          )}
         </button>
         <button
           className={`homework-tab ${activeTab === 'graded' ? 'active' : ''}`}

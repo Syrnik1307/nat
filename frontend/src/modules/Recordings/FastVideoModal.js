@@ -1,83 +1,30 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import ReactDOM from 'react-dom';
 import './FastVideoModal.css';
-import { ensureFreshAccessToken } from '../../apiService';
 
 /**
  * FastVideoModal - Быстрое модальное окно для просмотра записей
  * 
- * Оптимизации:
- * 1. Минимальный рендер - только видео и базовая информация
- * 2. Прямой streaming URL без промежуточных запросов
- * 3. Мгновенное открытие с анимацией
- * 4. Lazy-loaded детали (подгружаются после открытия)
+ * Использует Google Drive embed (iframe) для мгновенного воспроизведения.
+ * Fallback: прямая ссылка на скачивание.
  */
 
 function FastVideoModal({ recording, onClose }) {
-  const videoRef = useRef(null);
+  const iframeRef = useRef(null);
   const modalRef = useRef(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [videoError, setVideoError] = useState(false);
-  const [videoErrorText, setVideoErrorText] = useState('');
-  const [videoState, setVideoState] = useState('idle'); // idle | loading | ready | error
-  const [showSlowHint, setShowSlowHint] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [authToken, setAuthToken] = useState('');
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [iframeError, setIframeError] = useState(false);
 
-  // Гарантируем свежий access token перед выдачей video src.
-  // Важно: <video> не делает refresh как axios interceptor.
-  useEffect(() => {
-    let cancelled = false;
+  // Google Drive embed URL
+  const embedUrl = recording?.gdrive_file_id 
+    ? `https://drive.google.com/file/d/${recording.gdrive_file_id}/preview`
+    : null;
 
-    (async () => {
-      const token = await ensureFreshAccessToken(90);
-      if (cancelled) return;
-
-      if (!token) {
-        setAuthToken('');
-        setVideoError(true);
-        setVideoErrorText('Сессия истекла. Обновите страницу и войдите снова.');
-        setVideoState('error');
-        return;
-      }
-
-      setAuthToken(token);
-      setVideoError(false);
-      setVideoErrorText('');
-
-      // Если video уже смонтирован — перезагрузим, чтобы подхватил новый токен
-      if (videoRef.current) {
-        try {
-          videoRef.current.load();
-        } catch (_) {
-          // ignore
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [recording?.id]);
-
-  const videoUrl = useCallback(() => {
-    if (!recording?.id) return null;
-    if (!authToken) return null;
-    return `/api/schedule/recordings/${recording.id}/stream/?token=${encodeURIComponent(authToken)}`;
-  }, [recording?.id, authToken])();
-
-  // Если загрузка видео затянулась, показываем подсказку
-  useEffect(() => {
-    if (!videoUrl || videoError) return;
-
-    if (videoState !== 'loading') {
-      setShowSlowHint(false);
-      return;
-    }
-
-    const timer = setTimeout(() => setShowSlowHint(true), 8000);
-    return () => clearTimeout(timer);
-  }, [videoUrl, videoError, videoState]);
+  // Fallback: direct download link
+  const downloadUrl = recording?.gdrive_file_id
+    ? `https://drive.google.com/uc?export=download&id=${recording.gdrive_file_id}`
+    : recording?.download_url || null;
 
   // Закрытие по Escape
   useEffect(() => {
@@ -107,55 +54,16 @@ function FastVideoModal({ recording, onClose }) {
     }
   }, [onClose]);
 
-  // Обработка ошибки видео
-  const handleVideoError = useCallback((e) => {
-    const video = videoRef.current;
-    let errorMsg = 'Не удалось загрузить видео';
-
-    if (video?.error) {
-      switch (video.error.code) {
-        case MediaError.MEDIA_ERR_ABORTED:
-          errorMsg = 'Загрузка прервана';
-          break;
-        case MediaError.MEDIA_ERR_NETWORK:
-          errorMsg = 'Ошибка сети. Проверьте подключение';
-          break;
-        case MediaError.MEDIA_ERR_DECODE:
-          errorMsg = 'Ошибка декодирования видео';
-          break;
-        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-          errorMsg = 'Формат видео не поддерживается';
-          break;
-        default:
-          break;
-      }
-    }
-
-    setVideoErrorText(errorMsg);
-    setVideoState('error');
-    setVideoError(true);
+  // Обработка загрузки iframe
+  const handleIframeLoad = useCallback(() => {
+    setIframeLoaded(true);
   }, []);
 
-  // Обработка успешной загрузки
-  const handleVideoCanPlay = useCallback(() => {
-    setVideoError(false);
-    setVideoErrorText('');
-    setVideoState('ready');
-  }, []);
-
-  const handleVideoLoadStart = useCallback(() => {
-    setVideoState('loading');
-    setShowSlowHint(false);
-  }, []);
-
-  // Play/Pause отслеживание
-  const handlePlay = useCallback(() => setIsPlaying(true), []);
-  const handlePause = useCallback(() => setIsPlaying(false), []);
-
+  // Открыть в новой вкладке (Google Drive viewer)
   const handleOpenInNewTab = useCallback(() => {
-    if (!videoUrl || typeof window === 'undefined') return;
-    window.open(videoUrl, '_blank', 'noopener,noreferrer');
-  }, [videoUrl]);
+    if (!recording?.gdrive_file_id) return;
+    window.open(`https://drive.google.com/file/d/${recording.gdrive_file_id}/view`, '_blank', 'noopener,noreferrer');
+  }, [recording?.gdrive_file_id]);
 
   // Получаем базовую информацию
   const title = recording?.title || recording?.lesson_info?.subject || 'Запись урока';
@@ -196,45 +104,29 @@ function FastVideoModal({ recording, onClose }) {
           )}
         </header>
 
-        {/* Видеоплеер */}
-        <div className={`fast-video-player ${isPlaying ? 'is-playing' : ''}`}>
-          {videoUrl && !videoError ? (
+        {/* Видеоплеер (Google Drive Embed) */}
+        <div className="fast-video-player">
+          {embedUrl ? (
             <>
-              {videoState === 'loading' && (
+              {!iframeLoaded && (
                 <div className="fast-video-loading" role="status" aria-live="polite">
                   <div className="fast-video-loading-spinner" aria-hidden="true" />
                   <div className="fast-video-loading-text">
                     <div className="fast-video-loading-title">Загрузка видео…</div>
-                    {showSlowHint && (
-                      <div className="fast-video-loading-hint">
-                        Видео загружается дольше обычного. Если не запускается, откройте в новой вкладке.
-                      </div>
-                    )}
                   </div>
-                  {showSlowHint && (
-                    <button type="button" className="fast-video-retry" onClick={handleOpenInNewTab}>
-                      Открыть в новой вкладке
-                    </button>
-                  )}
                 </div>
               )}
 
-              <video
-                ref={videoRef}
-                src={videoUrl}
-                controls
-                autoPlay={false}
-                playsInline
-                preload="metadata"
-                onError={handleVideoError}
-                onCanPlay={handleVideoCanPlay}
-                onLoadStart={handleVideoLoadStart}
-                onPlay={handlePlay}
-                onPause={handlePause}
-                className="fast-video-element"
-              >
-                Ваш браузер не поддерживает воспроизведение видео.
-              </video>
+              <iframe
+                ref={iframeRef}
+                src={embedUrl}
+                className="fast-video-iframe"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+                onLoad={handleIframeLoad}
+                style={{ opacity: iframeLoaded ? 1 : 0 }}
+                title={title}
+              />
             </>
           ) : (
             <div className="fast-video-error">
@@ -244,30 +136,21 @@ function FastVideoModal({ recording, onClose }) {
                   <path d="M12 8v4M12 16h.01" />
                 </svg>
               </div>
-              <p>{videoErrorText || 'Не удалось загрузить видео'}</p>
-              <button 
-                className="fast-video-retry"
-                onClick={() => {
-                  setVideoError(false);
-                  setVideoErrorText('');
-                  setVideoState('loading');
-                  setShowSlowHint(false);
-                  if (videoRef.current) {
-                    videoRef.current.load();
-                  }
-                }}
-              >
-                Попробовать снова
-              </button>
-
-              {videoUrl && (
-                <button type="button" className="fast-video-retry" onClick={handleOpenInNewTab}>
-                  Открыть в новой вкладке
-                </button>
+              <p>Видео недоступно</p>
+              {downloadUrl && (
+                <a 
+                  href={downloadUrl}
+                  className="fast-video-retry"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Скачать видео
+                </a>
               )}
             </div>
           )}
         </div>
+
 
         {/* Детали (lazy-loaded) */}
         {showDetails && (

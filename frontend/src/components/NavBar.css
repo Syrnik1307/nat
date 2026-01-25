@@ -77,6 +77,29 @@
   position: relative;
 }
 
+.navbar-link-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  transform: translateY(-1px);
+  transition: background-color var(--duration-fast) var(--ease-smooth),
+    color var(--duration-fast) var(--ease-smooth);
+}
+
+.navbar-link.active .navbar-link-badge {
+  background: #ffffff;
+  color: #4f46e5;
+}
+
 .navbar-link:hover {
   background: var(--bg-secondary);
   color: var(--color-primary);

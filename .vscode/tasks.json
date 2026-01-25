@@ -1010,6 +1010,272 @@
 			"label": "check recording 14",
 			"type": "shell",
 			"command": "ssh tp \"cd /var/www/teaching_panel && source venv/bin/activate && python manage.py shell --command='from schedule.models import LessonRecording; r=LessonRecording.objects.get(id=14); print(r.play_url); print(r.gdrive_file_id)'\""
+		},
+		{
+			"label": "prod: sync+build+restart (stream fix)",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel && sudo git fetch origin main && sudo git reset --hard origin/main && cd frontend && npm run build && sudo systemctl restart teaching_panel && echo DEPLOY_OK && sudo systemctl is-active teaching_panel"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "prod: test recording stream (range)",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && TOKEN=$(python manage.py shell -c \"from django.contrib.auth import get_user_model; from rest_framework_simplejwt.tokens import AccessToken; User=get_user_model(); u=User.objects.get(id=4); print(str(AccessToken.for_user(u)))\") && echo TOKEN_LEN:${#TOKEN} && curl -k -sS -D - -o /dev/null -H 'Range: bytes=0-1' \"https://lectio.tw1.ru/api/schedule/recordings/14/stream/?token=$TOKEN\" | sed -n '1,25p'"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: deploy stream token refresh",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel && sudo git fetch origin main && sudo git reset --hard origin/main && cd frontend && npm run build && sudo systemctl restart teaching_panel && echo DEPLOY_OK && sudo systemctl is-active teaching_panel"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "prod: stream headers check (range)",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"bash -lc \"cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && python -c 'from django.contrib.auth import get_user_model; from rest_framework_simplejwt.tokens import AccessToken; import ssl,http.client,urllib.parse; u=get_user_model().objects.get(id=4); token=str(AccessToken.for_user(u)); conn=http.client.HTTPSConnection(\\\"lectio.tw1.ru\\\", context=ssl.create_default_context(), timeout=30); path=\\\"/api/schedule/recordings/14/stream/?token=\\\"+urllib.parse.quote(token); conn.request(\\\"GET\\\", path, headers={\\\"Range\\\":\\\"bytes=0-1\\\"}); resp=conn.getresponse(); print(\\\"STATUS\\\", resp.status, resp.reason); print(\\\"content-type:\\\", resp.getheader(\\\"Content-Type\\\")); print(\\\"content-range:\\\", resp.getheader(\\\"Content-Range\\\")); print(\\\"accept-ranges:\\\", resp.getheader(\\\"Accept-Ranges\\\")); print(\\\"content-length:\\\", resp.getheader(\\\"Content-Length\\\")); data=resp.read(16); print(\\\"BODY_PREFIX_HEX\\\", data.hex())'\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: stream headers check (venv python)",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"/var/www/teaching_panel/venv/bin/python /var/www/teaching_panel/teaching_panel/manage.py shell -c \"from django.contrib.auth import get_user_model; from rest_framework_simplejwt.tokens import AccessToken; import ssl,http.client,urllib.parse; u=get_user_model().objects.get(id=4); token=str(AccessToken.for_user(u)); conn=http.client.HTTPSConnection('lectio.tw1.ru', context=ssl.create_default_context(), timeout=30); path='/api/schedule/recordings/14/stream/?token='+urllib.parse.quote(token); conn.request('GET', path, headers={'Range':'bytes=0-1'}); resp=conn.getresponse(); print('STATUS', resp.status, resp.reason); print('content-type:', resp.getheader('Content-Type')); print('content-range:', resp.getheader('Content-Range')); print('accept-ranges:', resp.getheader('Accept-Ranges')); print('content-length:', resp.getheader('Content-Length')); data=resp.read(16); print('BODY_PREFIX_HEX', data.hex())\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: echo sanity",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"echo HI"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: venv python version quick",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"/var/www/teaching_panel/venv/bin/python -V"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: manage.py shell -c sanity",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"/var/www/teaching_panel/venv/bin/python /var/www/teaching_panel/teaching_panel/manage.py shell -c \"print('OK')\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: manage.py shell --help (head)",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"/var/www/teaching_panel/venv/bin/python /var/www/teaching_panel/teaching_panel/manage.py shell --help | sed -n '1,80p'"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: django setup sanity (python -c)",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel/teaching_panel && /var/www/teaching_panel/venv/bin/python -c \"import os; os.environ.setdefault('DJANGO_SETTINGS_MODULE','teaching_panel.settings'); import django; django.setup(); print('OK')\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: python stderr capture sanity",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel/teaching_panel && /var/www/teaching_panel/venv/bin/python -c \"print('HI')\" > /tmp/py_sanity.txt 2>&1; echo DONE; tail -n 20 /tmp/py_sanity.txt"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: basic shell output",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"pwd; echo AAA; ls -la /tmp | sed -n '1,5p'"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: manage.py shell heredoc sanity",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel/teaching_panel && /var/www/teaching_panel/venv/bin/python manage.py shell <<'PY'\nprint('OK')\nexit()\nPY"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: check app logs",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"sudo tail -n 50 /var/log/teaching_panel/error.log"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: get token",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel/teaching_panel && ../venv/bin/python manage.py shell -c \"from django.contrib.auth import get_user_model; from rest_framework_simplejwt.tokens import AccessToken; u=get_user_model().objects.get(id=4); print('TOKEN:' + str(AccessToken.for_user(u)))\""
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: deploy backend logs",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel && sudo git fetch origin main && sudo git reset --hard origin/main && sudo systemctl restart teaching_panel && echo RESTART_OK"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: cat nginx config",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cat /etc/nginx/sites-enabled/teaching_panel"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: grep stream debug logs",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"sudo tail -n 100 /var/log/teaching_panel/error.log | grep STREAM_DEBUG"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: check urls.py",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cat /var/www/teaching_panel/teaching_panel/teaching_panel/urls.py"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: deploy and tail logs",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel && sudo git fetch origin main && sudo git reset --hard origin/main && sudo systemctl restart teaching_panel && echo DEPLOY_LOGS_OK && sudo tail -f /var/log/teaching_panel/error.log"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: check permissions",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"ls -la /var/www/teaching_panel/teaching_panel"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: run test script as www-data",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cat > /tmp/test_stream.py <<'EOF'\nimport os\nimport django\nimport sys\nimport logging\n\nos.environ.setdefault(\"DJANGO_SETTINGS_MODULE\", \"teaching_panel.settings\")\ndjango.setup()\n\nfrom schedule.models import LessonRecording\nfrom schedule.gdrive_utils import get_gdrive_manager\nfrom google.auth.transport.requests import AuthorizedSession\n\nrec_id = 14\ntry:\n    rec = LessonRecording.objects.get(id=rec_id)\n    print(f\"Recording {rec_id} found. File ID: {rec.gdrive_file_id}\")\n    \n    gdrive = get_gdrive_manager()\n    creds = getattr(getattr(gdrive.service, \"_http\", None), \"credentials\", None)\n    \n    session = AuthorizedSession(creds)\n    drive_url = f\"https://www.googleapis.com/drive/v3/files/{rec.gdrive_file_id}?alt=media\"\n    \n    print(\"Starting request as user:\", os.environ.get(\"USER\"), os.getuid())\n    resp = session.get(drive_url, stream=True, timeout=30)\n    print(f\"Response status: {resp.status_code}\")\n    print(f\"Headers: {resp.headers}\")\n    \n    chunk = next(resp.iter_content(chunk_size=1024))\n    print(f\"First chunk read: {len(chunk)} bytes\")\n\nexcept Exception as e:\n    print(f\"Error: {e}\")\nEOF\nsudo -u www-data /var/www/teaching_panel/venv/bin/python /tmp/test_stream.py"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: check apps.py",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cat /var/www/teaching_panel/teaching_panel/schedule/apps.py"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "prod: deploy perf fix",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"cd /var/www/teaching_panel && sudo git fetch origin main && sudo git reset --hard origin/main && sudo systemctl restart teaching_panel && echo DEPLOY_PERF_OK"
+			],
+			"isBackground": false,
+			"problemMatcher": []
 		}
 	]
 }
