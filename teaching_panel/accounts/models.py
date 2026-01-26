@@ -1152,6 +1152,10 @@ class NotificationSettings(models.Model):
 
     # Ученикам — базовые
     notify_homework_graded = models.BooleanField(default=True)
+    notify_homework_regraded = models.BooleanField(
+        default=True,
+        help_text='Уведомлять при переоценке/перепроверке ДЗ'
+    )
     notify_homework_deadline = models.BooleanField(default=True)
     notify_lesson_reminders = models.BooleanField(default=True)
     notify_new_homework = models.BooleanField(default=True)
@@ -1202,6 +1206,7 @@ class NotificationLog(models.Model):
     TYPE_CHOICES = (
         ('homework_submitted', 'ДЗ сдано учеником'),
         ('homework_graded', 'ДЗ проверено учителем'),
+        ('homework_regraded', 'ДЗ переоценено учителем'),
         ('homework_deadline', 'Напоминание о дедлайне ДЗ'),
         ('subscription_expiring', 'Истекает подписка'),
         ('payment_success', 'Оплата прошла успешно'),

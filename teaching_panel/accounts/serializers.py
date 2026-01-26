@@ -223,6 +223,7 @@ class NotificationSettingsSerializer(serializers.ModelSerializer):
             'notify_materials_added',
             # Базовые — ученик
             'notify_homework_graded',
+            'notify_homework_regraded',
             'notify_homework_deadline',
             'notify_lesson_reminders',
             'notify_new_homework',

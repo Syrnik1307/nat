@@ -1511,6 +1511,7 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         submission = self.get_object()
 
         status_before = submission.status
+        total_before = submission.total_score
         
         # Проверяем права: только учитель этого задания
         if request.user != submission.homework.teacher:
@@ -1522,6 +1523,7 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         comment = request.data.get('comment', '')
         attachments = request.data.get('attachments', [])
         score = request.data.get('score')
+        new_score = None
         
         # Сохраняем комментарий
         submission.teacher_feedback_summary = {
@@ -1533,7 +1535,8 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         # Обновляем балл если передан
         if score is not None:
             try:
-                submission.total_score = int(score)
+                new_score = int(score)
+                submission.total_score = new_score
             except (ValueError, TypeError):
                 return Response(
                     {'error': 'Некорректное значение score'},
@@ -1564,6 +1567,8 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         # Уведомляем ученика только при первом переводе в graded
         if status_before == 'submitted' and submission.status == 'graded':
             self._notify_student_graded(submission)
+        elif status_before == 'graded' and new_score is not None and new_score != (total_before or 0):
+            self._notify_student_regraded(submission, total_before, submission.total_score)
 
         self._recalculate_ratings_for_submission(submission)
         
@@ -1585,6 +1590,8 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         }
         """
         submission = self.get_object()
+        status_before = submission.status
+        total_before = submission.total_score
         
         # Проверяем, что пользователь - учитель этого задания
         if request.user != submission.homework.teacher:
@@ -1655,6 +1662,8 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             submission.graded_at = timezone.now()
             submission.save(update_fields=['status', 'graded_at'])
             self._notify_student_graded(submission)
+        elif status_before == 'graded' and total_before != submission.total_score:
+            self._notify_student_regraded(submission, total_before, submission.total_score)
 
         self._recalculate_ratings_for_submission(submission)
         
@@ -1672,6 +1681,19 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             f"Итоговый балл: {score}."
         )
         send_telegram_notification(student, 'homework_graded', message)
+
+    def _notify_student_regraded(self, submission: StudentSubmission, old_score, new_score):
+        student = submission.student
+        teacher_name = self._format_display_name(submission.homework.teacher)
+        old_value = 0 if old_score is None else old_score
+        new_value = 0 if new_score is None else new_score
+        message = (
+            f"Оценка пересмотрена\n"
+            f"Задание: '{submission.homework.title}'.\n"
+            f"Преподаватель: {teacher_name}.\n"
+            f"Было: {old_value}. Стало: {new_value}."
+        )
+        send_telegram_notification(student, 'homework_regraded', message)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def complete_review(self, request, pk=None):

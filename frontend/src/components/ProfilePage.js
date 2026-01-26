@@ -296,6 +296,7 @@ const ProfilePage = () => {
         notify_materials_added: notificationSettings.notify_materials_added,
         // Базовые — ученик
         notify_homework_graded: notificationSettings.notify_homework_graded,
+        notify_homework_regraded: notificationSettings.notify_homework_regraded,
         notify_homework_deadline: notificationSettings.notify_homework_deadline,
         notify_lesson_reminders: notificationSettings.notify_lesson_reminders,
         notify_new_homework: notificationSettings.notify_new_homework,
@@ -1166,6 +1167,14 @@ const ProfilePage = () => {
                                   onChange={() => handleToggleNotificationSetting('notify_homework_graded')}
                                 />
                                 <span>ДЗ проверено</span>
+                              </label>
+                              <label className="notification-item-compact">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(notificationSettings.notify_homework_regraded)}
+                                  onChange={() => handleToggleNotificationSetting('notify_homework_regraded')}
+                                />
+                                <span>ДЗ переоценено</span>
                               </label>
                             </>
                           )}

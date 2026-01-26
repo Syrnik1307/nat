@@ -18,6 +18,7 @@ NOTIFICATION_FIELD_MAP: Dict[str, str] = {
 
     # Базовые — ученику
     'homework_graded': 'notify_homework_graded',
+    'homework_regraded': 'notify_homework_regraded',
     'homework_deadline': 'notify_homework_deadline',
     'lesson_reminder': 'notify_lesson_reminders',
     'new_homework': 'notify_new_homework',

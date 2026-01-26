@@ -84,6 +84,7 @@ NOTIFICATION_FIELDS_META = {
     'notify_new_homework': {'label': 'Новое ДЗ', 'emoji': '🆕', 'roles': {'student'}, 'short': 'Новое ДЗ'},
     'notify_homework_deadline': {'label': 'Напоминания о дедлайнах', 'emoji': '📎', 'roles': {'student'}, 'short': 'Дедлайны'},
     'notify_homework_graded': {'label': 'Проверка ДЗ', 'emoji': '✅', 'roles': {'student'}, 'short': 'Проверка'},
+    'notify_homework_regraded': {'label': 'Переоценка ДЗ', 'emoji': '🔄', 'roles': {'student'}, 'short': 'Переоценка'},
     'notify_homework_submitted': {'label': 'ДЗ сдано учеником', 'emoji': '📝', 'roles': {'teacher'}, 'short': 'Сдачи'},
     'notify_payment_success': {'label': 'Платёж прошёл', 'emoji': '💳', 'roles': {'teacher', 'admin'}, 'short': 'Платежи'},
     'notify_subscription_expiring': {'label': 'Подписка истекает', 'emoji': '⚠️', 'roles': {'teacher', 'admin'}, 'short': 'Подписка'},
