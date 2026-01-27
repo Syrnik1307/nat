@@ -4172,10 +4172,19 @@ def add_notes(request):
     description = request.data.get('description', '').strip()
     lesson_id = request.data.get('lesson_id')
     visibility = request.data.get('visibility', 'lesson_group')
+    file_url = request.data.get('file_url', '').strip()
+    file_name = request.data.get('file_name', '').strip()
+    file_size_bytes = request.data.get('file_size_bytes', 0) or 0
     
     if not title:
         return Response(
             {'error': 'Название конспекта обязательно'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if not content and not file_url:
+        return Response(
+            {'error': 'Добавьте текст или прикрепите файл'},
             status=status.HTTP_400_BAD_REQUEST
         )
     
@@ -4198,6 +4207,9 @@ def add_notes(request):
         title=title,
         description=description,
         content=content,
+        file_url=file_url,
+        file_name=file_name,
+        file_size_bytes=file_size_bytes,
         visibility=visibility
     )
     
@@ -4261,9 +4273,9 @@ def upload_material_asset(request):
     if asset_type not in ('image', 'file'):
         asset_type = 'image' if mime_type.startswith('image/') else 'file'
 
-    max_size = 50 * 1024 * 1024
+    max_size = 1024 * 1024 * 1024
     if uploaded.size and uploaded.size > max_size:
-        return Response({'error': 'Файл слишком большой. Максимум: 50 MB'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Файл слишком большой. Максимум: 1 ГБ'}, status=status.HTTP_400_BAD_REQUEST)
 
     from django.conf import settings
     from django.utils.text import get_valid_filename
@@ -4282,6 +4294,9 @@ def upload_material_asset(request):
             teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
             materials_folder_id = teacher_folders.get('materials', teacher_folders.get('root'))
 
+            # Сбрасываем позицию файла перед загрузкой
+            uploaded.seek(0)
+            
             result = gdrive.upload_file(
                 file_path_or_object=uploaded,
                 file_name=safe_name,
@@ -4307,7 +4322,12 @@ def upload_material_asset(request):
                 'gdrive_file_id': gdrive_file_id,
             }, status=status.HTTP_201_CREATED)
         except Exception as e:
-            logger.exception(f"Failed to upload material asset to GDrive, falling back to local: {e}")
+            logger.warning(f"Failed to upload material asset to GDrive, falling back to local: {e}")
+            # Сбрасываем позицию файла для fallback
+            try:
+                uploaded.seek(0)
+            except:
+                pass
 
     from django.core.files.storage import default_storage
     upload_dir = 'materials_assets'

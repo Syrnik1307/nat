@@ -7,7 +7,9 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
+from googleapiclient.errors import HttpError
 from django.conf import settings
+from django.core.cache import cache
 import os
 import sys
 import uuid
@@ -16,8 +18,52 @@ import subprocess
 import tempfile
 import logging
 import json
+import time
+import functools
 
 logger = logging.getLogger(__name__)
+
+# Константы для retry логики
+MAX_RETRIES = 3
+RETRY_DELAY_BASE = 1.0  # секунд
+RETRY_DELAY_MAX = 10.0  # секунд
+REQUEST_TIMEOUT = 30  # секунд для обычных запросов
+UPLOAD_TIMEOUT = 300  # секунд для загрузки файлов
+CACHE_TTL = 3600  # 1 час кэш папок учителя
+
+
+def retry_on_error(max_retries=MAX_RETRIES, delay_base=RETRY_DELAY_BASE):
+    """Декоратор для повторных попыток при ошибках Google API"""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            last_error = None
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except HttpError as e:
+                    last_error = e
+                    # Не повторяем для 4xx ошибок (кроме 429)
+                    if e.resp.status < 500 and e.resp.status != 429:
+                        raise
+                    delay = min(delay_base * (2 ** attempt), RETRY_DELAY_MAX)
+                    logger.warning(f"Google API error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
+                    time.sleep(delay)
+                except Exception as e:
+                    last_error = e
+                    error_str = str(e).lower()
+                    # Повторяем только для таймаутов и сетевых ошибок
+                    if 'timeout' in error_str or 'connection' in error_str or 'network' in error_str:
+                        delay = min(delay_base * (2 ** attempt), RETRY_DELAY_MAX)
+                        logger.warning(f"Network error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
+                        time.sleep(delay)
+                    else:
+                        raise
+            # Все попытки исчерпаны
+            logger.error(f"All {max_retries} attempts failed for {func.__name__}")
+            raise last_error
+        return wrapper
+    return decorator
 
 
 class DummyGoogleDriveManager:
@@ -137,8 +183,10 @@ class GoogleDriveManager:
             if not creds or not creds.valid:
                 raise ValueError("Invalid credentials - run setup_gdrive_oauth.py to get new token")
             
-            # Создаем клиент Drive API
-            self.service = build('drive', 'v3', credentials=creds)
+            # Создаем клиент Drive API с настроенными таймаутами
+            import httplib2
+            http = httplib2.Http(timeout=REQUEST_TIMEOUT)
+            self.service = build('drive', 'v3', credentials=creds, http=creds.authorize(http))
             
             # ID корневой папки для хранения (GDRIVE_ROOT_FOLDER_ID - главная папка lectio.space)
             # Fallback на GDRIVE_RECORDINGS_FOLDER_ID для обратной совместимости
@@ -154,6 +202,7 @@ class GoogleDriveManager:
             logger.error(f"Failed to initialize Google Drive Manager: {e}")
             raise
     
+    @retry_on_error()
     def create_folder(self, folder_name, parent_folder_id=None):
         """
         Создать папку в Google Drive
@@ -165,32 +214,28 @@ class GoogleDriveManager:
         Returns:
             str: ID созданной папки
         """
-        try:
-            file_metadata = {
-                'name': folder_name,
-                'mimeType': 'application/vnd.google-apps.folder'
-            }
-            
-            if parent_folder_id:
-                file_metadata['parents'] = [parent_folder_id]
-            
-            folder = self.service.files().create(
-                body=file_metadata,
-                fields='id'
-            ).execute()
-            
-            folder_id = folder.get('id')
-            logger.info(f"Created Google Drive folder: {folder_name} (ID: {folder_id})")
-            
-            return folder_id
-            
-        except Exception as e:
-            logger.error(f"Failed to create Google Drive folder: {e}")
-            raise
+        file_metadata = {
+            'name': folder_name,
+            'mimeType': 'application/vnd.google-apps.folder'
+        }
+        
+        if parent_folder_id:
+            file_metadata['parents'] = [parent_folder_id]
+        
+        folder = self.service.files().create(
+            body=file_metadata,
+            fields='id'
+        ).execute()
+        
+        folder_id = folder.get('id')
+        logger.info(f"Created Google Drive folder: {folder_name} (ID: {folder_id})")
+        
+        return folder_id
     
     def get_or_create_teacher_folder(self, teacher):
         """
-        Получить или создать подпапку для преподавателя с подструктурой
+        Получить или создать подпапку для преподавателя с подструктурой.
+        Использует кэширование в Redis и БД для минимизации API вызовов.
         
         Args:
             teacher: Объект CustomUser (преподаватель)
@@ -198,31 +243,40 @@ class GoogleDriveManager:
         Returns:
             dict: {'root': folder_id, 'recordings': rec_id, 'homework': hw_id, 'materials': mat_id, 'students': st_id}
         """
+        # 1. Проверяем кэш Redis
+        cache_key = f"gdrive_folders_teacher_{teacher.id}"
+        cached = cache.get(cache_key)
+        if cached:
+            logger.debug(f"Using cached folders for teacher {teacher.id}")
+            return cached
+        
+        # 2. Проверяем gdrive_folder_id в БД
+        if teacher.gdrive_folder_id:
+            # Есть сохранённый root ID - попробуем восстановить структуру быстро
+            try:
+                # Проверяем что папка ещё существует
+                subfolders = self._get_existing_subfolders(teacher.gdrive_folder_id)
+                if subfolders:
+                    cache.set(cache_key, subfolders, CACHE_TTL)
+                    logger.info(f"Restored folder structure from DB for teacher {teacher.id}")
+                    return subfolders
+            except Exception as e:
+                logger.warning(f"Cached folder not accessible, recreating: {e}")
+        
+        # 3. Создаём структуру папок
         try:
             # Формируем название папки: Teacher_123_Ivan_Petrov
             folder_name = f"Teacher_{teacher.id}_{teacher.first_name}_{teacher.last_name}".replace(' ', '_')
             
             # Ищем существующую папку
-            query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-            if self.root_folder_id:
-                query += f" and '{self.root_folder_id}' in parents"
+            teacher_folder_id = self._find_folder(folder_name, self.root_folder_id)
             
-            results = self.service.files().list(
-                q=query,
-                spaces='drive',
-                fields='files(id, name)'
-            ).execute()
-            
-            items = results.get('files', [])
-            
-            if items:
-                # Папка уже существует
-                teacher_folder_id = items[0]['id']
-                logger.info(f"Found existing teacher folder: {folder_name} (ID: {teacher_folder_id})")
-            else:
+            if not teacher_folder_id:
                 # Создаём новую папку
                 teacher_folder_id = self.create_folder(folder_name, self.root_folder_id)
                 logger.info(f"Created new teacher folder: {folder_name} (ID: {teacher_folder_id})")
+            else:
+                logger.info(f"Found existing teacher folder: {folder_name} (ID: {teacher_folder_id})")
             
             # Создаём подпапки внутри папки учителя
             subfolders = {}
@@ -233,6 +287,15 @@ class GoogleDriveManager:
                 subfolders[subfolder_name.lower()] = subfolder_id
             
             subfolders['root'] = teacher_folder_id
+            
+            # 4. Сохраняем в БД для последующих запросов
+            if not teacher.gdrive_folder_id:
+                teacher.gdrive_folder_id = teacher_folder_id
+                teacher.save(update_fields=['gdrive_folder_id'])
+            
+            # 5. Кэшируем в Redis
+            cache.set(cache_key, subfolders, CACHE_TTL)
+            
             return subfolders
                 
         except Exception as e:
@@ -242,27 +305,68 @@ class GoogleDriveManager:
                     'homework': self.root_folder_id, 'materials': self.root_folder_id,
                     'students': self.root_folder_id}
     
+    @retry_on_error()
+    def _find_folder(self, folder_name, parent_id=None):
+        """Найти папку по имени"""
+        query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        if parent_id:
+            query += f" and '{parent_id}' in parents"
+        
+        results = self.service.files().list(
+            q=query,
+            spaces='drive',
+            fields='files(id, name)',
+            pageSize=1
+        ).execute()
+        
+        items = results.get('files', [])
+        return items[0]['id'] if items else None
+    
+    @retry_on_error()
+    def _get_existing_subfolders(self, root_folder_id):
+        """Получить существующие подпапки по root ID"""
+        query = f"'{root_folder_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        
+        results = self.service.files().list(
+            q=query,
+            spaces='drive',
+            fields='files(id, name)'
+        ).execute()
+        
+        items = results.get('files', [])
+        
+        subfolders = {'root': root_folder_id}
+        folder_map = {item['name'].lower(): item['id'] for item in items}
+        
+        for name in ['recordings', 'homework', 'materials', 'students']:
+            subfolders[name] = folder_map.get(name, root_folder_id)
+        
+        # Если все подпапки найдены, возвращаем
+        if all(name in folder_map for name in ['recordings', 'homework', 'materials', 'students']):
+            return subfolders
+        return None
+    
+    @retry_on_error()
     def _get_or_create_subfolder(self, folder_name, parent_id):
         """Получить или создать подпапку"""
-        try:
-            query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-            query += f" and '{parent_id}' in parents"
-            
-            results = self.service.files().list(
-                q=query,
-                spaces='drive',
-                fields='files(id, name)'
-            ).execute()
-            
-            items = results.get('files', [])
-            
-            if items:
-                return items[0]['id']
-            else:
-                return self.create_folder(folder_name, parent_id)
-        except:
-            return parent_id
+        query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        query += f" and '{parent_id}' in parents"
+        
+        results = self.service.files().list(
+            q=query,
+            spaces='drive',
+            fields='files(id, name)',
+            pageSize=1
+        ).execute()
+        
+        items = results.get('files', [])
+        
+        if items:
+            return items[0]['id']
+        else:
+            return self.create_folder(folder_name, parent_id)
     
+    @retry_on_error()
     def get_or_create_student_folder(self, student, teacher_students_folder_id):
         """
         Создать папку для конкретного ученика внутри папки Students учителя
@@ -276,23 +380,8 @@ class GoogleDriveManager:
         """
         try:
             folder_name = f"Student_{student.id}_{student.first_name}_{student.last_name}".replace(' ', '_')
-            
-            query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-            query += f" and '{teacher_students_folder_id}' in parents"
-            
-            results = self.service.files().list(
-                q=query,
-                spaces='drive',
-                fields='files(id, name)'
-            ).execute()
-            
-            items = results.get('files', [])
-            
-            if items:
-                return items[0]['id']
-            else:
-                return self.create_folder(folder_name, teacher_students_folder_id)
-                
+            return self._find_folder(folder_name, teacher_students_folder_id) or \
+                   self.create_folder(folder_name, teacher_students_folder_id)
         except Exception as e:
             logger.error(f"Failed to create student folder: {e}")
             return teacher_students_folder_id
@@ -311,12 +400,14 @@ class GoogleDriveManager:
         Returns:
             dict: {'file_id': str, 'web_view_link': str, 'web_content_link': str}
         """
+        tmp_path = None
         try:
             # Определяем целевую папку
             target_folder_id = folder_id
             if not target_folder_id and teacher:
                 # Создаём/получаем папку преподавателя
-                target_folder_id = self.get_or_create_teacher_folder(teacher)
+                folders = self.get_or_create_teacher_folder(teacher)
+                target_folder_id = folders.get('materials', folders.get('root'))
             elif not target_folder_id:
                 # Используем root папку
                 target_folder_id = self.root_folder_id
@@ -331,11 +422,11 @@ class GoogleDriveManager:
                 media = MediaFileUpload(
                     file_path_or_object,
                     mimetype=mime_type,
-                    resumable=True
+                    resumable=True,
+                    chunksize=1024*1024*5  # 5 MB chunks для надёжности
                 )
             else:
                 # Если передан file object, сохраним во временный файл
-                import tempfile
                 with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_name)[1]) as tmp:
                     tmp.write(file_path_or_object.read())
                     tmp_path = tmp.name
@@ -343,23 +434,18 @@ class GoogleDriveManager:
                 media = MediaFileUpload(
                     tmp_path,
                     mimetype=mime_type,
-                    resumable=True
+                    resumable=True,
+                    chunksize=1024*1024*5  # 5 MB chunks
                 )
             
-            file = self.service.files().create(
-                body=file_metadata,
-                media_body=media,
-                fields='id, name, size, webViewLink, webContentLink'
-            ).execute()
+            # Загрузка с retry логикой для resumable upload
+            file = self._execute_resumable_upload(
+                file_metadata=file_metadata,
+                media=media,
+                file_name=file_name
+            )
             
             file_id = file.get('id')
-            
-            # Удалить временный файл если создавался
-            if not isinstance(file_path_or_object, str):
-                try:
-                    os.remove(tmp_path)
-                except:
-                    pass
             
             # Делаем файл доступным по ссылке
             self.set_file_public(file_id)
@@ -376,14 +462,51 @@ class GoogleDriveManager:
             
         except Exception as e:
             logger.error(f"Failed to upload file to Google Drive: {e}")
-            # Удалить временный файл в случае ошибки
-            if not isinstance(file_path_or_object, str):
+            raise
+        finally:
+            # Удалить временный файл если создавался
+            if tmp_path:
                 try:
                     os.remove(tmp_path)
                 except:
                     pass
-            raise
     
+    def _execute_resumable_upload(self, file_metadata, media, file_name):
+        """Выполнить resumable upload с retry логикой"""
+        request = self.service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, name, size, webViewLink, webContentLink'
+        )
+        
+        response = None
+        retries = 0
+        while response is None:
+            try:
+                status, response = request.next_chunk()
+                if status:
+                    logger.debug(f"Upload progress for {file_name}: {int(status.progress() * 100)}%")
+            except HttpError as e:
+                if e.resp.status in [500, 502, 503, 504] and retries < MAX_RETRIES:
+                    retries += 1
+                    delay = min(RETRY_DELAY_BASE * (2 ** retries), RETRY_DELAY_MAX)
+                    logger.warning(f"Upload error (attempt {retries}): {e}. Retrying in {delay}s...")
+                    time.sleep(delay)
+                else:
+                    raise
+            except Exception as e:
+                error_str = str(e).lower()
+                if ('timeout' in error_str or 'connection' in error_str) and retries < MAX_RETRIES:
+                    retries += 1
+                    delay = min(RETRY_DELAY_BASE * (2 ** retries), RETRY_DELAY_MAX)
+                    logger.warning(f"Network error during upload (attempt {retries}): {e}. Retrying in {delay}s...")
+                    time.sleep(delay)
+                else:
+                    raise
+        
+        return response
+    
+    @retry_on_error()
     def set_file_public(self, file_id):
         """
         Сделать файл публичным (доступным по ссылке)
@@ -391,23 +514,19 @@ class GoogleDriveManager:
         Args:
             file_id: ID файла в Google Drive
         """
-        try:
-            permission = {
-                'type': 'anyone',
-                'role': 'reader'
-            }
-            
-            self.service.permissions().create(
-                fileId=file_id,
-                body=permission
-            ).execute()
-            
-            logger.info(f"Set file {file_id} as public")
-            
-        except Exception as e:
-            logger.error(f"Failed to set file as public: {e}")
-            raise
+        permission = {
+            'type': 'anyone',
+            'role': 'reader'
+        }
+        
+        self.service.permissions().create(
+            fileId=file_id,
+            body=permission
+        ).execute()
+        
+        logger.debug(f"Set file {file_id} as public")
 
+    @retry_on_error()
     def copy_file(self, file_id, parent_folder_id=None, new_name=None, make_public=True):
         """Скопировать файл в другую папку Google Drive.
 
@@ -483,6 +602,7 @@ class GoogleDriveManager:
         """
         return f"https://drive.google.com/file/d/{file_id}/preview"
     
+    @retry_on_error()
     def delete_file(self, file_id):
         """
         Удалить файл из Google Drive
@@ -490,13 +610,8 @@ class GoogleDriveManager:
         Args:
             file_id: ID файла
         """
-        try:
-            self.service.files().delete(fileId=file_id).execute()
-            logger.info(f"Deleted file from Google Drive: {file_id}")
-            
-        except Exception as e:
-            logger.error(f"Failed to delete file from Google Drive: {e}")
-            raise
+        self.service.files().delete(fileId=file_id).execute()
+        logger.info(f"Deleted file from Google Drive: {file_id}")
     
     def file_exists(self, file_id):
         """
@@ -523,17 +638,18 @@ class GoogleDriveManager:
             # Если получили ответ с id - файл существует
             return bool(file and file.get('id'))
             
-        except Exception as e:
-            # 404 = файл не существует или удалён
-            error_str = str(e).lower()
-            if '404' in error_str or 'not found' in error_str:
-                logger.warning(f"File {file_id} not found on Google Drive")
+        except HttpError as e:
+            if e.resp.status == 404:
+                logger.debug(f"File {file_id} not found on Google Drive")
                 return False
-            
+            logger.error(f"Error checking file existence on Google Drive: {e}")
+            return False
+        except Exception as e:
             # Другие ошибки - логируем но возвращаем False для безопасности
             logger.error(f"Error checking file existence on Google Drive: {e}")
             return False
     
+    @retry_on_error()
     def get_file_info(self, file_id):
         """
         Получить информацию о файле
@@ -544,17 +660,12 @@ class GoogleDriveManager:
         Returns:
             dict: Информация о файле
         """
-        try:
-            file = self.service.files().get(
-                fileId=file_id,
-                fields='id, name, size, mimeType, createdTime, modifiedTime'
-            ).execute()
-            
-            return file
-            
-        except Exception as e:
-            logger.error(f"Failed to get file info: {e}")
-            raise
+        file = self.service.files().get(
+            fileId=file_id,
+            fields='id, name, size, mimeType, createdTime, modifiedTime'
+        ).execute()
+        
+        return file
     
     def calculate_folder_size(self, folder_id):
         """
