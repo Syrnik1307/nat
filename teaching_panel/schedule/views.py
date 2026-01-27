@@ -3821,7 +3821,15 @@ class LessonMaterialViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        return super().update(request, *args, **kwargs)
+        # Добавляем partial=True для PATCH запросов
+        partial = kwargs.pop('partial', False)
+        serializer = self.get_serializer(obj, data=request.data, partial=partial)
+        if not serializer.is_valid():
+            logger.error(f"LessonMaterial update validation errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer.save()
+        return Response(serializer.data)
     
     def destroy(self, request, *args, **kwargs):
         """Удалить материал"""
