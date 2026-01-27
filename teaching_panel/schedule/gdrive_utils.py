@@ -6,7 +6,7 @@
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload, MediaIoBaseUpload
 from googleapiclient.errors import HttpError
 from django.conf import settings
 from django.core.cache import cache
@@ -30,6 +30,7 @@ RETRY_DELAY_MAX = 10.0  # секунд
 REQUEST_TIMEOUT = 30  # секунд для обычных запросов
 UPLOAD_TIMEOUT = 300  # секунд для загрузки файлов
 CACHE_TTL = 3600  # 1 час кэш папок учителя
+SIMPLE_UPLOAD_THRESHOLD = 5 * 1024 * 1024  # 5 MB - для файлов меньше используем simple upload
 
 
 def retry_on_error(max_retries=MAX_RETRIES, delay_base=RETRY_DELAY_BASE):
@@ -401,6 +402,9 @@ class GoogleDriveManager:
             dict: {'file_id': str, 'web_view_link': str, 'web_content_link': str}
         """
         tmp_path = None
+        file_content = None
+        file_size = 0
+        
         try:
             # Определяем целевую папку
             target_folder_id = folder_id
@@ -417,40 +421,56 @@ class GoogleDriveManager:
             if target_folder_id:
                 file_metadata['parents'] = [target_folder_id]
             
-            # Поддержка как путей, так и file objects
+            # Определяем размер файла и читаем контент для маленьких файлов
             if isinstance(file_path_or_object, str):
-                media = MediaFileUpload(
-                    file_path_or_object,
-                    mimetype=mime_type,
-                    resumable=True,
-                    chunksize=1024*1024*5  # 5 MB chunks для надёжности
-                )
-            else:
-                # Если передан file object, сохраним во временный файл
-                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_name)[1]) as tmp:
-                    tmp.write(file_path_or_object.read())
-                    tmp_path = tmp.name
+                file_size = os.path.getsize(file_path_or_object)
+                use_simple_upload = file_size < SIMPLE_UPLOAD_THRESHOLD
                 
-                media = MediaFileUpload(
-                    tmp_path,
+                if use_simple_upload:
+                    # Simple upload - читаем весь файл в память
+                    with open(file_path_or_object, 'rb') as f:
+                        file_content = f.read()
+                    media = MediaIoBaseUpload(
+                        io.BytesIO(file_content),
+                        mimetype=mime_type,
+                        resumable=False
+                    )
+                else:
+                    # Resumable upload для больших файлов
+                    media = MediaFileUpload(
+                        file_path_or_object,
+                        mimetype=mime_type,
+                        resumable=True,
+                        chunksize=1024*1024*5  # 5 MB chunks
+                    )
+            else:
+                # File object - читаем в память
+                file_content = file_path_or_object.read()
+                file_size = len(file_content)
+                use_simple_upload = file_size < SIMPLE_UPLOAD_THRESHOLD
+                
+                media = MediaIoBaseUpload(
+                    io.BytesIO(file_content),
                     mimetype=mime_type,
-                    resumable=True,
-                    chunksize=1024*1024*5  # 5 MB chunks
+                    resumable=not use_simple_upload,
+                    chunksize=1024*1024*5 if not use_simple_upload else -1
                 )
             
-            # Загрузка с retry логикой для resumable upload
-            file = self._execute_resumable_upload(
-                file_metadata=file_metadata,
-                media=media,
-                file_name=file_name
-            )
+            # Загрузка
+            if use_simple_upload:
+                # Simple upload - один запрос
+                file = self._execute_simple_upload(file_metadata, media, file_name)
+            else:
+                # Resumable upload для больших файлов
+                file = self._execute_resumable_upload(file_metadata, media, file_name)
             
             file_id = file.get('id')
             
             # Делаем файл доступным по ссылке
             self.set_file_public(file_id)
             
-            logger.info(f"Uploaded file to Google Drive: {file_name} (ID: {file_id}) in folder {target_folder_id}")
+            upload_type = 'simple' if use_simple_upload else 'resumable'
+            logger.info(f"Uploaded file to Google Drive ({upload_type}): {file_name} (ID: {file_id}, size: {file_size}) in folder {target_folder_id}")
             
             return {
                 'file_id': file_id,
@@ -470,6 +490,17 @@ class GoogleDriveManager:
                     os.remove(tmp_path)
                 except:
                     pass
+    
+    @retry_on_error()
+    def _execute_simple_upload(self, file_metadata, media, file_name):
+        """Выполнить простую загрузку одним запросом (для маленьких файлов)"""
+        file = self.service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, name, size, webViewLink, webContentLink'
+        ).execute()
+        logger.debug(f"Simple upload completed for {file_name}")
+        return file
     
     def _execute_resumable_upload(self, file_metadata, media, file_name):
         """Выполнить resumable upload с retry логикой"""

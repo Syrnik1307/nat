@@ -22,6 +22,7 @@ function TeacherMaterialsPage() {
   
   // UI State
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
   
@@ -49,12 +50,18 @@ function TeacherMaterialsPage() {
     lesson_id: '',
     visibility: 'all_teacher_groups',
     allowed_groups: [],
-    allowed_students: []
+    allowed_students: [],
+    mode: 'rich',
+    file_url: '',
+    file_name: '',
+    file_size_bytes: 0
   });
 
   // Toasts & Confirm
   const [toasts, setToasts] = useState([]);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false });
+  const [notesFileUploading, setNotesFileUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   
   // Miro status
   const [miroStatus, setMiroStatus] = useState(null);
@@ -95,15 +102,24 @@ function TeacherMaterialsPage() {
 
   const loadAllData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      await Promise.all([
+      const results = await Promise.allSettled([
         loadMaterials(),
         loadLessons(),
         loadGroups()
         // loadStudents() - отложена до клика на модаль (оптимизация рендера)
       ]);
+      
+      // Проверяем, есть ли критические ошибки
+      const failures = results.filter(r => r.status === 'rejected');
+      if (failures.length > 0) {
+        console.error('Some data failed to load:', failures);
+        addToast({ type: 'warning', title: 'Внимание', message: 'Часть данных не удалось загрузить' });
+      }
     } catch (err) {
       console.error('Error loading data:', err);
+      setError('Не удалось загрузить данные. Проверьте подключение к интернету.');
       addToast({ type: 'error', title: 'Ошибка', message: 'Не удалось загрузить данные' });
     } finally {
       setLoading(false);
@@ -111,23 +127,19 @@ function TeacherMaterialsPage() {
   };
 
   const loadMaterials = async () => {
-    try {
-      const cachedMaterials = await getCached('teacher:materials', async () => {
-        const response = await api.get('lesson-materials/teacher_materials/', withScheduleApiBase());
-        if (response.data.materials) {
-          const m = response.data.materials;
-          return {
-            miro: m.miro || [],
-            notes: m.notes || [],
-          };
-        }
-        return { miro: [], notes: [] };
-      }, 30000); // кэш на 30 сек
-      
-      setMaterials(cachedMaterials);
-    } catch (err) {
-      console.error('Error loading materials:', err);
-    }
+    const cachedMaterials = await getCached('teacher:materials', async () => {
+      const response = await api.get('lesson-materials/teacher_materials/', withScheduleApiBase());
+      if (response.data.materials) {
+        const m = response.data.materials;
+        return {
+          miro: m.miro || [],
+          notes: m.notes || [],
+        };
+      }
+      return { miro: [], notes: [] };
+    }, 30000); // кэш на 30 сек
+    
+    setMaterials(cachedMaterials);
   };
 
   const uploadAsset = async (file, assetType) => {
@@ -164,51 +176,39 @@ function TeacherMaterialsPage() {
   };
 
   const loadLessons = async () => {
-    try {
-      const cachedLessons = await getCached('teacher:lessons', async () => {
-        const response = await api.get('lessons', withScheduleApiBase());
-        const data = response.data.results || response.data;
-        const now = new Date();
-        const pastWindow = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-        const filtered = (Array.isArray(data) ? data : []).filter(l => {
-          const dt = l.start_time ? new Date(l.start_time) : null;
-          return dt && dt >= pastWindow;
-        });
-        return filtered;
-      }, 30000); // кэш на 30 сек
-      
-      setLessons(cachedLessons);
-    } catch (err) {
-      console.error('Error loading lessons:', err);
-    }
+    const cachedLessons = await getCached('teacher:lessons', async () => {
+      const response = await api.get('lessons', withScheduleApiBase());
+      const data = response.data.results || response.data;
+      const now = new Date();
+      const pastWindow = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+      const filtered = (Array.isArray(data) ? data : []).filter(l => {
+        const dt = l.start_time ? new Date(l.start_time) : null;
+        return dt && dt >= pastWindow;
+      });
+      return filtered;
+    }, 30000); // кэш на 30 сек
+    
+    setLessons(cachedLessons);
   };
 
   const loadGroups = async () => {
-    try {
-      const cachedGroups = await getCached('teacher:groups', async () => {
-        const response = await api.get('groups', withScheduleApiBase());
-        const data = response.data.results || response.data;
-        return Array.isArray(data) ? data : [];
-      }, 30000); // кэш на 30 сек
-      
-      setGroups(cachedGroups);
-    } catch (err) {
-      console.error('Error loading groups:', err);
-    }
+    const cachedGroups = await getCached('teacher:groups', async () => {
+      const response = await api.get('groups', withScheduleApiBase());
+      const data = response.data.results || response.data;
+      return Array.isArray(data) ? data : [];
+    }, 30000); // кэш на 30 сек
+    
+    setGroups(cachedGroups);
   };
 
   const loadStudents = async () => {
-    try {
-      const cachedStudents = await getCached('teacher:students', async () => {
-        const response = await api.get('groups/all_students/', withScheduleApiBase());
-        const data = response.data || [];
-        return Array.isArray(data) ? data : [];
-      }, 30000); // кэш на 30 сек
-      
-      setStudents(cachedStudents);
-    } catch (err) {
-      console.error('Error loading students:', err);
-    }
+    const cachedStudents = await getCached('teacher:students', async () => {
+      const response = await api.get('groups/all_students/', withScheduleApiBase());
+      const data = response.data || [];
+      return Array.isArray(data) ? data : [];
+    }, 30000); // кэш на 30 сек
+    
+    setStudents(cachedStudents);
   };
 
   const loadMiroStatus = async () => {
@@ -304,9 +304,144 @@ function TeacherMaterialsPage() {
     }
   };
 
+  const fileInputRef = React.useRef(null);
+
   const resetNotesForm = () => {
-    setNotesForm({ title: '', content: '', description: '', lesson_id: '', visibility: 'all_teacher_groups', allowed_groups: [], allowed_students: [] });
+    setNotesForm({
+      title: '',
+      content: '',
+      description: '',
+      lesson_id: '',
+      visibility: 'all_teacher_groups',
+      allowed_groups: [],
+      allowed_students: [],
+      mode: 'rich',
+      files: [] // Массив файлов: [{url, name, size}]
+    });
     setEditingNoteId(null);
+  };
+
+  const handleRemoveFile = (indexToRemove) => {
+    setNotesForm(prev => ({
+      ...prev,
+      files: prev.files.filter((_, index) => index !== indexToRemove)
+    }));
+  };
+
+  const handleRemoveAllFiles = () => {
+    setNotesForm(prev => ({ ...prev, files: [] }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const getFileIcon = (fileName) => {
+    const ext = fileName?.split('.').pop()?.toLowerCase();
+    // Возвращаем расширение файла в верхнем регистре как текстовый бейдж
+    const extMap = {
+      pdf: 'PDF',
+      doc: 'DOC',
+      docx: 'DOCX',
+      ppt: 'PPT',
+      pptx: 'PPTX',
+      xls: 'XLS',
+      xlsx: 'XLSX',
+      zip: 'ZIP',
+      rar: 'RAR',
+      jpg: 'JPG',
+      jpeg: 'JPEG',
+      png: 'PNG',
+      gif: 'GIF',
+      mp4: 'MP4',
+      mp3: 'MP3',
+      txt: 'TXT'
+    };
+    return extMap[ext] || ext?.toUpperCase() || 'FILE';
+  };
+
+  const handleNotesFileChange = async (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    console.log('Выбрано файлов:', selectedFiles.length);
+    
+    if (selectedFiles.length === 0) {
+      console.log('Нет файлов для загрузки');
+      return;
+    }
+
+    setNotesFileUploading(true);
+    setUploadProgress({ current: 0, total: selectedFiles.length });
+    
+    // Параллельная загрузка с ограничением concurrency (3 файла одновременно)
+    const CONCURRENCY = 3;
+    const uploadedFiles = [];
+    let completedCount = 0;
+    
+    const uploadSingleFile = async (file, index) => {
+      console.log(`Загружаю файл ${index + 1}/${selectedFiles.length}: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} МБ)`);
+      
+      try {
+        const data = await uploadAsset(file, 'file');
+        console.log('Файл загружен:', data);
+        
+        return {
+          success: true,
+          file: {
+            url: data?.url || '',
+            name: data?.file_name || file.name,
+            size: data?.size_bytes || file.size || 0
+          }
+        };
+      } catch (err) {
+        console.error(`Ошибка загрузки ${file.name}:`, err);
+        addToast({ 
+          type: 'error', 
+          title: 'Ошибка', 
+          message: `Не удалось загрузить ${file.name}: ${err.message || 'Неизвестная ошибка'}` 
+        });
+        return { success: false, file: null };
+      } finally {
+        completedCount++;
+        setUploadProgress({ current: completedCount, total: selectedFiles.length });
+      }
+    };
+    
+    // Разбиваем на батчи для параллельной загрузки
+    for (let i = 0; i < selectedFiles.length; i += CONCURRENCY) {
+      const batch = selectedFiles.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(
+        batch.map((file, batchIdx) => uploadSingleFile(file, i + batchIdx))
+      );
+      
+      results.forEach(result => {
+        if (result.success && result.file) {
+          uploadedFiles.push(result.file);
+        }
+      });
+    }
+
+    console.log(`Итого загружено: ${uploadedFiles.length} файлов`);
+
+    if (uploadedFiles.length > 0) {
+      setNotesForm(prev => ({
+        ...prev,
+        files: [...prev.files, ...uploadedFiles]
+      }));
+      addToast({ 
+        type: 'success', 
+        title: 'Готово', 
+        message: `Загружено файлов: ${uploadedFiles.length} из ${selectedFiles.length}` 
+      });
+    } else {
+      addToast({ 
+        type: 'error', 
+        title: 'Ошибка', 
+        message: 'Не удалось загрузить ни одного файла. Проверьте консоль браузера (F12)' 
+      });
+    }
+
+    setNotesFileUploading(false);
+    setUploadProgress({ current: 0, total: 0 });
+    e.target.value = '';
   };
 
   const handleSaveNotes = async (e) => {
@@ -315,21 +450,75 @@ function TeacherMaterialsPage() {
       addToast({ type: 'warning', title: 'Внимание', message: 'Введите название' });
       return;
     }
+    if (notesForm.mode === 'rich' && !notesForm.content) {
+      addToast({ type: 'warning', title: 'Внимание', message: 'Добавьте текст конспекта' });
+      return;
+    }
+    if (notesForm.mode === 'file' && (!notesForm.files || notesForm.files.length === 0)) {
+      addToast({ type: 'warning', title: 'Внимание', message: 'Прикрепите хотя бы один файл' });
+      return;
+    }
     try {
       if (editingNoteId) {
-        await api.patch(`lesson-materials/${editingNoteId}/`, {
+        // Редактирование - пока поддерживаем только один файл
+        const firstFile = notesForm.files[0] || {};
+        const payload = {
           title: notesForm.title,
           description: notesForm.description,
-          content: notesForm.content,
+          content: notesForm.mode === 'rich' ? notesForm.content : '',
           lesson: notesForm.lesson_id || null,
           visibility: notesForm.visibility,
           allowed_groups: notesForm.allowed_groups,
           allowed_students: notesForm.allowed_students,
-        }, withScheduleApiBase());
+          file_url: notesForm.mode === 'file' && firstFile.url ? firstFile.url : '',
+          file_name: notesForm.mode === 'file' && firstFile.name ? firstFile.name : '',
+          file_size_bytes: notesForm.mode === 'file' && firstFile.size ? firstFile.size : 0,
+        };
+        await api.patch(`lesson-materials/${editingNoteId}/`, payload, withScheduleApiBase());
         addToast({ type: 'success', title: 'Готово', message: 'Конспект обновлен' });
       } else {
-        await api.post('materials/add-notes/', notesForm, withScheduleApiBase());
-        addToast({ type: 'success', title: 'Готово', message: 'Конспект добавлен' });
+        // Создание - если несколько файлов, создаём несколько конспектов
+        if (notesForm.mode === 'file' && notesForm.files.length > 0) {
+          let successCount = 0;
+          for (const file of notesForm.files) {
+            const payload = {
+              title: notesForm.files.length > 1 
+                ? `${notesForm.title} - ${file.name}` 
+                : notesForm.title,
+              description: notesForm.description,
+              content: '',
+              lesson_id: notesForm.lesson_id || null,
+              visibility: notesForm.visibility,
+              allowed_groups: notesForm.allowed_groups,
+              allowed_students: notesForm.allowed_students,
+              file_url: file.url,
+              file_name: file.name,
+              file_size_bytes: file.size,
+            };
+            try {
+              await api.post('materials/add-notes/', payload, withScheduleApiBase());
+              successCount++;
+            } catch (err) {
+              console.error(`Ошибка создания конспекта для ${file.name}:`, err);
+            }
+          }
+          addToast({ 
+            type: 'success', 
+            title: 'Готово', 
+            message: `Создано конспектов: ${successCount} из ${notesForm.files.length}` 
+          });
+        } else {
+          // Режим текста
+          const payload = {
+            ...notesForm,
+            content: notesForm.mode === 'rich' ? notesForm.content : '',
+            file_url: '',
+            file_name: '',
+            file_size_bytes: 0,
+          };
+          await api.post('materials/add-notes/', payload, withScheduleApiBase());
+          addToast({ type: 'success', title: 'Готово', message: 'Конспект добавлен' });
+        }
       }
       setShowAddNotesModal(false);
       resetNotesForm();
@@ -356,6 +545,13 @@ function TeacherMaterialsPage() {
   const openEditNotes = async (note) => {
     await ensureStudentsLoaded();
     setEditingNoteId(note.id);
+    const hasFile = !!note.file_url;
+    const hasContent = !!note.content;
+    const files = hasFile ? [{
+      url: note.file_url,
+      name: note.file_name || 'Файл',
+      size: note.file_size_bytes || 0
+    }] : [];
     setNotesForm({
       title: note.title || '',
       content: note.content || '',
@@ -364,6 +560,8 @@ function TeacherMaterialsPage() {
       visibility: note.visibility || 'all_teacher_groups',
       allowed_groups: (note.access_groups || []).map(g => g.id),
       allowed_students: (note.access_students || []).map(s => s.id),
+      mode: hasFile && !hasContent ? 'file' : 'rich',
+      files: files
     });
     setShowAddNotesModal(true);
   };
@@ -487,6 +685,20 @@ function TeacherMaterialsPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="materials-page">
+        <div className="empty-state">
+          <h3>Ошибка загрузки</h3>
+          <p>{error}</p>
+          <button className="btn btn-primary" onClick={loadAllData}>
+            Попробовать снова
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="materials-page">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
@@ -495,16 +707,20 @@ function TeacherMaterialsPage() {
       <header className="materials-header">
         <div className="header-left">
           <h1>Материалы</h1>
-          <p className="subtitle">Доски Miro и конспекты</p>
+          <p className="subtitle">Доски Miro и конспекты для учеников</p>
         </div>
         
         <div className="header-actions">
-          <button className="btn btn-secondary" onClick={() => setShowAddMiroModal(true)}>
-            Добавить Miro
-          </button>
-          <button className="btn btn-secondary" onClick={openCreateNotes}>
-            Добавить конспект
-          </button>
+          {activeTab === 'miro' && (
+            <button className="btn btn-primary" onClick={() => setShowAddMiroModal(true)}>
+              Добавить доску Miro
+            </button>
+          )}
+          {activeTab === 'notes' && (
+            <button className="btn btn-primary" onClick={openCreateNotes}>
+              Создать конспект
+            </button>
+          )}
         </div>
       </header>
 
@@ -683,6 +899,9 @@ function TeacherMaterialsPage() {
                       <div className="note-preview">
                         {stripHtml(note.content).substring(0, 150)}...
                       </div>
+                    )}
+                    {note.file_url && (
+                      <div className="note-file-badge">Файл: {note.file_name || 'Документ'}</div>
                     )}
                     <div className="card-meta">
                       {note.lesson_info && <span>{note.lesson_info.title}</span>}
@@ -918,20 +1137,135 @@ function TeacherMaterialsPage() {
                 placeholder="О чем этот конспект"
               />
             </div>
-            
+
             <div className="form-group">
-              <label>Содержание</label>
-              <Suspense fallback={<div className="editor-loading">Загрузка редактора...</div>}>
-                <RichTextEditor
-                  value={notesForm.content}
-                  onChange={(html) => setNotesForm({ ...notesForm, content: html })}
-                  placeholder="Напишите конспект…"
-                  onUploadImage={uploadImage}
-                  onUploadFile={uploadFile}
-                />
-              </Suspense>
-              <small>Можно вставлять изображения и прикреплять файлы прямо в текст</small>
+              <label>Формат конспекта</label>
+              <div className="notes-mode-toggle">
+                <button
+                  type="button"
+                  className={`notes-mode-btn ${notesForm.mode === 'rich' ? 'active' : ''}`}
+                  onClick={() => setNotesForm(prev => ({ ...prev, mode: 'rich' }))}
+                >
+                  Текст с редактором
+                </button>
+                <button
+                  type="button"
+                  className={`notes-mode-btn ${notesForm.mode === 'file' ? 'active' : ''}`}
+                  onClick={() => setNotesForm(prev => ({ ...prev, mode: 'file' }))}
+                >
+                  Файл (PDF/PPT/DOC)
+                </button>
+              </div>
+              <small>Можно выбрать один формат для конспекта</small>
             </div>
+            
+            {notesForm.mode === 'rich' && (
+              <div className="form-group">
+                <label>Содержание</label>
+                <Suspense fallback={<div className="editor-loading">Загрузка редактора...</div>}>
+                  <RichTextEditor
+                    value={notesForm.content}
+                    onChange={(html) => setNotesForm({ ...notesForm, content: html })}
+                    placeholder="Напишите конспект…"
+                    onUploadImage={uploadImage}
+                    onUploadFile={uploadFile}
+                  />
+                </Suspense>
+                <small>Можно вставлять изображения и прикреплять файлы прямо в текст</small>
+              </div>
+            )}
+
+            {notesForm.mode === 'file' && (
+              <div className="form-group">
+                <label>Файлы конспектов</label>
+                
+                <div className="notes-file-upload-zone">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    onChange={handleNotesFileChange}
+                    disabled={notesFileUploading}
+                    multiple
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary file-select-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={notesFileUploading}
+                  >
+                    {notesFileUploading ? 'Загрузка...' : 'Выбрать файлы'}
+                  </button>
+                  <div className="notes-file-hint">
+                    {notesFileUploading 
+                      ? 'Загружаем файлы, пожалуйста подождите...'
+                      : 'Можно выбрать несколько файлов. Любой формат, до 1 ГБ каждый'}
+                  </div>
+                </div>
+
+                {notesFileUploading && (
+                  <div className="upload-progress">
+                    <div className="upload-spinner"></div>
+                    <div className="upload-progress-text">
+                      <span>Загружаем файлы... ({uploadProgress.current} из {uploadProgress.total})</span>
+                      <div className="upload-progress-bar">
+                        <div 
+                          className="upload-progress-fill" 
+                          style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {notesForm.files && notesForm.files.length > 0 && (
+                  <div className="notes-files-list">
+                    <div className="files-list-header">
+                      <span>Прикреплено файлов: {notesForm.files.length}</span>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-danger"
+                        onClick={handleRemoveAllFiles}
+                      >
+                        Удалить все
+                      </button>
+                    </div>
+                    {notesForm.files.map((file, index) => (
+                      <div key={index} className="notes-file-preview">
+                        <div className="notes-file-icon">{getFileIcon(file.name)}</div>
+                        <div className="notes-file-meta">
+                          <div className="notes-file-name">{file.name}</div>
+                          {file.size > 0 && (
+                            <div className="notes-file-size">
+                              {(file.size / (1024 * 1024)).toFixed(2)} МБ
+                            </div>
+                          )}
+                        </div>
+                        <div className="notes-file-actions">
+                          {file.url && (
+                            <a
+                              href={file.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-sm btn-secondary"
+                            >
+                              Открыть
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleRemoveFile(index)}
+                          >
+                            Удалить
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             
             <div className="form-group">
               <label>Привязать к уроку</label>
@@ -1088,8 +1422,27 @@ function TeacherMaterialsPage() {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {previewNote.description && <div style={{ color: 'var(--text-secondary)' }}>{previewNote.description}</div>}
+            {previewNote.file_url && (
+              <div className="notes-file-preview">
+                <div className="notes-file-meta">
+                  <div className="notes-file-name">{previewNote.file_name || 'Документ'}</div>
+                  {previewNote.file_size_bytes > 0 && (
+                    <div className="notes-file-size">{Math.round(previewNote.file_size_bytes / 1024)} KB</div>
+                  )}
+                </div>
+                <div className="notes-file-actions">
+                  <a href={previewNote.file_url} target="_blank" rel="noopener noreferrer" className="link-btn">
+                    Открыть файл
+                  </a>
+                </div>
+              </div>
+            )}
             <Suspense fallback={<div className="editor-loading">Загрузка редактора...</div>}>
-              <RichTextEditor value={previewNote.content || ''} readOnly={true} />
+              {previewNote.content ? (
+                <RichTextEditor value={previewNote.content || ''} readOnly={true} />
+              ) : (
+                <div className="notes-empty-preview">Текст конспекта отсутствует</div>
+              )}
             </Suspense>
           </div>
         </Modal>
