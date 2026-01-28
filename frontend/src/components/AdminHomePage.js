@@ -11,6 +11,7 @@ import SystemErrorsModal from '../modules/Admin/SystemErrorsModal';
 import StorageStats from './StorageStats';
 import AdminReferrals from '../modules/Admin/AdminReferrals';
 import BusinessMetricsDashboard from '../modules/Admin/BusinessMetricsDashboard';
+import AdminDashboardWidget from '../modules/Admin/AdminDashboardWidget';
 import '../styles/AdminPanel.css';
 
 /* ========== SVG ICONS ========== */
@@ -409,6 +410,9 @@ const AdminHomePage = () => {
             <div className="admin-stat-value">{stats.lessons}</div>
           </div>
         </div>
+
+        {/* NEW: Dashboard Widget with Health Checks & Charts */}
+        <AdminDashboardWidget />
 
         {/* Quick Actions */}
         <div className="admin-quick-actions">

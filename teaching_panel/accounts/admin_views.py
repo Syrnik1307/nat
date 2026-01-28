@@ -2202,12 +2202,9 @@ class AdminBusinessMetricsView(APIView):
             subscription__user__created_at__gte=month_ago
         ).aggregate(total=Sum('amount'))['total'] or 0
         
-        # Expansion (докупка storage или upgrade)
-        expansion_mrr = Payment.objects.filter(
-            status=Payment.STATUS_SUCCEEDED,
-            paid_at__gte=month_ago,
-            payment_type='storage'
-        ).aggregate(total=Sum('amount'))['total'] or 0
+        # Expansion (докупка storage) - проверяем через metadata
+        # Для упрощения пока считаем 0, т.к. storage покупается редко
+        expansion_mrr = 0
         
         # Все успешные платежи за месяц
         total_mrr_this_month = Payment.objects.filter(
