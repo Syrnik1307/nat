@@ -43,11 +43,16 @@ python manage.py collectstatic --noinput --clear
 echo -e "${GREEN}✅ Static files collected${NC}"
 
 # Step 5: Build frontend
-echo -e "${YELLOW}🎨 Step 5: Building frontend...${NC}"
+echo -e "${YELLOW}Step 5: Building frontend...${NC}"
 cd "${FRONTEND_DIR}"
 npm install --quiet
 npm run build
-echo -e "${GREEN}✅ Frontend built${NC}"
+
+# Fix permissions - CRITICAL: npm creates files as root, but nginx runs as www-data
+echo -e "${YELLOW}Step 5.1: Fixing permissions...${NC}"
+chown -R www-data:www-data "${FRONTEND_DIR}/build"
+chmod -R 755 "${FRONTEND_DIR}/build"
+echo -e "${GREEN}Frontend built and permissions fixed${NC}"
 
 # Step 6: Restart services
 echo -e "${YELLOW}🔄 Step 6: Restarting services...${NC}"
