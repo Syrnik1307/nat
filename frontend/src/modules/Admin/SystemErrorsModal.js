@@ -89,8 +89,8 @@ const SystemErrorsModal = ({ onClose }) => {
   const canNext = offset + limit < count;
 
   return (
-    <Modal isOpen onClose={onClose} title="Ошибки" size="large">
-      <div style={{ display: 'grid', gap: 12 }}>
+    <Modal isOpen onClose={onClose} title="Ошибки" size="fullscreen">
+      <div style={{ display: 'grid', gap: 12, minWidth: 900 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 220px', gap: 10 }}>
           <input
             value={q}

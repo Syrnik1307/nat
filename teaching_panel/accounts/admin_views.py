@@ -2264,24 +2264,6 @@ class AdminBusinessMetricsView(APIView):
         
         # Добавляем revenue по источникам
         payment_source_expr = _source_expr_for_payment()
-        sources_revenue = dict(
-            Payment.objects.filter(
-                status=Payment.STATUS_SUCCEEDED,
-                paid_at__gte=month_ago
-            ).annotate(source=payment_source_expr)
-            .values('source')
-            .annotate(revenue=Sum('amount'), paid_users=Count('subscription__user', distinct=True))
-            .values_list('source', 'revenue', 'paid_users')
-        )
-        
-        for s in sources_data:
-            src = s['source']
-            rev_data = sources_revenue.get(src, (0, 0))
-            s['revenue'] = float(rev_data[0]) if isinstance(rev_data, tuple) else 0
-            s['paid_users'] = rev_data[1] if isinstance(rev_data, tuple) and len(rev_data) > 1 else 0
-            s['conversion'] = round((s['paid_users'] / s['registrations']) * 100, 1) if s['registrations'] else 0
-        
-        # Добавляем revenue корректно
         sources_revenue_qs = list(
             Payment.objects.filter(
                 status=Payment.STATUS_SUCCEEDED,

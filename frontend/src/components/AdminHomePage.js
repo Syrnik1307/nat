@@ -597,37 +597,6 @@ const AdminHomePage = () => {
         </div>
       )}
 
-      {/* System Status */}
-      <div className="admin-section">
-        <h2>Статус системы</h2>
-        <div className="admin-system-status">
-          <div className="status-item">
-            <div className="status-indicator" style={{ backgroundColor: '#10b981' }}></div>
-            <div className="status-label">Django Server</div>
-            <div className="status-value">Работает</div>
-          </div>
-          <div className="status-item">
-            <div className="status-indicator" style={{ backgroundColor: '#10b981' }}></div>
-            <div className="status-label">React Frontend</div>
-            <div className="status-value">Работает</div>
-          </div>
-          <div className="status-item">
-            <div className="status-indicator" style={{ backgroundColor: '#10b981' }}></div>
-            <div className="status-label">Zoom API</div>
-            <div className="status-value">Подключено</div>
-          </div>
-          <div className="status-item">
-            <div className="status-indicator" style={{ backgroundColor: '#f59e0b' }}></div>
-            <div className="status-label">Celery Worker</div>
-            <div className="status-value">Не запущен</div>
-          </div>
-          <div className="status-item">
-            <div className="status-indicator" style={{ backgroundColor: '#10b981' }}></div>
-            <div className="status-label">База данных</div>
-            <div className="status-value">Работает</div>
-          </div>
-        </div>
-      </div> {/* End admin-section */}
       </main>
 
       {/* Modals */}

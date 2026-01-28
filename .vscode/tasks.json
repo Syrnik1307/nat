@@ -1276,6 +1276,12 @@
 			],
 			"isBackground": false,
 			"problemMatcher": []
+		},
+		{
+			"label": "build-frontend-errors-fix",
+			"type": "shell",
+			"command": "cd frontend && npm run build",
+			"isBackground": false
 		}
 	]
 }
