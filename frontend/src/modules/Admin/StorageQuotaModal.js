@@ -1,44 +1,54 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api, { withScheduleApiBase } from '../../apiService';
-import { Notification, ConfirmModal } from '../../shared/components';
-import useNotification from '../../shared/hooks/useNotification';
+import Notification from '../../shared/components/Notification';
+import ConfirmModal from '../../shared/components/ConfirmModal';
 import './StorageQuotaModal.css';
 
-const formatBytes = (bytes) => {
-  if (bytes === null || bytes === undefined || isNaN(bytes)) return '—';
-  if (bytes === 0) return '0 Б';
-  
-  const units = ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  const value = bytes / Math.pow(1024, i);
-  
-  return `${value.toFixed(i > 1 ? 2 : 0)} ${units[i]}`;
-};
-
+// Форматирование в ГБ
 const formatGB = (gb) => {
-  if (gb === null || gb === undefined || isNaN(gb)) return '—';
-  return `${gb.toFixed(2)} ГБ`;
+  if (gb === undefined || gb === null || isNaN(gb)) return '0 ГБ';
+  if (gb >= 1) return `${gb.toFixed(2)} ГБ`;
+  return `${(gb * 1024).toFixed(0)} МБ`;
 };
 
 const StorageQuotaModal = ({ onClose }) => {
-  const { notification, confirm, closeNotification, closeConfirm } = useNotification();
-  const [gdriveStats, setGdriveStats] = useState(null);
+  const [quotas, setQuotas] = useState([]);
+  const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
-  const [selectedTeacher, setSelectedTeacher] = useState(null);
-  const [sortBy, setSortBy] = useState('total_size');
+  const [sortBy, setSortBy] = useState('used_gb');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [selectedTeacher, setSelectedTeacher] = useState(null);
+  const [editingQuota, setEditingQuota] = useState(null);
+  const [newQuotaGB, setNewQuotaGB] = useState('');
+
+  // Уведомления
+  const [notification, setNotification] = useState({ isOpen: false, type: 'info', title: '', message: '' });
+  const [confirm, setConfirm] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+
+  const showNotification = (type, title, message) => {
+    setNotification({ isOpen: true, type, title, message });
+  };
+  const closeNotification = () => setNotification(prev => ({ ...prev, isOpen: false }));
+  const closeConfirm = () => setConfirm(prev => ({ ...prev, isOpen: false }));
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    setError('');
+    setError(null);
     try {
-      const response = await api.get('storage/gdrive-stats/all/', withScheduleApiBase());
-      setGdriveStats(response.data);
+      // Используем быстрые API из БД
+      const [quotasRes, statsRes] = await Promise.all([
+        api.get('storage/quotas/', withScheduleApiBase()),
+        api.get('storage/statistics/', withScheduleApiBase())
+      ]);
+
+      const quotaData = quotasRes.data.results || quotasRes.data;
+      setQuotas(quotaData);
+      setStatistics(statsRes.data);
     } catch (err) {
-      console.error('Failed to load storage stats', err);
-      setError('Не удалось загрузить данные. Попробуйте ещё раз.');
+      console.error('Error loading storage data:', err);
+      setError('Не удалось загрузить данные хранилища');
     } finally {
       setLoading(false);
     }
@@ -49,52 +59,52 @@ const StorageQuotaModal = ({ onClose }) => {
   }, [loadData]);
 
   const filteredTeachers = useMemo(() => {
-    if (!gdriveStats?.teachers) return [];
+    if (!quotas || quotas.length === 0) return [];
     
-    let result = gdriveStats.teachers;
+    let result = [...quotas];
     
     // Фильтр по поиску
     if (search.trim()) {
       const searchLower = search.toLowerCase();
-      result = result.filter(t => 
-        t.teacher_name?.toLowerCase().includes(searchLower) ||
-        t.teacher_email?.toLowerCase().includes(searchLower)
+      result = result.filter(q => 
+        q.teacher_info?.name?.toLowerCase().includes(searchLower) ||
+        q.teacher_info?.email?.toLowerCase().includes(searchLower)
       );
     }
     
     // Сортировка
-    result = [...result].sort((a, b) => {
+    result.sort((a, b) => {
       let aVal, bVal;
       switch (sortBy) {
-        case 'total_size':
-          aVal = a.total_size || 0;
-          bVal = b.total_size || 0;
+        case 'used_gb':
+          aVal = a.used_gb || 0;
+          bVal = b.used_gb || 0;
           break;
-        case 'recordings':
-          aVal = a.recordings?.size_mb || 0;
-          bVal = b.recordings?.size_mb || 0;
+        case 'total_gb':
+          aVal = a.total_gb || 0;
+          bVal = b.total_gb || 0;
           break;
-        case 'homework':
-          aVal = a.homework?.size_mb || 0;
-          bVal = b.homework?.size_mb || 0;
+        case 'usage_percent':
+          aVal = a.usage_percent || 0;
+          bVal = b.usage_percent || 0;
           break;
-        case 'materials':
-          aVal = a.materials?.size_mb || 0;
-          bVal = b.materials?.size_mb || 0;
+        case 'recordings_count':
+          aVal = a.recordings_count || 0;
+          bVal = b.recordings_count || 0;
           break;
         case 'name':
-          aVal = a.teacher_name || '';
-          bVal = b.teacher_name || '';
+          aVal = a.teacher_info?.name || '';
+          bVal = b.teacher_info?.name || '';
           return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
         default:
-          aVal = a.total_size || 0;
-          bVal = b.total_size || 0;
+          aVal = a.used_gb || 0;
+          bVal = b.used_gb || 0;
       }
       return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
     });
     
     return result;
-  }, [gdriveStats, search, sortBy, sortOrder]);
+  }, [quotas, search, sortBy, sortOrder]);
 
   const handleSort = (field) => {
     if (sortBy === field) {
@@ -110,56 +120,25 @@ const StorageQuotaModal = ({ onClose }) => {
     return sortOrder === 'asc' ? ' ↑' : ' ↓';
   };
 
-  const getCategoryColor = (category) => {
-    const colors = {
-      recordings: '#3b82f6',
-      homework: '#10b981',
-      materials: '#f59e0b',
-      students_data: '#8b5cf6'
-    };
-    return colors[category] || '#6b7280';
+  const getUsageColor = (percent) => {
+    if (percent >= 90) return '#ef4444'; // Красный
+    if (percent >= 70) return '#f59e0b'; // Оранжевый
+    return '#10b981'; // Зелёный
   };
 
-  const getCategoryName = (category) => {
-    const names = {
-      recordings: 'Записи уроков',
-      homework: 'Домашние задания',
-      materials: 'Материалы',
-      students_data: 'Данные учеников'
-    };
-    return names[category] || category;
-  };
-
-  const renderStorageBar = (teacher) => {
-    const total = teacher.total_size || 1;
-    const recordings = teacher.recordings?.size_mb * 1024 * 1024 || 0;
-    const homework = teacher.homework?.size_mb * 1024 * 1024 || 0;
-    const materials = teacher.materials?.size_mb * 1024 * 1024 || 0;
-    const students = teacher.students_data?.size_mb * 1024 * 1024 || 0;
-
-    const segments = [
-      { key: 'recordings', size: recordings, color: getCategoryColor('recordings') },
-      { key: 'homework', size: homework, color: getCategoryColor('homework') },
-      { key: 'materials', size: materials, color: getCategoryColor('materials') },
-      { key: 'students_data', size: students, color: getCategoryColor('students_data') }
-    ];
-
-    return (
-      <div className="storage-category-bar">
-        {segments.map(seg => {
-          const percent = (seg.size / total) * 100;
-          if (percent < 0.5) return null;
-          return (
-            <div
-              key={seg.key}
-              className="storage-category-segment"
-              style={{ width: `${percent}%`, backgroundColor: seg.color }}
-              title={`${getCategoryName(seg.key)}: ${formatBytes(seg.size)}`}
-            />
-          );
-        })}
-      </div>
-    );
+  const handleUpdateQuota = async (quotaId, newTotalGB) => {
+    try {
+      await api.patch(`storage/quotas/${quotaId}/update_quota/`, {
+        total_gb: parseFloat(newTotalGB)
+      }, withScheduleApiBase());
+      showNotification('success', 'Успешно', 'Квота обновлена');
+      setEditingQuota(null);
+      setNewQuotaGB('');
+      loadData();
+    } catch (err) {
+      console.error('Error updating quota:', err);
+      showNotification('error', 'Ошибка', 'Не удалось обновить квоту');
+    }
   };
 
   const renderTeacherDetails = () => {
@@ -171,144 +150,135 @@ const StorageQuotaModal = ({ onClose }) => {
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
             </svg>
           </div>
-          <p>Выберите преподавателя слева для просмотра детальной статистики хранилища</p>
+          <p>Выберите преподавателя слева для просмотра информации о хранилище</p>
         </div>
       );
     }
 
-    const categories = [
-      { key: 'recordings', data: selectedTeacher.recordings },
-      { key: 'homework', data: selectedTeacher.homework },
-      { key: 'materials', data: selectedTeacher.materials },
-      { key: 'students_data', data: selectedTeacher.students_data }
-    ];
-
-    const totalSize = selectedTeacher.total_size || 0;
+    const usagePercent = selectedTeacher.usage_percent || 0;
+    const usageColor = getUsageColor(usagePercent);
 
     return (
       <div className="storage-details-content">
         <div className="storage-details-header">
-          <h3>{selectedTeacher.teacher_name}</h3>
-          <p className="storage-details-email">{selectedTeacher.teacher_email}</p>
+          <h3>{selectedTeacher.teacher_info?.name || 'Преподаватель'}</h3>
+          <p className="storage-details-email">{selectedTeacher.teacher_info?.email}</p>
         </div>
 
         <div className="storage-details-total">
-          <div className="storage-details-total-value">{formatGB(selectedTeacher.total_size_gb)}</div>
-          <div className="storage-details-total-label">Всего использовано</div>
-        </div>
-
-        <div className="storage-details-categories">
-          {categories.map(cat => {
-            const sizeMb = cat.data?.size_mb || 0;
-            const sizeBytes = sizeMb * 1024 * 1024;
-            const files = cat.data?.files || 0;
-            const percent = totalSize > 0 ? (sizeBytes / totalSize) * 100 : 0;
-
-            return (
-              <div key={cat.key} className="storage-category-item">
-                <div className="storage-category-header">
-                  <div 
-                    className="storage-category-dot" 
-                    style={{ backgroundColor: getCategoryColor(cat.key) }}
-                  />
-                  <span className="storage-category-name">{getCategoryName(cat.key)}</span>
-                </div>
-                <div className="storage-category-stats">
-                  <div className="storage-category-size">
-                    {sizeMb >= 1024 ? formatGB(sizeMb / 1024) : `${sizeMb.toFixed(1)} МБ`}
-                  </div>
-                  <div className="storage-category-files">{files} файлов</div>
-                </div>
-                <div className="storage-category-bar-container">
-                  <div 
-                    className="storage-category-bar-fill"
-                    style={{ 
-                      width: `${Math.min(percent, 100)}%`,
-                      backgroundColor: getCategoryColor(cat.key)
-                    }}
-                  />
-                </div>
-                <div className="storage-category-percent">{percent.toFixed(1)}%</div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="storage-details-info">
-          <div className="storage-info-item">
-            <span className="storage-info-label">Всего файлов:</span>
-            <span className="storage-info-value">
-              {categories.reduce((sum, cat) => sum + (cat.data?.files || 0), 0)}
-            </span>
+          <div className="storage-details-total-value" style={{ color: usageColor }}>
+            {formatGB(selectedTeacher.used_gb)}
           </div>
+          <div className="storage-details-total-label">
+            из {formatGB(selectedTeacher.total_gb)} использовано
+          </div>
+        </div>
+
+        <div className="storage-usage-bar-container">
+          <div 
+            className="storage-usage-bar-fill"
+            style={{ 
+              width: `${Math.min(usagePercent, 100)}%`,
+              backgroundColor: usageColor
+            }}
+          />
+        </div>
+        <div className="storage-usage-percent" style={{ color: usageColor }}>
+          {usagePercent.toFixed(1)}% заполнено
+        </div>
+
+        <div className="storage-details-stats">
+          <div className="storage-stat-item">
+            <span className="storage-stat-label">Записей:</span>
+            <span className="storage-stat-value">{selectedTeacher.recordings_count || 0}</span>
+          </div>
+          <div className="storage-stat-item">
+            <span className="storage-stat-label">Свободно:</span>
+            <span className="storage-stat-value">{formatGB(selectedTeacher.available_gb)}</span>
+          </div>
+          <div className="storage-stat-item">
+            <span className="storage-stat-label">Докуплено:</span>
+            <span className="storage-stat-value">{selectedTeacher.purchased_gb || 0} ГБ</span>
+          </div>
+          {selectedTeacher.quota_exceeded && (
+            <div className="storage-stat-item storage-stat-warning">
+              <span className="storage-stat-label">Статус:</span>
+              <span className="storage-stat-value warning">Квота превышена</span>
+            </div>
+          )}
+        </div>
+
+        <div className="storage-details-actions">
+          {editingQuota === selectedTeacher.id ? (
+            <div className="quota-edit-form">
+              <input
+                type="number"
+                value={newQuotaGB}
+                onChange={(e) => setNewQuotaGB(e.target.value)}
+                placeholder="Новая квота (ГБ)"
+                min="1"
+                step="1"
+              />
+              <button 
+                className="btn-save"
+                onClick={() => handleUpdateQuota(selectedTeacher.id, newQuotaGB)}
+                disabled={!newQuotaGB || parseFloat(newQuotaGB) <= 0}
+              >
+                Сохранить
+              </button>
+              <button 
+                className="btn-cancel"
+                onClick={() => { setEditingQuota(null); setNewQuotaGB(''); }}
+              >
+                Отмена
+              </button>
+            </div>
+          ) : (
+            <button 
+              className="btn-edit-quota"
+              onClick={() => {
+                setEditingQuota(selectedTeacher.id);
+                setNewQuotaGB(selectedTeacher.total_gb?.toFixed(0) || '5');
+              }}
+            >
+              Изменить квоту
+            </button>
+          )}
         </div>
       </div>
     );
   };
 
   const renderSummary = () => {
-    if (!gdriveStats?.summary) return null;
-
-    const { summary, drive_quota } = gdriveStats;
+    if (!statistics) return null;
 
     return (
       <div className="storage-summary">
         <div className="storage-summary-item">
-          <div className="storage-summary-value">{summary.total_teachers}</div>
+          <div className="storage-summary-value">{statistics.total_teachers || quotas.length}</div>
           <div className="storage-summary-label">Преподавателей</div>
         </div>
         <div className="storage-summary-item">
-          <div className="storage-summary-value">{formatGB(summary.total_size_gb)}</div>
+          <div className="storage-summary-value">{formatGB(statistics.total_used_gb)}</div>
           <div className="storage-summary-label">Использовано</div>
         </div>
         <div className="storage-summary-item">
-          <div className="storage-summary-value">{summary.total_files}</div>
-          <div className="storage-summary-label">Всего файлов</div>
+          <div className="storage-summary-value">{formatGB(statistics.total_quota_gb)}</div>
+          <div className="storage-summary-label">Всего выделено</div>
         </div>
-        {drive_quota && (
-          <div className="storage-summary-item storage-summary-quota">
-            <div className="storage-summary-value">
-              {formatGB(drive_quota.usage_gb)} / {formatGB(drive_quota.limit_gb)}
-            </div>
-            <div className="storage-summary-label">
-              Google Drive ({drive_quota.usage_percent?.toFixed(1)}%)
-            </div>
-            <div className="storage-quota-bar">
-              <div 
-                className="storage-quota-bar-fill"
-                style={{ 
-                  width: `${Math.min(drive_quota.usage_percent || 0, 100)}%`,
-                  backgroundColor: drive_quota.usage_percent > 90 ? '#ef4444' : 
-                                   drive_quota.usage_percent > 70 ? '#f59e0b' : '#10b981'
-                }}
-              />
-            </div>
+        <div className="storage-summary-item">
+          <div className="storage-summary-value">{statistics.total_recordings || 0}</div>
+          <div className="storage-summary-label">Записей</div>
+        </div>
+        {statistics.exceeded_count > 0 && (
+          <div className="storage-summary-item storage-summary-warning">
+            <div className="storage-summary-value warning">{statistics.exceeded_count}</div>
+            <div className="storage-summary-label">Превышений</div>
           </div>
         )}
       </div>
     );
   };
-
-  const renderLegend = () => (
-    <div className="storage-legend">
-      <div className="storage-legend-item">
-        <div className="storage-legend-dot" style={{ backgroundColor: getCategoryColor('recordings') }} />
-        <span>Записи</span>
-      </div>
-      <div className="storage-legend-item">
-        <div className="storage-legend-dot" style={{ backgroundColor: getCategoryColor('homework') }} />
-        <span>ДЗ</span>
-      </div>
-      <div className="storage-legend-item">
-        <div className="storage-legend-dot" style={{ backgroundColor: getCategoryColor('materials') }} />
-        <span>Материалы</span>
-      </div>
-      <div className="storage-legend-item">
-        <div className="storage-legend-dot" style={{ backgroundColor: getCategoryColor('students_data') }} />
-        <span>Ученики</span>
-      </div>
-    </div>
-  );
 
   return (
     <div className="storage-modal-overlay" onClick={onClose}>
@@ -328,7 +298,7 @@ const StorageQuotaModal = ({ onClose }) => {
         </div>
         
         <p className="storage-modal-subtitle">
-          Просматривайте использование хранилища Google Drive по каждому преподавателю с разбивкой по категориям.
+          Просматривайте и управляйте квотами хранилища преподавателей.
         </p>
 
         {error && (
@@ -353,7 +323,6 @@ const StorageQuotaModal = ({ onClose }) => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          {renderLegend()}
           <button className="storage-refresh-btn" onClick={loadData} disabled={loading}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M23 4v6h-6M1 20v-6h6"/>
@@ -368,7 +337,7 @@ const StorageQuotaModal = ({ onClose }) => {
             {loading ? (
               <div className="storage-loading">
                 <div className="storage-spinner" />
-                <span>Загрузка данных из Google Drive...</span>
+                <span>Загрузка...</span>
               </div>
             ) : filteredTeachers.length === 0 ? (
               <div className="storage-empty">
@@ -386,67 +355,81 @@ const StorageQuotaModal = ({ onClose }) => {
                     </th>
                     <th 
                       className="sortable numeric" 
-                      onClick={() => handleSort('total_size')}
+                      onClick={() => handleSort('used_gb')}
                     >
-                      Всего{getSortIcon('total_size')}
+                      Использовано{getSortIcon('used_gb')}
                     </th>
                     <th 
                       className="sortable numeric" 
-                      onClick={() => handleSort('recordings')}
+                      onClick={() => handleSort('total_gb')}
                     >
-                      Записи{getSortIcon('recordings')}
+                      Квота{getSortIcon('total_gb')}
                     </th>
                     <th 
                       className="sortable numeric" 
-                      onClick={() => handleSort('homework')}
+                      onClick={() => handleSort('usage_percent')}
                     >
-                      ДЗ{getSortIcon('homework')}
+                      %{getSortIcon('usage_percent')}
                     </th>
                     <th 
                       className="sortable numeric" 
-                      onClick={() => handleSort('materials')}
+                      onClick={() => handleSort('recordings_count')}
                     >
-                      Материалы{getSortIcon('materials')}
+                      Записей{getSortIcon('recordings_count')}
                     </th>
-                    <th className="distribution-col">Распределение</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredTeachers.map((teacher) => (
-                    <tr
-                      key={teacher.teacher_id}
-                      className={selectedTeacher?.teacher_id === teacher.teacher_id ? 'selected' : ''}
-                      onClick={() => setSelectedTeacher(teacher)}
-                    >
-                      <td>
-                        <div className="teacher-cell">
-                          <div className="teacher-name">{teacher.teacher_name}</div>
-                          <div className="teacher-email">{teacher.teacher_email}</div>
-                        </div>
-                      </td>
-                      <td className="numeric">
-                        <span className="size-value">{formatGB(teacher.total_size_gb)}</span>
-                      </td>
-                      <td className="numeric">
-                        <span className="category-value recordings">
-                          {teacher.recordings?.size_mb?.toFixed(0) || 0} МБ
-                        </span>
-                      </td>
-                      <td className="numeric">
-                        <span className="category-value homework">
-                          {teacher.homework?.size_mb?.toFixed(0) || 0} МБ
-                        </span>
-                      </td>
-                      <td className="numeric">
-                        <span className="category-value materials">
-                          {teacher.materials?.size_mb?.toFixed(0) || 0} МБ
-                        </span>
-                      </td>
-                      <td className="distribution-col">
-                        {renderStorageBar(teacher)}
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredTeachers.map((teacher) => {
+                    const usagePercent = teacher.usage_percent || 0;
+                    const usageColor = getUsageColor(usagePercent);
+                    
+                    return (
+                      <tr
+                        key={teacher.id}
+                        className={`${selectedTeacher?.id === teacher.id ? 'selected' : ''} ${teacher.quota_exceeded ? 'exceeded' : ''}`}
+                        onClick={() => setSelectedTeacher(teacher)}
+                      >
+                        <td>
+                          <div className="teacher-cell">
+                            <div className="teacher-name">{teacher.teacher_info?.name || 'Без имени'}</div>
+                            <div className="teacher-email">{teacher.teacher_info?.email}</div>
+                          </div>
+                        </td>
+                        <td className="numeric">
+                          <span className="size-value" style={{ color: usageColor }}>
+                            {formatGB(teacher.used_gb)}
+                          </span>
+                        </td>
+                        <td className="numeric">
+                          <span className="size-value">
+                            {formatGB(teacher.total_gb)}
+                          </span>
+                        </td>
+                        <td className="numeric">
+                          <div className="usage-cell">
+                            <div className="mini-progress-bar">
+                              <div 
+                                className="mini-progress-fill"
+                                style={{ 
+                                  width: `${Math.min(usagePercent, 100)}%`,
+                                  backgroundColor: usageColor
+                                }}
+                              />
+                            </div>
+                            <span className="percent-value" style={{ color: usageColor }}>
+                              {usagePercent.toFixed(0)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="numeric">
+                          <span className="recordings-value">
+                            {teacher.recordings_count || 0}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

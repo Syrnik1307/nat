@@ -458,8 +458,8 @@
 }
 
 .storage-details-total {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  color: #fff;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 14px;
   padding: 20px;
   text-align: center;
@@ -473,7 +473,8 @@
 
 .storage-details-total-label {
   font-size: 0.9rem;
-  opacity: 0.9;
+  color: #64748b;
+  margin-top: 4px;
 }
 
 .storage-details-categories {
@@ -562,6 +563,196 @@
 .storage-info-value {
   font-weight: 600;
   color: #1e293b;
+}
+
+/* Usage cell with mini progress bar */
+.usage-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-progress-bar {
+  width: 60px;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.mini-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.percent-value {
+  font-weight: 600;
+  font-size: 0.85rem;
+  min-width: 35px;
+  text-align: right;
+}
+
+.recordings-value {
+  font-weight: 500;
+  color: #64748b;
+}
+
+/* Exceeded row */
+.storage-table tbody tr.exceeded {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.storage-table tbody tr.exceeded:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Summary warning */
+.storage-summary-item.storage-summary-warning {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+}
+
+.storage-summary-value.warning {
+  color: #dc2626;
+}
+
+/* Usage bar in details */
+.storage-usage-bar-container {
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 16px 0 8px;
+}
+
+.storage-usage-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.storage-usage-percent {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* Details stats */
+.storage-details-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.storage-stat-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-radius: 10px;
+}
+
+.storage-stat-label {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.storage-stat-value {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.storage-stat-value.warning {
+  color: #dc2626;
+}
+
+.storage-stat-item.storage-stat-warning {
+  background: #fef2f2;
+}
+
+/* Details actions */
+.storage-details-actions {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.btn-edit-quota {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6366f1;
+  transition: all 0.15s ease;
+}
+
+.btn-edit-quota:hover {
+  background: #eef2ff;
+  border-color: #6366f1;
+}
+
+.quota-edit-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quota-edit-form input {
+  flex: 1;
+  min-width: 100px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.quota-edit-form input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.btn-save {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  background: #6366f1;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: #4f46e5;
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-cancel {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.btn-cancel:hover {
+  background: #f8fafc;
 }
 
 /* Responsive */

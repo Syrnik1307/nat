@@ -184,6 +184,59 @@ def reset_quota_warnings(request, quota_id):
     })
 
 
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_quota(request, quota_id):
+    """
+    Установка новой квоты преподавателя (абсолютное значение)
+    
+    Body:
+    {
+        "total_gb": 10
+    }
+    """
+    if request.user.role != 'admin':
+        return Response(
+            {'error': 'Доступ запрещен'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    quota = get_object_or_404(TeacherStorageQuota, id=quota_id)
+    
+    total_gb = request.data.get('total_gb')
+    if total_gb is None:
+        return Response(
+            {'error': 'Укажите total_gb'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        total_gb = float(total_gb)
+        if total_gb <= 0:
+            return Response(
+                {'error': 'total_gb должен быть положительным числом'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    except (ValueError, TypeError):
+        return Response(
+            {'error': 'Неверный формат total_gb'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Устанавливаем новую квоту
+    quota.total_quota_bytes = int(total_gb * (1024 ** 3))
+    
+    # Пересчитываем флаг превышения
+    quota.quota_exceeded = quota.used_bytes > quota.total_quota_bytes
+    quota.save()
+    
+    serializer = TeacherStorageQuotaSerializer(quota)
+    return Response({
+        'message': f'Квота установлена: {total_gb} ГБ',
+        'quota': serializer.data
+    })
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def storage_statistics(request):

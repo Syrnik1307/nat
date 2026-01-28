@@ -51,6 +51,7 @@ urlpatterns = [
     path('api/storage/quotas/', storage_views.storage_quotas_list, name='storage_quotas_list'),
     path('api/storage/quotas/<int:quota_id>/', storage_views.storage_quota_detail, name='storage_quota_detail'),
     path('api/storage/quotas/<int:quota_id>/increase/', storage_views.increase_quota, name='increase_quota'),
+    path('api/storage/quotas/<int:quota_id>/update_quota/', storage_views.update_quota, name='update_quota'),
     path('api/storage/quotas/<int:quota_id>/reset-warnings/', storage_views.reset_quota_warnings, name='reset_quota_warnings'),
     path('api/storage/statistics/', storage_views.storage_statistics, name='storage_statistics'),
     path('api/storage/teachers/<int:teacher_id>/recordings/', storage_views.teacher_recordings_list, name='admin_teacher_recordings'),

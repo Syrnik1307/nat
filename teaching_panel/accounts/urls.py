@@ -30,6 +30,7 @@ from .admin_views import (
     AdminBusinessMetricsView,
     AdminSystemErrorsView,
     AdminSystemErrorsCountsView,
+    AdminDashboardDataView,
 )
 from .chat_views import ChatViewSet, MessageViewSet, UserSearchViewSet
 from .email_views import (
@@ -120,6 +121,7 @@ urlpatterns = [
     path('api/admin/errors/counts/', AdminSystemErrorsCountsView.as_view(), name='admin_system_errors_counts'),
     path('api/admin/quick-actions/', AdminQuickActionsView.as_view(), name='admin_quick_actions'),
     path('api/admin/business-metrics/', AdminBusinessMetricsView.as_view(), name='admin_business_metrics'),
+    path('api/admin/dashboard-data/', AdminDashboardDataView.as_view(), name='admin_dashboard_data'),
     
     # API для получения сообщений (для всех пользователей)
     path('api/status-messages/', AdminStatusMessagesView.as_view(), name='status_messages'),

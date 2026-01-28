@@ -2110,23 +2110,23 @@ class AdminBusinessMetricsView(APIView):
         
         # Создали группу
         teachers_with_group = new_teachers.filter(
-            groups_owned__isnull=False
+            teaching_groups__isnull=False
         ).distinct().count()
         
         # Добавили учеников
         teachers_with_students = new_teachers.filter(
-            groups_owned__students__isnull=False
+            teaching_groups__students__isnull=False
         ).distinct().count()
         
         # Создали урок
         teachers_with_lesson = new_teachers.filter(
-            lessons__isnull=False
+            teaching_lessons__isnull=False
         ).distinct().count()
         
         # Провели урок (урок в прошлом)
         teachers_conducted_lesson = new_teachers.filter(
-            lessons__start_time__lt=now,
-            lessons__start_time__gte=month_ago
+            teaching_lessons__start_time__lt=now,
+            teaching_lessons__start_time__gte=month_ago
         ).distinct().count()
         
         # Оплатили
@@ -2259,8 +2259,8 @@ class AdminBusinessMetricsView(APIView):
             .values('source')
             .annotate(
                 registrations=Count('id'),
-                with_group=Count('id', filter=Q(groups_owned__isnull=False)),
-                with_lesson=Count('id', filter=Q(lessons__isnull=False)),
+                with_group=Count('id', filter=Q(teaching_groups__isnull=False)),
+                with_lesson=Count('id', filter=Q(teaching_lessons__isnull=False)),
             )
             .order_by('-registrations')[:10]
         )
@@ -2336,9 +2336,9 @@ class AdminBusinessMetricsView(APIView):
         teachers_with_groups = User.objects.filter(
             role='teacher',
             created_at__gte=month_ago,
-            groups_owned__isnull=False
+            teaching_groups__isnull=False
         ).annotate(
-            first_group_created=Count('groups_owned')  # placeholder
+            first_group_created=Count('teaching_groups')  # placeholder
         ).distinct()
         
         # Упрощённая версия - берём средние дни
@@ -2436,3 +2436,378 @@ class AdminQuickActionsView(APIView):
 
         return Response({'error': 'Unknown action'}, status=400)
 
+
+class AdminDashboardDataView(APIView):
+    """
+    Главный дашборд админа: health checks, графики доходов и подписок.
+    GET /api/admin/dashboard-data/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        now = timezone.now()
+        today = now.date()
+
+        # === SYSTEM HEALTH CHECKS ===
+        health_checks = self._get_health_checks()
+
+        # === ДОХОДЫ ПО ДНЯМ (последние 30 дней) ===
+        daily_revenue = self._get_daily_revenue(today, days=30)
+
+        # === ПОДПИСЧИКИ ПО ДНЯМ (последние 30 дней) ===
+        daily_subscribers = self._get_daily_subscribers(today, days=30)
+
+        # === ДОХОДЫ ПО НЕДЕЛЯМ (последние 12 недель) ===
+        weekly_revenue = self._get_weekly_revenue(today, weeks=12)
+
+        # === КЛЮЧЕВЫЕ МЕТРИКИ ===
+        metrics = self._get_key_metrics(now, today)
+
+        return Response({
+            'health_checks': health_checks,
+            'daily_revenue': daily_revenue,
+            'daily_subscribers': daily_subscribers,
+            'weekly_revenue': weekly_revenue,
+            'metrics': metrics,
+            'generated_at': now.isoformat(),
+        })
+
+    def _get_health_checks(self):
+        """Проверки работоспособности систем"""
+        checks = []
+
+        # 1. Database
+        try:
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute('SELECT 1')
+            checks.append({
+                'name': 'База данных',
+                'status': 'ok',
+                'message': 'Подключена'
+            })
+        except Exception as e:
+            checks.append({
+                'name': 'База данных',
+                'status': 'error',
+                'message': str(e)[:100]
+            })
+
+        # 2. Cache/Redis
+        try:
+            from django.core.cache import cache
+            cache.set('dashboard_health', 'ok', 10)
+            val = cache.get('dashboard_health')
+            if val == 'ok':
+                checks.append({
+                    'name': 'Redis/Cache',
+                    'status': 'ok',
+                    'message': 'Работает'
+                })
+            else:
+                checks.append({
+                    'name': 'Redis/Cache',
+                    'status': 'warning',
+                    'message': 'Не отвечает'
+                })
+        except Exception:
+            checks.append({
+                'name': 'Redis/Cache',
+                'status': 'info',
+                'message': 'Не настроен'
+            })
+
+        # 3. Zoom Pool
+        try:
+            from zoom_pool.models import ZoomAccount
+            total = ZoomAccount.objects.filter(is_active=True).count()
+            in_use = ZoomAccount.objects.filter(is_active=True, in_use=True).count()
+            available = total - in_use
+
+            if total == 0:
+                checks.append({
+                    'name': 'Zoom Pool',
+                    'status': 'info',
+                    'message': 'Не настроен'
+                })
+            elif available == 0:
+                checks.append({
+                    'name': 'Zoom Pool',
+                    'status': 'warning',
+                    'message': f'Все заняты ({in_use}/{total})'
+                })
+            else:
+                checks.append({
+                    'name': 'Zoom Pool',
+                    'status': 'ok',
+                    'message': f'{available}/{total} свободно'
+                })
+        except Exception as e:
+            checks.append({
+                'name': 'Zoom Pool',
+                'status': 'error',
+                'message': str(e)[:50]
+            })
+
+        # 4. YooKassa
+        yookassa_id = getattr(settings, 'YOOKASSA_ACCOUNT_ID', None)
+        if yookassa_id:
+            checks.append({
+                'name': 'YooKassa',
+                'status': 'ok',
+                'message': 'Настроена'
+            })
+        else:
+            checks.append({
+                'name': 'YooKassa',
+                'status': 'warning',
+                'message': 'Тестовый режим'
+            })
+
+        # 5. Telegram Bot
+        bot_token = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
+        if bot_token:
+            checks.append({
+                'name': 'Telegram Bot',
+                'status': 'ok',
+                'message': 'Настроен'
+            })
+        else:
+            checks.append({
+                'name': 'Telegram Bot',
+                'status': 'info',
+                'message': 'Не настроен'
+            })
+
+        # 6. Google Drive
+        gdrive_creds = getattr(settings, 'GDRIVE_CREDENTIALS_FILE', None)
+        if gdrive_creds:
+            checks.append({
+                'name': 'Google Drive',
+                'status': 'ok',
+                'message': 'Настроен'
+            })
+        else:
+            checks.append({
+                'name': 'Google Drive',
+                'status': 'info',
+                'message': 'Не настроен'
+            })
+
+        # 7. Disk Space
+        try:
+            import shutil
+            total, used, free = shutil.disk_usage('/')
+            free_gb = free // (1024 ** 3)
+            used_percent = round((used / total) * 100, 1)
+
+            if free_gb < 1:
+                checks.append({
+                    'name': 'Диск',
+                    'status': 'error',
+                    'message': f'{free_gb} GB свободно ({used_percent}% занято)'
+                })
+            elif free_gb < 5:
+                checks.append({
+                    'name': 'Диск',
+                    'status': 'warning',
+                    'message': f'{free_gb} GB свободно ({used_percent}% занято)'
+                })
+            else:
+                checks.append({
+                    'name': 'Диск',
+                    'status': 'ok',
+                    'message': f'{free_gb} GB свободно'
+                })
+        except Exception:
+            pass
+
+        return checks
+
+    def _get_daily_revenue(self, today, days=30):
+        """Доходы по дням за последние N дней"""
+        from django.db.models.functions import TruncDate
+
+        start_date = today - timedelta(days=days - 1)
+
+        # Получаем платежи
+        payments = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED,
+            paid_at__date__gte=start_date
+        ).annotate(
+            day=TruncDate('paid_at')
+        ).values('day').annotate(
+            revenue=Sum('amount'),
+            count=Count('id')
+        ).order_by('day')
+
+        # Создаём словарь для быстрого доступа
+        payments_dict = {p['day']: {'revenue': float(p['revenue'] or 0), 'count': p['count']} for p in payments}
+
+        # Заполняем все дни
+        result = []
+        for i in range(days):
+            day = start_date + timedelta(days=i)
+            day_data = payments_dict.get(day, {'revenue': 0, 'count': 0})
+            result.append({
+                'date': day.isoformat(),
+                'label': day.strftime('%d.%m'),
+                'revenue': day_data['revenue'],
+                'payments': day_data['count']
+            })
+
+        return result
+
+    def _get_daily_subscribers(self, today, days=30):
+        """Новые оплаченные подписчики по дням"""
+        from django.db.models.functions import TruncDate
+
+        start_date = today - timedelta(days=days - 1)
+
+        # Подписки, ставшие активными
+        subs = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE,
+            updated_at__date__gte=start_date
+        ).annotate(
+            day=TruncDate('updated_at')
+        ).values('day').annotate(
+            count=Count('id')
+        ).order_by('day')
+
+        subs_dict = {s['day']: s['count'] for s in subs}
+
+        # Также считаем первые платежи
+        first_payments = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED,
+            paid_at__date__gte=start_date
+        ).values('subscription__user').annotate(
+            first_date=TruncDate('paid_at')
+        ).values('first_date').annotate(
+            new_subs=Count('subscription__user', distinct=True)
+        ).order_by('first_date')
+
+        payments_dict = {p['first_date']: p['new_subs'] for p in first_payments}
+
+        result = []
+        total = 0
+        for i in range(days):
+            day = start_date + timedelta(days=i)
+            new_today = payments_dict.get(day, 0)
+            total += new_today
+            result.append({
+                'date': day.isoformat(),
+                'label': day.strftime('%d.%m'),
+                'new': new_today,
+                'cumulative': total
+            })
+
+        return result
+
+    def _get_weekly_revenue(self, today, weeks=12):
+        """Доходы по неделям"""
+        from django.db.models.functions import TruncWeek
+
+        # Начало первой недели (12 недель назад)
+        start_date = today - timedelta(weeks=weeks)
+
+        payments = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED,
+            paid_at__date__gte=start_date
+        ).annotate(
+            week=TruncWeek('paid_at')
+        ).values('week').annotate(
+            revenue=Sum('amount'),
+            count=Count('id')
+        ).order_by('week')
+
+        result = []
+        for p in payments:
+            if p['week']:
+                week_start = p['week'].date() if hasattr(p['week'], 'date') else p['week']
+                week_end = week_start + timedelta(days=6)
+                result.append({
+                    'week_start': week_start.isoformat(),
+                    'label': f"{week_start.strftime('%d.%m')}-{week_end.strftime('%d.%m')}",
+                    'revenue': float(p['revenue'] or 0),
+                    'payments': p['count']
+                })
+
+        return result
+
+    def _get_key_metrics(self, now, today):
+        """Ключевые метрики для карточек"""
+        # Сегодня
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_revenue = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED,
+            paid_at__gte=today_start
+        ).aggregate(total=Sum('amount'))['total'] or 0
+
+        today_new_subs = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED,
+            paid_at__gte=today_start
+        ).values('subscription__user').distinct().count()
+
+        # Вчера для сравнения
+        yesterday_start = today_start - timedelta(days=1)
+        yesterday_revenue = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED,
+            paid_at__gte=yesterday_start,
+            paid_at__lt=today_start
+        ).aggregate(total=Sum('amount'))['total'] or 0
+
+        # За месяц
+        month_start = today_start - timedelta(days=30)
+        month_revenue = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED,
+            paid_at__gte=month_start
+        ).aggregate(total=Sum('amount'))['total'] or 0
+
+        # Активные подписки
+        active_subs = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE,
+            expires_at__gt=now
+        ).count()
+
+        # Истекающие в ближайшие 7 дней
+        expiring_soon = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE,
+            expires_at__gt=now,
+            expires_at__lte=now + timedelta(days=7)
+        ).count()
+
+        # MRR (Monthly Recurring Revenue)
+        # Считаем на основе активных месячных/годовых подписок
+        monthly_subs = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE,
+            expires_at__gt=now,
+            plan='monthly'
+        ).count()
+        yearly_subs = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE,
+            expires_at__gt=now,
+            plan='yearly'
+        ).count()
+        mrr = (monthly_subs * 990) + (yearly_subs * 825)  # 9900/12 = 825 для yearly
+
+        # Изменение дохода
+        revenue_change = float(today_revenue) - float(yesterday_revenue)
+        revenue_change_percent = round((revenue_change / float(yesterday_revenue)) * 100, 1) if yesterday_revenue else 0
+
+        return {
+            'today_revenue': float(today_revenue),
+            'yesterday_revenue': float(yesterday_revenue),
+            'revenue_change': revenue_change,
+            'revenue_change_percent': revenue_change_percent,
+            'today_new_subscribers': today_new_subs,
+            'month_revenue': float(month_revenue),
+            'active_subscriptions': active_subs,
+            'expiring_soon': expiring_soon,
+            'mrr': mrr,
+            'monthly_subscribers': monthly_subs,
+            'yearly_subscribers': yearly_subs,
+        }
