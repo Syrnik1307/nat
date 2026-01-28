@@ -60,6 +60,21 @@ log_success() { log "SUCCESS" "$1"; }
 send_telegram() {
     local message="$1"
     local emoji="${2:-ℹ️}"
+
+    if [[ "${ALERTS_MUTED:-0}" == "1" ]]; then
+        return 0
+    fi
+
+    local mute_file="${ALERTS_MUTE_FILE:-/var/run/lectio-monitor/mute_until}"
+    if [[ -f "$mute_file" ]]; then
+        local until
+        until=$(cat "$mute_file" 2>/dev/null || echo "")
+        local now
+        now=$(date +%s)
+        if [[ "$until" =~ ^[0-9]+$ ]] && [[ "$now" -lt "$until" ]]; then
+            return 0
+        fi
+    fi
     
     if [[ -z "$ERRORS_BOT_TOKEN" ]] || [[ -z "$ERRORS_CHAT_ID" ]]; then
         return 0
@@ -200,6 +215,10 @@ deploy_frontend() {
     log_info "Деплой frontend..."
     send_telegram "Начат деплой frontend" "🚀"
     
+    # Устанавливаем маркер деплоя чтобы smoke_check не спамил алертами
+    mkdir -p /var/run/lectio-monitor
+    touch /var/run/lectio-monitor/deploy_in_progress
+    
     # 1. Pre-deploy check
     if ! check_site_health 1 0; then
         log_warn "Сайт недоступен перед деплоем, продолжаем..."
@@ -236,6 +255,9 @@ deploy_frontend() {
         # Cleanup old backup
         rm -rf "${FRONTEND_BUILD}_old"
         
+        # Убираем маркер деплоя
+        rm -f /var/run/lectio-monitor/deploy_in_progress
+        
         return 0
     else
         log_error "Health check провален, откат..."
@@ -266,6 +288,10 @@ deploy_frontend() {
 deploy_backend() {
     log_info "Деплой backend..."
     send_telegram "Начат деплой backend" "🚀"
+    
+    # Устанавливаем маркер деплоя чтобы smoke_check не спамил алертами
+    mkdir -p /var/run/lectio-monitor
+    touch /var/run/lectio-monitor/deploy_in_progress
     
     # 1. Backup
     local backup_path
@@ -298,6 +324,10 @@ deploy_backend() {
     if check_site_health; then
         log_success "Backend деплой успешен!"
         send_telegram "Backend успешно задеплоен!" "✅"
+        
+        # Убираем маркер деплоя
+        rm -f /var/run/lectio-monitor/deploy_in_progress
+        
         return 0
     else
         log_error "Backend health check провален"

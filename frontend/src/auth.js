@@ -194,7 +194,7 @@ export const AuthProvider = ({ children }) => {
     return resolvedRole;
   }, [loadUser]);
 
-  const register = useCallback(async ({ email, password, firstName, lastName, phone, role: initialRole, birthDate, rememberMe = true }) => {
+  const register = useCallback(async ({ email, password, firstName, lastName, phone, role: initialRole, birthDate, rememberMe = true, notificationConsent = false }) => {
     // 1. Регистрация пользователя (при регистрации всегда запоминаем устройство)
     const regRes = await apiClient.post('jwt/register/', {
       email,
@@ -206,6 +206,7 @@ export const AuthProvider = ({ children }) => {
       birth_date: birthDate || null,
       recaptcha_token: null,
       remember_me: rememberMe,
+      notification_consent: notificationConsent,
       // Реферальные поля
       referral_code: localStorage.getItem('tp_referral_code') || '',
       utm_source: localStorage.getItem('tp_utm_source') || '',

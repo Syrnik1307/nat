@@ -840,6 +840,16 @@ def main():
     application.add_handler(CallbackQueryHandler(handle_menu_callback, pattern='^menu:'))
     application.add_handler(CallbackQueryHandler(toggle_notification_callback, pattern='^notif_toggle:'))
     
+    # === Интеграция расширенных команд из модуля bot ===
+    try:
+        from bot.main import setup_handlers as setup_bot_handlers
+        setup_bot_handlers(application)
+        print("✅ Bot Command Center загружен (расширенные команды)")
+    except ImportError as e:
+        logger.warning(f"Модуль bot не загружен: {e}")
+    except Exception as e:
+        logger.error(f"Ошибка загрузки модуля bot: {e}")
+    
     # Запускаем бота
     print("🤖 Telegram бот запущен!")
     print(f"🌐 Web приложение: {WEBAPP_URL}")

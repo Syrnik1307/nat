@@ -360,6 +360,9 @@ class RegisterView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Согласие на уведомления (обязательно для регистрации)
+        notification_consent = request.data.get('notification_consent', False)
+
         try:
             user = User.objects.create_user(
                 email=email,
@@ -369,6 +372,13 @@ class RegisterView(APIView):
                 last_name=last_name,
                 middle_name=middle_name
             )
+            
+            # Сохраняем согласие на уведомления
+            if notification_consent:
+                from django.utils import timezone
+                user.notification_consent = True
+                user.notification_consent_at = timezone.now()
+                user.save(update_fields=['notification_consent', 'notification_consent_at'])
             
             # Добавить дату рождения если указана
             if birth_date:

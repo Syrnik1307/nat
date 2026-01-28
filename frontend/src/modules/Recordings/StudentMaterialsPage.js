@@ -191,6 +191,9 @@ function StudentMaterialsPage() {
               {stripHtml(material.content).length > 220 ? '…' : ''}
             </div>
           )}
+          {!isMiro && material.file_url && (
+            <div className="sm-note-file">Файл: {material.file_name || 'Документ'}</div>
+          )}
           
           <button 
             className="sm-open-btn"
@@ -320,6 +323,19 @@ function StudentMaterialsPage() {
         >
           {selectedNote.description && (
             <div className="sm-note-description">{selectedNote.description}</div>
+          )}
+          {selectedNote.file_url && (
+            <div className="sm-note-file-block">
+              <div className="sm-note-file-name">{selectedNote.file_name || 'Документ'}</div>
+              <a
+                href={selectedNote.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="sm-note-file-link"
+              >
+                Открыть файл
+              </a>
+            </div>
           )}
           <div
             className="sm-note-content"

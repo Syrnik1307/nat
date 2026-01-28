@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     'zoom_pool',
     'support',
     'integrations',  # Third-party platform integrations (Google Meet, etc.)
+    'bot',  # Telegram bot command center
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'django_celery_beat',
@@ -469,6 +470,19 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'accounts.tasks.send_weekly_revenue_report_task',
         'schedule': crontab(day_of_week='monday', hour='10', minute='0'),  # каждый понедельник в 10:00
     },
+    # --- Telegram Bot Tasks ---
+    'process-scheduled-messages': {
+        'task': 'bot.tasks.process_scheduled_messages',
+        'schedule': 60.0,  # каждую минуту
+    },
+    'cleanup-redis-dialog-states': {
+        'task': 'bot.tasks.cleanup_redis_dialog_states',
+        'schedule': 259200.0,  # каждые 3 дня
+    },
+    'cleanup-old-broadcast-logs': {
+        'task': 'bot.tasks.cleanup_old_broadcast_logs',
+        'schedule': 604800.0,  # каждую неделю
+    },
 }
 
 # Azure Cosmos DB integration (feature-flagged)
@@ -612,6 +626,10 @@ TELEGRAM_REQUESTS_CHAT_ID = os.environ.get('TELEGRAM_REQUESTS_CHAT_ID', '')
 PROCESS_ALERTS_BOT_TOKEN = os.environ.get('PROCESS_ALERTS_BOT_TOKEN', '') or os.environ.get('ERRORS_BOT_TOKEN', '')
 PROCESS_ALERTS_CHAT_ID = os.environ.get('PROCESS_ALERTS_CHAT_ID', '') or os.environ.get('ERRORS_CHAT_ID', '')
 
+# Бот/чат для Django 500 ошибок (используется в telegram_logging.py)
+ERRORS_BOT_TOKEN = os.environ.get('ERRORS_BOT_TOKEN', '')
+ERRORS_CHAT_ID = os.environ.get('ERRORS_CHAT_ID', '')
+
 
 # =============================================================================
 # PRODUCTION SECURITY SETTINGS
@@ -676,8 +694,9 @@ if SENTRY_DSN:
                 CeleryIntegration(),
                 RedisIntegration(),
             ],
-            # Процент трассировки производительности
-            traces_sample_rate=0.1 if not DEBUG else 0.0,
+            # Performance tracing может быть платным/шумным. По умолчанию отключено.
+            # Включайте явно через env: SENTRY_TRACES_SAMPLE_RATE=0.1
+            traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.0')) if not DEBUG else 0.0,
             # Процент отправки ошибок (1.0 = все)
             sample_rate=1.0,
             # Окружение
@@ -757,6 +776,11 @@ LOGGING = {
             'class': 'accounts.logging_handlers.DatabaseErrorLogHandler',
             'formatter': 'verbose',
         },
+        'telegram': {
+            'level': 'ERROR',
+            'class': 'teaching_panel.telegram_logging.TelegramErrorHandler',
+            'formatter': 'verbose',
+        },
     },
     'loggers': {
         'django': {
@@ -765,7 +789,7 @@ LOGGING = {
             'propagate': False,
         },
         'django.request': {
-            'handlers': ['console', 'db_errors'],
+            'handlers': ['console', 'db_errors', 'telegram'],
             'level': 'ERROR',
             'propagate': False,
         },

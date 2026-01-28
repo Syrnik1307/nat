@@ -24,6 +24,9 @@ def warmup_zoom_oauth_tokens():
     from accounts.models import CustomUser
     from .zoom_client import ZoomAPIClient
     
+    # Исключаем тестовые/невалидные credentials
+    INVALID_CREDENTIALS = {'bad', 'test', 'invalid', 'demo', 'placeholder', 'xxx', '123'}
+    
     teachers_with_zoom = CustomUser.objects.filter(
         role='teacher',
         zoom_account_id__isnull=False,
@@ -36,9 +39,18 @@ def warmup_zoom_oauth_tokens():
     )
     
     warmed_count = 0
+    skipped_count = 0
+    
     for teacher in teachers_with_zoom:
         if not teacher.zoom_account_id or not teacher.zoom_client_id or not teacher.zoom_client_secret:
             continue
+        
+        # Пропускаем невалидные тестовые credentials
+        if teacher.zoom_account_id.lower() in INVALID_CREDENTIALS:
+            skipped_count += 1
+            logger.debug(f"[ZOOM_WARMUP] Skipped invalid credentials for {teacher.email}")
+            continue
+            
         try:
             client = ZoomAPIClient(
                 account_id=teacher.zoom_account_id,
@@ -50,10 +62,19 @@ def warmup_zoom_oauth_tokens():
             warmed_count += 1
             logger.info(f"[ZOOM_WARMUP] Warmed token for teacher {teacher.email}")
         except Exception as e:
-            logger.warning(f"[ZOOM_WARMUP] Failed to warm token for {teacher.email}: {e}")
+            # Логируем только warning для реальных ошибок, не для невалидных credentials
+            error_msg = str(e).lower()
+            if 'invalid' in error_msg or '400' in error_msg or '401' in error_msg:
+                logger.debug(f"[ZOOM_WARMUP] Invalid credentials for {teacher.email}: {e}")
+            else:
+                logger.warning(f"[ZOOM_WARMUP] Failed to warm token for {teacher.email}: {e}")
     
-    logger.info(f"[ZOOM_WARMUP] Warmed {warmed_count} Zoom OAuth tokens")
+    logger.info(f"[ZOOM_WARMUP] Warmed {warmed_count} tokens, skipped {skipped_count} invalid")
     return warmed_count
+
+
+@shared_task
+def release_stuck_zoom_accounts():
     """
     Освобождение зависших Zoom-аккаунтов
     

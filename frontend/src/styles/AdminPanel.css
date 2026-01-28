@@ -702,6 +702,93 @@
   }
 }
 
+/* ================================================
+   SIDEBAR FOOTER & PROFILE DROPDOWN
+   ================================================ */
+.admin-sidebar-footer {
+  padding: 1rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: auto;
+}
+
+.admin-nav-item.logout {
+  color: #f87171;
+}
+
+.admin-nav-item.logout:hover {
+  background: rgba(248, 113, 113, 0.1);
+  color: #fca5a5;
+}
+
+.admin-profile-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  z-index: 1000;
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+}
+
+.admin-profile-dropdown-header {
+  padding: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-app);
+}
+
+.admin-profile-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  text-align: left;
+}
+
+.admin-profile-dropdown-item:hover {
+  background: var(--bg-surface);
+}
+
+.admin-profile-dropdown-item .admin-nav-icon {
+  width: 20px;
+  height: 20px;
+  color: #f87171;
+}
+
+/* Large Modal */
+.admin-modal-large {
+  max-width: 900px;
+  width: 90%;
+}
+
+/* Fullscreen Modal */
+.admin-modal-fullscreen {
+  width: 95vw;
+  max-width: 1400px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-modal-fullscreen .modal-body {
+  flex: 1;
+  overflow: auto;
+}
+
 @media (max-width: 768px) {
   .admin-sidebar {
     transform: translateX(-100%);

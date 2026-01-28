@@ -123,9 +123,13 @@ def health_check(request):
         'checks': checks,
     }, status=http_status)
 
+# Prometheus metrics endpoint
+from .prometheus_metrics import metrics_view
+
 urlpatterns = [
     path('', health, name='root'),
     path('api/health/', health_check, name='health-check'),
+    path('metrics/', metrics_view, name='prometheus-metrics'),
     path('admin/', admin.site.urls),  # Django admin для управления БД
     
     # Debug endpoint (remove in production)

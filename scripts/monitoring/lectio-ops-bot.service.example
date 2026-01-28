@@ -1,0 +1,15 @@
+[Unit]
+Description=Lectio Ops Alerts Bot
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/lectio-monitor
+Environment=LECTIO_MONITOR_CONFIG=/opt/lectio-monitor/config.env
+ExecStart=/usr/bin/python3 /opt/lectio-monitor/ops_alerts_bot.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

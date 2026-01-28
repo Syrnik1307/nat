@@ -129,6 +129,19 @@ class CustomUser(AbstractUser):
         help_text=_('Флаг показывает, что пользователь подтвердил привязку Telegram через бота')
     )
 
+    # Согласие на уведомления (GDPR/ФЗ-152)
+    notification_consent = models.BooleanField(
+        _('Согласие на уведомления'),
+        default=False,
+        help_text=_('Пользователь дал согласие на получение уведомлений в Telegram о занятиях и ДЗ')
+    )
+    notification_consent_at = models.DateTimeField(
+        _('Дата согласия на уведомления'),
+        null=True,
+        blank=True,
+        help_text=_('Когда пользователь дал согласие')
+    )
+
     # Реферальная система
     referral_code = models.CharField(
         _('реферальный код'),

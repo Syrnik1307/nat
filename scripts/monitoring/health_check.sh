@@ -58,6 +58,21 @@ log_success() { log "SUCCESS" "$1"; }
 send_telegram() {
     local message="$1"
     local priority="${2:-normal}"  # normal, high, critical
+
+    if [[ "${ALERTS_MUTED:-0}" == "1" ]]; then
+        return 0
+    fi
+
+    local mute_file="${ALERTS_MUTE_FILE:-/var/run/lectio-monitor/mute_until}"
+    if [[ -f "$mute_file" ]]; then
+        local until
+        until=$(cat "$mute_file" 2>/dev/null || echo "")
+        local now
+        now=$(date +%s)
+        if [[ "$until" =~ ^[0-9]+$ ]] && [[ "$now" -lt "$until" ]]; then
+            return 0
+        fi
+    fi
     
     if [[ -z "$ERRORS_BOT_TOKEN" ]] || [[ -z "$ERRORS_CHAT_ID" ]]; then
         log_warn "Telegram Errors Bot не настроен, пропуск отправки алерта"

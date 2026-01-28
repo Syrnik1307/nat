@@ -65,6 +65,7 @@ const AuthPage = () => {
     lastName: '',
     telegramUsername: '', // Telegram для восстановления пароля
     honeypot: '', // Защита от ботов
+    notificationConsent: false, // Согласие на уведомления в Telegram
   });
   
   // === UI СОСТОЯНИЯ ===
@@ -386,7 +387,8 @@ const AuthPage = () => {
         lastName: formData.lastName,
         phone: formData.phone,
         role,
-        rememberMe
+        rememberMe,
+        notificationConsent: formData.notificationConsent
       });
       const resolvedRole = await register({
         email: formData.email.trim().toLowerCase(),
@@ -397,6 +399,7 @@ const AuthPage = () => {
         role,
         birthDate: null,
         rememberMe,
+        notificationConsent: formData.notificationConsent,
       });
       console.log('✅ Регистрация завершена. Роль из токена:', resolvedRole);
       showNotification('success', 'Регистрация выполнена', 'Добро пожаловать!');
@@ -737,7 +740,7 @@ const AuthPage = () => {
             )}
 
             {mode === 'register' && (
-              <div className="form-options">
+              <div className="form-options register-options">
                 <label className="checkbox-label">
                   <input
                     type="checkbox"
@@ -746,6 +749,15 @@ const AuthPage = () => {
                     disabled={loading || blocked}
                   />
                   <span>Запомнить меня</span>
+                </label>
+                <label className="checkbox-label notification-consent">
+                  <input
+                    type="checkbox"
+                    checked={formData.notificationConsent}
+                    onChange={(e) => handleChange('notificationConsent', e.target.checked)}
+                    disabled={loading || blocked}
+                  />
+                  <span>Я согласен получать уведомления в Telegram о занятиях и домашних заданиях</span>
                 </label>
               </div>
             )}

@@ -10,6 +10,8 @@ from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload, MediaIoBa
 from googleapiclient.errors import HttpError
 from django.conf import settings
 from django.core.cache import cache
+import google_auth_httplib2
+import httplib2
 import os
 import sys
 import uuid
@@ -185,9 +187,10 @@ class GoogleDriveManager:
                 raise ValueError("Invalid credentials - run setup_gdrive_oauth.py to get new token")
             
             # Создаем клиент Drive API с настроенными таймаутами
-            import httplib2
+            # Используем google_auth_httplib2.AuthorizedHttp вместо устаревшего creds.authorize()
             http = httplib2.Http(timeout=REQUEST_TIMEOUT)
-            self.service = build('drive', 'v3', credentials=creds, http=creds.authorize(http))
+            authed_http = google_auth_httplib2.AuthorizedHttp(creds, http=http)
+            self.service = build('drive', 'v3', http=authed_http)
             
             # ID корневой папки для хранения (GDRIVE_ROOT_FOLDER_ID - главная папка lectio.space)
             # Fallback на GDRIVE_RECORDINGS_FOLDER_ID для обратной совместимости

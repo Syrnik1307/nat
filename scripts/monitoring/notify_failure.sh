@@ -20,6 +20,19 @@ fi
 ERRORS_BOT_TOKEN="${ERRORS_BOT_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}"
 ERRORS_CHAT_ID="${ERRORS_CHAT_ID:-${TELEGRAM_CHAT_ID:-}}"
 
+if [[ "${ALERTS_MUTED:-0}" == "1" ]]; then
+    exit 0
+fi
+
+MUTE_FILE="${ALERTS_MUTE_FILE:-/var/run/lectio-monitor/mute_until}"
+if [[ -f "$MUTE_FILE" ]]; then
+    UNTIL=$(cat "$MUTE_FILE" 2>/dev/null || echo "")
+    NOW=$(date +%s)
+    if [[ "$UNTIL" =~ ^[0-9]+$ ]] && [[ "$NOW" -lt "$UNTIL" ]]; then
+        exit 0
+    fi
+fi
+
 if [[ -z "$ERRORS_BOT_TOKEN" ]] || [[ -z "$ERRORS_CHAT_ID" ]]; then
     echo "Telegram Errors Bot не настроен"
     exit 0

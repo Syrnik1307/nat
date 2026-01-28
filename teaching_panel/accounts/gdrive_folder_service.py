@@ -172,8 +172,34 @@ def get_teacher_storage_usage(subscription):
         }
     
     try:
-        gdrive = get_gdrive_manager()
-        stats = gdrive.calculate_folder_size(subscription.gdrive_folder_id)
+        import signal
+        import threading
+        
+        # Таймаут для Google Drive запроса (60 секунд)
+        GDRIVE_TIMEOUT = 60
+        result_container = {}
+        error_container = {}
+        
+        def calculate_with_timeout():
+            try:
+                gdrive = get_gdrive_manager()
+                result_container['stats'] = gdrive.calculate_folder_size(subscription.gdrive_folder_id)
+            except Exception as e:
+                error_container['error'] = e
+        
+        thread = threading.Thread(target=calculate_with_timeout)
+        thread.start()
+        thread.join(timeout=GDRIVE_TIMEOUT)
+        
+        if thread.is_alive():
+            # Таймаут - поток всё ещё работает
+            logger.warning(f"Timeout calculating folder size for subscription {subscription.id}")
+            raise TimeoutError("Failed to calculate folder size: timed out")
+        
+        if 'error' in error_container:
+            raise error_container['error']
+        
+        stats = result_container.get('stats', {'total_size': 0, 'file_count': 0})
         
         total_bytes = stats.get('total_size', 0)
         total_gb = total_bytes / (1024 ** 3)
