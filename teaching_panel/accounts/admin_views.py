@@ -2511,7 +2511,7 @@ class AdminDashboardDataView(APIView):
                 checks.append({
                     'name': 'Zoom Pool',
                     'status': 'info',
-                    'message': 'Не настроен'
+                    'message': 'Не используется'
                 })
             elif available == 0:
                 checks.append({
@@ -2525,11 +2525,11 @@ class AdminDashboardDataView(APIView):
                     'status': 'ok',
                     'message': f'{available}/{total} свободно'
                 })
-        except Exception as e:
+        except Exception:
             checks.append({
                 'name': 'Zoom Pool',
-                'status': 'error',
-                'message': str(e)[:50]
+                'status': 'info',
+                'message': 'Не используется'
             })
 
         # 4. YooKassa
@@ -2543,8 +2543,8 @@ class AdminDashboardDataView(APIView):
         else:
             checks.append({
                 'name': 'YooKassa',
-                'status': 'warning',
-                'message': 'Тестовый режим'
+                'status': 'info',
+                'message': 'Не используется'
             })
 
         # 5. Telegram Bot

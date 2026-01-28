@@ -15,6 +15,7 @@ const StorageQuotaModal = ({ onClose }) => {
   const [quotas, setQuotas] = useState([]);
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('used_gb');
@@ -53,6 +54,21 @@ const StorageQuotaModal = ({ onClose }) => {
       setLoading(false);
     }
   }, []);
+
+  const syncFromGDrive = async () => {
+    setSyncing(true);
+    try {
+      const response = await api.post('storage/sync-from-gdrive/', {}, withScheduleApiBase());
+      showNotification('success', 'Синхронизация завершена', response.data.message);
+      // Перезагружаем данные
+      await loadData();
+    } catch (err) {
+      console.error('Error syncing from GDrive:', err);
+      showNotification('error', 'Ошибка', 'Не удалось синхронизировать данные с Google Drive');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -323,6 +339,17 @@ const StorageQuotaModal = ({ onClose }) => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <button 
+            className="storage-sync-btn" 
+            onClick={syncFromGDrive} 
+            disabled={syncing || loading}
+            title="Синхронизировать данные с Google Drive (может занять несколько минут)"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+            {syncing ? 'Синхронизация...' : 'Синхронизировать с GDrive'}
+          </button>
           <button className="storage-refresh-btn" onClick={loadData} disabled={loading}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M23 4v6h-6M1 20v-6h6"/>

@@ -60,6 +60,7 @@ urlpatterns = [
     # Google Drive Storage Stats
     path('api/storage/gdrive-stats/all/', storage_views.gdrive_stats_all_teachers, name='gdrive_stats_all_teachers'),
     path('api/storage/gdrive-stats/my/', storage_views.gdrive_stats_my_storage, name='gdrive_stats_my_storage'),
+    path('api/storage/sync-from-gdrive/', storage_views.sync_quotas_from_gdrive, name='sync_quotas_from_gdrive'),
     
     # API endpoints для учебных материалов
     path('api/lessons/<int:lesson_id>/materials/upload/', material_views.upload_material, name='upload_material'),

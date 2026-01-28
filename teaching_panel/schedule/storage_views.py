@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Sum, Q, F
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from .models import TeacherStorageQuota, LessonRecording
 from .serializers import TeacherStorageQuotaSerializer
@@ -562,5 +563,105 @@ def gdrive_stats_my_storage(request):
     except Exception as e:
         return Response(
             {'error': f'Failed to retrieve storage statistics: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def sync_quotas_from_gdrive(request):
+    """
+    Синхронизация квот из Google Drive в базу данных
+    POST /api/storage/sync-from-gdrive/
+    
+    Получает реальные данные из GDrive и обновляет TeacherStorageQuota.
+    Также получает общую квоту GDrive аккаунта.
+    """
+    if request.user.role != 'admin':
+        return Response(
+            {'error': 'Доступ запрещен'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        from django.conf import settings
+        if not settings.USE_GDRIVE_STORAGE or not settings.GDRIVE_ROOT_FOLDER_ID:
+            return Response({
+                'error': 'Google Drive storage is not configured',
+                'synced_count': 0
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        from schedule.gdrive_utils import get_gdrive_manager
+        gdrive = get_gdrive_manager()
+        
+        # Получаем общую квоту Google Drive
+        try:
+            drive_quota = gdrive.get_drive_quota()
+            total_drive_gb = drive_quota.get('limit_gb', 15)  # Default 15GB for free accounts
+        except Exception as e:
+            logger.warning(f"Could not get drive quota: {e}")
+            total_drive_gb = 15
+        
+        # Получаем всех учителей
+        teachers = CustomUser.objects.filter(role='teacher')
+        
+        synced_count = 0
+        errors = []
+        
+        for teacher in teachers:
+            try:
+                # Получаем статистику из GDrive
+                teacher_stats = gdrive.get_teacher_storage_stats(teacher)
+                
+                # Получаем или создаем квоту
+                quota, created = TeacherStorageQuota.objects.get_or_create(
+                    teacher=teacher,
+                    defaults={
+                        'total_quota_bytes': int(total_drive_gb * (1024 ** 3)),
+                        'used_bytes': 0
+                    }
+                )
+                
+                # Обновляем данные
+                quota.used_bytes = teacher_stats['total_size']
+                quota.recordings_count = teacher_stats['recordings']['file_count']
+                
+                # Если квота была создана - устанавливаем правильный лимит
+                if created or quota.total_quota_bytes == 5368709120:  # Default 5GB
+                    quota.total_quota_bytes = int(total_drive_gb * (1024 ** 3))
+                
+                # Обновляем флаги
+                quota.quota_exceeded = quota.used_bytes > quota.total_quota_bytes
+                if quota.usage_percent >= 80 and not quota.warning_sent:
+                    quota.warning_sent = True
+                    quota.last_warning_at = timezone.now()
+                elif quota.usage_percent < 80:
+                    quota.warning_sent = False
+                
+                quota.save()
+                synced_count += 1
+                
+            except Exception as e:
+                logger.error(f"Failed to sync quota for teacher {teacher.id}: {e}")
+                errors.append({
+                    'teacher_id': teacher.id,
+                    'teacher_email': teacher.email,
+                    'error': str(e)
+                })
+        
+        return Response({
+            'message': f'Синхронизировано {synced_count} преподавателей',
+            'synced_count': synced_count,
+            'total_drive_gb': total_drive_gb,
+            'errors': errors if errors else None
+        })
+        
+    except Exception as e:
+        import traceback
+        return Response(
+            {'error': f'Ошибка синхронизации: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
