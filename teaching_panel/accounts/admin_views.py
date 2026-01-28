@@ -2285,30 +2285,86 @@ class AdminBusinessMetricsView(APIView):
                 s['paid_users'] = 0
             s['conversion'] = round((s['paid_users'] / s['registrations']) * 100, 1) if s['registrations'] else 0
         
-        # === СЕГМЕНТАЦИЯ ПО ПЛАНАМ ===
-        plans_data = list(
-            Subscription.objects.filter(
-                status=Subscription.STATUS_ACTIVE,
-                expires_at__gt=now
-            ).values('plan').annotate(
-                count=Count('id'),
-                total_storage=Sum(F('base_storage_gb') + F('extra_storage_gb')),
-                used_storage=Sum('used_storage_gb'),
-            )
+        # === СТАТИСТИКА ПО STORAGE И ДОП. ПОКУПКАМ ===
+        # Общая статистика по хранилищу
+        storage_stats = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE,
+            expires_at__gt=now
+        ).aggregate(
+            total_base_storage=Sum('base_storage_gb'),
+            total_extra_storage=Sum('extra_storage_gb'),
+            total_used_storage=Sum('used_storage_gb'),
+            teachers_with_extra=Count('id', filter=Q(extra_storage_gb__gt=0)),
+            total_teachers=Count('id'),
         )
         
-        for p in plans_data:
-            plan_payments = Payment.objects.filter(
+        # Покупки storage за последний месяц (ищем в metadata)
+        storage_purchases = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED,
+            paid_at__gte=month_ago,
+            metadata__type='storage'
+        ).aggregate(
+            count=Count('id'),
+            total_amount=Sum('amount'),
+            total_gb=Sum(Cast('metadata__gb', output_field=models.IntegerField()))
+        )
+        
+        # Если нет metadata__type, попробуем по сумме (20 руб = 1 GB)
+        storage_price_per_gb = 20
+        if not storage_purchases['count']:
+            # Ищем платежи кратные 20 и небольшие (вероятно storage)
+            potential_storage = Payment.objects.filter(
                 status=Payment.STATUS_SUCCEEDED,
                 paid_at__gte=month_ago,
-                subscription__plan=p['plan']
-            ).aggregate(revenue=Sum('amount'))
-            p['revenue'] = float(plan_payments['revenue'] or 0)
-            p['plan_label'] = {
-                'trial': 'Пробная',
-                'monthly': 'Месячная',
-                'yearly': 'Годовая'
-            }.get(p['plan'], p['plan'])
+                amount__lte=500,  # маленькие платежи
+            ).exclude(
+                amount__in=[990, 9900]  # исключаем подписки
+            )
+            storage_purchases = {
+                'count': potential_storage.count(),
+                'total_amount': float(potential_storage.aggregate(total=Sum('amount'))['total'] or 0),
+                'total_gb': None
+            }
+        
+        # Статистика подписок (один план)
+        subscription_stats = Subscription.objects.filter(
+            status=Subscription.STATUS_ACTIVE,
+            expires_at__gt=now
+        ).aggregate(
+            active_count=Count('id'),
+            monthly_count=Count('id', filter=Q(plan='monthly')),
+            yearly_count=Count('id', filter=Q(plan='yearly')),
+            trial_count=Count('id', filter=Q(plan='trial')),
+        )
+        
+        # Выручка за месяц по типам
+        subscription_revenue = Payment.objects.filter(
+            status=Payment.STATUS_SUCCEEDED,
+            paid_at__gte=month_ago,
+            amount__in=[990, 9900]  # подписки
+        ).aggregate(
+            total=Sum('amount'),
+            count=Count('id')
+        )
+        
+        storage_breakdown = {
+            'total_base_gb': storage_stats['total_base_storage'] or 0,
+            'total_extra_gb': storage_stats['total_extra_storage'] or 0,
+            'total_used_gb': round(float(storage_stats['total_used_storage'] or 0), 2),
+            'teachers_with_extra': storage_stats['teachers_with_extra'] or 0,
+            'total_teachers': storage_stats['total_teachers'] or 0,
+            'storage_purchases_count': storage_purchases['count'] or 0,
+            'storage_purchases_amount': float(storage_purchases['total_amount'] or 0),
+            'storage_purchases_gb': storage_purchases.get('total_gb') or 0,
+            'subscription_stats': {
+                'active': subscription_stats['active_count'] or 0,
+                'monthly': subscription_stats['monthly_count'] or 0,
+                'yearly': subscription_stats['yearly_count'] or 0,
+                'trial': subscription_stats['trial_count'] or 0,
+            },
+            'subscription_revenue': float(subscription_revenue['total'] or 0),
+            'subscription_payments_count': subscription_revenue['count'] or 0,
+        }
         
         # === ВРЕМЯ ДО ПЕРВОГО ДЕЙСТВИЯ ===
         # Среднее время от регистрации до создания группы
@@ -2511,7 +2567,7 @@ class AdminDashboardDataView(APIView):
                 checks.append({
                     'name': 'Zoom Pool',
                     'status': 'info',
-                    'message': 'Не используется'
+                    'message': 'Не настроен'
                 })
             elif available == 0:
                 checks.append({
@@ -2525,11 +2581,11 @@ class AdminDashboardDataView(APIView):
                     'status': 'ok',
                     'message': f'{available}/{total} свободно'
                 })
-        except Exception:
+        except Exception as e:
             checks.append({
                 'name': 'Zoom Pool',
-                'status': 'info',
-                'message': 'Не используется'
+                'status': 'error',
+                'message': str(e)[:50]
             })
 
         # 4. YooKassa
@@ -2543,8 +2599,8 @@ class AdminDashboardDataView(APIView):
         else:
             checks.append({
                 'name': 'YooKassa',
-                'status': 'info',
-                'message': 'Не используется'
+                'status': 'warning',
+                'message': 'Тестовый режим'
             })
 
         # 5. Telegram Bot

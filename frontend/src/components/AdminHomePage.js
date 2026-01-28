@@ -616,17 +616,7 @@ const AdminHomePage = () => {
 
       {/* Business Metrics Dashboard */}
       {showBusinessMetrics && (
-        <div className="admin-modal-overlay" onClick={() => setShowBusinessMetrics(false)}>
-          <div className="admin-modal admin-modal-fullscreen" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Бизнес-метрики</h2>
-              <button className="modal-close" onClick={() => setShowBusinessMetrics(false)}>{Icons.close}</button>
-            </div>
-            <div className="modal-body" style={{ padding: 0, overflow: 'auto' }}>
-              <BusinessMetricsDashboard />
-            </div>
-          </div>
-        </div>
+        <BusinessMetricsDashboard onClose={() => setShowBusinessMetrics(false)} />
       )}
 
       {/* System Errors Modal */}
