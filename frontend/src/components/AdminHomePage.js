@@ -5,11 +5,8 @@ import { getAccessToken } from '../apiService';
 import TeachersManage from './TeachersManage';
 import StudentsManage from './StudentsManage';
 import StatusMessages from './StatusMessages';
-import ZoomPoolManager from '../modules/core/zoom/ZoomPoolManager';
-import ZoomPoolStats from './ZoomPoolStats';
 import SystemSettings from './SystemSettings';
 import StorageQuotaModal from '../modules/Admin/StorageQuotaModal';
-import SubscriptionsModal from '../modules/Admin/SubscriptionsModal';
 import SystemErrorsModal from '../modules/Admin/SystemErrorsModal';
 import StorageStats from './StorageStats';
 import AdminReferrals from '../modules/Admin/AdminReferrals';
@@ -40,18 +37,6 @@ const Icons = {
       <path d="M6 12v5c3 3 9 3 12 0v-5" />
     </svg>
   ),
-  zoom: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="7" width="15" height="10" rx="2" />
-      <path d="m17 9 5-3v12l-5-3" />
-    </svg>
-  ),
-  subscriptions: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="1" y="4" width="22" height="16" rx="2" />
-      <line x1="1" y1="10" x2="23" y2="10" />
-    </svg>
-  ),
   storage: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <ellipse cx="12" cy="5" rx="9" ry="3" />
@@ -74,13 +59,6 @@ const Icons = {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  ),
-  chart: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10" />
-      <line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="14" />
     </svg>
   ),
   analytics: (
@@ -148,12 +126,9 @@ const AdminHomePage = () => {
   const [showTeachersManage, setShowTeachersManage] = useState(false);
   const [showStudentsManage, setShowStudentsManage] = useState(false);
   const [showStatusMessages, setShowStatusMessages] = useState(false);
-  const [showZoomManager, setShowZoomManager] = useState(false);
-  const [showZoomStats, setShowZoomStats] = useState(false);
   const [showGrowthStats, setShowGrowthStats] = useState(false);
   const [showSystemSettings, setShowSystemSettings] = useState(false);
   const [showStorageModal, setShowStorageModal] = useState(false);
-  const [showSubscriptionsModal, setShowSubscriptionsModal] = useState(false);
   const [showStorageStats, setShowStorageStats] = useState(false);
   const [showReferrals, setShowReferrals] = useState(false);
   const [showBusinessMetrics, setShowBusinessMetrics] = useState(false);
@@ -336,14 +311,6 @@ const AdminHomePage = () => {
             <span className="admin-nav-icon">{Icons.students}</span>
             Ученики
           </a>
-          <a className="admin-nav-item" onClick={() => setShowZoomManager(true)}>
-            <span className="admin-nav-icon">{Icons.zoom}</span>
-            Zoom Pool
-          </a>
-          <a className="admin-nav-item" onClick={() => setShowSubscriptionsModal(true)}>
-            <span className="admin-nav-icon">{Icons.subscriptions}</span>
-            Подписки
-          </a>
           <a className="admin-nav-item" onClick={() => setShowStorageModal(true)}>
             <span className="admin-nav-icon">{Icons.storage}</span>
             Хранилище
@@ -455,10 +422,6 @@ const AdminHomePage = () => {
             <h3>Динамика роста</h3>
           </div>
           
-          <div className="admin-quick-action-card" onClick={() => setShowZoomStats(true)}>
-            <div className="admin-quick-action-icon">{Icons.chart}</div>
-            <h3>Zoom аналитика</h3>
-          </div>
           
           <div className="admin-quick-action-card" onClick={() => setShowStorageStats(true)}>
             <div className="admin-quick-action-icon">{Icons.storage}</div>
@@ -583,14 +546,6 @@ const AdminHomePage = () => {
         <StudentsManage onClose={() => setShowStudentsManage(false)} />
       )}
 
-      {/* Zoom Pool Manager */}
-      {showZoomManager && (
-        <div className="admin-modal-overlay" onClick={() => setShowZoomManager(false)}>
-          <div className="zoom-manager-modal" onClick={(e) => e.stopPropagation()}>
-            <ZoomPoolManager onClose={() => setShowZoomManager(false)} />
-          </div>
-        </div>
-      )}
 
       {/* Growth Stats Modal */}
       {showGrowthStats && (
@@ -684,19 +639,6 @@ const AdminHomePage = () => {
         <SystemSettings onClose={() => setShowSystemSettings(false)} />
       )}
       
-      {showZoomStats && (
-        <div className="admin-modal-overlay" onClick={() => setShowZoomStats(false)}>
-          <div className="admin-modal zoom-stats-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Аналитика Zoom Pool</h2>
-              <button className="modal-close" onClick={() => setShowZoomStats(false)}>{Icons.close}</button>
-            </div>
-            <div className="modal-body">
-              <ZoomPoolStats />
-            </div>
-          </div>
-        </div>
-      )}
 
       {showStorageModal && (
         <StorageQuotaModal onClose={() => setShowStorageModal(false)} />
@@ -706,9 +648,6 @@ const AdminHomePage = () => {
         <StorageStats onClose={() => setShowStorageStats(false)} />
       )}
 
-      {showSubscriptionsModal && (
-        <SubscriptionsModal onClose={() => setShowSubscriptionsModal(false)} />
-      )}
 
       {/* Referrals Modal */}
       {showReferrals && (
