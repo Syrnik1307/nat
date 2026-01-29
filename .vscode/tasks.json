@@ -1294,6 +1294,16 @@
 			"type": "shell",
 			"command": "git add -A && git commit -m 'Fix SystemErrorsModal: increase modal size to fullscreen' && git push origin main",
 			"isBackground": false
+		},
+		{
+			"label": "scp cleanup script",
+			"type": "shell",
+			"command": "scp scripts/monitoring/cleanup_processes.sh tp:/opt/lectio-monitor/cleanup_processes.sh && ssh tp 'sudo chmod +x /opt/lectio-monitor/cleanup_processes.sh && echo Done'"
+		},
+		{
+			"label": "reset memory alert state",
+			"type": "shell",
+			"command": "ssh tp 'sudo rm -f /var/run/lectio-monitor/memory_alert_state && echo State reset'"
 		}
 	]
 }

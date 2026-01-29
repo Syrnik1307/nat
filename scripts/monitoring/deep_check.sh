@@ -72,6 +72,59 @@ build_human_explanations() {
     printf '%s\n' "${lines[@]}"
 }
 
+# Функция для получения объяснения одной проблемы (используется в цикле)
+build_single_explanation() {
+    local issue="$1"
+    local explanation=""
+    local action=""
+    
+    case "$issue" in
+        "SSL истекает"*|*"SSL сертификат"*)
+            explanation="Сертификат безопасности скоро истечёт. Браузеры начнут показывать предупреждения."
+            action="Продлить SSL сертификат (обычно через Let's Encrypt)"
+            ;;
+        "Database size"*)
+            explanation="База данных выросла больше нормы. Бэкапы и запросы могут замедляться."
+            action="Проверить рост данных и архивировать старые записи"
+            ;;
+        "Disk space critical"*|"Low disk space"*)
+            explanation="Диск почти заполнен. Логи и файлы не смогут записываться."
+            action="Удалить старые логи: journalctl --vacuum-time=7d; проверить /var/log/"
+            ;;
+        "High nginx errors"*)
+            explanation="Много ошибок на веб-сервере. Часть посетителей видит ошибки вместо сайта."
+            action="Проверить логи: tail -100 /var/log/nginx/error.log"
+            ;;
+        "Only "*"gunicorn workers"*|*"gunicorn"*)
+            explanation="Мало рабочих процессов приложения. Запросы могут не обрабатываться."
+            action="Перезапустить сервис: systemctl restart teaching-panel"
+            ;;
+        *"high CPU"*)
+            explanation="Процессор перегружен. Сайт работает медленно."
+            action="Проверить нагрузку: htop; найти тяжёлые процессы"
+            ;;
+        "Memory critical"*|"Low memory"*)
+            explanation="Мало оперативной памяти. Сервер использует swap и тормозит."
+            action="Проверить память: free -h; перезапустить тяжёлые сервисы"
+            ;;
+        *"pending migrations"*)
+            explanation="Есть неприменённые миграции базы данных. Новые функции могут не работать."
+            action="Применить миграции: cd /var/www/teaching_panel && source venv/bin/activate && python manage.py migrate"
+            ;;
+        *"SSL сертификат"*)
+            explanation="Не удалось проверить SSL. Возможно, проблема с сертификатом."
+            action="Проверить SSL вручную: openssl s_client -connect lectio.tw1.ru:443"
+            ;;
+        *)
+            explanation="Требуется проверка состояния сервера."
+            action="Проверить логи: journalctl -u teaching-panel -n 50"
+            ;;
+    esac
+    
+    echo "ЧТО ЭТО ЗНАЧИТ: $explanation
+ЧТО ДЕЛАТЬ: $action"
+}
+
 send_telegram() {
     local message="$1"
     local priority="${2:-normal}"
@@ -81,16 +134,19 @@ send_telegram() {
     fi
     
     local emoji="ℹ️"
-    [[ "$priority" == "critical" ]] && emoji="🚨"
-    [[ "$priority" == "high" ]] && emoji="⚠️"
+    local prefix="ИНФО"
+    [[ "$priority" == "critical" ]] && emoji="🚨" && prefix="КРИТИЧНО"
+    [[ "$priority" == "high" ]] && emoji="⚠️" && prefix="ВНИМАНИЕ"
     
     curl -s -X POST "https://api.telegram.org/bot${ERRORS_BOT_TOKEN}/sendMessage" \
         -d "chat_id=${ERRORS_CHAT_ID}" \
-        -d "text=${emoji} LECTIO DEEP CHECK
+        -d "text=${emoji} ${prefix}: Глубокая проверка сервера
 
 $message
 
-🕐 $(date '+%Y-%m-%d %H:%M:%S')" \
+🕐 $(date '+%Y-%m-%d %H:%M:%S')
+🖥️ Сервер: $(hostname)
+📝 Если не понятно - перешлите это сообщение разработчику" \
         > /dev/null 2>&1 || true
 }
 
@@ -290,29 +346,33 @@ main() {
     # ==================== REPORT ====================
     
     if [[ ${#issues[@]} -gt 0 ]]; then
-        local issue_text=$(printf '• %s\n' "${issues[@]}")
-        local human_text
-        human_text=$(build_human_explanations "$(printf '%s\n' "${issues[@]}")")
-        local explain_block=""
-        if [[ -n "$human_text" ]]; then
-            explain_block="\nПояснение простыми словами:\n$human_text"
-        fi
+        local detailed_message=""
+        for issue in "${issues[@]}"; do
+            local explanation=$(build_single_explanation "$issue")
+            detailed_message+="━━━━━━━━━━━━━━━━━━━━
+ПРОБЛЕМА: $issue
+$explanation
+
+"
+        done
         log "ERROR" "Critical issues found!"
-        send_telegram "КРИТИЧЕСКИЕ ПРОБЛЕМЫ:
+        send_telegram "КРИТИЧЕСКИЕ ПРОБЛЕМЫ (${#issues[@]}):
 
-$issue_text$explain_block" "critical"
+$detailed_message" "critical"
     elif [[ ${#warnings[@]} -gt 0 ]]; then
-        local warn_text=$(printf '• %s\n' "${warnings[@]}")
-        local human_text
-        human_text=$(build_human_explanations "$(printf '%s\n' "${warnings[@]}")")
-        local explain_block=""
-        if [[ -n "$human_text" ]]; then
-            explain_block="\nПояснение простыми словами:\n$human_text"
-        fi
-        log "WARN" "Warnings found"
-        send_telegram "Предупреждения:
+        local detailed_message=""
+        for warning in "${warnings[@]}"; do
+            local explanation=$(build_single_explanation "$warning")
+            detailed_message+="━━━━━━━━━━━━━━━━━━━━
+ПРОБЛЕМА: $warning
+$explanation
 
-$warn_text$explain_block" "high"
+"
+        done
+        log "WARN" "Warnings found"
+        send_telegram "Предупреждения (${#warnings[@]}):
+
+$detailed_message" "high"
     else
         log "SUCCESS" "All deep checks passed"
     fi
