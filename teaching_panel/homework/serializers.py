@@ -344,10 +344,15 @@ class HomeworkStudentSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_group_id(self, obj: Homework):
+        # Используем prefetch cache для assigned_groups (уже загружен во ViewSet)
         try:
-            group_ids = list(obj.assigned_groups.values_list('id', flat=True)[:2])
-            if len(group_ids) == 1:
-                return group_ids[0]
+            # Проверяем prefetch cache чтобы избежать дополнительных запросов
+            if hasattr(obj, '_prefetched_objects_cache') and 'assigned_groups' in obj._prefetched_objects_cache:
+                groups = obj._prefetched_objects_cache['assigned_groups']
+            else:
+                groups = list(obj.assigned_groups.all()[:2])
+            if len(groups) == 1:
+                return groups[0].id
         except Exception:
             pass
         if obj.lesson and getattr(obj.lesson, 'group', None):
@@ -355,8 +360,12 @@ class HomeworkStudentSerializer(serializers.ModelSerializer):
         return None
 
     def get_group_name(self, obj: Homework):
+        # Используем prefetch cache для assigned_groups (уже загружен во ViewSet)
         try:
-            groups = list(obj.assigned_groups.all()[:2])
+            if hasattr(obj, '_prefetched_objects_cache') and 'assigned_groups' in obj._prefetched_objects_cache:
+                groups = obj._prefetched_objects_cache['assigned_groups']
+            else:
+                groups = list(obj.assigned_groups.all()[:2])
             if len(groups) == 1:
                 return groups[0].name
             if len(groups) > 1:
@@ -366,7 +375,6 @@ class HomeworkStudentSerializer(serializers.ModelSerializer):
         if obj.lesson and getattr(obj.lesson, 'group', None):
             return obj.lesson.group.name
         return 'Без группы'
-
 
 class AnswerSerializer(serializers.ModelSerializer):
     selected_choices = serializers.PrimaryKeyRelatedField(queryset=Choice.objects.all(), many=True, required=False)

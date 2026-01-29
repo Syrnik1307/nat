@@ -15,7 +15,7 @@ from .permissions import IsTeacherHomework, IsStudentSubmission
 
 
 class HomeworkViewSet(viewsets.ModelViewSet):
-    queryset = Homework.objects.all().select_related('teacher', 'lesson')
+    queryset = Homework.objects.all().select_related('teacher', 'lesson', 'lesson__group')
     serializer_class = HomeworkSerializer
     permission_classes = [IsTeacherHomework]
 
@@ -26,23 +26,25 @@ class HomeworkViewSet(viewsets.ModelViewSet):
             if getattr(user, 'role', None) == 'teacher':
                 is_template = self.request.query_params.get('is_template')
                 if is_template == '1':
-                    return qs.filter(teacher=user, is_template=True)
+                    return qs.filter(teacher=user, is_template=True).prefetch_related(
+                        'questions', 'questions__choices', 'assigned_groups'
+                    )
                 if is_template == '0':
-                    return qs.filter(teacher=user, is_template=False)
+                    return qs.filter(teacher=user, is_template=False).prefetch_related(
+                        'questions', 'questions__choices', 'assigned_groups', 'submissions'
+                    )
                 # default: показываем обычные ДЗ
-                return qs.filter(teacher=user, is_template=False)
+                return qs.filter(teacher=user, is_template=False).prefetch_related(
+                    'questions', 'questions__choices', 'assigned_groups', 'submissions'
+                )
             elif getattr(user, 'role', None) == 'student':
                 # Студенты видят только опубликованные ДЗ из своих групп
                 # .distinct() нужен т.к. студент может быть в нескольких группах,
                 # что приводит к дубликатам при JOIN
                 # 
-                # Логика видимости:
-                # 1. lesson__group__students=user - старый способ через урок
-                # 2. assigned_groups__students=user - назначено всей группе
-                # 3. assigned_students=user - назначено индивидуально
-                # 4. group_assignments__group__students=user + нет ограничения по ученикам
-                # 5. group_assignments__students=user - назначено конкретному ученику в группе
-                # 6. submissions__student=user - уже есть попытка (для истории)
+                # ОПТИМИЗАЦИЯ: используем prefetch_related для избежания N+1 запросов
+                # Для студентов prefetch только нужные поля
+                from django.db.models import Prefetch
                 return (
                     qs.filter(status='published', is_template=False).filter(
                         Q(lesson__group__students=user) |
@@ -54,6 +56,10 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                         Q(group_assignments__students=user) |
                         Q(submissions__student=user)
                     )
+                ).prefetch_related(
+                    'questions',
+                    'questions__choices',
+                    'assigned_groups',
                 ).distinct()
         return qs.none()
 
