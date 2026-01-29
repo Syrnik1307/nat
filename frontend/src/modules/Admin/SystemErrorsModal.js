@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, Button } from '../../shared/components';
-import { getAccessToken } from '../../apiService';
+import { apiClient } from '../../apiService';
 
 const fmtDateTime = (iso) => {
   if (!iso) return '—';
@@ -42,6 +42,7 @@ const SystemErrorsModal = ({ onClose }) => {
   const [error, setError] = useState('');
   const [items, setItems] = useState([]);
   const [count, setCount] = useState(0);
+  const [counts, setCounts] = useState({ all: 0, critical: 0, error: 0, warning: 0 });
 
   const [q, setQ] = useState('');
   const [severity, setSeverity] = useState('');
@@ -50,40 +51,52 @@ const SystemErrorsModal = ({ onClose }) => {
   const [limit, setLimit] = useState(50);
   const [offset, setOffset] = useState(0);
 
-  const headers = useMemo(() => {
-    const token = getAccessToken();
-    return { Authorization: `Bearer ${token}` };
+  const loadCounts = useCallback(async () => {
+    try {
+      const res = await apiClient.get('admin/errors/counts/');
+      setCounts({
+        all: res?.data?.all || 0,
+        critical: res?.data?.critical || 0,
+        error: res?.data?.error || 0,
+        warning: res?.data?.warning || 0,
+      });
+    } catch (e) {
+      console.error(e);
+    }
   }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const params = new URLSearchParams();
-      params.set('limit', String(limit));
-      params.set('offset', String(offset));
-      if (q.trim()) params.set('q', q.trim());
-      if (severity) params.set('severity', severity);
-      if (includeResolved) params.set('include_resolved', '1');
+      const params = {
+        limit,
+        offset,
+      };
+      if (q.trim()) params.q = q.trim();
+      if (severity) params.severity = severity;
+      if (includeResolved) params.include_resolved = 1;
 
-      const res = await fetch(`/accounts/api/admin/errors/?${params.toString()}`, { headers });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || data?.detail || 'Не удалось загрузить ошибки');
-      }
-      setItems(data?.results || []);
-      setCount(data?.count || 0);
+      const res = await apiClient.get('admin/errors/', { params });
+      setItems(res?.data?.results || []);
+      setCount(res?.data?.count || 0);
     } catch (e) {
       console.error(e);
-      setError(e?.message || 'Не удалось загрузить ошибки. Попробуйте ещё раз.');
+      const data = e?.response?.data;
+      const fallback = typeof data === 'string' ? 'Ответ сервера не распознан' : 'Не удалось загрузить ошибки. Попробуйте ещё раз.';
+      setError(data?.error || data?.detail || fallback);
     } finally {
       setLoading(false);
     }
-  }, [headers, includeResolved, limit, offset, q, severity]);
+  }, [includeResolved, limit, offset, q, severity]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    loadCounts();
+  }, [loadCounts]);
 
   const canPrev = offset > 0;
   const canNext = offset + limit < count;
@@ -129,10 +142,55 @@ const SystemErrorsModal = ({ onClose }) => {
               />
               Показать решённые
             </label>
-            <Button variant="secondary" onClick={() => { setOffset(0); load(); }}>
+            <Button variant="secondary" onClick={() => { setOffset(0); load(); loadCounts(); }}>
               Обновить
             </Button>
           </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {[
+            { key: '', label: 'Все', count: counts.all },
+            { key: 'critical', label: 'Критические', count: counts.critical },
+            { key: 'error', label: 'Ошибки', count: counts.error },
+            { key: 'warning', label: 'Предупреждения', count: counts.warning },
+          ].map((tab) => {
+            const isActive = severity === tab.key;
+            return (
+              <button
+                key={tab.key || 'all'}
+                type="button"
+                onClick={() => { setSeverity(tab.key); setOffset(0); }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
+                  borderRadius: 10,
+                  border: isActive ? '1px solid rgba(255,255,255,0.20)' : '1px solid rgba(255,255,255,0.08)',
+                  background: isActive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
+                  color: isActive ? '#fff' : 'rgba(255,255,255,0.75)',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: 600
+                }}
+              >
+                <span>{tab.label}</span>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  background: 'rgba(255,255,255,0.08)',
+                  color: 'rgba(255,255,255,0.85)',
+                  fontSize: 12,
+                  fontWeight: 700
+                }}>
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {error && (

@@ -15,7 +15,21 @@ class RequestMetricsMiddleware(MiddlewareMixin):
     - Статус код
     - Путь и метод
     - User ID (если аутентифицирован)
+    - Telegram алерт при медленных запросах
     """
+    
+    # Lazy import для избежания circular import
+    _alerter = None
+    
+    @classmethod
+    def get_alerter(cls):
+        if cls._alerter is None:
+            try:
+                from teaching_panel.telegram_logging import slow_request_alerter
+                cls._alerter = slow_request_alerter
+            except ImportError:
+                cls._alerter = False  # Маркер что импорт не удался
+        return cls._alerter if cls._alerter else None
     
     def process_request(self, request):
         request._start_time = time.time()
@@ -48,6 +62,11 @@ class RequestMetricsMiddleware(MiddlewareMixin):
                     f"SLOW_REQUEST: {request.method} {request.path} "
                     f"took {duration:.3f}s (user={user_id})"
                 )
+                
+                # Отправляем алерт в Telegram
+                alerter = self.get_alerter()
+                if alerter:
+                    alerter.alert(request.method, request.path, duration, user_id)
         
         return response
     

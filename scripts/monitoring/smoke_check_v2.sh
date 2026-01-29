@@ -22,8 +22,19 @@ fi
 
 # ==================== КОНФИГУРАЦИЯ ====================
 SITE_URL="${SITE_URL:-https://lectio.tw1.ru}"
-# Для API запросов используем HTTPS URL (через nginx) чтобы избежать редиректов
+# Для публичных проверок используем HTTPS URL (через nginx)
 BACKEND_URL="${BACKEND_URL:-https://lectio.tw1.ru}"
+# Для авторизованных API проверок используем внутренний URL (избегаем hairpin NAT)
+INTERNAL_BACKEND_URL="${INTERNAL_BACKEND_URL:-http://127.0.0.1:8000}"
+AUTH_BACKEND_URL="${AUTH_BACKEND_URL:-$INTERNAL_BACKEND_URL}"
+
+# Публичный host для корректного Host/X-Forwarded-Proto при обращении к localhost
+PUBLIC_HOST="${PUBLIC_HOST:-}"
+if [[ -z "$PUBLIC_HOST" ]]; then
+    PUBLIC_HOST="${BACKEND_URL#https://}"
+    PUBLIC_HOST="${PUBLIC_HOST#http://}"
+    PUBLIC_HOST="${PUBLIC_HOST%%/*}"
+fi
 PROJECT_ROOT="${PROJECT_ROOT:-/var/www/teaching_panel}"
 LOG_FILE="${LOG_FILE:-/var/log/lectio-monitor/smoke_v2.log}"
 STATE_FILE="/var/run/lectio-monitor/smoke_v2_state"
@@ -109,19 +120,24 @@ http_get() {
     local url="$1"
     local token="${2:-}"
     local timeout="${3:-10}"
-    
-    local auth_header=""
+
+    local headers=()
     if [[ -n "$token" ]]; then
-        auth_header="-H \"Authorization: Bearer $token\""
+        headers+=("-H" "Authorization: Bearer $token")
     fi
-    
+
+    if [[ -n "$PUBLIC_HOST" ]] && [[ "$url" == http://127.0.0.1* || "$url" == http://localhost* ]]; then
+        headers+=("-H" "Host: $PUBLIC_HOST")
+        headers+=("-H" "X-Forwarded-Proto: https")
+    fi
+
     local response
     response=$(curl -s -o /tmp/smoke_body.json -w "%{http_code}|%{time_total}" \
         --max-time "$timeout" \
         --connect-timeout 5 \
-        -H "Authorization: Bearer $token" \
+        "${headers[@]}" \
         "$url" 2>/dev/null) || response="000|0"
-    
+
     echo "$response"
 }
 
@@ -130,17 +146,26 @@ http_post_json() {
     local data="$2"
     local token="${3:-}"
     local timeout="${4:-10}"
-    
+
+    local headers=("-H" "Content-Type: application/json")
+    if [[ -n "$token" ]]; then
+        headers+=("-H" "Authorization: Bearer $token")
+    fi
+
+    if [[ -n "$PUBLIC_HOST" ]] && [[ "$url" == http://127.0.0.1* || "$url" == http://localhost* ]]; then
+        headers+=("-H" "Host: $PUBLIC_HOST")
+        headers+=("-H" "X-Forwarded-Proto: https")
+    fi
+
     local response
     response=$(curl -s -o /tmp/smoke_body.json -w "%{http_code}|%{time_total}" \
         --max-time "$timeout" \
         --connect-timeout 5 \
         -X POST \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer $token" \
+        "${headers[@]}" \
         -d "$data" \
         "$url" 2>/dev/null) || response="000|0"
-    
+
     echo "$response"
 }
 
@@ -148,16 +173,22 @@ http_post_json() {
 get_token_via_api() {
     local email="$1"
     local password="$2"
-    
+
+    local headers=("-H" "Content-Type: application/json")
+    if [[ -n "$PUBLIC_HOST" ]] && [[ "$AUTH_BACKEND_URL" == http://127.0.0.1* || "$AUTH_BACKEND_URL" == http://localhost* ]]; then
+        headers+=("-H" "Host: $PUBLIC_HOST")
+        headers+=("-H" "X-Forwarded-Proto: https")
+    fi
+
     local response
     # ВАЖНО: trailing slash обязателен для Django!
     response=$(curl -s -o /tmp/smoke_token.json -w "%{http_code}" \
         --max-time 10 \
         -X POST \
-        -H "Content-Type: application/json" \
+        "${headers[@]}" \
         -d "{\"email\":\"$email\",\"password\":\"$password\"}" \
-        "${BACKEND_URL}/api/jwt/token/" 2>/dev/null) || response="000"
-    
+        "${AUTH_BACKEND_URL}/api/jwt/token/" 2>/dev/null) || response="000"
+
     if [[ "$response" == "200" ]]; then
         cat /tmp/smoke_token.json | grep -o '"access":"[^"]*"' | cut -d'"' -f4
     else
@@ -257,7 +288,7 @@ check_teacher_auth() {
     fi
     
     # Проверяем /api/me/
-    local result=$(http_get "${BACKEND_URL}/api/me/" "$token")
+    local result=$(http_get "${AUTH_BACKEND_URL}/api/me/" "$token")
     local code="${result%%|*}"
     
     if [[ "$code" != "200" ]]; then
@@ -272,7 +303,7 @@ check_teacher_auth() {
 # 4. Проверка списка уроков (учитель)
 check_lessons() {
     local token="$1"
-    local result=$(http_get "${BACKEND_URL}/api/schedule/lessons/" "$token")
+    local result=$(http_get "${AUTH_BACKEND_URL}/api/schedule/lessons/" "$token")
     local code="${result%%|*}"
     
     if [[ "$code" != "200" ]]; then
@@ -288,7 +319,7 @@ check_lessons() {
 check_recordings() {
     local token="$1"
     # URL: /schedule/api/recordings/teacher/ (не /api/schedule/...)
-    local result=$(http_get "${BACKEND_URL}/schedule/api/recordings/teacher/" "$token")
+    local result=$(http_get "${AUTH_BACKEND_URL}/schedule/api/recordings/teacher/" "$token")
     local code="${result%%|*}"
     
     if [[ "$code" != "200" ]]; then
@@ -303,7 +334,7 @@ check_recordings() {
 # 6. Проверка списка ДЗ (учитель)
 check_homework_teacher() {
     local token="$1"
-    local result=$(http_get "${BACKEND_URL}/api/homework/" "$token")
+    local result=$(http_get "${AUTH_BACKEND_URL}/api/homework/" "$token")
     local code="${result%%|*}"
     
     if [[ "$code" != "200" ]]; then
@@ -318,7 +349,7 @@ check_homework_teacher() {
 # 7. Проверка подписки
 check_subscription() {
     local token="$1"
-    local result=$(http_get "${BACKEND_URL}/api/subscription/" "$token")
+    local result=$(http_get "${AUTH_BACKEND_URL}/api/subscription/" "$token")
     local code="${result%%|*}"
     
     if [[ "$code" != "200" ]]; then
@@ -333,7 +364,7 @@ check_subscription() {
 # 8. Проверка создания платежа (без реального платежа)
 check_payment_creation() {
     local token="$1"
-    local result=$(http_post_json "${BACKEND_URL}/api/subscription/create-payment/" '{"plan":"monthly","provider":"tbank"}' "$token")
+    local result=$(http_post_json "${AUTH_BACKEND_URL}/api/subscription/create-payment/" '{"plan":"monthly","provider":"tbank"}' "$token")
     local code="${result%%|*}"
     
     # 200, 201, или 400 (если подписка уже активна) - всё ок
@@ -362,7 +393,7 @@ check_student_auth() {
 # 10. Проверка ДЗ для студента
 check_homework_student() {
     local token="$1"
-    local result=$(http_get "${BACKEND_URL}/api/homework/" "$token")
+    local result=$(http_get "${AUTH_BACKEND_URL}/api/homework/" "$token")
     local code="${result%%|*}"
     
     if [[ "$code" != "200" ]]; then
@@ -377,7 +408,7 @@ check_homework_student() {
 # 11. Проверка групп
 check_groups() {
     local token="$1"
-    local result=$(http_get "${BACKEND_URL}/api/groups/" "$token")
+    local result=$(http_get "${AUTH_BACKEND_URL}/api/groups/" "$token")
     local code="${result%%|*}"
     
     if [[ "$code" != "200" ]]; then

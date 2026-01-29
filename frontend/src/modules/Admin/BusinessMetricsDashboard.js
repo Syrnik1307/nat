@@ -75,10 +75,10 @@ const BusinessMetricsDashboard = ({ onClose }) => {
   const KPICards = () => {
     const funnel = data?.activation_funnel;
     const mrr = data?.mrr_waterfall;
-    const plans = data?.plans_breakdown || [];
+    const storage = data?.storage_breakdown;
     
-    const totalRevenue = plans.reduce((sum, p) => sum + (p.revenue || 0), 0);
-    const activeSubs = plans.reduce((sum, p) => sum + (p.count || 0), 0);
+    const totalRevenue = (storage?.subscription_revenue || 0) + (storage?.storage_purchases_amount || 0);
+    const activeSubs = storage?.subscription_stats?.active || 0;
     const conversionRate = funnel?.steps?.[5]?.percent || 0;
     const growthRate = mrr?.summary?.growth_rate || 0;
     
@@ -337,83 +337,112 @@ const BusinessMetricsDashboard = ({ onClose }) => {
     );
   };
 
-  // Plans Breakdown компонент
-  const PlansBreakdown = ({ plans }) => {
-    if (!plans || plans.length === 0) {
-      return <div className="empty-state">Нет данных по планам</div>;
+  // Storage Breakdown компонент
+  const StorageBreakdown = ({ storage }) => {
+    if (!storage) {
+      return <div className="empty-state">Нет данных по хранилищу</div>;
     }
     
-    const colors = ['#4F46E5', '#10B981', '#F59E0B', '#EC4899'];
-    const pieData = plans.map((p, i) => ({
-      name: p.plan_label || p.plan,
-      value: p.count,
-      fill: colors[i % colors.length]
-    }));
-    const totalRevenue = plans.reduce((sum, p) => sum + (p.revenue || 0), 0);
+    const totalStorage = storage.total_base_gb + storage.total_extra_gb;
+    const usedPercent = totalStorage > 0 ? (storage.total_used_gb / totalStorage) * 100 : 0;
+    const subStats = storage.subscription_stats || {};
     
     return (
-      <div className="plans-container">
-        <div className="plans-grid">
-          <div className="plans-chart-section">
-            <ResponsiveContainer width="100%" height={240}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={90}
-                  innerRadius={55}
-                  strokeWidth={2}
-                  stroke="#fff"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    background: '#fff', 
-                    border: '1px solid #E5E7EB', 
-                    borderRadius: 8,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                  }}
-                  formatter={(value) => [value, 'Подписок']}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="chart-center-label">
-              <div className="center-value">{plans.reduce((s, p) => s + p.count, 0)}</div>
-              <div className="center-text">всего</div>
+      <div className="storage-container">
+        <div className="storage-grid">
+          {/* Левая колонка - статистика хранилища */}
+          <div className="storage-stats-section">
+            <h4 className="section-title">Хранилище</h4>
+            
+            <div className="storage-overview">
+              <div className="storage-total">
+                <div className="storage-value">{totalStorage} GB</div>
+                <div className="storage-label">Всего выделено</div>
+              </div>
+              <div className="storage-used-bar">
+                <div className="storage-bar-track">
+                  <div 
+                    className="storage-bar-fill" 
+                    style={{ width: `${Math.min(usedPercent, 100)}%` }}
+                  />
+                </div>
+                <div className="storage-bar-labels">
+                  <span>{storage.total_used_gb.toFixed(1)} GB использовано</span>
+                  <span>{formatPercent(usedPercent)}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="storage-cards">
+              <div className="storage-card">
+                <div className="card-value">{storage.total_base_gb} GB</div>
+                <div className="card-label">Базовое хранилище</div>
+              </div>
+              <div className="storage-card highlight">
+                <div className="card-value">{storage.total_extra_gb} GB</div>
+                <div className="card-label">Докуплено</div>
+              </div>
+              <div className="storage-card">
+                <div className="card-value">{storage.teachers_with_extra}</div>
+                <div className="card-label">Докупили место</div>
+              </div>
             </div>
           </div>
           
-          <div className="plans-list-section">
-            {plans.map((plan, index) => (
-              <div key={plan.plan} className="plan-card">
-                <div className="plan-header">
-                  <span 
-                    className="plan-dot" 
-                    style={{ backgroundColor: colors[index % colors.length] }} 
-                  />
-                  <span className="plan-name">{plan.plan_label || plan.plan}</span>
-                  <span className="plan-count">{plan.count} подписок</span>
+          {/* Правая колонка - покупки за месяц */}
+          <div className="purchases-section">
+            <h4 className="section-title">Покупки за месяц</h4>
+            
+            <div className="purchases-grid">
+              <div className="purchase-card subscription">
+                <div className="purchase-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
                 </div>
-                <div className="plan-revenue">
-                  <div className="revenue-bar-bg">
-                    <div 
-                      className="revenue-bar-fill" 
-                      style={{ 
-                        width: `${totalRevenue > 0 ? (plan.revenue / totalRevenue) * 100 : 0}%`,
-                        backgroundColor: colors[index % colors.length]
-                      }} 
-                    />
-                  </div>
-                  <span className="revenue-value">{formatRub(plan.revenue)}</span>
+                <div className="purchase-content">
+                  <div className="purchase-title">Подписки</div>
+                  <div className="purchase-value">{formatRub(storage.subscription_revenue)}</div>
+                  <div className="purchase-count">{storage.subscription_payments_count} платежей</div>
                 </div>
               </div>
-            ))}
+              
+              <div className="purchase-card storage">
+                <div className="purchase-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                  </svg>
+                </div>
+                <div className="purchase-content">
+                  <div className="purchase-title">Доп. хранилище</div>
+                  <div className="purchase-value">{formatRub(storage.storage_purchases_amount)}</div>
+                  <div className="purchase-count">{storage.storage_purchases_count} покупок</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="subscription-breakdown">
+              <h5>Активные подписки: {subStats.active || 0}</h5>
+              <div className="sub-types">
+                <div className="sub-type">
+                  <span className="sub-dot monthly"></span>
+                  <span>Месячные: {subStats.monthly || 0}</span>
+                </div>
+                <div className="sub-type">
+                  <span className="sub-dot yearly"></span>
+                  <span>Годовые: {subStats.yearly || 0}</span>
+                </div>
+                {subStats.trial > 0 && (
+                  <div className="sub-type">
+                    <span className="sub-dot trial"></span>
+                    <span>Пробные: {subStats.trial || 0}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -426,7 +455,7 @@ const BusinessMetricsDashboard = ({ onClose }) => {
     { id: 'funnel', label: 'Воронка' },
     { id: 'mrr', label: 'MRR' },
     { id: 'sources', label: 'Источники' },
-    { id: 'plans', label: 'Планы' }
+    { id: 'storage', label: 'Хранилище' }
   ];
 
   if (loading) {
@@ -523,18 +552,20 @@ const BusinessMetricsDashboard = ({ onClose }) => {
                 </div>
                 
                 <div className="bm-card">
-                  <h3>Распределение планов</h3>
-                  <div className="mini-plans">
-                    {data?.plans_breakdown?.map((plan, i) => (
-                      <div key={plan.plan} className="mini-plan">
-                        <span 
-                          className="plan-indicator" 
-                          style={{ backgroundColor: ['#4F46E5', '#10B981', '#F59E0B'][i] }}
-                        />
-                        <span className="plan-label">{plan.plan_label || plan.plan}</span>
-                        <span className="plan-value">{plan.count}</span>
-                      </div>
-                    ))}
+                  <h3>Хранилище</h3>
+                  <div className="mini-storage">
+                    <div className="storage-stat">
+                      <span className="stat-label">Докуплено GB:</span>
+                      <span className="stat-value">{data?.storage_breakdown?.total_extra_gb || 0}</span>
+                    </div>
+                    <div className="storage-stat">
+                      <span className="stat-label">Преподавателей с доп. местом:</span>
+                      <span className="stat-value">{data?.storage_breakdown?.teachers_with_extra || 0}</span>
+                    </div>
+                    <div className="storage-stat">
+                      <span className="stat-label">Активных подписок:</span>
+                      <span className="stat-value">{data?.storage_breakdown?.subscription_stats?.active || 0}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -572,13 +603,13 @@ const BusinessMetricsDashboard = ({ onClose }) => {
             </div>
           )}
 
-          {activeTab === 'plans' && (
+          {activeTab === 'storage' && (
             <div className="bm-section">
               <div className="section-header">
-                <h3>Распределение по тарифам</h3>
-                <p>Активные подписки по тарифным планам и выручка за период.</p>
+                <h3>Хранилище и покупки</h3>
+                <p>Статистика по использованию хранилища и дополнительным покупкам за период.</p>
               </div>
-              <PlansBreakdown plans={data?.plans_breakdown} />
+              <StorageBreakdown storage={data?.storage_breakdown} />
             </div>
           )}
         </div>

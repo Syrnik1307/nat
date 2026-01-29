@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Q, Count, Sum, ExpressionWrapper, F, DurationField, Value
-from django.db.models.functions import Coalesce, NullIf
+from django.db.models import Q, Count, Sum, ExpressionWrapper, F, DurationField, Value, IntegerField
+from django.db.models.functions import Coalesce, NullIf, Cast
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.conf import settings
@@ -2299,15 +2299,16 @@ class AdminBusinessMetricsView(APIView):
         )
         
         # Покупки storage за последний месяц (ищем в metadata)
-        storage_purchases = Payment.objects.filter(
+        storage_payments = Payment.objects.filter(
             status=Payment.STATUS_SUCCEEDED,
             paid_at__gte=month_ago,
             metadata__type='storage'
-        ).aggregate(
-            count=Count('id'),
-            total_amount=Sum('amount'),
-            total_gb=Sum(Cast('metadata__gb', output_field=models.IntegerField()))
         )
+        storage_purchases = {
+            'count': storage_payments.count(),
+            'total_amount': float(storage_payments.aggregate(total=Sum('amount'))['total'] or 0),
+            'total_gb': sum(p.metadata.get('gb', 0) for p in storage_payments if p.metadata)
+        }
         
         # Если нет metadata__type, попробуем по сумме (20 руб = 1 GB)
         storage_price_per_gb = 20
@@ -2387,7 +2388,7 @@ class AdminBusinessMetricsView(APIView):
             'activation_funnel': activation_funnel,
             'mrr_waterfall': mrr_waterfall,
             'sources_breakdown': sources_data,
-            'plans_breakdown': plans_data,
+            'storage_breakdown': storage_breakdown,
             'time_to_first_action': time_to_first_action,
             'generated_at': now.isoformat(),
         })

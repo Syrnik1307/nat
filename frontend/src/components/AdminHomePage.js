@@ -601,17 +601,7 @@ const AdminHomePage = () => {
 
       {/* Referrals Modal */}
       {showReferrals && (
-        <div className="admin-modal-overlay" onClick={() => setShowReferrals(false)}>
-          <div className="admin-modal admin-modal-large" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Реферальная программа</h2>
-              <button className="modal-close" onClick={() => setShowReferrals(false)}>{Icons.close}</button>
-            </div>
-            <div className="modal-body">
-              <AdminReferrals />
-            </div>
-          </div>
-        </div>
+        <AdminReferrals onClose={() => setShowReferrals(false)} />
       )}
 
       {/* Business Metrics Dashboard */}

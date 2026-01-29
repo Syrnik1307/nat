@@ -33,6 +33,45 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$1] $2" | tee -a "$LOG_FILE"
 }
 
+build_human_explanations() {
+    local issue
+    local lines=()
+    while IFS= read -r issue; do
+        [[ -z "$issue" ]] && continue
+        case "$issue" in
+            "SSL истекает"*)
+                lines+=("• Сертификат безопасности скоро истечёт — браузеры начнут ругаться. Действие: продлить SSL.")
+                ;;
+            "Database size"*)
+                lines+=("• База данных стала большой — бэкапы и операции могут замедляться. Действие: проверить рост и архивировать старые данные.")
+                ;;
+            "Disk space critical"*|"Low disk space"*)
+                lines+=("• Диск почти заполнен — файлы и логи могут не записываться. Действие: освободить место или расширить диск.")
+                ;;
+            "High nginx errors"*)
+                lines+=("• Много ошибок веб‑сервера — часть пользователей видит ошибки. Действие: проверить логи nginx.")
+                ;;
+            "Only "*" gunicorn workers"*)
+                lines+=("• Слишком мало процессов приложения — запросы могут падать. Действие: перезапустить teaching_panel.")
+                ;;
+            *"gunicorn workers at high CPU"*)
+                lines+=("• Процессы приложения перегружены — возможны тормоза. Действие: проверить нагрузку и логи.")
+                ;;
+            "Memory critical"*|"Low memory"*)
+                lines+=("• Мало оперативной памяти — сервер уходит в swap и тормозит. Действие: проверить память, перезапустить тяжёлые процессы или увеличить RAM.")
+                ;;
+            *"pending migrations"*)
+                lines+=("• Есть неприменённые миграции — часть функций может работать некорректно. Действие: применить миграции.")
+                ;;
+            *)
+                lines+=("• Требуется проверка логов и состояния сервисов.")
+                ;;
+        esac
+    done <<< "$1"
+
+    printf '%s\n' "${lines[@]}"
+}
+
 send_telegram() {
     local message="$1"
     local priority="${2:-normal}"
@@ -252,16 +291,28 @@ main() {
     
     if [[ ${#issues[@]} -gt 0 ]]; then
         local issue_text=$(printf '• %s\n' "${issues[@]}")
+        local human_text
+        human_text=$(build_human_explanations "$(printf '%s\n' "${issues[@]}")")
+        local explain_block=""
+        if [[ -n "$human_text" ]]; then
+            explain_block="\nПояснение простыми словами:\n$human_text"
+        fi
         log "ERROR" "Critical issues found!"
         send_telegram "КРИТИЧЕСКИЕ ПРОБЛЕМЫ:
 
-$issue_text" "critical"
+$issue_text$explain_block" "critical"
     elif [[ ${#warnings[@]} -gt 0 ]]; then
         local warn_text=$(printf '• %s\n' "${warnings[@]}")
+        local human_text
+        human_text=$(build_human_explanations "$(printf '%s\n' "${warnings[@]}")")
+        local explain_block=""
+        if [[ -n "$human_text" ]]; then
+            explain_block="\nПояснение простыми словами:\n$human_text"
+        fi
         log "WARN" "Warnings found"
         send_telegram "Предупреждения:
 
-$warn_text" "high"
+$warn_text$explain_block" "high"
     else
         log "SUCCESS" "All deep checks passed"
     fi

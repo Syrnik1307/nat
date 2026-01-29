@@ -84,3 +84,84 @@ class TelegramErrorHandler(logging.Handler):
 
 🕐 {record.asctime if hasattr(record, 'asctime') else 'now'}
 """
+
+# ============================================================
+# SLOW REQUEST ALERTER
+# ============================================================
+
+class SlowRequestAlerter:
+    """
+    Отправляет алерты о медленных запросах в Telegram.
+    Антиспам: не чаще раза в 15 минут на один endpoint.
+    """
+    
+    _recent_alerts = {}  # {path: timestamp}
+    COOLDOWN = 900  # 15 минут
+    SLOW_THRESHOLD = 2.0  # секунды
+    CRITICAL_THRESHOLD = 5.0  # секунды
+    
+    @classmethod
+    def alert(cls, method, path, duration, user_id):
+        """
+        Отправляет алерт если запрос медленный.
+        
+        Args:
+            method: HTTP метод
+            path: URL путь
+            duration: время в секундах
+            user_id: ID пользователя или 'anonymous'
+        """
+        if duration < cls.SLOW_THRESHOLD:
+            return
+            
+        bot_token = getattr(settings, 'ERRORS_BOT_TOKEN', '') or getattr(settings, 'TELEGRAM_BOT_TOKEN', '')
+        chat_id = getattr(settings, 'ERRORS_CHAT_ID', '') or getattr(settings, 'ADMIN_TELEGRAM_CHAT_ID', '')
+        
+        if not bot_token or not chat_id:
+            return
+        
+        try:
+            import time
+            now = time.time()
+            
+            # Антиспам: проверяем не отправляли ли недавно для этого endpoint
+            cache_key = f"{method}:{path}"
+            if cache_key in cls._recent_alerts:
+                if now - cls._recent_alerts[cache_key] < cls.COOLDOWN:
+                    return
+            
+            cls._recent_alerts[cache_key] = now
+            
+            # Определяем уровень критичности
+            if duration >= cls.CRITICAL_THRESHOLD:
+                emoji = "🚨"
+                level = "КРИТИЧЕСКИЙ"
+            else:
+                emoji = "⚠️"
+                level = "МЕДЛЕННЫЙ"
+            
+            message = f"""{emoji} <b>SLOW REQUEST ALERT</b>
+
+<b>Уровень:</b> {level}
+<b>Время ответа:</b> {duration:.2f}s
+<b>Endpoint:</b> {method} {path}
+<b>User ID:</b> {user_id}
+
+<i>Порог: >{cls.SLOW_THRESHOLD}s (критический: >{cls.CRITICAL_THRESHOLD}s)</i>
+<i>Повтор алерта через: {cls.COOLDOWN // 60} мин</i>
+
+🕐 {time.strftime('%Y-%m-%d %H:%M:%S')}"""
+            
+            url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+            requests.post(url, data={
+                'chat_id': chat_id,
+                'text': message,
+                'parse_mode': 'HTML',
+            }, timeout=5)
+            
+        except Exception:
+            pass  # Не падаем если Telegram недоступен
+
+
+# Глобальный инстанс для использования из middleware
+slow_request_alerter = SlowRequestAlerter()
