@@ -38,29 +38,69 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                     'questions', 'questions__choices', 'assigned_groups', 'submissions'
                 )
             elif getattr(user, 'role', None) == 'student':
-                # Студенты видят только опубликованные ДЗ из своих групп
-                # .distinct() нужен т.к. студент может быть в нескольких группах,
-                # что приводит к дубликатам при JOIN
+                # Студенты видят только опубликованные ДЗ
                 # 
-                # ОПТИМИЗАЦИЯ: используем prefetch_related для избежания N+1 запросов
-                # Для студентов prefetch только нужные поля
-                from django.db.models import Prefetch
-                return (
-                    qs.filter(status='published', is_template=False).filter(
-                        Q(lesson__group__students=user) |
-                        Q(assigned_groups__students=user) |
-                        Q(assigned_students=user) |
-                        # Новая логика: через HomeworkGroupAssignment
-                        # Ученик в группе И (нет ограничений ИЛИ ученик в списке students)
-                        Q(group_assignments__group__students=user, group_assignments__students__isnull=True) |
-                        Q(group_assignments__students=user) |
-                        Q(submissions__student=user)
-                    )
+                # ОПТИМИЗАЦИЯ: Вместо одного большого запроса с множеством JOIN'ов,
+                # собираем ID домашек из нескольких простых запросов.
+                # Это НАМНОГО быстрее чем один запрос с 11 JOIN'ами!
+                
+                from homework.models import HomeworkGroupAssignment
+                
+                hw_ids = set()
+                
+                # 1. ДЗ через урок в группе студента
+                lesson_hw_ids = Homework.objects.filter(
+                    status='published', is_template=False,
+                    lesson__group__students=user
+                ).values_list('id', flat=True)
+                hw_ids.update(lesson_hw_ids)
+                
+                # 2. ДЗ назначенное группе студента
+                assigned_group_hw_ids = Homework.objects.filter(
+                    status='published', is_template=False,
+                    assigned_groups__students=user
+                ).values_list('id', flat=True)
+                hw_ids.update(assigned_group_hw_ids)
+                
+                # 3. ДЗ назначенное индивидуально студенту
+                assigned_student_hw_ids = Homework.objects.filter(
+                    status='published', is_template=False,
+                    assigned_students=user
+                ).values_list('id', flat=True)
+                hw_ids.update(assigned_student_hw_ids)
+                
+                # 4. ДЗ через HomeworkGroupAssignment (группа без ограничений по ученикам)
+                group_assignment_ids = HomeworkGroupAssignment.objects.filter(
+                    group__students=user
+                ).exclude(
+                    students__isnull=False  # Исключаем те, где указаны конкретные ученики
+                ).values_list('homework_id', flat=True)
+                hw_ids.update(group_assignment_ids)
+                
+                # 5. ДЗ через HomeworkGroupAssignment (конкретный ученик в списке)
+                student_assignment_ids = HomeworkGroupAssignment.objects.filter(
+                    students=user
+                ).values_list('homework_id', flat=True)
+                hw_ids.update(student_assignment_ids)
+                
+                # 6. ДЗ где студент уже делал попытку
+                submission_hw_ids = Homework.objects.filter(
+                    status='published', is_template=False,
+                    submissions__student=user
+                ).values_list('id', flat=True)
+                hw_ids.update(submission_hw_ids)
+                
+                # Финальный запрос по собранным ID - простой и быстрый!
+                return qs.filter(
+                    id__in=hw_ids,
+                    status='published',
+                    is_template=False
                 ).prefetch_related(
                     'questions',
                     'questions__choices',
                     'assigned_groups',
-                ).distinct()
+                ).order_by('-created_at')
+                
         return qs.none()
 
     def get_serializer_class(self):
