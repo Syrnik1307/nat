@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getTeacherStatsSummary, getLessons, getGroups, startQuickLesson, startLessonNew, updateLesson, endLesson } from '../apiService';
 import { getCached } from '../utils/dataCache';
 import { Link } from 'react-router-dom';
@@ -230,7 +230,6 @@ const TeacherHomePage = () => {
   const [editingTopicValue, setEditingTopicValue] = useState('');
   const [savingTopic, setSavingTopic] = useState(false);
   const [endingLessonId, setEndingLessonId] = useState(null);
-  const initialLoadDone = useRef(false);
   
   // Determine available platforms from user profile
   const zoomConnected = user?.zoom_connected || false;
@@ -252,47 +251,27 @@ const TeacherHomePage = () => {
         const dd = String(now.getDate()).padStart(2, '0');
         const today = `${yyyy}-${mm}-${dd}`;
         
-        // Используем кэш для мгновенного отображения при навигации
-        const useCache = initialLoadDone.current;
-        initialLoadDone.current = true;
-        
-        if (useCache) {
-          const [statsData, lessonsData, groupsData] = await Promise.all([
-            getCached('teacher:stats', async () => {
-              const res = await getTeacherStatsSummary();
-              console.log('[TeacherHomePage] Stats fetched (for cache):', res.data);
-              return res.data;
-            }, cacheTTL),
-            getCached(`teacher:lessons:${today}`, async () => {
-              const res = await getLessons({ date: today, include_recurring: true });
-              return Array.isArray(res.data) ? res.data : res.data.results || [];
-            }, cacheTTL),
-            getCached('teacher:groups', async () => {
-              const res = await getGroups();
-              return Array.isArray(res.data) ? res.data : res.data.results || [];
-            }, cacheTTL),
-          ]);
-          
-          console.log('[TeacherHomePage] Stats from cache:', statsData);
-          setStats(statsData);
-          setLessons(lessonsData);
-          setGroups(groupsData);
-          setLoading(false);
-          return;
-        }
-
-        const [statsRes, lessonsRes, groupsRes] = await Promise.all([
-          getTeacherStatsSummary(),
-          getLessons({ date: today, include_recurring: true }),
-          getGroups(),
+        // OPTIMIZATION: Всегда используем getCached для дедупликации параллельных запросов
+        // getCached автоматически дедуплицирует in-flight запросы между компонентами
+        const [statsData, lessonsData, groupsData] = await Promise.all([
+          getCached('teacher:stats', async () => {
+            const res = await getTeacherStatsSummary();
+            console.log('[TeacherHomePage] Stats fetched:', res.data);
+            return res.data;
+          }, cacheTTL),
+          getCached(`teacher:lessons:${today}`, async () => {
+            const res = await getLessons({ date: today, include_recurring: true });
+            return Array.isArray(res.data) ? res.data : res.data.results || [];
+          }, cacheTTL),
+          getCached('teacher:groups', async () => {
+            const res = await getGroups();
+            return Array.isArray(res.data) ? res.data : res.data.results || [];
+          }, cacheTTL),
         ]);
-
-        console.log('[TeacherHomePage] Stats received:', statsRes.data);
-        setStats(statsRes.data);
-        const lessonList = Array.isArray(lessonsRes.data) ? lessonsRes.data : lessonsRes.data.results || [];
-        // Показываем все уроки на сегодня (без ограничения)
-        setLessons(lessonList);
-        setGroups(Array.isArray(groupsRes.data) ? groupsRes.data : groupsRes.data.results || []);
+        
+        setStats(statsData);
+        setLessons(lessonsData);
+        setGroups(groupsData);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       } finally {
