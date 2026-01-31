@@ -1794,6 +1794,8 @@ class HomeworkFileProxyView(View):
         import io
         import re
         import requests
+        import mimetypes
+        from django.conf import settings as django_settings
         
         try:
             hw_file = HomeworkFile.objects.get(id=file_id)
@@ -1809,6 +1811,24 @@ class HomeworkFileProxyView(View):
             response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
             response['Cache-Control'] = 'public, max-age=31536000'
             return response
+
+        # Кэш для GDrive-файлов, чтобы не дергать внешний API на каждый запрос
+        cache_dir = os.path.join(getattr(django_settings, 'MEDIA_ROOT', '/tmp'), 'homework_cache')
+        os.makedirs(cache_dir, exist_ok=True)
+
+        ext = os.path.splitext(hw_file.original_name or '')[1]
+        if not ext:
+            ext = mimetypes.guess_extension(hw_file.mime_type or '') or ''
+        cache_path = os.path.join(cache_dir, f"{hw_file.id}{ext}")
+
+        if os.path.exists(cache_path):
+            response = FileResponse(
+                open(cache_path, 'rb'),
+                content_type=hw_file.mime_type or 'application/octet-stream'
+            )
+            response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
+            response['Cache-Control'] = 'public, max-age=31536000'
+            return response
         
         # Если на GDrive - сначала пробуем быстрый CDN путь (если файл публичный),
         # затем fallback на Drive API (для приватных файлов).
@@ -1818,18 +1838,21 @@ class HomeworkFileProxyView(View):
                 # Быстрый путь: lh3 (может работать для публичных файлов)
                 proxy_url = f'https://lh3.googleusercontent.com/d/{hw_file.gdrive_file_id}'
                 try:
-                    resp = requests.get(proxy_url, timeout=(3, 10), stream=True)
+                    resp = requests.get(proxy_url, timeout=(2, 6), stream=True)
                     if resp.status_code == 200:
-                        def stream_and_close():
-                            try:
-                                for chunk in resp.iter_content(chunk_size=8192):
-                                    if chunk:
-                                        yield chunk
-                            finally:
-                                resp.close()
+                        # Сохраняем в кэш, чтобы следующие запросы были быстрыми
+                        tmp_path = f"{cache_path}.tmp"
+                        with open(tmp_path, 'wb') as f:
+                            for chunk in resp.iter_content(chunk_size=8192):
+                                if chunk:
+                                    f.write(chunk)
+                        resp.close()
+                        os.replace(tmp_path, cache_path)
 
-                        content_type = resp.headers.get('Content-Type', hw_file.mime_type or 'application/octet-stream')
-                        response = StreamingHttpResponse(stream_and_close(), content_type=content_type)
+                        response = FileResponse(
+                            open(cache_path, 'rb'),
+                            content_type=resp.headers.get('Content-Type', hw_file.mime_type or 'application/octet-stream')
+                        )
                         response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
                         response['Cache-Control'] = 'public, max-age=31536000'
                         return response
@@ -1848,6 +1871,11 @@ class HomeworkFileProxyView(View):
                     done = False
                     while not done:
                         _, done = downloader.next_chunk()
+                    file_stream.seek(0)
+
+                    # Кэшируем локально
+                    with open(cache_path, 'wb') as f:
+                        f.write(file_stream.getbuffer())
                     file_stream.seek(0)
 
                     content_type = hw_file.mime_type or 'application/octet-stream'
@@ -1881,18 +1909,20 @@ class HomeworkFileProxyView(View):
                 # Сначала — публичный lh3 (может работать для публичных файлов)
                 proxy_url = f'https://lh3.googleusercontent.com/d/{extracted_drive_id}'
                 try:
-                    resp = requests.get(proxy_url, timeout=(3, 10), stream=True)
+                    resp = requests.get(proxy_url, timeout=(2, 6), stream=True)
                     if resp.status_code == 200:
-                        def stream_and_close():
-                            try:
-                                for chunk in resp.iter_content(chunk_size=8192):
-                                    if chunk:
-                                        yield chunk
-                            finally:
-                                resp.close()
+                        tmp_path = f"{cache_path}.tmp"
+                        with open(tmp_path, 'wb') as f:
+                            for chunk in resp.iter_content(chunk_size=8192):
+                                if chunk:
+                                    f.write(chunk)
+                        resp.close()
+                        os.replace(tmp_path, cache_path)
 
-                        content_type = resp.headers.get('Content-Type', hw_file.mime_type or 'application/octet-stream')
-                        response = StreamingHttpResponse(stream_and_close(), content_type=content_type)
+                        response = FileResponse(
+                            open(cache_path, 'rb'),
+                            content_type=resp.headers.get('Content-Type', hw_file.mime_type or 'application/octet-stream')
+                        )
                         response['Content-Disposition'] = f'inline; filename="{hw_file.original_name}"'
                         response['Cache-Control'] = 'public, max-age=31536000'
                         return response
@@ -1912,6 +1942,11 @@ class HomeworkFileProxyView(View):
                     done = False
                     while not done:
                         _, done = downloader.next_chunk()
+                    file_stream.seek(0)
+
+                    # Кэшируем локально
+                    with open(cache_path, 'wb') as f:
+                        f.write(file_stream.getbuffer())
                     file_stream.seek(0)
 
                     content_type = hw_file.mime_type or 'application/octet-stream'

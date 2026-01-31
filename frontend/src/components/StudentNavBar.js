@@ -170,6 +170,8 @@ const StudentNavBar = () => {
                 `student-nav-link${isActive ? ' active' : ''}`
               }
               onMouseEnter={item.prefetch}
+              onFocus={item.prefetch}
+              onTouchStart={item.prefetch}
             >
               {item.label}
             </NavLink>

@@ -68,6 +68,10 @@ const analyticsImport = () => import('./components/AnalyticsPage');
 const profileImport = () => import('./components/ProfilePage');
 const groupsManageImport = () => import('./components/GroupsManage');
 const homeworkPageImport = () => import('./modules/homework-analytics/components/HomeworkPage');
+const homeworkListImport = () => import('./components/HomeworkList');
+const homeworkTakeImport = () => import('./modules/homework-analytics/components/homework/HomeworkTake');
+const homeworkAnswersImport = () => import('./modules/homework-analytics/components/homework/HomeworkAnswersView');
+const calendarImport = () => import('./modules/core/calendar/Calendar');
 const recordingsImport = () => import('./modules/Recordings/RecordingsPage');
 const teacherRecordingsImport = () => import('./modules/Recordings/TeacherRecordingsPage');
 const teacherMaterialsImport = () => import('./modules/Recordings/TeacherMaterialsPage');
@@ -102,15 +106,15 @@ const StudentHomePage = lazy(studentHomeImport);
 const StudentDashboard = lazy(studentDashboardImport);
 const RecordingsPage = lazy(recordingsImport);
 const StudentMaterialsPage = lazy(studentMaterialsImport);
-const HomeworkList = lazy(() => import('./components/HomeworkList'));
-const HomeworkTake = lazy(() => import('./modules/homework-analytics/components/homework/HomeworkTake'));
-const HomeworkAnswersView = lazy(() => import('./modules/homework-analytics/components/homework/HomeworkAnswersView'));
+const HomeworkList = lazy(homeworkListImport);
+const HomeworkTake = lazy(homeworkTakeImport);
+const HomeworkAnswersView = lazy(homeworkAnswersImport);
 
 // Admin pages
 const AdminHomePage = lazy(() => import('./components/AdminHomePage'));
 
 // Common pages - используем уже созданный импорт
-const Calendar = lazy(() => import('./modules/core/calendar/Calendar'));
+const Calendar = lazy(calendarImport);
 const ProfilePage = lazy(profileImport);
 const ChatPage = lazy(() => import('./components/ChatPage'));
 
@@ -139,6 +143,10 @@ const preloadPages = (role) => {
     scheduleLoad(recordingsImport);
     scheduleLoad(studentMaterialsImport); // Предзагрузка Материалов ученика
     scheduleLoad(profileImport);
+    scheduleLoad(homeworkListImport);
+    scheduleLoad(homeworkTakeImport);
+    scheduleLoad(homeworkAnswersImport);
+    scheduleLoad(calendarImport);
   }
 };
 

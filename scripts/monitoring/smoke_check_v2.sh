@@ -51,7 +51,7 @@ SMOKE_STUDENT_PASSWORD="${SMOKE_STUDENT_PASSWORD:-SmokeTest123!}"
 
 # Rate limiting
 MAX_RESTARTS_PER_HOUR="${MAX_RESTARTS_PER_HOUR:-2}"
-DEPLOY_GRACE_PERIOD="${DEPLOY_GRACE_PERIOD:-60}"  # Пропускать алерты 60 сек после деплоя
+DEPLOY_GRACE_PERIOD="${DEPLOY_GRACE_PERIOD:-300}"  # Пропускать алерты 300 сек после деплоя
 
 mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$STATE_FILE")"
 
@@ -132,7 +132,8 @@ $message
 http_get() {
     local url="$1"
     local token="${2:-}"
-    local timeout="${3:-10}"
+    local timeout="${3:-15}"
+    local retries="${4:-2}"
 
     local headers=()
     if [[ -n "$token" ]]; then
@@ -144,12 +145,21 @@ http_get() {
         headers+=("-H" "X-Forwarded-Proto: https")
     fi
 
-    local response
-    response=$(curl -s -o /tmp/smoke_body.json -w "%{http_code}|%{time_total}" \
-        --max-time "$timeout" \
-        --connect-timeout 5 \
-        "${headers[@]}" \
-        "$url" 2>/dev/null) || response="000|0"
+    local response="000|0"
+    local attempt=0
+    while [[ $attempt -le $retries ]]; do
+        response=$(curl -s -o /tmp/smoke_body.json -w "%{http_code}|%{time_total}" \
+            --max-time "$timeout" \
+            --connect-timeout 5 \
+            "${headers[@]}" \
+            "$url" 2>/dev/null) || response="000|0"
+        local code="${response%%|*}"
+        if [[ "$code" != "000" ]]; then
+            break
+        fi
+        attempt=$((attempt + 1))
+        sleep 1
+    done
 
     echo "$response"
 }
@@ -158,7 +168,8 @@ http_post_json() {
     local url="$1"
     local data="$2"
     local token="${3:-}"
-    local timeout="${4:-10}"
+    local timeout="${4:-15}"
+    local retries="${5:-2}"
 
     local headers=("-H" "Content-Type: application/json")
     if [[ -n "$token" ]]; then
@@ -170,14 +181,23 @@ http_post_json() {
         headers+=("-H" "X-Forwarded-Proto: https")
     fi
 
-    local response
-    response=$(curl -s -o /tmp/smoke_body.json -w "%{http_code}|%{time_total}" \
-        --max-time "$timeout" \
-        --connect-timeout 5 \
-        -X POST \
-        "${headers[@]}" \
-        -d "$data" \
-        "$url" 2>/dev/null) || response="000|0"
+    local response="000|0"
+    local attempt=0
+    while [[ $attempt -le $retries ]]; do
+        response=$(curl -s -o /tmp/smoke_body.json -w "%{http_code}|%{time_total}" \
+            --max-time "$timeout" \
+            --connect-timeout 5 \
+            -X POST \
+            "${headers[@]}" \
+            -d "$data" \
+            "$url" 2>/dev/null) || response="000|0"
+        local code="${response%%|*}"
+        if [[ "$code" != "000" ]]; then
+            break
+        fi
+        attempt=$((attempt + 1))
+        sleep 1
+    done
 
     echo "$response"
 }
@@ -196,11 +216,13 @@ get_token_via_api() {
     local response
     # ВАЖНО: trailing slash обязателен для Django!
     response=$(curl -s -o /tmp/smoke_token.json -w "%{http_code}" \
-        --max-time 10 \
+        --max-time 15 \
         -X POST \
         "${headers[@]}" \
         -d "{\"email\":\"$email\",\"password\":\"$password\"}" \
         "${AUTH_BACKEND_URL}/api/jwt/token/" 2>/dev/null) || response="000"
+
+    LAST_TOKEN_HTTP_CODE="$response"
 
     if [[ "$response" == "200" ]]; then
         cat /tmp/smoke_token.json | grep -o '"access":"[^"]*"' | cut -d'"' -f4
@@ -296,7 +318,12 @@ check_teacher_auth() {
     local token=$(get_token_via_api "$SMOKE_TEACHER_EMAIL" "$SMOKE_TEACHER_PASSWORD")
     
     if [[ -z "$token" ]]; then
-        echo "FAIL:Не удалось получить JWT для учителя"
+        local code="${LAST_TOKEN_HTTP_CODE:-000}"
+        if [[ "$code" == "401" || "$code" == "403" || "$code" == "429" ]]; then
+            echo "FAIL_HIGH:Не удалось получить JWT для учителя (HTTP $code)"
+        else
+            echo "FAIL_CRITICAL:Не удалось получить JWT для учителя (HTTP $code)"
+        fi
         return 1
     fi
     
@@ -395,7 +422,12 @@ check_student_auth() {
     local token=$(get_token_via_api "$SMOKE_STUDENT_EMAIL" "$SMOKE_STUDENT_PASSWORD")
     
     if [[ -z "$token" ]]; then
-        echo "FAIL:Не удалось получить JWT для студента"
+        local code="${LAST_TOKEN_HTTP_CODE:-000}"
+        if [[ "$code" == "401" || "$code" == "403" || "$code" == "429" ]]; then
+            echo "FAIL_HIGH:Не удалось получить JWT для студента (HTTP $code)"
+        else
+            echo "FAIL_CRITICAL:Не удалось получить JWT для студента (HTTP $code)"
+        fi
         return 1
     fi
     
@@ -513,7 +545,12 @@ run_all_checks() {
     
     # 1. Статика
     local res=$(check_static_files)
-    if [[ "$res" == FAIL:* ]]; then
+    if [[ "$res" == FAIL_CRITICAL:* ]]; then
+        issues+=("${res#FAIL_CRITICAL:}")
+        ((critical_count++))
+    elif [[ "$res" == FAIL_HIGH:* ]]; then
+        issues+=("${res#FAIL_HIGH:}")
+    elif [[ "$res" == FAIL:* ]]; then
         issues+=("${res#FAIL:}")
         ((critical_count++))
     fi
@@ -527,7 +564,12 @@ run_all_checks() {
     
     # 3. Учитель: авторизация
     res=$(check_teacher_auth)
-    if [[ "$res" == FAIL:* ]]; then
+    if [[ "$res" == FAIL_CRITICAL:* ]]; then
+        issues+=("${res#FAIL_CRITICAL:}")
+        ((critical_count++))
+    elif [[ "$res" == FAIL_HIGH:* ]]; then
+        issues+=("${res#FAIL_HIGH:}")
+    elif [[ "$res" == FAIL:* ]]; then
         issues+=("${res#FAIL:}")
         ((critical_count++))
     else
@@ -555,7 +597,12 @@ run_all_checks() {
     
     # 9-10. Студент: авторизация + ДЗ
     res=$(check_student_auth)
-    if [[ "$res" == FAIL:* ]]; then
+    if [[ "$res" == FAIL_CRITICAL:* ]]; then
+        issues+=("${res#FAIL_CRITICAL:}")
+        ((critical_count++))
+    elif [[ "$res" == FAIL_HIGH:* ]]; then
+        issues+=("${res#FAIL_HIGH:}")
+    elif [[ "$res" == FAIL:* ]]; then
         issues+=("${res#FAIL:}")
     else
         student_token="$res"

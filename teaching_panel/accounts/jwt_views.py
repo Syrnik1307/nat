@@ -12,6 +12,7 @@ from .security import register_failure, reset_failures, is_locked, lockout_remai
 from .bot_protection import (
     get_client_fingerprint, 
     get_client_ip,
+    is_whitelisted_ip,
     calculate_bot_score,
     is_fingerprint_banned,
     ban_fingerprint,
@@ -115,36 +116,40 @@ class CaseInsensitiveTokenObtainPairView(TokenObtainPairView):
         client_ip = get_client_ip(request)
         fingerprint, fp_data = get_client_fingerprint(request)
         
-        # Проверяем бан устройства
-        is_banned, ban_reason = is_fingerprint_banned(fingerprint)
-        if is_banned:
-            logger.warning(f"[Login] Banned device: {fingerprint[:8]}..., ip={client_ip}")
-
-            try:
-                from teaching_panel.observability.process_events import emit_process_event
-
-                email = (request.data.get('email') or request.data.get('username') or '').strip()
-                emit_process_event(
-                    event_type='login_device_banned',
-                    severity='warning',
-                    context={
-                        'email': email,
-                        'ip': client_ip,
-                        'fingerprint_prefix': f"{fingerprint[:8]}..." if fingerprint else None,
-                        'ban_reason': ban_reason,
-                    },
-                    dedupe_seconds=1800,
-                )
-            except Exception:
-                pass
-
-            return Response(
-                {'detail': 'Доступ с этого устройства заблокирован', 'error': 'device_banned'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        # Пропускаем bot protection для localhost (мониторинг, smoke tests)
+        skip_bot_protection = is_whitelisted_ip(client_ip)
         
-        # Проверяем лимит неудачных попыток
-        if not check_failed_login_limit(fingerprint):
+        # Проверяем бан устройства (если не whitelist)
+        if not skip_bot_protection:
+            is_banned, ban_reason = is_fingerprint_banned(fingerprint)
+            if is_banned:
+                logger.warning(f"[Login] Banned device: {fingerprint[:8]}..., ip={client_ip}")
+
+                try:
+                    from teaching_panel.observability.process_events import emit_process_event
+
+                    email = (request.data.get('email') or request.data.get('username') or '').strip()
+                    emit_process_event(
+                        event_type='login_device_banned',
+                        severity='warning',
+                        context={
+                            'email': email,
+                            'ip': client_ip,
+                            'fingerprint_prefix': f"{fingerprint[:8]}..." if fingerprint else None,
+                            'ban_reason': ban_reason,
+                        },
+                        dedupe_seconds=1800,
+                    )
+                except Exception:
+                    pass
+
+                return Response(
+                    {'detail': 'Доступ с этого устройства заблокирован', 'error': 'device_banned'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # Проверяем лимит неудачных попыток (если не whitelist)
+        if not skip_bot_protection and not check_failed_login_limit(fingerprint):
             logger.warning(f"[Login] Too many failed attempts: {fingerprint[:8]}...")
             ban_fingerprint(fingerprint, 'too_many_failed_logins', duration_hours=1)
 
@@ -180,11 +185,13 @@ class CaseInsensitiveTokenObtainPairView(TokenObtainPairView):
         
         # Если успешный вход - сбрасываем счётчик неудачных попыток
         if response.status_code == 200:
-            reset_failed_logins(fingerprint)
+            if not skip_bot_protection:
+                reset_failed_logins(fingerprint)
             logger.info(f"[Login] Success: email={email}")
         else:
-            # Неудачный вход - записываем
-            record_failed_login(fingerprint)
+            # Неудачный вход - записываем (если не whitelist)
+            if not skip_bot_protection:
+                record_failed_login(fingerprint)
             logger.warning(f"[Login] Failed: email={email}, status={response.status_code}")
         
         return response

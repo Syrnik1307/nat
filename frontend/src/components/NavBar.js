@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { getAccessToken, getTeacherStatsSummary } from '../apiService';
+import { getCached } from '../utils/dataCache';
 import './NavBar.css';
 
 const NavBar = () => {
@@ -13,9 +14,13 @@ const NavBar = () => {
 
   useEffect(() => {
     if (accessTokenValid) {
-      loadMessages();
+      // Delay initial load to not block first render
+      const timer = setTimeout(loadMessages, 2000);
       const interval = setInterval(loadMessages, 30000);
-      return () => clearInterval(interval);
+      return () => {
+        clearTimeout(timer);
+        clearInterval(interval);
+      };
     }
   }, [accessTokenValid]);
 
@@ -25,18 +30,24 @@ const NavBar = () => {
     let isMounted = true;
     const loadPendingHomework = async () => {
       try {
-        const res = await getTeacherStatsSummary();
-        const pending = Number(res?.data?.pending_submissions || 0);
+        // Use cached data with 30s TTL - deduplicates with TeacherHomePage
+        const statsData = await getCached('teacher:stats', async () => {
+          const res = await getTeacherStatsSummary();
+          return res.data;
+        }, 30000);
+        const pending = Number(statsData?.pending_submissions || 0);
         if (isMounted) setPendingHomeworkCount(pending);
       } catch (error) {
         if (isMounted) setPendingHomeworkCount(0);
       }
     };
 
-    loadPendingHomework();
+    // Delay initial load to allow TeacherHomePage to load first (it needs stats more)
+    const timer = setTimeout(loadPendingHomework, 500);
     const interval = setInterval(loadPendingHomework, 60000);
     return () => {
       isMounted = false;
+      clearTimeout(timer);
       clearInterval(interval);
     };
   }, [accessTokenValid, role]);

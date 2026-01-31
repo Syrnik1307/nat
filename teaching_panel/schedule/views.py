@@ -33,7 +33,8 @@ from .serializers import (
     AttendanceSerializer,
     ZoomAccountSerializer,
     RecurringLessonSerializer,
-    IndividualInviteCodeSerializer
+    IndividualInviteCodeSerializer,
+    StudentLessonRecordingSerializer
 )
 # my_zoom_api_client удалён - каждый учитель использует свои credentials
 from accounts.subscriptions_utils import require_active_subscription
@@ -2671,6 +2672,15 @@ def student_recordings_list(request):
         return Response({
             'error': 'Доступ только для студентов'
         }, status=status.HTTP_403_FORBIDDEN)
+
+    # Короткий кэш для ускорения навигации между страницами (30 сек)
+    group_id = request.query_params.get('group_id')
+    search = request.query_params.get('search')
+    page = request.query_params.get('page') or '1'
+    cache_key = f"student_recordings:{user.id}:{group_id or 'all'}:{search or ''}:{page}"
+    cached = cache.get(cache_key)
+    if cached:
+        return Response(cached)
     
     try:
         # Находим все записи уроков из групп, где состоит текущий пользователь-студент
@@ -2685,7 +2695,7 @@ def student_recordings_list(request):
             'lesson',
             'lesson__group',
             'lesson__teacher'
-        ).prefetch_related('allowed_groups', 'allowed_students').order_by('-lesson__start_time').distinct()
+        ).prefetch_related('allowed_groups').order_by('-lesson__start_time').distinct()
         
         # Фильтры
         group_id = request.query_params.get('group_id')
@@ -2705,9 +2715,11 @@ def student_recordings_list(request):
         paginator = PageNumberPagination()
         paginator.page_size = 20
         paginated_recordings = paginator.paginate_queryset(recordings, request)
-        
-        serializer = LessonRecordingSerializer(paginated_recordings, many=True)
-        return paginator.get_paginated_response(serializer.data)
+
+        serializer = StudentLessonRecordingSerializer(paginated_recordings, many=True)
+        response = paginator.get_paginated_response(serializer.data)
+        cache.set(cache_key, response.data, 30)
+        return response
     
     except Exception:
         # Любые точечные ошибки выше перехватим ниже общим блоком

@@ -1,14 +1,20 @@
 /**
- * Simple Data Cache for API responses
- * Reduces redundant API calls when navigating between pages
- * Cache expires after TTL (default 30 seconds)
+ * Smart Data Cache for API responses with REQUEST DEDUPLICATION
+ * - Reduces redundant API calls when navigating between pages
+ * - DEDUPLICATES parallel requests for the same resource
+ * - Cache expires after TTL (default 30 seconds)
  */
 
 const DEFAULT_TTL = 30 * 1000; // 30 seconds
 const cache = new Map();
 
+// In-flight requests map for deduplication
+// When multiple components request the same data simultaneously,
+// only ONE request is made and the promise is shared
+const inFlight = new Map();
+
 /**
- * Get cached data or fetch new
+ * Get cached data or fetch new WITH REQUEST DEDUPLICATION
  * @param {string} key - Cache key
  * @param {Function} fetcher - Async function that returns data
  * @param {number} ttl - Time to live in ms
@@ -18,14 +24,30 @@ export const getCached = async (key, fetcher, ttl = DEFAULT_TTL) => {
   const now = Date.now();
   const cached = cache.get(key);
   
+  // Return cached data if fresh
   if (cached && (now - cached.timestamp) < ttl) {
     return cached.data;
   }
   
-  // Fetch fresh data
-  const data = await fetcher();
-  cache.set(key, { data, timestamp: now });
-  return data;
+  // DEDUPLICATION: If request is already in flight, wait for it
+  if (inFlight.has(key)) {
+    return inFlight.get(key);
+  }
+  
+  // Create new request promise and store it
+  const promise = (async () => {
+    try {
+      const data = await fetcher();
+      cache.set(key, { data, timestamp: Date.now() });
+      return data;
+    } finally {
+      // Remove from in-flight when done (success or error)
+      inFlight.delete(key);
+    }
+  })();
+  
+  inFlight.set(key, promise);
+  return promise;
 };
 
 /**

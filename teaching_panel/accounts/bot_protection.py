@@ -32,6 +32,13 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # ============================================================================
 
+# IP-адреса, которые освобождены от bot protection (localhost, мониторинг)
+WHITELISTED_IPS = {
+    '127.0.0.1',
+    'localhost',
+    '::1',  # IPv6 localhost
+}
+
 # Пороги для определения ботов
 BOT_DETECTION_CONFIG = {
     # Минимальное время заполнения формы (секунды)
@@ -144,6 +151,11 @@ def get_client_ip(request) -> str:
     if x_real_ip:
         return x_real_ip
     return request.META.get('REMOTE_ADDR', '')
+
+
+def is_whitelisted_ip(ip: str) -> bool:
+    """Проверяет, находится ли IP в whitelist (localhost, мониторинг)."""
+    return ip in WHITELISTED_IPS
 
 
 # ============================================================================

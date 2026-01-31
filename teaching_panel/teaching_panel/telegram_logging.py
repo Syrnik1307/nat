@@ -97,8 +97,8 @@ class SlowRequestAlerter:
     
     _recent_alerts = {}  # {path: timestamp}
     COOLDOWN = 900  # 15 минут
-    SLOW_THRESHOLD = 2.0  # секунды
-    CRITICAL_THRESHOLD = 5.0  # секунды
+    SLOW_THRESHOLD = 3.0  # секунды
+    CRITICAL_THRESHOLD = 6.0  # секунды
     
     @classmethod
     def alert(cls, method, path, duration, user_id):
@@ -113,6 +113,16 @@ class SlowRequestAlerter:
         """
         if duration < cls.SLOW_THRESHOLD:
             return
+
+        # Не алертим системные и известно-медленные endpoints
+        # health-check и recordings (у них допустимое время выше)
+        skip_paths = (
+            '/api/health/',
+            '/schedule/api/recordings/',  # recordings могут быть медленнее
+            '/api/zoom-pool/',  # zoom тоже может тормозить
+        )
+        if any(path.startswith(p) for p in skip_paths):
+            return
             
         bot_token = getattr(settings, 'ERRORS_BOT_TOKEN', '') or getattr(settings, 'TELEGRAM_BOT_TOKEN', '')
         chat_id = getattr(settings, 'ERRORS_CHAT_ID', '') or getattr(settings, 'ADMIN_TELEGRAM_CHAT_ID', '')
@@ -124,8 +134,15 @@ class SlowRequestAlerter:
             import time
             now = time.time()
             
+            # Нормализуем path, чтобы не спамить разными ID
+            import re
+            normalized_path = path
+            normalized_path = re.sub(r'/api/homework/file/[^/]+/?', '/api/homework/file/<id>/', normalized_path)
+            normalized_path = re.sub(r'/api/homework/submissions/[^/]+/?', '/api/homework/submissions/<id>/', normalized_path)
+            normalized_path = re.sub(r'/schedule/api/lessons/[^/]+/?', '/schedule/api/lessons/<id>/', normalized_path)
+
             # Антиспам: проверяем не отправляли ли недавно для этого endpoint
-            cache_key = f"{method}:{path}"
+            cache_key = f"{method}:{normalized_path}"
             if cache_key in cls._recent_alerts:
                 if now - cls._recent_alerts[cache_key] < cls.COOLDOWN:
                     return
@@ -144,7 +161,7 @@ class SlowRequestAlerter:
 
 <b>Уровень:</b> {level}
 <b>Время ответа:</b> {duration:.2f}s
-<b>Endpoint:</b> {method} {path}
+<b>Endpoint:</b> {method} {normalized_path}
 <b>User ID:</b> {user_id}
 
 <i>Порог: >{cls.SLOW_THRESHOLD}s (критический: >{cls.CRITICAL_THRESHOLD}s)</i>

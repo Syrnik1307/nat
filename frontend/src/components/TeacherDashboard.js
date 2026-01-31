@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getTeacherStatsSummary, getGroups, getLessons, startLesson, startLessonNew, createLesson } from '../apiService';
+import { getCached } from '../utils/dataCache';
 import LessonAttendance from './LessonAttendance';
 import { Notification } from '../shared/components';
 import useNotification from '../shared/hooks/useNotification';
@@ -23,12 +24,16 @@ const TeacherDashboard = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [statsRes, groupsRes, lessonsRes] = await Promise.all([
-          getTeacherStatsSummary(),
+        // Use cached stats with deduplication
+        const [statsData, groupsRes, lessonsRes] = await Promise.all([
+          getCached('teacher:stats', async () => {
+            const res = await getTeacherStatsSummary();
+            return res.data;
+          }, 30000),
           getGroups(),
           getLessons({}),
         ]);
-        setStats(statsRes.data);
+        setStats(statsData);
         setGroups(Array.isArray(groupsRes.data) ? groupsRes.data : groupsRes.data.results || []);
         setLessons(Array.isArray(lessonsRes.data) ? lessonsRes.data : lessonsRes.data.results || []);
       } catch (e) {

@@ -115,7 +115,7 @@ export const AuthProvider = ({ children }) => {
     // - НЕ пытаемся авто-логиниться через refresh
     if (path.startsWith('/auth')) {
       try {
-        await apiLogout();
+        apiLogout();
       } catch (_) {}
       clearTokens();
       setAccessTokenValid(false);

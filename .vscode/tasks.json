@@ -1304,6 +1304,18 @@
 			"label": "reset memory alert state",
 			"type": "shell",
 			"command": "ssh tp 'sudo rm -f /var/run/lectio-monitor/memory_alert_state && echo State reset'"
+		},
+		{
+			"label": "prod: check smoke logs",
+			"type": "shell",
+			"command": "ssh tp 'tail -50 /var/log/smoke_check.log'",
+			"isBackground": false
+		},
+		{
+			"label": "prod: smoke log",
+			"type": "shell",
+			"command": "ssh tp \"tail -40 /var/log/smoke_check.log\"",
+			"isBackground": false
 		}
 	]
 }

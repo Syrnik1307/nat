@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../auth';
 import { getTeacherStatsSummary } from '../../../apiService';
+import { getCached } from '../../../utils/dataCache';
 import './HomeworkPage.css';
 
 // Ленивая загрузка вкладок для ускорения переключений
@@ -64,8 +65,12 @@ const HomeworkPage = () => {
     let isMounted = true;
     const loadPending = async () => {
       try {
-        const res = await getTeacherStatsSummary();
-        const pending = Number(res?.data?.pending_submissions || 0);
+        // Use cached data with 30s TTL - deduplicates with NavBar/TeacherHomePage
+        const statsData = await getCached('teacher:stats', async () => {
+          const res = await getTeacherStatsSummary();
+          return res.data;
+        }, 30000);
+        const pending = Number(statsData?.pending_submissions || 0);
         if (isMounted) setPendingReviewCount(pending);
       } catch (e) {
         if (isMounted) setPendingReviewCount(0);

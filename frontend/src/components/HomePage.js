@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../auth';
 import { getTeacherStatsSummary, getLessons, getGroups, getHomeworkList } from '../apiService';
+import { getCached } from '../utils/dataCache';
 import { Link } from 'react-router-dom';
 import SupportWidget from './SupportWidget';
 import './HomePage.css';
@@ -23,8 +24,12 @@ const HomePage = () => {
         const in30 = new Date();
         in30.setDate(now.getDate() + 30);
         if (role === 'teacher') {
-          const [statsRes, lessonsRes, groupsRes] = await Promise.all([
-            getTeacherStatsSummary(),
+          // Use cached data with deduplication
+          const [statsData, lessonsRes, groupsRes] = await Promise.all([
+            getCached('teacher:stats', async () => {
+              const res = await getTeacherStatsSummary();
+              return res.data;
+            }, 30000),
             getLessons({
               start: now.toISOString(),
               end: in30.toISOString(),
@@ -32,7 +37,7 @@ const HomePage = () => {
             }),
             getGroups(),
           ]);
-          setTeacherStats(statsRes.data);
+          setTeacherStats(statsData);
           const lessonList = Array.isArray(lessonsRes.data) ? lessonsRes.data : lessonsRes.data.results || [];
           setUpcomingLessons(lessonList.slice(0,5));
           setGroups(Array.isArray(groupsRes.data) ? groupsRes.data : groupsRes.data.results || []);

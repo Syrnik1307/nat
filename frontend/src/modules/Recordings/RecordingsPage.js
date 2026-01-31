@@ -79,7 +79,7 @@ function RecordingsPage() {
   };
 
   const fetchGroups = async () => {
-    const response = await api.get('groups/');
+    const response = await api.get('groups/', { params: { light: 1 } });
     const data = response?.data;
     const results = Array.isArray(data?.results) ? data.results : null;
     const arr = results ?? (Array.isArray(data) ? data : []);

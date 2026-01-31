@@ -649,6 +649,98 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
         ]
 
 
+class StudentLessonRecordingSerializer(serializers.ModelSerializer):
+    """Облегчённый сериализатор для списка записей студента."""
+    lesson_info = serializers.SerializerMethodField()
+    file_size_mb = serializers.SerializerMethodField()
+    duration_display = serializers.SerializerMethodField()
+    available_days_left = serializers.SerializerMethodField()
+    access_groups = serializers.SerializerMethodField()
+    streaming_url = serializers.SerializerMethodField()
+
+    def get_streaming_url(self, obj):
+        if obj.gdrive_file_id:
+            return f"https://drive.google.com/uc?export=download&id={obj.gdrive_file_id}"
+        return None
+
+    def get_lesson_info(self, obj):
+        if not obj.lesson:
+            return None
+        lesson = obj.lesson
+        display_title = obj.title or lesson.title or (lesson.group.name if lesson.group else 'Урок')
+        teacher = lesson.teacher if lesson.teacher_id else None
+        return {
+            'id': lesson.id,
+            'title': display_title,
+            'subject': display_title,
+            'group': lesson.group.name if lesson.group else None,
+            'group_name': lesson.group.name if lesson.group else None,
+            'group_id': lesson.group.id if lesson.group else None,
+            'teacher': {
+                'id': teacher.id,
+                'name': f"{teacher.first_name} {teacher.last_name}".strip() or teacher.email
+            } if teacher else None,
+            'start_time': lesson.start_time,
+            'end_time': lesson.end_time,
+            'date': lesson.start_time.strftime('%Y-%m-%d') if lesson.start_time else None,
+        }
+
+    def get_file_size_mb(self, obj):
+        if obj.file_size:
+            return round(obj.file_size / (1024 * 1024), 2)
+        return None
+
+    def get_duration_display(self, obj):
+        if obj.duration and obj.duration > 0:
+            minutes = int((obj.duration + 59) // 60)
+            return minutes
+        if obj.recording_start and obj.recording_end:
+            duration_seconds = int((obj.recording_end - obj.recording_start).total_seconds())
+            if duration_seconds > 0:
+                minutes = int((duration_seconds + 59) // 60)
+                return minutes
+        if obj.lesson and obj.lesson.start_time and obj.lesson.end_time:
+            duration = obj.lesson.end_time - obj.lesson.start_time
+            return int(duration.total_seconds() / 60)
+        return None
+
+    def get_available_days_left(self, obj):
+        if obj.available_until:
+            now = timezone.now()
+            if obj.available_until > now:
+                return (obj.available_until - now).days
+            return 0
+        return None
+
+    def get_access_groups(self, obj):
+        groups = getattr(obj, 'allowed_groups', None)
+        if not groups:
+            return []
+        return [
+            {
+                'id': group.id,
+                'name': group.name
+            }
+            for group in groups.all()
+        ]
+
+    class Meta:
+        model = LessonRecording
+        fields = [
+            'id', 'lesson', 'lesson_info',
+            'title',
+            'file_size', 'file_size_mb',
+            'duration_display',
+            'play_url', 'download_url', 'thumbnail_url', 'streaming_url',
+            'storage_provider', 'gdrive_file_id',
+            'status', 'views_count',
+            'visibility', 'access_groups',
+            'available_until', 'available_days_left',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = fields
+
+
 class TeacherStorageQuotaSerializer(serializers.ModelSerializer):
     """Сериализатор для квот хранилища преподавателей"""
     
