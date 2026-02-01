@@ -12,6 +12,7 @@ from django.conf import settings
 from django.core.cache import cache
 import google_auth_httplib2
 import httplib2
+import socket
 import os
 import sys
 import uuid
@@ -22,41 +23,102 @@ import logging
 import json
 import time
 import functools
+import threading
 
 logger = logging.getLogger(__name__)
 
-# Константы для retry логики
+# ============================================================
+# CRITICAL: Таймауты для Google API
+# httplib2 по умолчанию может зависнуть навсегда на DNS/connect
+# ============================================================
 MAX_RETRIES = 3
 RETRY_DELAY_BASE = 1.0  # секунд
 RETRY_DELAY_MAX = 10.0  # секунд
 REQUEST_TIMEOUT = 30  # секунд для обычных запросов
+CONNECT_TIMEOUT = 10  # секунд для установки соединения
 UPLOAD_TIMEOUT = 300  # секунд для загрузки файлов
 CACHE_TTL = 3600  # 1 час кэш папок учителя
 SIMPLE_UPLOAD_THRESHOLD = 5 * 1024 * 1024  # 5 MB - для файлов меньше используем simple upload
 
+# Устанавливаем глобальный socket timeout для httplib2
+socket.setdefaulttimeout(REQUEST_TIMEOUT)
 
-def retry_on_error(max_retries=MAX_RETRIES, delay_base=RETRY_DELAY_BASE):
-    """Декоратор для повторных попыток при ошибках Google API"""
+
+class TimeoutError(Exception):
+    """Исключение для таймаутов Google API операций"""
+    pass
+
+
+def _run_with_timeout(func, timeout_seconds, *args, **kwargs):
+    """
+    Выполнить функцию с жёстким таймаутом через threading.
+    Работает на всех платформах (включая Windows где нет SIGALRM).
+    """
+    result = [None]
+    exception = [None]
+    completed = threading.Event()
+    
+    def target():
+        try:
+            result[0] = func(*args, **kwargs)
+        except Exception as e:
+            exception[0] = e
+        finally:
+            completed.set()
+    
+    thread = threading.Thread(target=target, daemon=True)
+    thread.start()
+    
+    if not completed.wait(timeout=timeout_seconds):
+        raise TimeoutError(f"Operation timed out after {timeout_seconds}s")
+    
+    if exception[0] is not None:
+        raise exception[0]
+    
+    return result[0]
+
+
+def retry_on_error(max_retries=MAX_RETRIES, delay_base=RETRY_DELAY_BASE, timeout=REQUEST_TIMEOUT):
+    """
+    Декоратор для повторных попыток при ошибках Google API.
+    
+    Args:
+        max_retries: Максимальное количество попыток
+        delay_base: Базовая задержка между попытками (экспоненциальный backoff)
+        timeout: Таймаут на одну попытку в секундах
+    """
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             last_error = None
             for attempt in range(max_retries):
                 try:
-                    return func(*args, **kwargs)
+                    # Оборачиваем вызов в таймаут
+                    return _run_with_timeout(func, timeout, *args, **kwargs)
+                except TimeoutError as e:
+                    last_error = e
+                    delay = min(delay_base * (2 ** attempt), RETRY_DELAY_MAX)
+                    logger.warning(f"Timeout (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
+                    time.sleep(delay)
                 except HttpError as e:
                     last_error = e
-                    # Не повторяем для 4xx ошибок (кроме 429)
+                    # Не повторяем для 4xx ошибок (кроме 429 - rate limit)
                     if e.resp.status < 500 and e.resp.status != 429:
                         raise
                     delay = min(delay_base * (2 ** attempt), RETRY_DELAY_MAX)
                     logger.warning(f"Google API error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
                     time.sleep(delay)
+                except (socket.timeout, socket.error, OSError) as e:
+                    # Явные сетевые ошибки
+                    last_error = e
+                    delay = min(delay_base * (2 ** attempt), RETRY_DELAY_MAX)
+                    logger.warning(f"Socket error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
+                    time.sleep(delay)
                 except Exception as e:
                     last_error = e
                     error_str = str(e).lower()
                     # Повторяем только для таймаутов и сетевых ошибок
-                    if 'timeout' in error_str or 'connection' in error_str or 'network' in error_str:
+                    if 'timeout' in error_str or 'connection' in error_str or 'network' in error_str or 'timed out' in error_str:
                         delay = min(delay_base * (2 ** attempt), RETRY_DELAY_MAX)
                         logger.warning(f"Network error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
                         time.sleep(delay)
@@ -187,10 +249,17 @@ class GoogleDriveManager:
                 raise ValueError("Invalid credentials - run setup_gdrive_oauth.py to get new token")
             
             # Создаем клиент Drive API с настроенными таймаутами
-            # Используем google_auth_httplib2.AuthorizedHttp вместо устаревшего creds.authorize()
-            http = httplib2.Http(timeout=REQUEST_TIMEOUT)
+            # CRITICAL: httplib2.Http timeout применяется к socket операциям
+            # Но некоторые операции (DNS, SSL handshake) могут зависнуть
+            # Поэтому также используем socket.setdefaulttimeout и threading timeout в декораторе
+            http = httplib2.Http(
+                timeout=REQUEST_TIMEOUT,
+                disable_ssl_certificate_validation=False
+            )
+            # Устанавливаем дополнительные параметры для предотвращения зависаний
+            http.force_exception_to_status_code = False  # Не глотать исключения
             authed_http = google_auth_httplib2.AuthorizedHttp(creds, http=http)
-            self.service = build('drive', 'v3', http=authed_http)
+            self.service = build('drive', 'v3', http=authed_http, cache_discovery=False)
             
             # ID корневой папки для хранения (GDRIVE_ROOT_FOLDER_ID - главная папка lectio.space)
             # Fallback на GDRIVE_RECORDINGS_FOLDER_ID для обратной совместимости

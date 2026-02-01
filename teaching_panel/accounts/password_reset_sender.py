@@ -54,7 +54,7 @@ class PasswordResetCode:
                 'chat_id': user.telegram_chat_id,
                 'text': message,
                 'parse_mode': 'HTML'
-            })
+            }, timeout=10)
             
             if response.status_code == 200:
                 return {'success': True, 'method': 'telegram'}

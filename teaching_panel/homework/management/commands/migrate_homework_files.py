@@ -16,6 +16,7 @@ Usage:
 import os
 import time
 import logging
+import socket
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.utils import timezone
@@ -23,6 +24,10 @@ from django.core.cache import cache
 from homework.models import HomeworkFile
 
 logger = logging.getLogger(__name__)
+
+# Таймауты для миграции файлов
+FILE_MIGRATION_TIMEOUT = 120  # секунд на один файл (включает upload)
+FOLDER_OPERATION_TIMEOUT = 30  # секунд на операции с папками
 
 
 class Command(BaseCommand):
@@ -97,10 +102,19 @@ class Command(BaseCommand):
                     self._migrate_file(hw_file)
                     migrated += 1
                     self.stdout.write(self.style.SUCCESS(f'  [{migrated}/{total}] {hw_file.id}: migrated'))
+                except socket.timeout as e:
+                    failed += 1
+                    self.stdout.write(self.style.ERROR(f'  [{migrated + failed}/{total}] {hw_file.id}: TIMEOUT - {e}'))
+                    logger.error(f'migrate_homework_files: timeout migrating {hw_file.id}: {e}')
                 except Exception as e:
                     failed += 1
-                    self.stdout.write(self.style.ERROR(f'  [{migrated + failed}/{total}] {hw_file.id}: FAILED - {e}'))
-                    logger.error(f'migrate_homework_files: failed to migrate {hw_file.id}: {e}', exc_info=True)
+                    error_msg = str(e).lower()
+                    if 'timeout' in error_msg or 'timed out' in error_msg:
+                        self.stdout.write(self.style.ERROR(f'  [{migrated + failed}/{total}] {hw_file.id}: TIMEOUT - {e}'))
+                        logger.error(f'migrate_homework_files: timeout migrating {hw_file.id}: {e}')
+                    else:
+                        self.stdout.write(self.style.ERROR(f'  [{migrated + failed}/{total}] {hw_file.id}: FAILED - {e}'))
+                        logger.error(f'migrate_homework_files: failed to migrate {hw_file.id}: {e}', exc_info=True)
                 
                 # Rate limiting - задержка между запросами к GDrive API
                 if delay > 0:
@@ -112,8 +126,13 @@ class Command(BaseCommand):
             cache.delete(lock_key)
 
     def _migrate_file(self, hw_file: HomeworkFile):
-        """Мигрировать один файл на GDrive."""
-        from schedule.gdrive_utils import get_gdrive_manager
+        """
+        Мигрировать один файл на GDrive.
+        
+        Использует retry_on_error декоратор из gdrive_utils для автоматических
+        повторных попыток при таймаутах и сетевых ошибках.
+        """
+        from schedule.gdrive_utils import get_gdrive_manager, TimeoutError
         
         if not hw_file.local_path or not os.path.exists(hw_file.local_path):
             raise FileNotFoundError(f'Local file not found: {hw_file.local_path}')
@@ -122,6 +141,7 @@ class Command(BaseCommand):
         
         # Для файлов учителей используем их папку, для студентов - общую папку
         if hw_file.teacher:
+            # get_or_create_teacher_folder уже обёрнут в retry_on_error с таймаутом
             teacher_folders = gdrive.get_or_create_teacher_folder(hw_file.teacher)
             homework_root_folder_id = teacher_folders.get('homework')
             uploads_cache_key = f"gdrive_uploads_folder_{hw_file.teacher.id}"
@@ -147,6 +167,9 @@ class Command(BaseCommand):
                     uploads_folder_id = items[0]['id']
                 else:
                     uploads_folder_id = gdrive.create_folder(folder_name, homework_root_folder_id)
+            except (TimeoutError, socket.timeout) as e:
+                logger.warning(f'Timeout finding/creating folder, will retry: {e}')
+                uploads_folder_id = gdrive.create_folder(folder_name, homework_root_folder_id)
             except Exception:
                 uploads_folder_id = gdrive.create_folder(folder_name, homework_root_folder_id)
             
