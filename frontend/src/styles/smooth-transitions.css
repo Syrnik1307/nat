@@ -62,6 +62,11 @@ input[type="button"] {
     box-shadow var(--transition-hover),
     color var(--transition-hover);
   will-change: transform, opacity;
+  /* iOS Mobile Touch Fixes */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* Все ссылки - плавное изменение цвета */

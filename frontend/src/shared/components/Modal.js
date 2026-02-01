@@ -64,20 +64,23 @@ const Modal = ({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
     backdropFilter: 'blur(8px)',
     WebkitBackdropFilter: 'blur(8px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 'var(--z-modal-backdrop)',
-    padding: 'var(--space-lg)',
+    zIndex: 9999, // Fixed high z-index for iOS compatibility
+    padding: 'var(--space-lg, 16px)',
     animation: 'backdropFadeIn var(--duration-slow, 400ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1))',
+    // iOS Safari fixes
+    WebkitOverflowScrolling: 'touch',
+    overscrollBehavior: 'contain',
   };
 
   const modalStyles = {
-    backgroundColor: 'var(--bg-primary)',
-    borderRadius: 'var(--radius-xl)',
+    backgroundColor: 'var(--bg-primary, #ffffff)',
+    borderRadius: 'var(--radius-xl, 16px)',
     maxWidth: sizes[size],
     width: '100%',
     maxHeight: '90vh',
@@ -85,6 +88,9 @@ const Modal = ({
     flexDirection: 'column',
     boxShadow: '0 25px 50px -12px rgba(79, 70, 229, 0.25), 0 10px 25px -5px rgba(0, 0, 0, 0.1)',
     animation: 'smoothScaleIn var(--duration-slow, 400ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1))',
+    // iOS Safari fixes
+    WebkitTransform: 'translateZ(0)',
+    transform: 'translateZ(0)',
   };
 
   const headerStyles = {

@@ -36,6 +36,11 @@ const Button = ({
     fontFamily: 'Plus Jakarta Sans, Inter, -apple-system, BlinkMacSystemFont, sans-serif',
     transform: 'none',
     whiteSpace: 'nowrap',
+    // Mobile touch fixes
+    WebkitTapHighlightColor: 'transparent',
+    touchAction: 'manipulation',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
   };
 
   const variants = {
@@ -81,12 +86,12 @@ const Button = ({
     small: {
       padding: '10px 16px',
       fontSize: '0.875rem',
-      minHeight: '36px',
+      minHeight: '44px', // iOS minimum tap target
     },
     medium: {
       padding: '12px 24px',
       fontSize: '0.9375rem',
-      minHeight: '44px',
+      minHeight: '48px', // Better for touch
     },
     large: {
       padding: '14px 32px',
@@ -106,34 +111,38 @@ const Button = ({
 
   const safeVariant = variants[variant] ? variant : 'primary';
 
+  // Detect touch device to avoid stuck hover states
+  const isTouchDevice = typeof window !== 'undefined' && 
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
   const handleMouseEnter = (e) => {
-    if (!disabled && !loading) {
-      const target = e.currentTarget;
-      if (!target) return;
-      const hoverColor = hoverStyles[safeVariant];
-      if (safeVariant === 'primary') {
-        target.style.background = hoverColor;
-      } else if (safeVariant === 'outline' || safeVariant === 'text') {
-        target.style.backgroundColor = hoverColor;
-      } else {
-        target.style.backgroundColor = hoverColor;
-      }
+    // Skip hover effects on touch devices to prevent stuck states
+    if (isTouchDevice || disabled || loading) return;
+    const target = e.currentTarget;
+    if (!target) return;
+    const hoverColor = hoverStyles[safeVariant];
+    if (safeVariant === 'primary') {
+      target.style.background = hoverColor;
+    } else if (safeVariant === 'outline' || safeVariant === 'text') {
+      target.style.backgroundColor = hoverColor;
+    } else {
+      target.style.backgroundColor = hoverColor;
     }
   };
 
   const handleMouseLeave = (e) => {
-    if (!disabled && !loading) {
-      const target = e.currentTarget;
-      if (!target) return;
-      const variantStyle = variants[safeVariant] || {};
-      // Для primary используется gradient, поэтому восстанавливаем background
-        if (safeVariant === 'primary' && variantStyle.background) {
-        target.style.background = variantStyle.background;
-      } else if (variantStyle.backgroundColor) {
-        target.style.backgroundColor = variantStyle.backgroundColor;
-      } else {
-        target.style.backgroundColor = '';
-      }
+    // Skip hover effects on touch devices
+    if (isTouchDevice || disabled || loading) return;
+    const target = e.currentTarget;
+    if (!target) return;
+    const variantStyle = variants[safeVariant] || {};
+    // Для primary используется gradient, поэтому восстанавливаем background
+    if (safeVariant === 'primary' && variantStyle.background) {
+      target.style.background = variantStyle.background;
+    } else if (variantStyle.backgroundColor) {
+      target.style.backgroundColor = variantStyle.backgroundColor;
+    } else {
+      target.style.backgroundColor = '';
     }
   };
 
