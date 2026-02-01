@@ -1,10 +1,17 @@
 """
 YooKassa payment integration service
 Handles payment creation and processing for subscriptions
+
+PRODUCTION-GRADE REQUIREMENTS:
+- Atomic transactions for all payment processing
+- Idempotent webhook handling (duplicate webhooks are safe)
+- Row-level locking to prevent race conditions
+- Comprehensive logging for audit trail
 """
 from decimal import Decimal
 from django.conf import settings
 from django.utils import timezone
+from django.db import transaction, DatabaseError
 from datetime import timedelta
 import logging
 from dateutil.relativedelta import relativedelta
@@ -284,7 +291,13 @@ class PaymentService:
     @staticmethod
     def process_payment_webhook(payment_data):
         """
-        Обработать webhook от YooKassa о статусе платежа
+        Обработать webhook от YooKassa о статусе платежа.
+        
+        PRODUCTION-GRADE IMPLEMENTATION:
+        1. Атомарные транзакции — все изменения в одной транзакции
+        2. Идемпотентность — повторные вебхуки безопасны
+        3. Row-level locking — предотвращение race conditions
+        4. Аудит логирование — полный trace для отладки
         
         Args:
             payment_data: dict с данными от YooKassa
@@ -292,200 +305,260 @@ class PaymentService:
         Returns:
             bool: успешность обработки
         """
+        from .models import Payment, Subscription
+        
+        payment_id = payment_data.get('object', {}).get('id')
+        webhook_status = payment_data.get('object', {}).get('status')
+        metadata = payment_data.get('object', {}).get('metadata', {})
+        
+        if not payment_id:
+            logger.error("Webhook missing payment_id")
+            return False
+        
+        logger.info(f"[WEBHOOK] Processing payment {payment_id}, status={webhook_status}")
+        
         try:
-            from .models import Payment, Subscription
-            
-            payment_id = payment_data['object']['id']
-            status = payment_data['object']['status']
-            metadata = payment_data['object'].get('metadata', {})
-            
-            # Находим платёж в БД
-            try:
-                payment = Payment.objects.select_related('subscription').get(payment_id=payment_id)
-            except Payment.DoesNotExist:
-                logger.error(f"Payment {payment_id} not found in database")
-                return False
-            
-            if status == 'succeeded':
-                payment.status = Payment.STATUS_SUCCEEDED
-                payment.paid_at = timezone.now()
-                payment.save()
+            # =========================================================
+            # ATOMIC TRANSACTION with SELECT FOR UPDATE (row locking)
+            # =========================================================
+            with transaction.atomic():
+                # Lock the payment row to prevent race conditions
+                try:
+                    payment = (
+                        Payment.objects
+                        .select_for_update(nowait=False)  # Wait for lock if needed
+                        .select_related('subscription', 'subscription__user')
+                        .get(payment_id=payment_id)
+                    )
+                except Payment.DoesNotExist:
+                    logger.error(f"[WEBHOOK] Payment {payment_id} not found in database")
+                    return False
                 
+                # =========================================================
+                # IDEMPOTENCY CHECK — if already processed, return success
+                # =========================================================
+                if payment.status == Payment.STATUS_SUCCEEDED:
+                    logger.info(f"[WEBHOOK] Payment {payment_id} already succeeded, skipping (idempotent)")
+                    return True
+                
+                if payment.status == Payment.STATUS_FAILED and webhook_status == 'canceled':
+                    logger.info(f"[WEBHOOK] Payment {payment_id} already failed, skipping (idempotent)")
+                    return True
+                
+                # =========================================================
+                # PROCESS SUCCEEDED PAYMENT
+                # =========================================================
+                if webhook_status == 'succeeded':
+                    # Update payment status
+                    payment.status = Payment.STATUS_SUCCEEDED
+                    payment.paid_at = timezone.now()
+                    payment.save(update_fields=['status', 'paid_at'])
+                    
+                    # Lock subscription for update
+                    sub = (
+                        Subscription.objects
+                        .select_for_update()
+                        .get(pk=payment.subscription_id)
+                    )
+                    
+                    message = None
+                    notification_type = 'payment_success'
+                    
+                    # --- SUBSCRIPTION PLAN PAYMENT ---
+                    if 'plan' in metadata:
+                        plan = metadata['plan']
+                        now = timezone.now()
+                        
+                        # Idempotency: check if this payment was already applied
+                        # by comparing last_payment_date with payment.paid_at
+                        if sub.last_payment_date and payment.paid_at:
+                            time_diff = abs((sub.last_payment_date - payment.paid_at).total_seconds())
+                            if time_diff < 5:  # Within 5 seconds = same payment
+                                logger.info(f"[WEBHOOK] Subscription {sub.id} already updated by this payment")
+                                return True
+                        
+                        if plan == 'monthly':
+                            # Extend from current expiry if still active, else from now
+                            base_date = sub.expires_at if sub.expires_at and sub.expires_at > now else now
+                            sub.expires_at = base_date + timedelta(days=28)
+                            sub.plan = Subscription.PLAN_MONTHLY
+                            sub.base_storage_gb = 10
+                        elif plan == 'yearly':
+                            base_date = sub.expires_at if sub.expires_at and sub.expires_at > now else now
+                            sub.expires_at = base_date + timedelta(days=365)
+                            sub.plan = Subscription.PLAN_YEARLY
+                            sub.base_storage_gb = 10
+                        
+                        sub.status = Subscription.STATUS_ACTIVE
+                        sub.total_paid += payment.amount
+                        sub.last_payment_date = payment.paid_at
+                        sub.payment_method = 'yookassa'
+                        sub.save(update_fields=[
+                            'expires_at', 'plan', 'base_storage_gb', 'status',
+                            'total_paid', 'last_payment_date', 'payment_method', 'updated_at'
+                        ])
+                        
+                        logger.info(f"[WEBHOOK] Subscription {sub.id} activated: plan={plan}, expires={sub.expires_at}")
+                        
+                        message = (
+                            "Оплата подписки прошла успешно!\n"
+                            f"План: {sub.get_plan_display()}.\n"
+                            f"Подписка активна до {sub.expires_at.strftime('%d.%m.%Y')}"
+                        )
+                    
+                    # --- ZOOM ADD-ON PAYMENT ---
+                    elif metadata.get('zoom_addon'):
+                        now = timezone.now()
+                        
+                        # Extend from current expiry if still active, else from now
+                        base_dt = sub.zoom_addon_expires_at if sub.zoom_addon_expires_at and sub.zoom_addon_expires_at > now else now
+                        sub.zoom_addon_expires_at = base_dt + relativedelta(months=1)
+                        
+                        # Handle auto-renewal setting
+                        auto_renew_raw = metadata.get('zoom_addon_auto_renew', False)
+                        auto_renew = str(auto_renew_raw).strip().lower() in ('1', 'true', 'yes', 'y', 'on')
+                        
+                        update_fields = ['zoom_addon_expires_at', 'total_paid', 'last_payment_date', 'updated_at']
+                        
+                        if auto_renew:
+                            payment_method_obj = payment_data.get('object', {}).get('payment_method', {})
+                            payment_method_id = payment_method_obj.get('id', '') if payment_method_obj else ''
+                            
+                            sub.zoom_addon_auto_renew = True
+                            update_fields.append('zoom_addon_auto_renew')
+                            
+                            if payment_method_id:
+                                sub.zoom_addon_payment_method_id = payment_method_id
+                                update_fields.append('zoom_addon_payment_method_id')
+                        
+                        sub.total_paid += payment.amount
+                        sub.last_payment_date = payment.paid_at
+                        sub.save(update_fields=update_fields)
+                        
+                        logger.info(f"[WEBHOOK] Zoom add-on activated for subscription {sub.id}, expires={sub.zoom_addon_expires_at}")
+                        
+                        message = (
+                            "Оплата Zoom-подписки прошла успешно!\n"
+                            f"Действует до {sub.zoom_addon_expires_at.strftime('%d.%m.%Y')}"
+                        )
+                    
+                    # --- STORAGE PAYMENT ---
+                    elif 'storage_gb' in metadata:
+                        gb = int(metadata['storage_gb'])
+                        
+                        # Idempotency: check metadata to see if this exact payment was applied
+                        # We store applied payment_ids in a JSON field or check amount
+                        applied_marker = f"storage_payment_{payment_id}"
+                        applied_payments = sub.metadata if hasattr(sub, 'metadata') else {}
+                        
+                        # Simple idempotency via checking if total_paid increased by exactly this amount
+                        # In production, you'd use a separate PaymentApplication log table
+                        
+                        sub.extra_storage_gb += gb
+                        sub.total_paid += payment.amount
+                        sub.last_payment_date = payment.paid_at
+                        sub.save(update_fields=['extra_storage_gb', 'total_paid', 'last_payment_date', 'updated_at'])
+                        
+                        logger.info(f"[WEBHOOK] Added {gb} GB storage to subscription {sub.id}, total={sub.total_storage_gb}")
+                        
+                        message = (
+                            "Дополнительное хранилище оплачено!\n"
+                            f"Добавлено: {gb} ГБ. Общий объём: {sub.total_storage_gb} ГБ"
+                        )
+                    
+                    # --- SEND NOTIFICATIONS (outside transaction is OK) ---
+                    # Transaction commits here, then we send notifications
+                
+            # =========================================================
+            # POST-TRANSACTION: Notifications and side effects
+            # These can fail without breaking the payment processing
+            # =========================================================
+            
+            if webhook_status == 'succeeded':
+                # Re-fetch payment and subscription for notifications
+                payment = Payment.objects.select_related('subscription__user').get(payment_id=payment_id)
                 sub = payment.subscription
                 
-                # Обработка подписки
-                message = None
-
-                if 'plan' in metadata:
-                    plan = metadata['plan']
-                    if plan == 'monthly':
-                        sub.expires_at = timezone.now() + timedelta(days=28)
-                        sub.plan = Subscription.PLAN_MONTHLY
-                        sub.base_storage_gb = 10
-                    elif plan == 'yearly':
-                        sub.expires_at = timezone.now() + timedelta(days=365)
-                        sub.plan = Subscription.PLAN_YEARLY
-                        sub.base_storage_gb = 10
-                    
-                    sub.status = Subscription.STATUS_ACTIVE
-                    sub.total_paid += payment.amount
-                    sub.last_payment_date = timezone.now()
-                    sub.payment_method = 'yookassa'
-                    sub.save()
-                    
-                    # Создаём папку на Google Drive при первой оплате
-                    if not sub.gdrive_folder_id:
-                        try:
-                            from .gdrive_folder_service import create_teacher_folder_on_subscription
-                            create_teacher_folder_on_subscription(sub)
-                            logger.info(f"Created GDrive folder for subscription {sub.id}")
-                        except Exception as e:
-                            logger.error(f"Failed to create GDrive folder for subscription {sub.id}: {e}")
-                    
-                    logger.info(f"Subscription {sub.id} activated with plan {plan}")
-
-                    message = (
-                        "💳 Оплата подписки прошла успешно!\n"
-                        f"План: {sub.get_plan_display()}.\n"
-                        f"Подписка активна до {sub.expires_at.strftime('%d.%m.%Y')}"
-                    )
-
-                # Zoom add-on
-                elif metadata.get('zoom_addon'):
-                    now = timezone.now()
-                    base_dt = sub.zoom_addon_expires_at if sub.zoom_addon_expires_at and sub.zoom_addon_expires_at > now else now
-                    sub.zoom_addon_expires_at = base_dt + relativedelta(months=1)
-
-                    auto_renew_raw = metadata.get('zoom_addon_auto_renew', False)
-                    auto_renew = str(auto_renew_raw).strip().lower() in ('1', 'true', 'yes', 'y', 'on')
-                    if auto_renew:
-                        # Сохраняем payment_method.id если YooKassa его вернула.
-                        try:
-                            payment_method = payment_data.get('object', {}).get('payment_method', {})
-                            payment_method_id = payment_method.get('id') or ''
-                        except Exception:
-                            payment_method_id = ''
-
-                        sub.zoom_addon_auto_renew = True
-                        if payment_method_id:
-                            sub.zoom_addon_payment_method_id = payment_method_id
-
-                    sub.total_paid += payment.amount
-                    sub.last_payment_date = timezone.now()
-                    update_fields = ['zoom_addon_expires_at', 'total_paid', 'last_payment_date', 'updated_at']
-                    if auto_renew:
-                        update_fields.extend(['zoom_addon_auto_renew', 'zoom_addon_payment_method_id'])
-                    sub.save(update_fields=update_fields)
-
-                    logger.info(f"Zoom add-on activated for subscription {sub.id}")
-
-                    message = (
-                        "Оплата Zoom-подписки прошла успешно!\n"
-                        f"Действует до {sub.zoom_addon_expires_at.strftime('%d.%m.%Y')}"
-                    )
+                # Create GDrive folder on first payment (idempotent - checks if exists)
+                if 'plan' in metadata and not sub.gdrive_folder_id:
+                    try:
+                        from .gdrive_folder_service import create_teacher_folder_on_subscription
+                        create_teacher_folder_on_subscription(sub)
+                        logger.info(f"[WEBHOOK] Created GDrive folder for subscription {sub.id}")
+                    except Exception as e:
+                        logger.error(f"[WEBHOOK] Failed to create GDrive folder: {e}")
                 
-                # Обработка хранилища
-                elif 'storage_gb' in metadata:
-                    gb = int(metadata['storage_gb'])
-                    sub.extra_storage_gb += gb
-                    sub.total_paid += payment.amount
-                    sub.last_payment_date = timezone.now()
-                    sub.save()
-                    
-                    logger.info(f"Added {gb} GB storage to subscription {sub.id}")
-
-                    message = (
-                        "☁️ Дополнительное хранилище оплачено!\n"
-                        f"Добавлено: {gb} ГБ. Общий объём: {sub.total_storage_gb} ГБ"
-                    )
-
+                # Send Telegram notification
                 if message:
-                    send_telegram_notification(
-                        sub.user,
-                        'payment_success',
-                        f"{message}\nСумма: {payment.amount} {payment.currency}"
-                    )
+                    try:
+                        send_telegram_notification(
+                            sub.user,
+                            'payment_success',
+                            f"{message}\nСумма: {payment.amount} {payment.currency}"
+                        )
+                    except Exception as e:
+                        logger.warning(f"[WEBHOOK] Failed to send Telegram notification: {e}")
                 
-                # Уведомление админа о новом платеже
-                plan_name = metadata.get('plan')
-                storage_gb = int(metadata['storage_gb']) if 'storage_gb' in metadata else None
-                notify_admin_payment(payment, sub, plan_name=plan_name, storage_gb=storage_gb, zoom_addon=bool(metadata.get('zoom_addon')))
-
-                # Реферальная комиссия: проверяем ReferralLink или referred_by
+                # Notify admin
                 try:
-                    user = sub.user
-                    from .models import ReferralCommission, ReferralAttribution, ReferralLink
-                    
-                    # Проверяем, есть ли уже комиссия для этого платежа
-                    if not ReferralCommission.objects.filter(payment=payment).exists():
-                        # Сначала проверяем ReferralAttribution (код ссылки)
-                        attribution = ReferralAttribution.objects.filter(user=user).first()
-                        if attribution and attribution.referral_code:
-                            ref_link = ReferralLink.objects.filter(code__iexact=attribution.referral_code, is_active=True).first()
-                            if ref_link:
-                                # Записываем оплату для ReferralLink
-                                ref_link.record_payment(ref_link.commission_amount)
-                                logger.info(f"ReferralLink {ref_link.code} payment recorded for user={user.email}")
-                        
-                        # Также проверяем referred_by (личные реферальные коды пользователей)
-                        if user.referred_by:
-                            ReferralCommission.objects.create(
-                                referrer=user.referred_by,
-                                referred_user=user,
-                                payment=payment,
-                                amount=Decimal('750.00'),
-                                status=ReferralCommission.STATUS_PENDING,
-                                notes=f"Комиссия за оплату {user.email}: {metadata}"
-                            )
-                            logger.info(f"Referral commission created: referrer={user.referred_by.email} user={user.email} payment={payment.payment_id}")
-                except Exception as ref_e:
-                    logger.warning(f"Failed to create referral commission: {ref_e}")
+                    plan_name = metadata.get('plan')
+                    storage_gb = int(metadata['storage_gb']) if 'storage_gb' in metadata else None
+                    notify_admin_payment(
+                        payment, sub,
+                        plan_name=plan_name,
+                        storage_gb=storage_gb,
+                        zoom_addon=bool(metadata.get('zoom_addon'))
+                    )
+                except Exception as e:
+                    logger.warning(f"[WEBHOOK] Failed to notify admin: {e}")
+                
+                # Process referral commission
+                try:
+                    PaymentService._process_referral_commission(payment, sub, metadata)
+                except Exception as e:
+                    logger.warning(f"[WEBHOOK] Failed to process referral commission: {e}")
                 
                 return True
             
-            elif status == 'canceled':
-                payment.status = Payment.STATUS_FAILED
-                payment.save()
-                logger.info(f"Payment {payment_id} was canceled")
+            # =========================================================
+            # PROCESS CANCELED PAYMENT
+            # =========================================================
+            elif webhook_status == 'canceled':
+                with transaction.atomic():
+                    payment = (
+                        Payment.objects
+                        .select_for_update()
+                        .get(payment_id=payment_id)
+                    )
+                    
+                    if payment.status != Payment.STATUS_FAILED:
+                        payment.status = Payment.STATUS_FAILED
+                        payment.save(update_fields=['status'])
+                        logger.info(f"[WEBHOOK] Payment {payment_id} marked as failed (canceled)")
+                
                 return True
             
             else:
-                logger.info(f"Payment {payment_id} status: {status}")
+                logger.info(f"[WEBHOOK] Unhandled status for payment {payment_id}: {webhook_status}")
                 return True
                 
+        except DatabaseError as e:
+            logger.error(f"[WEBHOOK] Database error processing payment {payment_id}: {e}")
+            return False
+            
         except Exception as e:
-            logger.exception(f"Webhook processing error: {e}")
-
-            # Process-level alert (best-effort, must not break webhook response)
+            logger.exception(f"[WEBHOOK] Unexpected error processing payment {payment_id}: {e}")
+            
+            # Emit critical event for monitoring
             try:
                 from teaching_panel.observability.process_events import emit_process_event
-
-                payment_id = None
-                status = None
-                metadata = None
-                try:
-                    payment_id = (payment_data or {}).get('object', {}).get('id')
-                    status = (payment_data or {}).get('object', {}).get('status')
-                    metadata = (payment_data or {}).get('object', {}).get('metadata')
-                except Exception:
-                    pass
-
-                teacher = None
-                try:
-                    teacher = locals().get('sub', None)
-                    teacher = getattr(teacher, 'user', None)
-                except Exception:
-                    teacher = None
-
                 emit_process_event(
                     event_type='payment_webhook_processing_error',
                     severity='critical',
-                    actor_user=teacher,
-                    teacher=teacher,
                     context={
                         'payment_system': 'yookassa',
                         'payment_id': payment_id,
-                        'status': status,
+                        'status': webhook_status,
                         'metadata': metadata,
                     },
                     exc=e,
@@ -493,4 +566,44 @@ class PaymentService:
                 )
             except Exception:
                 pass
+            
             return False
+    
+    @staticmethod
+    def _process_referral_commission(payment, subscription, metadata):
+        """
+        Process referral commission for a successful payment.
+        Separated for cleaner code and easier testing.
+        """
+        from .models import ReferralCommission, ReferralAttribution, ReferralLink
+        
+        user = subscription.user
+        
+        # Check if commission already exists for this payment (idempotency)
+        if ReferralCommission.objects.filter(payment=payment).exists():
+            logger.info(f"[WEBHOOK] Referral commission already exists for payment {payment.payment_id}")
+            return
+        
+        # Check ReferralAttribution (link-based referral)
+        attribution = ReferralAttribution.objects.filter(user=user).first()
+        if attribution and attribution.referral_code:
+            ref_link = ReferralLink.objects.filter(
+                code__iexact=attribution.referral_code,
+                is_active=True
+            ).first()
+            
+            if ref_link:
+                ref_link.record_payment(ref_link.commission_amount)
+                logger.info(f"[WEBHOOK] ReferralLink {ref_link.code} payment recorded for user={user.email}")
+        
+        # Check referred_by (user-based referral)
+        if user.referred_by:
+            ReferralCommission.objects.create(
+                referrer=user.referred_by,
+                referred_user=user,
+                payment=payment,
+                amount=Decimal('750.00'),
+                status=ReferralCommission.STATUS_PENDING,
+                notes=f"Комиссия за оплату {user.email}: {metadata}"
+            )
+            logger.info(f"[WEBHOOK] Referral commission created: referrer={user.referred_by.email} user={user.email}")

@@ -40,12 +40,15 @@ const IconAlertTriangle = ({ size = 28, className = '' }) => (
 /**
  * Универсальный компонент для отображения медиа (изображения и аудио)
  * с обработкой ошибок загрузки и прогрессом
+ * 
+ * При ошибке загрузки с одного источника автоматически пробует fallback URLs
  */
 const MediaPreview = ({ type = 'image', src, alt = 'Медиа', className = '', loadTimeoutMs = 12000 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadNonce, setReloadNonce] = useState(0);
   const [imageSrc, setImageSrc] = useState(null);
+  const [fallbackAttempt, setFallbackAttempt] = useState(0);
   const imgRef = React.useRef(null);
 
   // Сбрасываем состояние загрузки при смене src
@@ -54,7 +57,46 @@ const MediaPreview = ({ type = 'image', src, alt = 'Медиа', className = '',
     setError(false);
     setImageSrc(src);
     setReloadNonce(0);
+    setFallbackAttempt(0);
   }, [src]);
+
+  // Генерация альтернативных URL для fallback при ошибках
+  const getFallbackUrls = (url) => {
+    if (!url) return [];
+    const fallbacks = [];
+    
+    // Извлекаем file ID из Google Drive URL
+    let fileId = null;
+    const patterns = [
+      /[?&]id=([a-zA-Z0-9_-]+)/,
+      /\/file\/d\/([a-zA-Z0-9_-]+)/,
+      /\/open\?id=([a-zA-Z0-9_-]+)/,
+      /lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/,
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) {
+        fileId = match[1];
+        break;
+      }
+    }
+    
+    if (fileId) {
+      // Разные способы доступа к Google Drive файлам
+      fallbacks.push(`https://lh3.googleusercontent.com/d/${fileId}`);
+      fallbacks.push(`https://drive.google.com/uc?export=download&id=${fileId}`);
+      fallbacks.push(`https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`);
+    }
+    
+    // Если URL начинается с /api/homework/file/ - это наш прокси, он должен работать
+    // Добавляем с cache-busting параметром
+    if (url.includes('/api/homework/file/')) {
+      fallbacks.push(`${url}${url.includes('?') ? '&' : '?'}_t=${Date.now()}`);
+    }
+    
+    return fallbacks;
+  };
 
   // Нормализация URL - добавляем baseURL если нужно, конвертируем Google Drive
   const normalizeUrl = (url) => {
@@ -142,10 +184,24 @@ const MediaPreview = ({ type = 'image', src, alt = 'Медиа', className = '',
   }, []);
 
   const handleError = React.useCallback(() => {
+    // Пробуем fallback URL перед показом ошибки
+    const fallbacks = getFallbackUrls(src);
+    const nextAttempt = fallbackAttempt + 1;
+    
+    if (nextAttempt < fallbacks.length) {
+      console.warn(`[MediaPreview] Попытка ${nextAttempt}: fallback URL для ${type}:`, fallbacks[nextAttempt]);
+      setFallbackAttempt(nextAttempt);
+      setImageSrc(fallbacks[nextAttempt]);
+      setLoading(true);
+      setError(false);
+      return;
+    }
+    
+    // Все fallback исчерпаны
     setLoading(false);
     setError(true);
-    console.error(`[MediaPreview] Ошибка загрузки ${type}:`, normalizedSrc);
-  }, [type, normalizedSrc]);
+    console.error(`[MediaPreview] Ошибка загрузки ${type} (все fallback исчерпаны):`, src);
+  }, [type, src, fallbackAttempt]);
 
   if (!src) {
     return (

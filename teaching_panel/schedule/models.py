@@ -467,13 +467,210 @@ class LessonRecording(models.Model):
         help_text=_('Сколько раз запись была просмотрена')
     )
     
+    # =========================================================================
+    # SOFT DELETE FIELDS
+    # PRODUCTION SAFETY: Записи НИКОГДА не удаляются сразу, только помечаются
+    # =========================================================================
+    is_deleted = models.BooleanField(
+        _('удалено'),
+        default=False,
+        db_index=True,
+        help_text=_('Soft delete флаг. Удалённые записи не показываются в UI.')
+    )
+    deleted_at = models.DateTimeField(
+        _('дата удаления'),
+        null=True,
+        blank=True,
+        help_text=_('Когда запись была помечена как удалённая')
+    )
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='deleted_recordings',
+        null=True,
+        blank=True,
+        verbose_name=_('удалено пользователем'),
+        help_text=_('Кто инициировал удаление (для аудита)')
+    )
+    deletion_reason = models.CharField(
+        _('причина удаления'),
+        max_length=255,
+        blank=True,
+        default='',
+        help_text=_('Опциональная причина удаления для аудита')
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    # =========================================================================
+    # SOFT DELETE MANAGER — исключает удалённые по умолчанию
+    # =========================================================================
+    class ActiveManager(models.Manager):
+        """Manager that excludes soft-deleted recordings by default."""
+        def get_queryset(self):
+            return super().get_queryset().filter(is_deleted=False)
+    
+    class AllManager(models.Manager):
+        """Manager that includes ALL recordings (including deleted)."""
+        pass
+    
+    # Default manager excludes deleted
+    objects = ActiveManager()
+    # Explicit manager to include deleted (for admin, recovery, cleanup)
+    all_objects = AllManager()
 
     class Meta:
         verbose_name = _('запись урока')
         verbose_name_plural = _('записи уроков')
         ordering = ['-created_at']
+    
+    def soft_delete(self, user=None, reason=''):
+        """
+        Безопасное удаление записи (Soft Delete).
+        
+        PRODUCTION SAFETY:
+        - Запись НЕ удаляется из БД
+        - Помечается is_deleted=True
+        - Сохраняется информация об удалении для аудита
+        - Файлы НЕ удаляются с Google Drive
+        
+        Args:
+            user: CustomUser, кто инициировал удаление
+            reason: str, причина удаления
+            
+        Returns:
+            self для chaining
+        """
+        from django.utils import timezone
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.deleted_by = user
+        self.deletion_reason = reason[:255] if reason else ''
+        self.status = 'deleted'
+        self.save(update_fields=[
+            'is_deleted', 'deleted_at', 'deleted_by', 
+            'deletion_reason', 'status', 'updated_at'
+        ])
+        
+        user_email = user.email if user else 'system'
+        logger.info(
+            f"[SOFT_DELETE] Recording {self.id} soft-deleted by {user_email}. "
+            f"Reason: {reason or 'not specified'}"
+        )
+        
+        return self
+    
+    def restore(self, user=None):
+        """
+        Восстановление soft-deleted записи.
+        
+        Args:
+            user: CustomUser, кто инициировал восстановление
+            
+        Returns:
+            self для chaining
+        """
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        previous_deleted_at = self.deleted_at
+        
+        self.is_deleted = False
+        self.deleted_at = None
+        self.deleted_by = None
+        self.deletion_reason = ''
+        self.status = 'ready'  # Restore to ready state
+        self.save(update_fields=[
+            'is_deleted', 'deleted_at', 'deleted_by', 
+            'deletion_reason', 'status', 'updated_at'
+        ])
+        
+        user_email = user.email if user else 'system'
+        logger.info(
+            f"[SOFT_DELETE] Recording {self.id} restored by {user_email}. "
+            f"Was deleted at: {previous_deleted_at}"
+        )
+        
+        return self
+    
+    def hard_delete(self, user=None, delete_from_gdrive=False):
+        """
+        Полное удаление записи (HARD DELETE).
+        
+        PRODUCTION WARNING:
+        - Используйте ТОЛЬКО для cleanup задач
+        - Требует явного флага delete_from_gdrive для удаления файлов
+        - Логирует полную информацию для аудита
+        
+        Args:
+            user: CustomUser, кто инициировал удаление
+            delete_from_gdrive: bool, удалять ли файл из Google Drive
+            
+        Returns:
+            dict с информацией об удалении
+        """
+        import logging
+        from django.utils import timezone
+        
+        logger = logging.getLogger(__name__)
+        
+        # Collect info before deletion for audit
+        deletion_info = {
+            'recording_id': self.id,
+            'lesson_id': self.lesson_id,
+            'teacher_id': self.teacher_id,
+            'gdrive_file_id': self.gdrive_file_id,
+            'file_size': self.file_size,
+            'deleted_at': timezone.now().isoformat(),
+            'deleted_by': user.email if user else 'system',
+            'gdrive_deleted': False,
+        }
+        
+        # Optionally delete from Google Drive
+        if delete_from_gdrive and self.gdrive_file_id:
+            try:
+                from .gdrive_utils import get_gdrive_manager
+                gdrive = get_gdrive_manager()
+                gdrive.service.files().delete(fileId=self.gdrive_file_id).execute()
+                deletion_info['gdrive_deleted'] = True
+                logger.info(f"[HARD_DELETE] Deleted file {self.gdrive_file_id} from Google Drive")
+            except Exception as e:
+                logger.error(f"[HARD_DELETE] Failed to delete from GDrive: {e}")
+                deletion_info['gdrive_error'] = str(e)
+        
+        # Log before actual deletion
+        logger.warning(
+            f"[HARD_DELETE] Recording {self.id} permanently deleted. "
+            f"Info: {deletion_info}"
+        )
+        
+        # Actually delete from database
+        super().delete()
+        
+        return deletion_info
+    
+    def delete(self, *args, **kwargs):
+        """
+        Override default delete to use soft_delete by default.
+        
+        PRODUCTION SAFETY:
+        - Вызов delete() = soft_delete()
+        - Для реального удаления используйте hard_delete()
+        """
+        # Check if hard delete was explicitly requested
+        hard = kwargs.pop('hard', False)
+        
+        if hard:
+            return super().delete(*args, **kwargs)
+        
+        # Default: soft delete
+        return self.soft_delete()
 
     def __str__(self):
         if self.lesson_id and self.lesson:

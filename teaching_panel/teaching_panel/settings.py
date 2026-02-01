@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from celery.schedules import crontab
+from kombu import Queue
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -370,7 +371,9 @@ LOGIN_URL = '/api/jwt/login/'  # SPA login, не Django admin
 LOGIN_REDIRECT_URL = 'schedule:teacher_schedule'  # По умолчанию
 LOGOUT_REDIRECT_URL = 'accounts:role_selection'
 
-# Celery Configuration
+# =============================================================================
+# CELERY CONFIGURATION (Production-Grade)
+# =============================================================================
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://127.0.0.1:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
@@ -378,7 +381,80 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 минут максимум на задачу
+
+# =============================================================================
+# PRODUCTION SAFETY: acks_late + reject_on_worker_lost
+# Task won't be acknowledged until AFTER completion
+# If worker crashes, task goes back to queue
+# =============================================================================
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+
+# =============================================================================
+# TIME LIMITS: Prevent stuck tasks
+# =============================================================================
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 минут hard limit (SIGKILL)
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 минут soft limit (SoftTimeLimitExceeded)
+
+# =============================================================================
+# TASK QUEUES: Separate heavy and light tasks
+# Heavy tasks (video processing) don't block emails/notifications
+# =============================================================================
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+CELERY_TASK_QUEUES = (
+    Queue('default', routing_key='default'),
+    Queue('heavy', routing_key='heavy'),  # Video processing, GDrive uploads
+    Queue('notifications', routing_key='notifications'),  # Emails, Telegram
+    Queue('periodic', routing_key='periodic'),  # Scheduled tasks from beat
+)
+
+# Route tasks to appropriate queues
+CELERY_TASK_ROUTES = {
+    # Heavy tasks → heavy queue
+    'schedule.tasks.process_zoom_recording': {'queue': 'heavy'},
+    'schedule.tasks.process_zoom_recording_bundle': {'queue': 'heavy'},
+    'schedule.tasks.upload_recording_to_gdrive_robust': {'queue': 'heavy'},
+    'schedule.tasks.archive_zoom_recordings': {'queue': 'heavy'},
+    'accounts.tasks.sync_teacher_storage_usage': {'queue': 'heavy'},
+    
+    # Notification tasks → notifications queue  
+    'schedule.tasks.send_lesson_reminder': {'queue': 'notifications'},
+    'schedule.tasks.send_recurring_lesson_reminders': {'queue': 'notifications'},
+    'accounts.tasks.check_expiring_subscriptions': {'queue': 'notifications'},
+    'accounts.tasks.send_student_absence_warnings': {'queue': 'notifications'},
+    'accounts.tasks.send_student_inactivity_nudges': {'queue': 'notifications'},
+    'accounts.tasks.send_top_rating_notifications': {'queue': 'notifications'},
+    'bot.tasks.process_scheduled_messages': {'queue': 'notifications'},
+    
+    # Periodic tasks → periodic queue
+    'schedule.tasks.warmup_zoom_oauth_tokens': {'queue': 'periodic'},
+    'schedule.tasks.release_stuck_zoom_accounts': {'queue': 'periodic'},
+    'accounts.tasks.process_expired_subscriptions': {'queue': 'periodic'},
+}
+
+# =============================================================================
+# RETRY DEFAULTS: Exponential backoff for transient failures
+# =============================================================================
+CELERY_TASK_DEFAULT_RETRY_DELAY = 60  # 1 minute initial delay
+CELERY_TASK_MAX_RETRIES = 3  # Default max retries
+
+# =============================================================================
+# PREFETCH: Limit tasks per worker to improve fairness
+# =============================================================================
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # Only prefetch 1 task per worker
+
+# =============================================================================
+# REDIS CONNECTION: Prevent stale connections
+# =============================================================================
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'visibility_timeout': 3600,  # 1 hour (must be > longest task)
+    'socket_timeout': 30,
+    'socket_connect_timeout': 30,
+}
+CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {
+    'socket_timeout': 30,
+    'socket_connect_timeout': 30,
+}
 
 # Explicit task module imports - ensures all tasks are registered on worker startup
 # This fixes the KeyError issue where tasks weren't discovered

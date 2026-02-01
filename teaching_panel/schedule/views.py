@@ -7,7 +7,7 @@ from django.utils.dateparse import parse_datetime
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 from django.http import JsonResponse
 from django.db import transaction
 from django.db.models import Q
@@ -899,8 +899,13 @@ class LessonViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Фильтрация по параметрам запроса"""
         from django.db.models import Q
+        from homework.models import Homework
         # ОПТИМИЗАЦИЯ: select_related для избежания N+1 на group/teacher
-        queryset = super().get_queryset().select_related('group', 'teacher', 'zoom_account')
+        # + prefetch_related для recordings и homeworks (избегаем N+1 в сериализаторе)
+        queryset = super().get_queryset().select_related('group', 'teacher', 'zoom_account').prefetch_related(
+            Prefetch('recordings', queryset=LessonRecording.objects.only('id', 'lesson_id')),
+            Prefetch('homeworks', queryset=Homework.objects.filter(status='published').only('id', 'lesson_id')),
+        )
         
         user = self.request.user
         if not user.is_authenticated:

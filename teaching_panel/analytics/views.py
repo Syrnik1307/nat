@@ -1213,7 +1213,7 @@ class StudentStatsViewSet(viewsets.ViewSet):
         groups_qs = (
             Group.objects.filter(students=user)
             .select_related('teacher')
-            .prefetch_related('students')
+            .annotate(_students_count=Count('students'))  # ОПТИМИЗАЦИЯ: избегаем N+1 на count()
             .order_by('name')
         )
         group_ids = list(groups_qs.values_list('id', flat=True))
@@ -1353,7 +1353,7 @@ class StudentStatsViewSet(viewsets.ViewSet):
                     'first_name': getattr(g.teacher, 'first_name', '') if g.teacher else '',
                     'email': getattr(g.teacher, 'email', '') if g.teacher else '',
                 },
-                'students_count': g.students.count(),
+                'students_count': getattr(g, '_students_count', 0),  # ОПТИМИЗАЦИЯ: используем аннотацию
                 'attendance_percent': attendance_percent,
                 'attendance_present': present,
                 'attendance_total_marked': total_marked,

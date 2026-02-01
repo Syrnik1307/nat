@@ -459,6 +459,225 @@ def archive_zoom_recordings():
 
 
 # ============================================================================
+# PRODUCTION-GRADE: Robust GDrive Upload with Retry
+# ============================================================================
+
+@shared_task(
+    name='schedule.tasks.upload_recording_to_gdrive_robust',
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=60,  # Start with 60 seconds
+    retry_backoff_max=3600,  # Max 1 hour between retries
+    retry_jitter=True,  # Add randomness to prevent thundering herd
+    max_retries=5,
+    acks_late=True,  # Acknowledge after completion (task survives worker crash)
+)
+def upload_recording_to_gdrive_robust(self, recording_id, file_path=None, download_url=None):
+    """
+    Robust task for uploading recordings to Google Drive.
+    
+    PRODUCTION-GRADE FEATURES:
+    - Automatic retry with exponential backoff on failure
+    - acks_late: task re-queued if worker crashes mid-execution
+    - Comprehensive logging for debugging
+    - Soft delete on permanent failure (doesn't delete file)
+    
+    Args:
+        recording_id: ID of LessonRecording
+        file_path: Local path to file (optional, downloads from download_url if not provided)
+        download_url: URL to download recording from (optional)
+    
+    Returns:
+        dict with upload result
+    """
+    from .models import LessonRecording, TeacherStorageQuota
+    from .gdrive_utils import get_gdrive_manager
+    import os
+    import tempfile
+    import requests
+    
+    logger.info(f"[GDRIVE_UPLOAD] Starting robust upload for recording {recording_id}, attempt {self.request.retries + 1}/{self.max_retries + 1}")
+    
+    try:
+        # Fetch recording with related data
+        recording = (
+            LessonRecording.all_objects  # Include soft-deleted for retry scenarios
+            .select_related('lesson__group__teacher', 'teacher')
+            .get(id=recording_id)
+        )
+        
+        # Skip if already uploaded
+        if recording.gdrive_file_id and recording.status == 'ready':
+            logger.info(f"[GDRIVE_UPLOAD] Recording {recording_id} already uploaded, skipping")
+            return {'status': 'skipped', 'reason': 'already_uploaded'}
+        
+        # Skip if soft-deleted
+        if recording.is_deleted:
+            logger.info(f"[GDRIVE_UPLOAD] Recording {recording_id} is deleted, skipping")
+            return {'status': 'skipped', 'reason': 'deleted'}
+        
+        # Get teacher
+        teacher = recording.teacher or (recording.lesson.group.teacher if recording.lesson and recording.lesson.group else None)
+        if not teacher:
+            logger.error(f"[GDRIVE_UPLOAD] No teacher found for recording {recording_id}")
+            recording.status = 'failed'
+            recording.save(update_fields=['status', 'updated_at'])
+            return {'status': 'failed', 'reason': 'no_teacher'}
+        
+        # Check storage quota
+        try:
+            quota = teacher.storage_quota
+        except TeacherStorageQuota.DoesNotExist:
+            quota = TeacherStorageQuota.objects.create(
+                teacher=teacher,
+                total_quota_bytes=5 * 1024 ** 3  # 5 GB default
+            )
+        
+        if quota.quota_exceeded:
+            logger.warning(f"[GDRIVE_UPLOAD] Teacher {teacher.id} quota exceeded for recording {recording_id}")
+            recording.status = 'failed'
+            recording.save(update_fields=['status', 'updated_at'])
+            _notify_teacher_quota_exceeded(teacher, quota)
+            return {'status': 'failed', 'reason': 'quota_exceeded'}
+        
+        # Get or download file
+        temp_file = None
+        upload_path = file_path
+        
+        if not upload_path and download_url:
+            # Download from URL
+            logger.info(f"[GDRIVE_UPLOAD] Downloading from URL for recording {recording_id}")
+            
+            fd, temp_file = tempfile.mkstemp(suffix='.mp4')
+            os.close(fd)
+            
+            response = requests.get(download_url, stream=True, timeout=300)
+            response.raise_for_status()
+            
+            with open(temp_file, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            upload_path = temp_file
+            logger.info(f"[GDRIVE_UPLOAD] Downloaded {os.path.getsize(temp_file)} bytes")
+        
+        if not upload_path or not os.path.exists(upload_path):
+            raise FileNotFoundError(f"No file to upload for recording {recording_id}")
+        
+        file_size = os.path.getsize(upload_path)
+        
+        # Check if file fits in quota
+        if not quota.can_upload(file_size):
+            logger.warning(f"[GDRIVE_UPLOAD] Insufficient space for recording {recording_id}")
+            recording.status = 'failed'
+            recording.save(update_fields=['status', 'updated_at'])
+            if temp_file:
+                _cleanup_temp_file(temp_file)
+            return {'status': 'failed', 'reason': 'insufficient_space'}
+        
+        # Upload to Google Drive
+        gdrive = get_gdrive_manager()
+        
+        # Get or create teacher's recordings folder
+        teacher_folders = gdrive.get_or_create_teacher_folder(teacher)
+        folder_id = teacher_folders['recordings']
+        
+        # Generate filename
+        if recording.lesson:
+            lesson_date = recording.lesson.start_time.strftime('%Y-%m-%d') if recording.lesson.start_time else 'unknown'
+            filename = f"{recording.lesson.title or 'Lesson'}_{lesson_date}_{recording.id}.mp4"
+        else:
+            filename = f"{recording.title or 'Recording'}_{recording.id}.mp4"
+        
+        # Clean filename
+        filename = "".join(c for c in filename if c.isalnum() or c in '._- ')
+        
+        logger.info(f"[GDRIVE_UPLOAD] Uploading {filename} ({file_size} bytes) to folder {folder_id}")
+        
+        # Upload with resumable upload for large files
+        from googleapiclient.http import MediaFileUpload
+        
+        file_metadata = {
+            'name': filename,
+            'parents': [folder_id]
+        }
+        
+        media = MediaFileUpload(
+            upload_path,
+            mimetype='video/mp4',
+            resumable=True,
+            chunksize=256 * 1024  # 256 KB chunks for reliability
+        )
+        
+        uploaded_file = gdrive.service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, name, webViewLink, webContentLink, size'
+        ).execute()
+        
+        gdrive_file_id = uploaded_file.get('id')
+        
+        # Update recording
+        recording.gdrive_file_id = gdrive_file_id
+        recording.gdrive_folder_id = folder_id
+        recording.file_size = file_size
+        recording.status = 'ready'
+        recording.play_url = uploaded_file.get('webViewLink', '')
+        recording.download_url = uploaded_file.get('webContentLink', '')
+        recording.save(update_fields=[
+            'gdrive_file_id', 'gdrive_folder_id', 'file_size',
+            'status', 'play_url', 'download_url', 'updated_at'
+        ])
+        
+        # Update storage quota
+        quota.used_bytes += file_size
+        quota.save(update_fields=['used_bytes', 'updated_at'])
+        
+        # Cleanup temp file
+        if temp_file:
+            _cleanup_temp_file(temp_file)
+        
+        logger.info(f"[GDRIVE_UPLOAD] Successfully uploaded recording {recording_id} as {gdrive_file_id}")
+        
+        return {
+            'status': 'success',
+            'recording_id': recording_id,
+            'gdrive_file_id': gdrive_file_id,
+            'file_size': file_size,
+        }
+        
+    except Exception as e:
+        logger.error(f"[GDRIVE_UPLOAD] Error uploading recording {recording_id}: {e}")
+        
+        # On final retry, mark as failed but DON'T delete
+        if self.request.retries >= self.max_retries:
+            try:
+                recording = LessonRecording.all_objects.get(id=recording_id)
+                recording.status = 'failed'
+                recording.save(update_fields=['status', 'updated_at'])
+                
+                logger.error(f"[GDRIVE_UPLOAD] Recording {recording_id} failed after {self.max_retries + 1} attempts")
+                
+                # Emit monitoring event
+                from teaching_panel.observability.process_events import emit_process_event
+                emit_process_event(
+                    event_type='recording_upload_failed_permanently',
+                    severity='critical',
+                    context={
+                        'recording_id': recording_id,
+                        'attempts': self.request.retries + 1,
+                        'error': str(e),
+                    },
+                    dedupe_seconds=3600,
+                )
+            except Exception:
+                pass
+        
+        # Re-raise to trigger retry
+        raise
+
+
+# ============================================================================
 # НОВЫЕ ЗАДАЧИ ДЛЯ ОБРАБОТКИ ЗАПИСЕЙ УРОКОВ С GOOGLE DRIVE
 # ============================================================================
 

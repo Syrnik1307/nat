@@ -1,11 +1,12 @@
 from collections import Counter
 
-from collections import Counter
-
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
 from django.utils import timezone
-from django.db.models import Sum
+from django.db.models import Sum, F
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ZoomAccount(models.Model):
@@ -14,7 +15,15 @@ class ZoomAccount(models.Model):
     
     Каждый ZoomAccount соответствует отдельному Zoom Server-to-Server OAuth приложению.
     Credentials хранятся здесь, а не в глобальных settings.
+    
+    PRODUCTION SAFETY:
+    - acquire() и release() используют атомарные транзакции
+    - row-level locking предотвращает race conditions
+    - Mock credentials блокируются в production (DEBUG=False)
     """
+    # Mock/test credentials - БЛОКИРУЮТСЯ в production
+    INVALID_CREDENTIALS = frozenset({'bad', 'test', 'invalid', 'demo', 'placeholder', 'xxx', '123', 'mock'})
+    
     email = models.EmailField(unique=True)
     
     # Server-to-Server OAuth credentials (обязательные)
@@ -69,31 +78,123 @@ class ZoomAccount(models.Model):
         """Проверка доступности аккаунта"""
         return self.is_active and self.current_meetings < self.max_concurrent_meetings
     
+    def is_mock_account(self):
+        """Проверка, является ли аккаунт Mock/тестовым"""
+        if not self.zoom_account_id:
+            return True
+        return self.zoom_account_id.lower() in self.INVALID_CREDENTIALS
+    
+    def validate_for_production(self):
+        """
+        Проверка что аккаунт можно использовать в production.
+        
+        Raises:
+            ValueError: если аккаунт Mock и DEBUG=False
+        """
+        if not settings.DEBUG and self.is_mock_account():
+            raise ValueError(
+                f"PRODUCTION SAFETY: Zoom account {self.email} has mock/invalid credentials. "
+                f"Mock accounts cannot be used when DEBUG=False. "
+                f"Please configure real Zoom credentials."
+            )
+    
     def acquire(self):
-        """Занять аккаунт для новой встречи"""
-        if not self.is_available():
-            raise ValueError('Аккаунт недоступен')
-        self.current_meetings += 1
-        self.last_used_at = timezone.now()
-        self.save(update_fields=['current_meetings', 'last_used_at', 'updated_at'])
-        ZoomPoolUsageMetrics.refresh_usage()
+        """
+        Занять аккаунт для новой встречи.
+        
+        PRODUCTION-GRADE:
+        - Атомарная транзакция с row-level locking
+        - Проверка Mock credentials в production
+        - Возвращает self для chaining
+        
+        Raises:
+            ValueError: если аккаунт недоступен или Mock в production
+        """
+        # Block mock accounts in production
+        self.validate_for_production()
+        
+        with transaction.atomic():
+            # Re-fetch with lock to prevent race condition
+            locked_account = (
+                ZoomAccount.objects
+                .select_for_update(nowait=False)
+                .get(pk=self.pk)
+            )
+            
+            if not locked_account.is_available():
+                raise ValueError(
+                    f'Zoom account {self.email} недоступен: '
+                    f'{locked_account.current_meetings}/{locked_account.max_concurrent_meetings} meetings'
+                )
+            
+            locked_account.current_meetings = F('current_meetings') + 1
+            locked_account.last_used_at = timezone.now()
+            locked_account.save(update_fields=['current_meetings', 'last_used_at', 'updated_at'])
+            
+            # Refresh to get actual value after F() expression
+            locked_account.refresh_from_db()
+            
+            # Update self to match
+            self.current_meetings = locked_account.current_meetings
+            self.last_used_at = locked_account.last_used_at
+        
+        logger.info(f"[ZOOM_POOL] Acquired account {self.email}, now {self.current_meetings}/{self.max_concurrent_meetings}")
+        
+        # Update pool metrics asynchronously (best effort)
+        try:
+            ZoomPoolUsageMetrics.refresh_usage()
+        except Exception as e:
+            logger.warning(f"[ZOOM_POOL] Failed to refresh metrics: {e}")
+        
+        return self
     
     def release(self):
-        """Освободить аккаунт после встречи"""
-        if self.current_meetings > 0:
-            self.current_meetings -= 1
-            self.save(update_fields=['current_meetings', 'updated_at'])
+        """
+        Освободить аккаунт после встречи.
+        
+        PRODUCTION-GRADE:
+        - Атомарная транзакция с row-level locking
+        - Защита от отрицательных значений
+        - Идемпотентность (повторные вызовы безопасны)
+        """
+        with transaction.atomic():
+            # Re-fetch with lock
+            locked_account = (
+                ZoomAccount.objects
+                .select_for_update(nowait=False)
+                .get(pk=self.pk)
+            )
+            
+            if locked_account.current_meetings > 0:
+                locked_account.current_meetings = F('current_meetings') - 1
+                locked_account.save(update_fields=['current_meetings', 'updated_at'])
+                
+                # Refresh to get actual value
+                locked_account.refresh_from_db()
+                self.current_meetings = locked_account.current_meetings
+                
+                logger.info(f"[ZOOM_POOL] Released account {self.email}, now {self.current_meetings}/{self.max_concurrent_meetings}")
+            else:
+                logger.warning(f"[ZOOM_POOL] Account {self.email} already at 0 meetings, skipping release")
+        
+        # Update metrics (best effort)
+        try:
             ZoomPoolUsageMetrics.refresh_usage()
+        except Exception as e:
+            logger.warning(f"[ZOOM_POOL] Failed to refresh metrics: {e}")
     
     @classmethod
     def get_available_for_teacher(cls, teacher):
         """
-        Получить доступный аккаунт с учётом teacher affinity
+        Получить доступный аккаунт с учётом teacher affinity.
+        
+        PRODUCTION-GRADE:
+        - Исключает Mock/тестовые аккаунты в production
+        - Сортировка: меньше текущих встреч, позже использовался
         
         Логика:
         1. Сначала ищем среди preferred для этого teacher
         2. Если нет - берём любой доступный
-        3. Сортировка: меньше текущих встреч, позже использовался
         
         Args:
             teacher: объект CustomUser с role='teacher'
@@ -101,21 +202,35 @@ class ZoomAccount(models.Model):
         Returns:
             ZoomAccount или None
         """
-        # Попытка 1: preferred аккаунты для этого teacher
-        preferred = cls.objects.filter(
+        # Base queryset - exclude mock accounts in production
+        base_qs = cls.objects.filter(
             is_active=True,
             current_meetings__lt=models.F('max_concurrent_meetings'),
+        )
+        
+        # In production, exclude mock/invalid credentials
+        if not settings.DEBUG:
+            for invalid in cls.INVALID_CREDENTIALS:
+                base_qs = base_qs.exclude(zoom_account_id__iexact=invalid)
+            # Also exclude empty credentials
+            base_qs = base_qs.exclude(zoom_account_id='').exclude(zoom_account_id__isnull=True)
+        
+        # Попытка 1: preferred аккаунты для этого teacher
+        preferred = base_qs.filter(
             preferred_teachers=teacher
         ).order_by('current_meetings', '-last_used_at').first()
         
         if preferred:
+            logger.info(f"[ZOOM_POOL] Found preferred account {preferred.email} for teacher {teacher.email}")
             return preferred
         
         # Попытка 2: любой доступный аккаунт
-        available = cls.objects.filter(
-            is_active=True,
-            current_meetings__lt=models.F('max_concurrent_meetings')
-        ).order_by('current_meetings', '-last_used_at').first()
+        available = base_qs.order_by('current_meetings', '-last_used_at').first()
+        
+        if available:
+            logger.info(f"[ZOOM_POOL] Found available account {available.email} for teacher {teacher.email}")
+        else:
+            logger.warning(f"[ZOOM_POOL] No available accounts for teacher {teacher.email}")
         
         return available
 

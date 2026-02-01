@@ -137,11 +137,21 @@ class LessonSerializer(serializers.ModelSerializer):
     
     def get_recording_id(self, obj):
         """ID первой доступной записи урока (или None)"""
+        # ОПТИМИЗАЦИЯ: используем prefetched данные если доступны
+        if hasattr(obj, '_prefetched_objects_cache') and 'recordings' in obj._prefetched_objects_cache:
+            recs = obj._prefetched_objects_cache.get('recordings')
+            return recs[0].id if recs else None
+        # Fallback для детального view без prefetch
         rec = obj.recordings.first()
         return rec.id if rec else None
     
     def get_homework_id(self, obj):
         """ID опубликованного ДЗ урока (или None)"""
+        # ОПТИМИЗАЦИЯ: используем prefetched данные если доступны
+        if hasattr(obj, '_prefetched_objects_cache') and 'homeworks' in obj._prefetched_objects_cache:
+            hws = obj._prefetched_objects_cache.get('homeworks')
+            return hws[0].id if hws else None
+        # Fallback для детального view без prefetch
         hw = obj.homeworks.filter(status='published').first()
         return hw.id if hw else None
     
