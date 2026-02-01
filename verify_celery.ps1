@@ -1,0 +1,1 @@
+ssh root@72.56.81.163 "grep -c 'CELERY_TASK_QUEUES' /var/www/teaching_panel/teaching_panel/teaching_panel/settings.py && grep -c 'celery_heavy' /var/www/teaching_panel/teaching_panel/teaching_panel/settings.py"

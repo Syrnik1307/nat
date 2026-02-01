@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { clearTokens } from '../apiService';
 import { Input, Button, Notification } from '../shared/components';
@@ -728,14 +728,13 @@ const AuthPage = () => {
                   <span>Запомнить меня</span>
                 </label>
 
-                <button
-                  type="button"
+                <Link
+                  to="/simple-reset"
                   className="link-button"
-                  onClick={openTelegramResetFlow}
-                  disabled={loading || blocked}
+                  style={{ textDecoration: 'none' }}
                 >
                   Забыли пароль?
-                </button>
+                </Link>
               </div>
             )}
 

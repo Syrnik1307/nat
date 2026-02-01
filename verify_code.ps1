@@ -1,0 +1,1 @@
+ssh root@72.56.81.163 "grep -c 'def soft_delete' /var/www/teaching_panel/teaching_panel/schedule/models.py && grep -c 'def acquire' /var/www/teaching_panel/teaching_panel/zoom_pool/models.py && grep -c 'INVALID_CREDENTIALS' /var/www/teaching_panel/teaching_panel/zoom_pool/models.py && echo 'All checks passed'"

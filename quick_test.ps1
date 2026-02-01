@@ -1,0 +1,1 @@
+ssh root@72.56.81.163 "cd /var/www/teaching_panel/teaching_panel && . ../venv/bin/activate && python -c 'import os; os.environ.setdefault(\"DJANGO_SETTINGS_MODULE\", \"teaching_panel.settings\"); import django; django.setup(); from schedule.models import LessonRecording; print(\"Total:\", LessonRecording.all_objects.count(), \"Active:\", LessonRecording.objects.count())'"

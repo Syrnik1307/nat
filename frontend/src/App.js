@@ -83,6 +83,7 @@ const AuthPage = lazy(() => import('./components/AuthPage'));
 const RegisterPage = lazy(() => import('./components/RegisterPage'));
 const EmailVerificationPage = lazy(() => import('./components/EmailVerificationPage'));
 const PasswordResetPage = lazy(() => import('./components/PasswordResetPage'));
+const SimpleResetPage = lazy(() => import('./components/SimpleResetPage')); // Простой сброс пароля (2026-02-01)
 const MockPaymentPage = lazy(() => import('./components/MockPaymentPage'));
 const PaymentResultPage = lazy(() => import('./components/PaymentResultPage'));
 const StatusPage = lazy(() => import('./components/StatusPage'));
@@ -199,6 +200,7 @@ const AppRoutes = () => {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify-email" element={<EmailVerificationPage />} />
           <Route path="/reset-password/:uid/:token" element={<PasswordResetPage />} />
+          <Route path="/simple-reset" element={<SimpleResetPage />} /> {/* Простой сброс пароля (2026-02-01) */}
           <Route path="/mock-payment" element={<MockPaymentPage />} />
           <Route path="/status" element={<StatusPage />} />
           <Route path="/teacher/subscription/success" element={<Protected allowRoles={['teacher', 'admin']}><PaymentResultPage /></Protected>} />

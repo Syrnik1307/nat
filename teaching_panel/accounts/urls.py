@@ -64,6 +64,7 @@ from .api_views import (
     notification_mutes_view,
     notification_mute_delete_view,
 )
+from .simple_reset_views import simple_password_reset
 
 
 app_name = 'accounts'
@@ -185,4 +186,10 @@ urlpatterns = [
              template_name='accounts/password_reset_complete.html'
          ), 
          name='password_reset_complete'),
+    
+    # ============================================
+    # SIMPLE PASSWORD RESET (добавлено 2026-02-01)
+    # Изолированный endpoint, не трогает существующий код
+    # ============================================
+    path('api/simple-reset/', simple_password_reset, name='simple_password_reset'),
 ]

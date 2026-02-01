@@ -1,0 +1,1 @@
+ssh root@72.56.81.163 "cd /var/www/teaching_panel/teaching_panel && . ../venv/bin/activate && python manage.py shell -c 'from schedule.models import LessonRecording; print(hasattr(LessonRecording, \"soft_delete\"))'"
