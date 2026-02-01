@@ -33,7 +33,7 @@ class SimpleResetThrottle(AnonRateThrottle):
     Строгий rate limit: 5 запросов в минуту на IP.
     Защита от brute-force подбора email'ов.
     """
-    rate = '5/min'  # DRF поддерживает: 's' (sec), 'm' (min), 'h' (hour), 'd' (day)
+    rate = '5/minute'  # DRF формат: число/period где period = second|minute|hour|day
     # Note: scope не нужен когда rate указан явно
 
 
