@@ -17,6 +17,7 @@ import {
 } from '../apiService';
 import SubscriptionPage from './SubscriptionPage';
 import PlatformsSection from './PlatformsSection';
+import { MarketSection } from '../modules/market';
 import './ProfilePage.css';
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
@@ -106,6 +107,7 @@ const ProfilePage = () => {
     ];
     if (user.role === 'teacher') {
       items.push({ key: 'platforms', label: 'Платформы' });
+      items.push({ key: 'market', label: 'Маркет' });
       items.push({ key: 'subscription', label: 'Моя подписка' });
     }
     return items;
@@ -1523,6 +1525,13 @@ const ProfilePage = () => {
         {activeTab === 'platforms' && user.role === 'teacher' && (
           <div className="profile-content platforms-tab">
             <PlatformsSection user={user} onRefresh={refreshUser} />
+          </div>
+        )}
+
+        {/* Market Tab */}
+        {activeTab === 'market' && user.role === 'teacher' && (
+          <div className="profile-content market-tab">
+            <MarketSection />
           </div>
         )}
 

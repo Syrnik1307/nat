@@ -1,0 +1,234 @@
+/* ZoomPurchaseModal.css - Стили для модального окна покупки Zoom */
+
+.zoom-step-content {
+  padding: 8px 0;
+}
+
+.zoom-step-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 20px;
+}
+
+.zoom-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  transition: 
+    color var(--duration-fast) var(--ease-smooth),
+    background-color var(--duration-fast) var(--ease-smooth);
+}
+
+.zoom-back-btn:hover {
+  color: var(--text-main);
+  background: var(--bg-hover);
+}
+
+/* Type Selection */
+.zoom-type-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.zoom-type-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--bg-paper);
+  border: 2px solid var(--border-light);
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: 
+    border-color var(--duration-normal) var(--ease-smooth),
+    background-color var(--duration-normal) var(--ease-smooth),
+    transform var(--duration-fast) var(--ease-smooth),
+    box-shadow var(--duration-normal) var(--ease-smooth);
+}
+
+.zoom-type-option:hover {
+  border-color: var(--color-primary);
+  background: linear-gradient(135deg, #F8F9FF 0%, #F0F4FF 100%);
+  transform: translateY(-2px);
+}
+
+.zoom-type-option.selected {
+  border-color: var(--color-primary);
+  background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+}
+
+.zoom-type-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.zoom-type-icon svg {
+  width: 24px;
+  height: 24px;
+  color: white;
+}
+
+.zoom-type-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.zoom-type-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.zoom-type-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* Form Styles */
+.zoom-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.zoom-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.zoom-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.zoom-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.zoom-checkbox-highlight {
+  background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #BAE6FD;
+  margin-top: 4px;
+}
+
+/* Warning */
+.zoom-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  border: 1px solid #F59E0B;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #92400E;
+  line-height: 1.5;
+}
+
+.zoom-warning svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Error */
+.zoom-error {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+  border: 1px solid #FCA5A5;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #991B1B;
+}
+
+/* Modal Footer */
+.zoom-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.zoom-price-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.zoom-price-label {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.zoom-price-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .zoom-type-option {
+    padding: 16px;
+  }
+
+  .zoom-type-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .zoom-type-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .zoom-type-name {
+    font-size: 15px;
+  }
+
+  .zoom-type-desc {
+    font-size: 13px;
+  }
+
+  .zoom-modal-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .zoom-price-summary {
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+}

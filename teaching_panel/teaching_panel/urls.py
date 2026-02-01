@@ -160,6 +160,9 @@ urlpatterns = [
     # Support API
     path('api/support/', include('support.urls')),
     
+    # Market API (digital products: Zoom accounts, etc.)
+    path('api/market/', include('market.urls')),
+    
     # Analytics API
     path('api/', include('analytics.urls')),
     

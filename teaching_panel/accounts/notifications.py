@@ -1138,3 +1138,44 @@ def send_weekly_revenue_report() -> bool:
     return _send_payments_bot_message(text)
 
 
+def send_telegram_admin_alert(message: str) -> bool:
+    """
+    Send a generic alert message to admin via payments bot.
+    Used for market orders and other important notifications.
+    
+    Args:
+        message: Text message to send
+        
+    Returns:
+        bool: True if sent successfully
+    """
+    admin_chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', None)
+    if not admin_chat_id:
+        logger.debug('ADMIN_PAYMENT_TELEGRAM_CHAT_ID not configured, skipping admin alert')
+        return False
+    
+    token = _get_payments_bot_token()
+    if not token:
+        logger.warning('TELEGRAM_PAYMENTS_BOT_TOKEN not configured, cannot send admin alert')
+        return False
+    
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        'chat_id': admin_chat_id,
+        'text': message,
+        'parse_mode': 'HTML',
+    }
+    
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        if response.status_code == 200:
+            logger.info('Admin alert sent successfully')
+            return True
+        logger.warning('Failed to send admin alert: %s %s', response.status_code, response.text)
+        return False
+    except requests.RequestException as exc:
+        logger.exception('Failed to send admin alert: %s', exc)
+        return False
+
+
+

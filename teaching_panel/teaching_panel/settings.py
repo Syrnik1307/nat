@@ -97,6 +97,7 @@ INSTALLED_APPS = [
     'support',
     'integrations',  # Third-party platform integrations (Google Meet, etc.)
     'bot',  # Telegram bot command center
+    'market',  # Digital products marketplace (Zoom accounts, etc.)
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'django_celery_beat',
