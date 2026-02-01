@@ -126,7 +126,32 @@ const ProfilePage = () => {
     } else if (!allowedKeys.includes(activeTab)) {
       setActiveTab('profile');
     }
-  }, [location.search, tabConfig, activeTab]);
+    
+    // Handle Google Meet OAuth callback results
+    const meetConnected = params.get('meet_connected');
+    const meetError = params.get('meet_error');
+    const errorType = params.get('error');
+    
+    if (meetConnected === '1') {
+      setSuccessMessage('Google Meet успешно подключён');
+      // Clear params
+      params.delete('meet_connected');
+      navigate({ pathname: location.pathname, search: params.toString() ? `?${params.toString()}` : '' }, { replace: true });
+      refreshUser();
+    } else if (meetError === '1') {
+      if (errorType === 'redirect_uri_mismatch') {
+        setErrorMessage('Ошибка redirect_uri_mismatch. В Google Cloud Console нужно добавить redirect URI: https://lectio.tw1.ru/api/integrations/google-meet/callback/');
+      } else if (errorType) {
+        setErrorMessage(`Ошибка подключения Google Meet: ${errorType}`);
+      } else {
+        setErrorMessage('Ошибка подключения Google Meet. Попробуйте ещё раз.');
+      }
+      // Clear params
+      params.delete('meet_error');
+      params.delete('error');
+      navigate({ pathname: location.pathname, search: params.toString() ? `?${params.toString()}` : '' }, { replace: true });
+    }
+  }, [location.search, tabConfig, activeTab, navigate, location.pathname, refreshUser]);
 
   const handleTabChange = (tabKey) => {
     setActiveTab(tabKey);

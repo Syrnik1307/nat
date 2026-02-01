@@ -163,6 +163,7 @@ class GoogleMeetAuthURLView(APIView):
             
             return Response({
                 'auth_url': auth_url,
+                'redirect_uri': service.redirect_uri,  # For debugging redirect_uri_mismatch
             })
             
         except GoogleMeetNotConfiguredError as e:
