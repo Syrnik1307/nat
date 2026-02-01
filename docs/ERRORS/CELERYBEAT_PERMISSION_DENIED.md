@@ -1,22 +1,32 @@
-# Ошибка: Permission denied: 'celerybeat-schedule'
+# Ошибки Celerybeat-schedule
 
 ## Симптомы
 
-В Sentry/логах появляется ошибка:
+В Sentry/логах появляется одна из ошибок:
+
+### Вариант 1: Permission denied
 ```
 error: [Errno 13] Permission denied: 'celerybeat-schedule'
 Removing corrupted schedule file 'celerybeat-schedule': error(13, 'Permission denied')
+```
+
+### Вариант 2: db type could not be determined
+```
+error: db type could not be determined
+Removing corrupted schedule file 'celerybeat-schedule': error('db type could not be determined')
 ```
 
 **Источник**: Celery Beat scheduler при запуске или обновлении расписания.
 
 ## Причина
 
-Файл `celerybeat-schedule` — это shelve-база данных, где Celery Beat хранит информацию о последнем запуске периодических задач. Ошибка возникает когда:
+Файл `celerybeat-schedule` — это shelve-база данных (формат dbm), где Celery Beat хранит информацию о последнем запуске периодических задач. Ошибки возникают когда:
 
 1. **Файл повреждён** — Celery пытается удалить и пересоздать, но не может
 2. **Неправильные права** — процесс celery-beat не имеет прав на запись
 3. **Файл заблокирован** — другой процесс держит файл открытым
+4. **Пустой файл** — файл создан через `touch` вместо shelve (ошибка "db type could not be determined")
+5. **Несколько beat-процессов** — конфликт при одновременном доступе
 
 ### Типичные причины повреждения:
 - Некорректное завершение celery-beat (kill -9, сбой питания)
@@ -29,18 +39,22 @@ Removing corrupted schedule file 'celerybeat-schedule': error(13, 'Permission de
 # 1. Остановить celery-beat
 sudo systemctl stop celery-beat
 
-# 2. Удалить повреждённый файл
-sudo rm -f /var/www/teaching_panel/teaching_panel/celerybeat-schedule
-sudo rm -f /var/www/teaching_panel/teaching_panel/celerybeat-schedule.db
-sudo rm -f /var/www/teaching_panel/teaching_panel/celerybeat-schedule.dir
-sudo rm -f /var/www/teaching_panel/teaching_panel/celerybeat-schedule.bak
+# 2. Удалить ВСЕ файлы celerybeat (включая .db, .dir, .bak)
+sudo rm -f /var/www/teaching_panel/teaching_panel/celerybeat-schedule*
 
-# 3. Запустить celery-beat (файл пересоздастся автоматически)
+# 3. НЕ создавать файл вручную! Просто запустить celery-beat
+#    Celery автоматически создаст файл в правильном формате dbm
 sudo systemctl start celery-beat
 
-# 4. Проверить статус
+# 4. Проверить, что файл создан в правильном формате
+file /var/www/teaching_panel/teaching_panel/celerybeat-schedule
+# Должно показать: GNU dbm 1.x or ndbm database
+
+# 5. Проверить статус
 sudo systemctl status celery-beat
 ```
+
+**ВАЖНО**: Никогда не создавайте файл через `touch` — это создаст пустой файл, который shelve не сможет открыть!
 
 ## Проверка прав
 
