@@ -463,6 +463,7 @@ CELERY_IMPORTS = (
     'schedule.tasks',
     'homework.tasks',
     'bot.tasks',
+    'teaching_panel.telegram_logging',  # Telegram error alerting task
 )
 
 # Optional in-memory fallback for development when Redis not available.
