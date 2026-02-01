@@ -290,3 +290,118 @@
 .confirm-disconnect-actions .btn-danger:hover {
   background: #dc2626;
 }
+
+/* Google Warning Modal */
+.google-warning-modal {
+  text-align: center;
+}
+
+.google-warning-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.google-warning-icon svg {
+  color: #f59e0b;
+}
+
+.google-warning-content {
+  text-align: left;
+  margin-bottom: 1.5rem;
+}
+
+.google-warning-main {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 1rem 0;
+  text-align: center;
+}
+
+.google-warning-explanation {
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0 0 1.25rem 0;
+}
+
+.google-warning-steps {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.google-warning-steps-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+  margin: 0 0 0.75rem 0;
+}
+
+.google-warning-steps ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.google-warning-steps li {
+  font-size: 0.875rem;
+  color: #475569;
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+}
+
+.google-warning-steps li:last-child {
+  margin-bottom: 0;
+}
+
+.google-warning-steps li strong {
+  color: #1e293b;
+}
+
+.google-warning-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.google-warning-actions .btn-secondary {
+  padding: 0.625rem 1.25rem;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.google-warning-actions .btn-secondary:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.google-warning-actions .btn-primary {
+  padding: 0.625rem 1.25rem;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.google-warning-actions .btn-primary:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  transform: translateY(-1px);
+}
+
+.google-warning-actions .btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}

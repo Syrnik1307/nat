@@ -15,6 +15,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
   const [platformsStatus, setPlatformsStatus] = useState(null);
   const [instructionModal, setInstructionModal] = useState(null); // 'zoom' | 'google_meet' | null
   const [confirmDisconnect, setConfirmDisconnect] = useState(null); // 'zoom' | 'google_meet' | null
+  const [showGoogleWarning, setShowGoogleWarning] = useState(false); // Предупреждение о верификации Google
 
   // Статусы из user (приходят с бэкенда через сериализатор)
   const zoomConnected = user?.zoom_connected || false;
@@ -111,6 +112,13 @@ const PlatformsSection = ({ user, onRefresh }) => {
 
   // OAuth авторизация Google Meet (единый OAuth client платформы)
   const handleConnectGoogleMeet = async () => {
+    // Сначала показываем предупреждение
+    setShowGoogleWarning(true);
+  };
+
+  // Реальное подключение после подтверждения предупреждения
+  const proceedWithGoogleMeet = async () => {
+    setShowGoogleWarning(false);
     setLoading('google_meet');
     setError('');
     setSuccess('');
@@ -269,6 +277,63 @@ const PlatformsSection = ({ user, onRefresh }) => {
         onConnect={instructionModal === 'zoom' ? handleConnectZoom : handleConnectGoogleMeet}
         isConnecting={loading === instructionModal}
       />
+
+      {/* Предупреждение о верификации Google */}
+      <Modal
+        isOpen={showGoogleWarning}
+        onClose={() => setShowGoogleWarning(false)}
+        title="Важная информация"
+        size="md"
+      >
+        <div className="google-warning-modal">
+          <div className="google-warning-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          
+          <div className="google-warning-content">
+            <p className="google-warning-main">
+              При подключении Google покажет предупреждение, что приложение не проверено.
+            </p>
+            
+            <p className="google-warning-explanation">
+              Это стандартная ситуация для новых приложений. Полная верификация Google занимает 
+              несколько недель и требует обширной документации, особенно для приложений из России.
+              Ваши данные в безопасности — мы используем только доступ к созданию видеовстреч в вашем календаре.
+            </p>
+
+            <div className="google-warning-steps">
+              <p className="google-warning-steps-title">Как пройти экран предупреждения:</p>
+              <ol>
+                <li>Нажмите <strong>"Дополнительные настройки"</strong> или <strong>"Advanced"</strong></li>
+                <li>Нажмите <strong>"Перейти на страницу lectio.tw1.ru (небезопасно)"</strong></li>
+                <li>Разрешите доступ к календарю</li>
+              </ol>
+            </div>
+          </div>
+
+          <div className="google-warning-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setShowGoogleWarning(false)}
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={proceedWithGoogleMeet}
+              disabled={loading === 'google_meet'}
+            >
+              {loading === 'google_meet' ? 'Подключение...' : 'Понятно, продолжить'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Модальное окно подтверждения отключения */}
       <Modal
