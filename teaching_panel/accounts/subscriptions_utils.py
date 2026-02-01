@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied
@@ -8,17 +9,55 @@ from .models import Subscription
 logger = logging.getLogger(__name__)
 
 
+def _is_february_2026_promo() -> bool:
+    """Проверяет, действует ли февральская акция 2026 года.
+    
+    Акция: все регистрации в феврале 2026 получают бесплатную подписку до 1 марта 2026.
+    Защитное условие: акция НЕ действует с марта 2026 и далее.
+    """
+    now = timezone.now()
+    return now.year == 2026 and now.month == 2
+
+
+def _get_february_2026_promo_expires_at():
+    """Возвращает дату окончания февральской акции: 1 марта 2026, 00:00:00 UTC."""
+    return timezone.make_aware(datetime(2026, 3, 1, 0, 0, 0))
+
+
 def _ensure_subscription_instance(user) -> Subscription:
     """Безопасно получает подписку, создавая подписку в статусе 'pending' если её не было.
     
     Новые учителя НЕ получают автоматический триал — им нужно оплатить подписку,
     чтобы использовать Zoom и другие платные функции.
+    
+    ИСКЛЮЧЕНИЕ: Февраль 2026 — промо-акция для первых пользователей.
+    Все регистрации в феврале 2026 получают бесплатную активную подписку до 1 марта 2026.
     """
     try:
         return user.subscription  # OneToOneField дескриптор
     except Subscription.DoesNotExist:
         now = timezone.now()
-        # Создаём подписку со статусом PENDING (ожидает оплаты)
+        
+        # ===== ФЕВРАЛЬСКАЯ АКЦИЯ 2026 =====
+        # Первые пользователи получают бесплатный доступ до 1 марта 2026
+        if _is_february_2026_promo():
+            promo_expires = _get_february_2026_promo_expires_at()
+            promo_sub = Subscription.objects.create(
+                user=user,
+                plan=Subscription.PLAN_MONTHLY,
+                status=Subscription.STATUS_ACTIVE,  # Сразу активная!
+                expires_at=promo_expires,  # До 1 марта 2026
+                auto_renew=False,
+            )
+            logger.info("FEBRUARY 2026 PROMO: Free subscription granted until March 1", extra={
+                'user_id': user.id,
+                'email': getattr(user, 'email', None),
+                'expires_at': promo_expires.isoformat()
+            })
+            return promo_sub
+        # ===== КОНЕЦ ФЕВРАЛЬСКОЙ АКЦИИ =====
+        
+        # Стандартная логика: создаём подписку со статусом PENDING (ожидает оплаты)
         # Учитель не сможет использовать Zoom пока не оплатит
         pending_sub = Subscription.objects.create(
             user=user,
