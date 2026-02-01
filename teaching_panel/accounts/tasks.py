@@ -975,8 +975,8 @@ def send_top_rating_notifications():
     sent = 0
     groups_processed = 0
     
-    # Получаем все активные группы
-    groups = Group.objects.filter(is_active=True).prefetch_related('students')
+    # Получаем все группы (Group не имеет поля is_active)
+    groups = Group.objects.all().prefetch_related('students')
     
     for group in groups:
         try:
@@ -1085,8 +1085,8 @@ def send_season_top_rating_notifications():
     sent = 0
     groups_processed = 0
     
-    # Получаем все активные группы
-    groups = Group.objects.filter(is_active=True).prefetch_related('students')
+    # Получаем все группы (Group не имеет поля is_active)
+    groups = Group.objects.all().prefetch_related('students')
     
     for group in groups:
         try:
