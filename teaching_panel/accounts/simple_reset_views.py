@@ -30,10 +30,10 @@ User = get_user_model()
 
 class SimpleResetThrottle(AnonRateThrottle):
     """
-    Строгий rate limit: 3 запроса в 10 минут на IP.
+    Строгий rate limit: 5 запросов в минуту на IP.
     Защита от brute-force подбора email'ов.
     """
-    rate = '3/10m'
+    rate = '5/min'  # DRF поддерживает: 's' (sec), 'm' (min), 'h' (hour), 'd' (day)
     scope = 'simple_password_reset'
 
 
