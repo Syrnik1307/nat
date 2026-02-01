@@ -283,7 +283,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
         isOpen={showGoogleWarning}
         onClose={() => setShowGoogleWarning(false)}
         title="Важная информация"
-        size="md"
+        size="medium"
       >
         <div className="google-warning-modal">
           <div className="google-warning-icon">
@@ -340,7 +340,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
         isOpen={!!confirmDisconnect}
         onClose={() => setConfirmDisconnect(null)}
         title={`Отключить ${confirmDisconnect === 'zoom' ? 'Zoom' : 'Google Meet'}?`}
-        size="sm"
+        size="small"
       >
         <div className="confirm-disconnect-modal">
           <p className="confirm-disconnect-text">
