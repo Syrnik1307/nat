@@ -12,15 +12,16 @@ ARCHITECTURE FIX (2026-02-01):
 Previous issue: autodiscover_tasks() was not finding tasks because it was
 called before Django apps were fully loaded.
 
-Solution: We now explicitly import task modules after Django setup, ensuring
-all @shared_task decorators are executed and tasks are registered with Celery.
-This is more reliable than relying on autodiscover_tasks() timing.
+Solution: 
+1. Add CELERY_IMPORTS to settings.py (Django settings namespace)
+2. Use on_after_finalize signal to import tasks after Django is ready
+3. All tasks now have explicit name= parameter for reliable lookup
 """
 import os
 import logging
 
 from celery import Celery
-from celery.signals import worker_ready, beat_init, celeryd_init
+from celery.signals import worker_ready, beat_init
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "teaching_panel.settings")
 app = Celery("teaching_panel")
 app.config_from_object("django.conf:settings", namespace="CELERY")
 
-# List of task modules to import explicitly
+# List of task modules - imported via CELERY_IMPORTS in settings.py
 TASK_MODULES = [
     'accounts.tasks',
     'schedule.tasks', 
@@ -37,30 +38,31 @@ TASK_MODULES = [
     'bot.tasks',
 ]
 
+# Try autodiscover as a fallback
+app.autodiscover_tasks()
 
-@celeryd_init.connect
-def setup_django_and_tasks(sender, conf, **kwargs):
-    """
-    Called when Celery worker initializes.
-    Ensures Django is set up and all task modules are imported.
-    """
+
+def _import_task_modules():
+    """Import all task modules to ensure tasks are registered."""
     import django
-    django.setup()
+    from django.apps import apps
     
-    # Explicitly import task modules to register all tasks
+    if not apps.ready:
+        django.setup()
+    
     for module_name in TASK_MODULES:
         try:
             __import__(module_name)
-            logger.info(f"Imported task module: {module_name}")
         except ImportError as e:
             logger.error(f"Failed to import task module {module_name}: {e}")
 
 
-# Also configure imports in conf for beat scheduler
-app.conf.imports = TASK_MODULES
-
-# Try autodiscover as a fallback
-app.autodiscover_tasks()
+@app.on_after_finalize.connect
+def setup_tasks(sender, **kwargs):
+    """Called after Celery app is finalized. Import task modules."""
+    _import_task_modules()
+    task_count = len([t for t in app.tasks if not t.startswith('celery.')])
+    logger.info(f"Celery finalized. {task_count} custom tasks registered.")
 
 
 @worker_ready.connect
@@ -81,17 +83,8 @@ def log_beat_ready(sender, **kwargs):
     Called when Celery beat scheduler initializes.
     Ensures Django is set up and tasks are available.
     """
-    import django
-    django.setup()
-    
-    # Import task modules for beat scheduler
-    for module_name in TASK_MODULES:
-        try:
-            __import__(module_name)
-        except ImportError as e:
-            logger.error(f"Beat: Failed to import {module_name}: {e}")
-    
-    logger.info("Celery beat scheduler initialized")
+    _import_task_modules()
+    logger.info("Celery beat scheduler initialized with tasks")
 
 
 @app.task(bind=True, name='teaching_panel.debug_task')

@@ -371,6 +371,15 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 минут максимум на задачу
 
+# Explicit task module imports - ensures all tasks are registered on worker startup
+# This fixes the KeyError issue where tasks weren't discovered
+CELERY_IMPORTS = (
+    'accounts.tasks',
+    'schedule.tasks',
+    'homework.tasks',
+    'bot.tasks',
+)
+
 # Optional in-memory fallback for development when Redis not available.
 # Enable by setting USE_IN_MEMORY_CELERY=1 in environment.
 if os.environ.get('USE_IN_MEMORY_CELERY') == '1':
