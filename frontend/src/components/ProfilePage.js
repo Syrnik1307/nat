@@ -1532,7 +1532,7 @@ const ProfilePage = () => {
         )}
 
         {/* Market Tab */}
-        {activeTab === 'market' && user.role === 'teacher' && (
+        {activeTab === 'market' && (user.role === 'teacher' || user.role === 'student') && (
           <div className="profile-content market-tab">
             <MarketSection />
           </div>
