@@ -33,15 +33,24 @@ for env_path in [
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # Generate new key with: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-your-secret-key-change-this-in-production')
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
-# Warn if using default SECRET_KEY
-if SECRET_KEY == 'django-insecure-your-secret-key-change-this-in-production':
-    import warnings
-    warnings.warn(
-        "WARNING: Using default SECRET_KEY! Generate a new one for production!",
-        RuntimeWarning
-    )
+# CRITICAL: SECRET_KEY is required - no fallback for security
+if not SECRET_KEY:
+    if os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes'):
+        # Only allow insecure key in explicit DEBUG mode for local development
+        SECRET_KEY = 'django-insecure-dev-only-key-not-for-production'
+        import warnings
+        warnings.warn(
+            "WARNING: Using insecure development SECRET_KEY! Set SECRET_KEY env var for production!",
+            RuntimeWarning
+        )
+    else:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured(
+            "CRITICAL: SECRET_KEY environment variable is required in production! "
+            "Generate one with: python -c \"from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())\""
+        )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Default to False for security - explicitly set DEBUG=True for development
@@ -571,16 +580,27 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 # Документация: https://developers.google.com/recaptcha/docs/v3
 
 # Site Key (публичный ключ) - используется на фронтенде
-RECAPTCHA_PUBLIC_KEY = os.environ.get('RECAPTCHA_PUBLIC_KEY', '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI')  # Test key
+# SECURITY: No fallback to test keys - must be explicitly configured
+RECAPTCHA_PUBLIC_KEY = os.environ.get('RECAPTCHA_PUBLIC_KEY', '')
 
 # Secret Key (приватный ключ) - используется на бэкенде
-RECAPTCHA_PRIVATE_KEY = os.environ.get('RECAPTCHA_PRIVATE_KEY', '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe')  # Test key
+RECAPTCHA_PRIVATE_KEY = os.environ.get('RECAPTCHA_PRIVATE_KEY', '')
 
 # Минимальный score для reCAPTCHA v3 (0.0 - бот, 1.0 - человек)
 RECAPTCHA_REQUIRED_SCORE = float(os.environ.get('RECAPTCHA_REQUIRED_SCORE', '0.5'))
 
-# Использовать reCAPTCHA только если ключи настроены (не тестовые)
-RECAPTCHA_ENABLED = os.environ.get('RECAPTCHA_ENABLED', 'false').lower() == 'true'
+# reCAPTCHA включается только если настроены реальные ключи
+# Автоматически отключается если ключи не заданы
+_recaptcha_keys_configured = bool(RECAPTCHA_PUBLIC_KEY and RECAPTCHA_PRIVATE_KEY)
+RECAPTCHA_ENABLED = _recaptcha_keys_configured and os.environ.get('RECAPTCHA_ENABLED', 'false').lower() == 'true'
+
+# Warn in production if reCAPTCHA not configured
+if not DEBUG and not _recaptcha_keys_configured:
+    import warnings
+    warnings.warn(
+        "WARNING: reCAPTCHA not configured. Set RECAPTCHA_PUBLIC_KEY and RECAPTCHA_PRIVATE_KEY for bot protection.",
+        RuntimeWarning
+    )
 
 # Warn if using test keys in production
 if not DEBUG and RECAPTCHA_PUBLIC_KEY == '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI':

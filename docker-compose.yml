@@ -63,8 +63,9 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    # SECURITY: Do not expose Redis port externally - internal network only
+    expose:
+      - "6379"
 
   nginx:
     build:
