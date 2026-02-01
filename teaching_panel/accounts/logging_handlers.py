@@ -2,6 +2,7 @@ import hashlib
 import logging
 import os
 import traceback
+import threading
 from datetime import timedelta
 
 from django.apps import apps
@@ -13,9 +14,26 @@ class DatabaseErrorLogHandler(logging.Handler):
     """Пишет ERROR/CRITICAL логи в таблицу SystemErrorEvent.
 
     Безопасен: любые ошибки внутри handler подавляются, чтобы не зациклить логирование.
+    Thread-safe: использует RLock для предотвращения reentrant ошибок.
     """
+    
+    # Глобальный lock для предотвращения reentrant вызовов
+    _emit_lock = threading.RLock()
 
     def emit(self, record: logging.LogRecord) -> None:
+        # Используем non-blocking tryLock чтобы избежать deadlock
+        acquired = self._emit_lock.acquire(blocking=False)
+        if not acquired:
+            # Другой поток уже пишет, пропускаем
+            return
+        
+        try:
+            self._do_emit(record)
+        finally:
+            self._emit_lock.release()
+    
+    def _do_emit(self, record: logging.LogRecord) -> None:
+        """Реальная логика emit, защищённая lock'ом."""
         try:
             if os.environ.get('DB_ERROR_LOGGING', '1') != '1':
                 return

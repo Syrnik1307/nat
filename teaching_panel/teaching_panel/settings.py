@@ -781,6 +781,10 @@ OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 # =============================================================================
 # LOGGING CONFIGURATION
 # =============================================================================
+# CRITICAL: Используем thread-safe handlers для предотвращения
+# RuntimeError: reentrant call inside <_io.BufferedWriter>
+# при одновременной записи из нескольких потоков gthread/gevent
+# =============================================================================
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -797,7 +801,8 @@ LOGGING = {
     'handlers': {
         'console': {
             'level': os.environ.get('DJANGO_CONSOLE_LOG_LEVEL', 'INFO'),
-            'class': 'logging.StreamHandler',
+            # Thread-safe handler для многопоточного Gunicorn
+            'class': 'teaching_panel.safe_logging.ThreadSafeStreamHandler',
             'formatter': 'verbose',
         },
         'db_errors': {

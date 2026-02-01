@@ -1,0 +1,815 @@
+/* StudentPicker.css - Компонент выбора учеников из групп */
+/* v2.0 - Полностью переработанный layout для масштабирования до 100+ учеников */
+
+/* ============================================
+   ROOT CONTAINER
+   ============================================ */
+.student-picker {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0; /* Критично для flex-контейнеров с overflow */
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden; /* Предотвращает вытекание контента */
+  border-radius: var(--radius-lg, 12px);
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e5e5e5);
+}
+
+.student-picker--disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.student-picker--loading {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl, 24px);
+  color: var(--color-text-tertiary, #8c8c8c);
+  min-height: 200px;
+}
+
+/* Spinner */
+.student-picker-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-border, #e5e5e5);
+  border-top-color: var(--color-primary, #4F46E5);
+  border-radius: 50%;
+  animation: sp-spin 0.8s linear infinite;
+  margin-right: var(--spacing-sm, 8px);
+  flex-shrink: 0;
+}
+
+@keyframes sp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   STICKY HEADER (Search + Stats)
+   ============================================ */
+.student-picker-header {
+  flex-shrink: 0; /* Никогда не сжимается */
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm, 8px);
+  padding: var(--spacing-md, 12px);
+  background: var(--color-surface, #fff);
+  border-bottom: 1px solid var(--color-border-light, #f0f0f0);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Search input */
+.student-picker-search {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+  background: var(--color-surface-secondary, #f5f5f5);
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid transparent;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+}
+
+.student-picker-search:focus-within {
+  border-color: var(--color-primary, #4F46E5);
+  background: var(--color-surface, #fff);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.student-picker-search svg {
+  color: var(--color-text-tertiary, #8c8c8c);
+  flex-shrink: 0;
+}
+
+.student-picker-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  outline: none;
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+.student-picker-search input::placeholder {
+  color: var(--color-text-tertiary, #8c8c8c);
+}
+
+.student-picker-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--color-text-tertiary, #8c8c8c);
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  flex-shrink: 0;
+}
+
+.student-picker-search-clear:hover {
+  background: var(--color-surface-secondary, #f5f5f5);
+  border-color: var(--color-border-hover, #d0d0d0);
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+/* Stats badges */
+.student-picker-stats {
+  display: flex;
+  gap: var(--spacing-xs, 6px);
+  flex-wrap: wrap;
+}
+
+.stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--color-surface-secondary, #f5f5f5);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 12px;
+  color: var(--color-text-secondary, #666);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.stat-badge svg {
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.stat-badge-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-badge--groups {
+  background: rgba(79, 70, 229, 0.08);
+  color: var(--color-primary, #4F46E5);
+}
+
+.stat-badge--students {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+/* ============================================
+   SCROLLABLE GROUPS CONTAINER
+   ============================================ */
+.student-picker-groups-container {
+  flex: 1 1 auto; /* Занимает оставшееся пространство */
+  min-height: 0; /* КРИТИЧНО: позволяет overflow работать */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.student-picker-groups {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--spacing-sm, 8px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm, 8px);
+  
+  /* Стилизация скроллбара */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border, #d0d0d0) transparent;
+}
+
+.student-picker-groups::-webkit-scrollbar {
+  width: 6px;
+}
+
+.student-picker-groups::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.student-picker-groups::-webkit-scrollbar-thumb {
+  background: var(--color-border, #d0d0d0);
+  border-radius: 3px;
+}
+
+.student-picker-groups::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover, #b0b0b0);
+}
+
+/* Empty state */
+.student-picker-empty {
+  padding: var(--spacing-xl, 24px) var(--spacing-lg, 16px);
+  text-align: center;
+  color: var(--color-text-tertiary, #8c8c8c);
+  font-size: 14px;
+}
+
+/* ============================================
+   GROUP CARD
+   ============================================ */
+.sp-group {
+  flex-shrink: 0; /* Не сжимается - важно для корректного скролла */
+  border: 1px solid var(--color-border, #e5e5e5);
+  border-radius: var(--radius-lg, 10px);
+  overflow: hidden;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  background: var(--color-surface, #fff);
+}
+
+.sp-group:hover {
+  border-color: var(--color-border-hover, #d0d0d0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.sp-group.selected {
+  border-color: var(--color-primary, #4F46E5);
+  background: var(--color-surface, #fff);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* Group Header */
+.sp-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm, 10px) var(--spacing-md, 12px);
+  min-height: 48px;
+  gap: var(--spacing-sm, 8px);
+}
+
+.sp-group-checkbox {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sp-group-checkbox input[type="checkbox"] {
+  display: none;
+}
+
+.sp-checkbox-custom {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-border, #d0d0d0);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all var(--duration-fast, 180ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  background: var(--color-surface, #fff);
+  line-height: 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.sp-checkbox-custom:hover {
+  border-color: var(--color-primary-light, #a5b4fc);
+}
+
+.sp-checkbox-custom svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.sp-group-checkbox input:checked + .sp-checkbox-custom {
+  background: var(--color-primary, #4F46E5);
+  border-color: var(--color-primary, #4F46E5);
+  color: var(--color-text-on-primary, #fff);
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+  transform: scale(1.02);
+}
+
+.sp-group-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary, #1a1a1a);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.sp-group-count {
+  font-size: 12px;
+  color: var(--color-text-tertiary, #8c8c8c);
+  flex-shrink: 0;
+  padding: 3px 8px;
+  background: var(--color-surface-secondary, #f5f5f5);
+  border-radius: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.sp-expand-btn {
+  padding: 8px;
+  background: var(--color-surface-secondary, #f5f5f5);
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-secondary, #666);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  flex-shrink: 0;
+}
+
+.sp-expand-btn:hover {
+  background: var(--color-surface-hover, #e8e8e8);
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+.sp-expand-btn span {
+  display: flex;
+  transition: transform var(--duration-fast, 180ms) var(--ease-smooth, ease);
+}
+
+.sp-expand-btn span.rotated {
+  transform: rotate(180deg);
+}
+
+/* ============================================
+   GROUP EXPANDED CONTENT
+   ============================================ */
+.sp-group-students {
+  padding: var(--spacing-md, 12px) var(--spacing-md, 12px) var(--spacing-md, 12px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm, 10px);
+  border-top: 1px solid var(--color-border-light, #f0f0f0);
+  background: linear-gradient(to bottom, #fafafa, #f5f5f5);
+}
+
+/* Mode toggle (All / Select) */
+.sp-mode-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--color-surface, #fff);
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--color-border-light, #eee);
+}
+
+.sp-mode-btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  color: var(--color-text-secondary, #666);
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  white-space: nowrap;
+}
+
+.sp-mode-btn:hover:not(.active) {
+  color: var(--color-text-primary, #1a1a1a);
+  background: var(--color-surface-secondary, #f8f8f8);
+}
+
+.sp-mode-btn.active {
+  background: var(--color-primary, #4F46E5);
+  color: var(--color-text-on-primary, #fff);
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.25);
+}
+
+/* All students card */
+.sp-allstudents-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm, 10px);
+  padding: 10px 12px;
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+}
+
+.sp-allstudents-text {
+  font-size: 13px;
+  color: var(--color-text-secondary, #666);
+  flex: 1;
+  min-width: 0;
+}
+
+.sp-allstudents-select-btn {
+  border: none;
+  background: var(--color-primary, #4F46E5);
+  color: var(--color-text-on-primary, #fff);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.18);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.sp-allstudents-select-btn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+/* Custom selection summary */
+.sp-custom-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm, 10px);
+  padding: 10px 12px;
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+}
+
+.sp-custom-summary-text {
+  font-size: 13px;
+  color: var(--color-text-secondary, #666);
+  flex: 1;
+  min-width: 0;
+}
+
+.sp-custom-summary-btn {
+  border: 1px solid var(--color-border, #e0e0e0);
+  background: var(--color-surface, #fff);
+  color: var(--color-text-primary, #1a1a1a);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.sp-custom-summary-btn:hover {
+  border-color: var(--color-primary-light, #c7d2fe);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.12);
+  transform: translateY(-1px);
+}
+
+/* ============================================
+   MODAL (Student Selection)
+   ============================================ */
+.sp-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.55);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(6px);
+}
+
+.sp-modal {
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(85vh, 700px);
+  background: var(--color-surface, #fff);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: sp-modal-enter 200ms var(--ease-smooth, ease);
+}
+
+@keyframes sp-modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.sp-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--color-border-light, #f0f0f0);
+  flex-shrink: 0;
+}
+
+.sp-modal-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.sp-modal-group-name {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--color-text-primary, #1a1a1a);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-modal-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-tertiary, #8c8c8c);
+}
+
+.sp-modal-close {
+  border: 1px solid var(--color-border, #e0e0e0);
+  background: var(--color-surface, #fff);
+  color: var(--color-text-secondary, #666);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  flex-shrink: 0;
+}
+
+.sp-modal-close:hover {
+  border-color: var(--color-primary-light, #c7d2fe);
+  color: var(--color-text-primary, #1a1a1a);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.14);
+}
+
+.sp-modal-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border-light, #f0f0f0);
+}
+
+.sp-modal-search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #e0e0e0);
+  background: var(--color-surface, #fff);
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+}
+
+.sp-modal-search:focus-within {
+  border-color: var(--color-primary, #4F46E5);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.sp-modal-search svg {
+  color: var(--color-text-tertiary, #8c8c8c);
+  flex-shrink: 0;
+}
+
+.sp-modal-search input {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+.sp-modal-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: var(--color-surface-secondary, #f5f5f5);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--color-text-tertiary, #8c8c8c);
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  flex-shrink: 0;
+}
+
+.sp-modal-search-clear:hover {
+  background: var(--color-border, #e0e0e0);
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+.sp-modal-done {
+  border: none;
+  background: var(--color-primary, #4F46E5);
+  color: var(--color-text-on-primary, #fff);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.22);
+  flex-shrink: 0;
+}
+
+.sp-modal-done:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+/* Modal student list - scrollable */
+.sp-modal-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border, #d0d0d0) transparent;
+}
+
+.sp-modal-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sp-modal-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sp-modal-list::-webkit-scrollbar-thumb {
+  background: var(--color-border, #d0d0d0);
+  border-radius: 3px;
+}
+
+.sp-loading-students,
+.sp-no-students {
+  padding: var(--spacing-xl, 24px) var(--spacing-md, 12px);
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-tertiary, #8c8c8c);
+}
+
+/* Student item in modal */
+.sp-student-item {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  min-height: 48px;
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  border: 1px solid var(--color-border-light, #f0f0f0);
+  background: var(--color-surface, #fff);
+  flex-shrink: 0; /* Не сжимается в списке */
+}
+
+.sp-student-item:hover {
+  background: var(--color-surface-secondary, #f8f8ff);
+  border-color: var(--color-primary-light, #c7d2fe);
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.08);
+}
+
+.sp-student-item--selected {
+  background: rgba(79, 70, 229, 0.04);
+  border-color: var(--color-primary-light, #c7d2fe);
+}
+
+.sp-student-item input[type="checkbox"] {
+  display: none;
+}
+
+.sp-student-item input:checked + .sp-checkbox-custom {
+  background: var(--color-primary, #4F46E5);
+  border-color: var(--color-primary, #4F46E5);
+  color: var(--color-text-on-primary, #fff);
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+  transform: scale(1.02);
+}
+
+.sp-student-name {
+  font-size: 14px;
+  font-weight: 450;
+  color: var(--color-text-primary, #1a1a1a);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.sp-student-item-modal {
+  grid-template-columns: 24px 1fr;
+  padding: 12px 14px;
+  min-height: 48px;
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+@media (max-width: 768px) {
+  .student-picker-header {
+    padding: var(--spacing-sm, 10px);
+  }
+  
+  .student-picker-groups {
+    padding: var(--spacing-xs, 6px);
+    gap: var(--spacing-xs, 6px);
+  }
+
+  .sp-group-header {
+    padding: var(--spacing-xs, 8px) var(--spacing-sm, 10px);
+    min-height: 44px;
+  }
+
+  .sp-group-name {
+    font-size: 13px;
+  }
+
+  .sp-group-count {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+
+  .sp-checkbox-custom {
+    width: 20px;
+    height: 20px;
+  }
+
+  .sp-group-checkbox {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+  
+  .sp-modal {
+    width: 100%;
+    max-height: 90vh;
+    border-radius: 14px;
+  }
+
+  .sp-modal-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .sp-modal-done {
+    width: 100%;
+  }
+  
+  .sp-allstudents-card,
+  .sp-custom-summary {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-sm, 8px);
+  }
+  
+  .sp-allstudents-select-btn,
+  .sp-custom-summary-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Tablet и меньше */
+@media (max-width: 1023px) {
+  .student-picker {
+    max-height: 400px;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .student-picker {
+    /* Адаптируется к высоте родителя (.hc-sidebar) */
+    max-height: 100%;
+  }
+}

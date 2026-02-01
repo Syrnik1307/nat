@@ -9,6 +9,7 @@ Telegram Error Handler для Django.
 import logging
 import requests
 import traceback
+import threading
 from django.conf import settings
 
 
@@ -16,10 +17,12 @@ class TelegramErrorHandler(logging.Handler):
     """
     Отправляет ошибки Django (500) напрямую в Telegram.
     Антиспам: одинаковые ошибки не чаще раз в 5 минут.
+    Thread-safe: использует RLock для предотвращения reentrant ошибок.
     """
     
     _recent_errors = {}  # {error_hash: timestamp}
     COOLDOWN = 300  # 5 минут
+    _emit_lock = threading.RLock()  # Lock для thread-safety
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -30,10 +33,22 @@ class TelegramErrorHandler(logging.Handler):
         if not self.bot_token or not self.chat_id:
             return
         
+        # Используем non-blocking acquire чтобы избежать deadlock
+        acquired = self._emit_lock.acquire(blocking=False)
+        if not acquired:
+            return  # Другой поток уже обрабатывает
+        
+        try:
+            self._do_emit(record)
+        finally:
+            self._emit_lock.release()
+    
+    def _do_emit(self, record):
+        """Реальная логика emit, защищённая lock'ом."""
         try:
             # Антиспам: проверяем не отправляли ли недавно
             import time
-            error_hash = hash(f"{record.pathname}:{record.lineno}:{record.msg[:100]}")
+            error_hash = hash(f"{record.pathname}:{record.lineno}:{str(record.msg)[:100]}")
             now = time.time()
             
             if error_hash in self._recent_errors:
