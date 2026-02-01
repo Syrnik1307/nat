@@ -226,12 +226,76 @@ check_workers() {
     echo "OK"
 }
 
+# ==================== AUTO-RECOVERY ====================
+# Попытка автоматического восстановления при известных проблемах
+try_auto_recovery() {
+    local issue="$1"
+    local recovered=0
+    
+    log "AUTO-RECOVERY: Попытка исправить: $issue"
+    
+    # 403/Permission denied - исправляем права на frontend
+    if [[ "$issue" == *"HTTP 403"* ]] || [[ "$issue" == *"permission"* ]]; then
+        log "AUTO-RECOVERY: Исправляю права на frontend..."
+        chown -R www-data:www-data /var/www/teaching_panel/frontend/build 2>/dev/null
+        chmod -R 755 /var/www/teaching_panel/frontend/build 2>/dev/null
+        recovered=1
+    fi
+    
+    # Django остановлен - рестарт
+    if [[ "$issue" == *"Django остановлен"* ]]; then
+        log "AUTO-RECOVERY: Перезапускаю teaching_panel..."
+        systemctl restart teaching_panel 2>/dev/null
+        sleep 3
+        if systemctl is-active --quiet teaching_panel; then
+            recovered=1
+        fi
+    fi
+    
+    # Nginx остановлен - рестарт
+    if [[ "$issue" == *"Nginx остановлен"* ]]; then
+        log "AUTO-RECOVERY: Перезапускаю nginx..."
+        systemctl restart nginx 2>/dev/null
+        sleep 2
+        if systemctl is-active --quiet nginx; then
+            recovered=1
+        fi
+    fi
+    
+    # Мало gunicorn workers - рестарт Django
+    if [[ "$issue" == *"gunicorn workers"* ]]; then
+        log "AUTO-RECOVERY: Перезапускаю teaching_panel (мало workers)..."
+        systemctl restart teaching_panel 2>/dev/null
+        sleep 5
+        local count=$(pgrep -c -f "gunicorn.*teaching_panel" 2>/dev/null || echo 0)
+        if [[ $count -ge 2 ]]; then
+            recovered=1
+        fi
+    fi
+    
+    # API недоступен (502/503/504) - рестарт Django
+    if [[ "$issue" == *"API недоступен"* ]] && [[ "$issue" =~ HTTP\ (502|503|504) ]]; then
+        log "AUTO-RECOVERY: Перезапускаю teaching_panel (API $BASH_REMATCH)..."
+        systemctl restart teaching_panel 2>/dev/null
+        sleep 5
+        recovered=1
+    fi
+    
+    if [[ $recovered -eq 1 ]]; then
+        log "AUTO-RECOVERY: Действие выполнено, проверяю результат..."
+        return 0
+    fi
+    
+    return 1
+}
+
 # ==================== MAIN ====================
 main() {
     log "=== Unified Monitor START ==="
     
     local critical_issues=()
     local warnings=()
+    local recovery_attempted=0
     
     # Запускаем все проверки
     local result
@@ -268,6 +332,56 @@ main() {
     result=$(check_workers)
     if [[ "$result" == CRITICAL:* ]]; then
         critical_issues+=("${result#CRITICAL:}")
+    fi
+    
+    # ==================== AUTO-RECOVERY ====================
+    # Пытаемся автоматически исправить критические проблемы
+    if [[ ${#critical_issues[@]} -gt 0 ]]; then
+        local recovery_count=0
+        for issue in "${critical_issues[@]}"; do
+            if try_auto_recovery "$issue"; then
+                ((recovery_count++))
+            fi
+        done
+        
+        # Если были попытки восстановления - перепроверяем
+        if [[ $recovery_count -gt 0 ]]; then
+            log "AUTO-RECOVERY: Выполнено $recovery_count действий, перепроверяю..."
+            sleep 3
+            
+            # Перезапускаем проверки
+            critical_issues=()
+            warnings=()
+            
+            result=$(check_site_available)
+            if [[ "$result" == CRITICAL:* ]]; then
+                critical_issues+=("${result#CRITICAL:}")
+            fi
+            
+            result=$(check_api_health)
+            if [[ "$result" == CRITICAL:* ]]; then
+                critical_issues+=("${result#CRITICAL:}")
+            fi
+            
+            result=$(check_services)
+            if [[ "$result" == CRITICAL:* ]]; then
+                critical_issues+=("${result#CRITICAL:}")
+            fi
+            
+            result=$(check_workers)
+            if [[ "$result" == CRITICAL:* ]]; then
+                critical_issues+=("${result#CRITICAL:}")
+            fi
+            
+            if [[ ${#critical_issues[@]} -eq 0 ]]; then
+                log "AUTO-RECOVERY: Успешно! Все проблемы устранены."
+                send_telegram "AUTO-RECOVERY успешно восстановил сайт" "normal"
+                log "=== Unified Monitor END ==="
+                return 0
+            else
+                log "AUTO-RECOVERY: Не все проблемы устранены: ${critical_issues[*]}"
+            fi
+        fi
     fi
     
     # ==================== ОТПРАВКА АЛЕРТОВ ====================
