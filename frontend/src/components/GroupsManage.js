@@ -7,7 +7,7 @@ import {
   deleteGroup,
   getAccessToken,
 } from '../apiService';
-import { getCached, isCached } from '../utils/dataCache';
+import { getCached, isCached, invalidateCache } from '../utils/dataCache';
 import './GroupsManage.css';
 import { ConfirmModal } from '../shared/components';
 
@@ -75,6 +75,10 @@ const GroupsManage = () => {
 
   const load = async ({ useCache = true } = {}) => {
     const cacheKey = 'teacher:groups_manage';
+    // При useCache=false инвалидируем кэш перед загрузкой
+    if (!useCache) {
+      invalidateCache(cacheKey);
+    }
     const hasFreshCache = useCache && isCached(cacheKey);
     if (!hasFreshCache) {
       setLoading(true);
