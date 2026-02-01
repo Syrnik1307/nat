@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Select } from '../../../../shared/components';
-import { getSubmissions } from '../../../../apiService';
+import { getSubmissions, getGroups } from '../../../../apiService';
 import './GradedSubmissionsList.css';
 
 const GradedSubmissionsList = () => {
@@ -19,8 +19,8 @@ const GradedSubmissionsList = () => {
 
   const loadGroups = useCallback(async () => {
     try {
-      const res = await fetch('/api/groups/');
-      const data = await res.json();
+      const response = await getGroups();
+      const data = response.data;
       const arr = Array.isArray(data) ? data : data.results || [];
       setGroups(arr);
     } catch (err) {

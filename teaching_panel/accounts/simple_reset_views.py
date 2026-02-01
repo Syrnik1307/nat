@@ -12,6 +12,8 @@ SECURITY TRADE-OFF: Принимаем риск ради простоты.
 
 Добавлен: 2026-02-01
 """
+from __future__ import annotations
+from typing import Tuple
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.throttling import AnonRateThrottle
@@ -35,7 +37,7 @@ class SimpleResetThrottle(AnonRateThrottle):
     scope = 'simple_password_reset'
 
 
-def _validate_password(password: str) -> tuple[bool, str]:
+def _validate_password(password: str) -> Tuple[bool, str]:
     """Проверка минимальных требований к паролю."""
     if not password:
         return False, 'Пароль обязателен'

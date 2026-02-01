@@ -1234,9 +1234,8 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         individual = self.request.query_params.get('individual')
         group_filter = self.request.query_params.get('group_id')
         if individual == '1':
+            # ДЗ без привязки к группе (индивидуальные назначения)
             qs = qs.filter(homework__lesson__group__isnull=True)
-            if getattr(user, 'role', None) == 'teacher':
-                qs = qs.exclude(student__enrolled_groups__teacher=user)
         elif group_filter:
             qs = qs.filter(
                 Q(homework__lesson__group__id=group_filter) |
