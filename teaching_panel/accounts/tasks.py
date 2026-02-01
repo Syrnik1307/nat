@@ -11,7 +11,7 @@ REMINDER_DAYS = 3
 REMINDER_COOLDOWN_HOURS = 24
 
 
-@shared_task
+@shared_task(name='accounts.tasks.check_expiring_subscriptions')
 def check_expiring_subscriptions():
     """Send Telegram reminders to teachers when their subscription is about to expire."""
     now = timezone.now()
@@ -59,7 +59,7 @@ def check_expiring_subscriptions():
     }
 
 
-@shared_task
+@shared_task(name='accounts.tasks.process_expired_subscriptions')
 def process_expired_subscriptions():
     """Mark subscriptions as expired once their expiration date has passed."""
     now = timezone.now()
@@ -79,7 +79,7 @@ STORAGE_WARNING_THRESHOLD_PERCENT = 90
 STORAGE_LIMIT_COOLDOWN_HOURS = 24
 
 
-@shared_task
+@shared_task(name='accounts.tasks.sync_teacher_storage_usage')
 def sync_teacher_storage_usage():
     """
     Периодически пересчитывает использование хранилища для всех учителей.
@@ -217,7 +217,7 @@ ABSENCE_ALERT_THRESHOLD = 3  # Минимальное количество пр�
 ABSENCE_ALERT_COOLDOWN_HOURS = 48  # Интервал между повторными уведомлениями
 
 
-@shared_task
+@shared_task(name='accounts.tasks.check_consecutive_absences')
 def check_consecutive_absences():
     """
     Проверяет учеников с 3+ пропусками подряд и отправляет уведомления учителям.
@@ -310,7 +310,7 @@ def check_consecutive_absences():
     }
 
 
-@shared_task
+@shared_task(name='accounts.tasks.notify_recording_available')
 def notify_recording_available(recording_id):
     """
     Отправляет уведомление ученикам о доступности записи урока.
@@ -377,7 +377,7 @@ STUDENT_ABSENCE_COOLDOWN_HOURS = 48
 STUDENT_INACTIVITY_COOLDOWN_HOURS = 168  # 1 неделя
 
 
-@shared_task
+@shared_task(name='accounts.tasks.check_performance_drops')
 def check_performance_drops():
     """
     Проверяет падение успеваемости учеников и уведомляет учителей.
@@ -490,7 +490,7 @@ def check_performance_drops():
     }
 
 
-@shared_task
+@shared_task(name='accounts.tasks.check_group_health')
 def check_group_health():
     """
     Проверяет 'здоровье' групп: посещаемость и успеваемость за неделю.
@@ -615,7 +615,7 @@ def check_group_health():
     }
 
 
-@shared_task
+@shared_task(name='accounts.tasks.check_grading_backlog')
 def check_grading_backlog():
     """
     Проверяет накопившиеся непроверенные ДЗ у учителей.
@@ -693,7 +693,7 @@ def check_grading_backlog():
     }
 
 
-@shared_task
+@shared_task(name='accounts.tasks.check_inactive_students')
 def check_inactive_students():
     """
     Проверяет неактивных учеников и уведомляет учителей.
@@ -797,7 +797,7 @@ def check_inactive_students():
     }
 
 
-@shared_task
+@shared_task(name='accounts.tasks.send_student_absence_warnings')
 def send_student_absence_warnings():
     """
     Отправляет ученикам предупреждения о их пропусках.
@@ -866,7 +866,7 @@ def send_student_absence_warnings():
     }
 
 
-@shared_task
+@shared_task(name='accounts.tasks.send_student_inactivity_nudges')
 def send_student_inactivity_nudges():
     """
     Отправляет ученикам мягкие напоминания при длительной неактивности.
@@ -939,7 +939,7 @@ def send_student_inactivity_nudges():
 TOP_RATING_COOLDOWN_HOURS = 720  # 30 дней — не спамим одним и тем же достижением
 
 
-@shared_task
+@shared_task(name='accounts.tasks.send_top_rating_notifications')
 def send_top_rating_notifications():
     """
     Отправляет уведомления ученикам, попавшим в топ-3 рейтинга за прошлый месяц.
@@ -1038,7 +1038,7 @@ def send_top_rating_notifications():
     }
 
 
-@shared_task
+@shared_task(name='accounts.tasks.send_season_top_rating_notifications')
 def send_season_top_rating_notifications():
     """
     Отправляет уведомления ученикам, попавшим в топ-3 рейтинга за прошлый сезон.
@@ -1185,7 +1185,7 @@ def send_season_top_rating_notifications():
 # Автопродление подписок и Zoom add-on
 # ==========================================================================
 
-@shared_task
+@shared_task(name='accounts.tasks.process_auto_renewals')
 def process_auto_renewals():
     """
     Обрабатывает автопродления подписок и Zoom add-on.
@@ -1291,7 +1291,7 @@ def process_auto_renewals():
     }
 
 
-@shared_task
+@shared_task(name='accounts.tasks.process_zoom_addon_renewals')
 def process_zoom_addon_renewals():
     """
     Обрабатывает автопродления Zoom add-on.
@@ -1355,7 +1355,7 @@ def process_zoom_addon_renewals():
 # Еженедельный отчёт о выручке
 # ==========================================================================
 
-@shared_task
+@shared_task(name='accounts.tasks.send_weekly_revenue_report_task')
 def send_weekly_revenue_report_task():
     """
     Отправляет еженедельный отчёт о выручке в Telegram.

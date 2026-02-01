@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-@shared_task
+@shared_task(name='schedule.tasks.warmup_zoom_oauth_tokens')
 def warmup_zoom_oauth_tokens():
     """
     Прогрев OAuth токенов Zoom для всех учителей с credentials.
@@ -73,7 +73,7 @@ def warmup_zoom_oauth_tokens():
     return warmed_count
 
 
-@shared_task
+@shared_task(name='schedule.tasks.release_stuck_zoom_accounts')
 def release_stuck_zoom_accounts():
     """
     Освобождение зависших Zoom-аккаунтов
@@ -137,7 +137,7 @@ def release_stuck_zoom_accounts():
     }
 
 
-@shared_task
+@shared_task(name='schedule.tasks.release_finished_zoom_accounts')
 def release_finished_zoom_accounts():
     """Освобождает аккаунты из нового пула zoom_pool, если встречи завершились.
 
@@ -181,7 +181,7 @@ def release_finished_zoom_accounts():
     }
 
 
-@shared_task
+@shared_task(name='schedule.tasks.send_lesson_reminder')
 def send_lesson_reminder(lesson_id, minutes_before=30):
     """Отправляет телеграм-напоминание ученикам перед занятием."""
     try:
@@ -227,7 +227,7 @@ def send_lesson_reminder(lesson_id, minutes_before=30):
     }
 
 
-@shared_task
+@shared_task(name='schedule.tasks.schedule_upcoming_lesson_reminders')
 def schedule_upcoming_lesson_reminders():
     """Находит уроки, стартующие в ближайшее время, и планирует напоминания."""
     window_minutes = 30
@@ -255,13 +255,13 @@ def schedule_upcoming_lesson_reminders():
     return {'scheduled': scheduled, 'timestamp': now.isoformat()}
 
 
-@shared_task
+@shared_task(name='schedule.tasks.send_lesson_reminders')
 def send_lesson_reminders():
     """Совместимость для ручного запуска через celery_metrics."""
     return schedule_upcoming_lesson_reminders()
 
 
-@shared_task
+@shared_task(name='schedule.tasks.send_recurring_lesson_reminders')
 def send_recurring_lesson_reminders():
     """
     Отправляет напоминания о регулярных уроках на основе настроек RecurringLesson.
@@ -378,7 +378,7 @@ def send_recurring_lesson_reminders():
     }
 
 
-@shared_task
+@shared_task(name='schedule.tasks.archive_zoom_recordings')
 def archive_zoom_recordings():
     """
     Архивирование Zoom записей в постоянное хранилище (S3/Azure Blob)
@@ -462,7 +462,7 @@ def archive_zoom_recordings():
 # НОВЫЕ ЗАДАЧИ ДЛЯ ОБРАБОТКИ ЗАПИСЕЙ УРОКОВ С GOOGLE DRIVE
 # ============================================================================
 
-@shared_task
+@shared_task(name='schedule.tasks.process_zoom_recording')
 def process_zoom_recording(recording_id):
     """
     Главная задача: скачать запись с Zoom и загрузить в Google Drive
@@ -766,7 +766,7 @@ def process_zoom_recording(recording_id):
             pass
 
 
-@shared_task
+@shared_task(name='schedule.tasks.process_zoom_recording_bundle')
 def process_zoom_recording_bundle(recording_id, parts):
     """Обрабатывает запись-"bundle" (несколько MP4 частей одного урока).
 
@@ -1557,7 +1557,7 @@ def _notify_students_about_recording(recording):
         logger.exception(f"Error notifying about recording: {e}")
 
 
-@shared_task
+@shared_task(name='schedule.tasks.cleanup_old_recordings')
 def cleanup_old_recordings():
     """
     Периодическая задача: удаляет старые записи из Google Drive

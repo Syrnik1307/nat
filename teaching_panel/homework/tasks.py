@@ -3,7 +3,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from .models import StudentSubmission
 
-@shared_task
+@shared_task(name='homework.tasks.notify_student_graded')
 def notify_student_graded(submission_id: int):
     try:
         submission = StudentSubmission.objects.select_related('student', 'homework').get(id=submission_id)

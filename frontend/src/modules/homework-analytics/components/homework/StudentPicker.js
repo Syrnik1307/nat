@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { getGroupStudents, getGroups } from '../../../../apiService';
 import './StudentPicker.css';
 
@@ -38,12 +38,22 @@ const IconX = ({ size = 18 }) => (
   </svg>
 );
 
+const IconUserCheck = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <polyline points="16,11 18,13 22,9"/>
+  </svg>
+);
+
 /**
  * Компонент для выбора учеников из групп.
  * Поддерживает:
  * - Выбор нескольких групп
  * - Выбор конкретных учеников в каждой группе
  * - Режим "все ученики группы" / "конкретные ученики"
+ * - Поиск по группам
+ * - Масштабирование до 100+ учеников
  * 
  * @param {Object} props
  * @param {Array} props.value - Текущее значение: [{groupId, studentIds: [], allStudents: bool}]
@@ -60,6 +70,7 @@ const StudentPicker = ({
   onIndividualChange,
   disabled = false,
 }) => {
+  const containerRef = useRef(null);
   const normalizeId = useCallback((id) => String(id ?? ''), []);
   const toNumberId = useCallback((id) => {
     const num = Number(id);
@@ -272,15 +283,22 @@ const StudentPicker = ({
 
   if (loadingGroups) {
     return (
-      <div className="student-picker loading">
+      <div className="student-picker student-picker--loading">
         <div className="student-picker-spinner" />
         <span>Загрузка групп...</span>
       </div>
     );
   }
 
+  // Подсчёт общего количества групп для отображения
+  const totalGroupsCount = groups.length;
+
   return (
-    <div className={`student-picker ${disabled ? 'disabled' : ''}`}>
+    <div 
+      ref={containerRef}
+      className={`student-picker ${disabled ? 'student-picker--disabled' : ''}`}
+    >
+      {/* Modal для выбора учеников */}
       {studentModalGroupKey && modalGroup && modalSelection && !modalSelection.allStudents && (
         <div className="sp-modal-backdrop" onClick={closeStudentModal} role="presentation">
           <div className="sp-modal" role="dialog" aria-modal="true" aria-label="Выбор учеников" onClick={(e) => e.stopPropagation()}>
@@ -326,7 +344,9 @@ const StudentPicker = ({
               {loadingStudents[studentModalGroupKey] ? (
                 <div className="sp-loading-students">Загрузка...</div>
               ) : modalStudents.length === 0 ? (
-                <div className="sp-no-students">Нет учеников</div>
+                <div className="sp-no-students">
+                  {studentModalSearch ? 'Ученики не найдены' : 'Нет учеников в группе'}
+                </div>
               ) : (
                 modalStudents.map((student) => {
                   const studentKey = normalizeId(student?.id);
@@ -334,7 +354,7 @@ const StudentPicker = ({
                   const fullName = `${student?.first_name || ''} ${student?.last_name || ''}`.trim() || student?.email;
 
                   return (
-                    <label key={studentKey} className="sp-student-item sp-student-item-modal">
+                    <label key={studentKey} className={`sp-student-item sp-student-item-modal ${isStudentSelected ? 'sp-student-item--selected' : ''}`}>
                       <input
                         type="checkbox"
                         checked={!!isStudentSelected}
@@ -354,49 +374,58 @@ const StudentPicker = ({
         </div>
       )}
 
-      {/* Поиск */}
-      <div className="student-picker-search">
-        <IconSearch size={16} />
-        <input
-          type="text"
-          placeholder="Поиск группы..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          disabled={disabled}
-        />
-        {searchQuery && (
-          <button 
-            type="button" 
-            className="student-picker-search-clear"
-            onClick={() => setSearchQuery('')}
+      {/* Sticky Header: Поиск + Статистика */}
+      <div className="student-picker-header">
+        {/* Поиск */}
+        <div className="student-picker-search">
+          <IconSearch size={16} />
+          <input
+            type="text"
+            placeholder="Поиск группы..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             disabled={disabled}
-          >
-            <IconX size={14} />
-          </button>
-        )}
-      </div>
+          />
+          {searchQuery && (
+            <button 
+              type="button" 
+              className="student-picker-search-clear"
+              onClick={() => setSearchQuery('')}
+              disabled={disabled}
+            >
+              <IconX size={14} />
+            </button>
+          )}
+        </div>
 
-      {/* Статистика */}
-      <div className="student-picker-stats">
-        <span className="stat-badge">
-          <IconUsers size={14} />
-          {selectedCount} групп
-        </span>
-        {studentsCount > 0 && (
-          <span className="stat-badge">
-            ~{studentsCount} учеников
+        {/* Статистика - показываем сколько выбрано */}
+        <div className="student-picker-stats">
+          <span className="stat-badge stat-badge--groups">
+            <IconUsers size={14} />
+            <span className="stat-badge-text">
+              {selectedCount}/{totalGroupsCount} групп
+            </span>
           </span>
-        )}
+          {studentsCount > 0 && (
+            <span className="stat-badge stat-badge--students">
+              <IconUserCheck size={14} />
+              <span className="stat-badge-text">
+                ~{studentsCount} уч.
+              </span>
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Список групп */}
-      <div className="student-picker-groups">
-        {filteredGroups.length === 0 ? (
-          <div className="student-picker-empty">
-            {searchQuery ? 'Группы не найдены' : 'Нет доступных групп'}
-          </div>
-        ) : (
-          filteredGroups.map(group => {
+      {/* Скроллируемый список групп */}
+      <div className="student-picker-groups-container">
+        <div className="student-picker-groups">
+          {filteredGroups.length === 0 ? (
+            <div className="student-picker-empty">
+              {searchQuery ? 'Группы не найдены' : 'Нет доступных групп'}
+            </div>
+          ) : (
+            filteredGroups.map(group => {
             const groupKey = normalizeId(group.id);
             const isSelected = !!selectionIndex[groupKey];
             const isExpanded = expandedGroups.has(groupKey);
@@ -511,7 +540,8 @@ const StudentPicker = ({
               </div>
             );
           })
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

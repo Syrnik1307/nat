@@ -43,6 +43,21 @@ SIMPLE_UPLOAD_THRESHOLD = 5 * 1024 * 1024  # 5 MB - для файлов мень
 # Устанавливаем глобальный socket timeout для httplib2
 socket.setdefaulttimeout(REQUEST_TIMEOUT)
 
+# ============================================================
+# CRITICAL: Force IPv4 for Google API requests
+# IPv6 causes 10+ second delays due to connection timeouts
+# Same issue as Zoom API - see zoom_client.py
+# ============================================================
+_original_getaddrinfo = socket.getaddrinfo
+
+def _ipv4_only_getaddrinfo(*args, **kwargs):
+    """Filter to only return IPv4 addresses to avoid IPv6 timeout issues"""
+    responses = _original_getaddrinfo(*args, **kwargs)
+    return [r for r in responses if r[0] == socket.AF_INET]
+
+# Apply the patch globally for this module
+socket.getaddrinfo = _ipv4_only_getaddrinfo
+
 
 class TimeoutError(Exception):
     """Исключение для таймаутов Google API операций"""
