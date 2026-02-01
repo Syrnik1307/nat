@@ -105,9 +105,12 @@ const ProfilePage = () => {
       { key: 'telegram', label: 'Уведомления' },
       { key: 'security', label: 'Безопасность' },
     ];
+    // Маркет доступен для всех (учителей и учеников)
+    if (user.role === 'teacher' || user.role === 'student') {
+      items.push({ key: 'market', label: 'Маркет' });
+    }
     if (user.role === 'teacher') {
       items.push({ key: 'platforms', label: 'Платформы' });
-      items.push({ key: 'market', label: 'Маркет' });
       items.push({ key: 'subscription', label: 'Моя подписка' });
     }
     return items;
