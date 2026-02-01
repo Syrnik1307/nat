@@ -256,6 +256,9 @@ const PlatformsSection = ({ user, onRefresh }) => {
         <div className="platforms-note">
           <strong>Совет:</strong> Zoom работает без регистрации для учеников. Для Google Meet ученикам нужен Google аккаунт.
         </div>
+        <div className="platforms-note platforms-note-info">
+          Если у вас есть собственный Zoom-аккаунт и вы хотите подключить его к платформе, обратитесь в поддержку.
+        </div>
       </div>
 
       {/* Модальное окно с инструкцией */}

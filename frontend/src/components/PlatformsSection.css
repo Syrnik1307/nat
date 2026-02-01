@@ -168,6 +168,12 @@
   border-radius: 4px;
 }
 
+.platforms-note.platforms-note-info {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+  color: #0369a1;
+}
+
 .platforms-note strong {
   color: #9a3412;
 }

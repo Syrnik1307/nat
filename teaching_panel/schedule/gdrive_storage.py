@@ -5,7 +5,7 @@ Google Drive Storage Backend для Django
 
 from django.core.files.storage import Storage
 from django.core.files.base import File
-from django.utils.decoding import force_str
+from django.utils.encoding import force_str
 from django.conf import settings
 from .gdrive_utils import get_gdrive_manager
 import os

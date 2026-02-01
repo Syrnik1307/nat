@@ -884,6 +884,63 @@ class GoogleDriveManager:
                 'materials': {'total_size': 0, 'file_count': 0},
                 'students': {'total_size': 0, 'file_count': 0},
             }
+    
+    @retry_on_error()
+    def get_drive_quota(self):
+        """
+        Получить информацию о квоте Google Drive
+        
+        Returns:
+            dict: Информация о квоте с полями:
+                - limit: лимит в байтах
+                - usage: использовано в байтах
+                - usage_in_drive: использовано в Drive
+                - usage_in_trash: использовано в корзине
+                - limit_gb: лимит в GB
+                - usage_gb: использовано в GB
+                - free_gb: свободно в GB
+                - usage_percent: процент использования
+        """
+        try:
+            about = self.service.about().get(fields='storageQuota').execute()
+            quota = about.get('storageQuota', {})
+            
+            # Google Drive возвращает значения в байтах как строки
+            limit = int(quota.get('limit', 0))
+            usage = int(quota.get('usage', 0))
+            usage_in_drive = int(quota.get('usageInDrive', 0))
+            usage_in_trash = int(quota.get('usageInDriveTrash', 0))
+            
+            # Конвертация в GB
+            limit_gb = round(limit / (1024 * 1024 * 1024), 2) if limit > 0 else 0
+            usage_gb = round(usage / (1024 * 1024 * 1024), 2)
+            free_gb = round((limit - usage) / (1024 * 1024 * 1024), 2) if limit > 0 else 0
+            usage_percent = round((usage / limit) * 100, 1) if limit > 0 else 0
+            
+            return {
+                'limit': limit,
+                'usage': usage,
+                'usage_in_drive': usage_in_drive,
+                'usage_in_trash': usage_in_trash,
+                'limit_gb': limit_gb,
+                'usage_gb': usage_gb,
+                'free_gb': free_gb,
+                'usage_percent': usage_percent,
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get Drive quota: {e}")
+            return {
+                'limit': 0,
+                'usage': 0,
+                'usage_in_drive': 0,
+                'usage_in_trash': 0,
+                'limit_gb': 0,
+                'usage_gb': 0,
+                'free_gb': 0,
+                'usage_percent': 0,
+                'error': str(e)
+            }
 
 
 # Singleton instance
@@ -972,59 +1029,3 @@ def compress_video(input_path, output_path):
     except Exception as e:
         logger.error(f"Compression error: {e}")
         return False
-
-    def get_drive_quota(self):
-        """
-        Получить информацию о квоте Google Drive
-        
-        Returns:
-            dict: Информация о квоте с полями:
-                - limit: лимит в байтах
-                - usage: использовано в байтах
-                - usage_in_drive: использовано в Drive
-                - usage_in_trash: использовано в корзине
-                - limit_gb: лимит в GB
-                - usage_gb: использовано в GB
-                - free_gb: свободно в GB
-                - usage_percent: процент использования
-        """
-        try:
-            about = self.service.about().get(fields='storageQuota').execute()
-            quota = about.get('storageQuota', {})
-            
-            # Google Drive возвращает значения в байтах как строки
-            limit = int(quota.get('limit', 0))
-            usage = int(quota.get('usage', 0))
-            usage_in_drive = int(quota.get('usageInDrive', 0))
-            usage_in_trash = int(quota.get('usageInDriveTrash', 0))
-            
-            # Конвертация в GB
-            limit_gb = round(limit / (1024 * 1024 * 1024), 2) if limit > 0 else 0
-            usage_gb = round(usage / (1024 * 1024 * 1024), 2)
-            free_gb = round((limit - usage) / (1024 * 1024 * 1024), 2) if limit > 0 else 0
-            usage_percent = round((usage / limit) * 100, 1) if limit > 0 else 0
-            
-            return {
-                'limit': limit,
-                'usage': usage,
-                'usage_in_drive': usage_in_drive,
-                'usage_in_trash': usage_in_trash,
-                'limit_gb': limit_gb,
-                'usage_gb': usage_gb,
-                'free_gb': free_gb,
-                'usage_percent': usage_percent,
-            }
-            
-        except Exception as e:
-            logger.error(f"Failed to get Drive quota: {e}")
-            return {
-                'limit': 0,
-                'usage': 0,
-                'usage_in_drive': 0,
-                'usage_in_trash': 0,
-                'limit_gb': 0,
-                'usage_gb': 0,
-                'free_gb': 0,
-                'usage_percent': 0,
-                'error': str(e)
-            }

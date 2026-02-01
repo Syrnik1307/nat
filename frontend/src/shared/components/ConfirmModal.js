@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Modal from './Modal';
 import Button from './Button';
 
@@ -12,9 +12,17 @@ const ConfirmModal = ({
   cancelText = 'Отмена',
   variant = 'warning'
 }) => {
-  const handleConfirm = () => {
-    onConfirm();
-    onClose();
+  const [loading, setLoading] = useState(false);
+
+  const handleConfirm = async () => {
+    if (loading) return; // Prevent double-click
+    setLoading(true);
+    try {
+      await onConfirm();
+    } finally {
+      setLoading(false);
+      onClose();
+    }
   };
 
   const confirmVariant = variant === 'danger' ? 'danger' : 'primary';
@@ -22,17 +30,17 @@ const ConfirmModal = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={loading ? undefined : onClose}
       title={title}
       size="small"
-      closeOnBackdrop
+      closeOnBackdrop={!loading}
       footer={(
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>
             {cancelText}
           </Button>
-          <Button variant={confirmVariant} onClick={handleConfirm}>
-            {confirmText}
+          <Button variant={confirmVariant} onClick={handleConfirm} disabled={loading}>
+            {loading ? 'Выполняется...' : confirmText}
           </Button>
         </>
       )}

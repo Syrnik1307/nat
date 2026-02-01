@@ -201,7 +201,7 @@ const GroupsManage = () => {
             variant: 'danger'
           });
         }
-        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        // ConfirmModal сам закроется после завершения onConfirm
       }
     });
   };
