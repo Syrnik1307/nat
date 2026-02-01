@@ -1,37 +1,25 @@
 /* StudentPicker.css - Компонент выбора учеников из групп */
-/* v2.0 - Полностью переработанный layout для масштабирования до 100+ учеников */
 
-/* ============================================
-   ROOT CONTAINER
-   ============================================ */
 .student-picker {
   display: flex;
   flex-direction: column;
+  gap: var(--spacing-md, 12px);
   min-width: 0;
-  min-height: 0; /* Критично для flex-контейнеров с overflow */
-  height: 100%;
-  max-height: 100%;
-  overflow: hidden; /* Предотвращает вытекание контента */
-  border-radius: var(--radius-lg, 12px);
-  background: var(--color-surface, #fff);
-  border: 1px solid var(--color-border, #e5e5e5);
 }
 
-.student-picker--disabled {
+.student-picker.disabled {
   opacity: 0.6;
   pointer-events: none;
 }
 
-.student-picker--loading {
+.student-picker.loading {
   flex-direction: row;
   align-items: center;
   justify-content: center;
   padding: var(--spacing-xl, 24px);
   color: var(--color-text-tertiary, #8c8c8c);
-  min-height: 200px;
 }
 
-/* Spinner */
 .student-picker-spinner {
   width: 20px;
   height: 20px;
@@ -40,30 +28,13 @@
   border-radius: 50%;
   animation: sp-spin 0.8s linear infinite;
   margin-right: var(--spacing-sm, 8px);
-  flex-shrink: 0;
 }
 
 @keyframes sp-spin {
   to { transform: rotate(360deg); }
 }
 
-/* ============================================
-   STICKY HEADER (Search + Stats)
-   ============================================ */
-.student-picker-header {
-  flex-shrink: 0; /* Никогда не сжимается */
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm, 8px);
-  padding: var(--spacing-md, 12px);
-  background: var(--color-surface, #fff);
-  border-bottom: 1px solid var(--color-border-light, #f0f0f0);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-/* Search input */
+/* Поиск */
 .student-picker-search {
   display: flex;
   align-items: center;
@@ -88,7 +59,6 @@
 
 .student-picker-search input {
   flex: 1;
-  min-width: 0;
   border: none;
   background: transparent;
   font-size: 14px;
@@ -122,10 +92,10 @@
   color: var(--color-text-primary, #1a1a1a);
 }
 
-/* Stats badges */
+/* Статистика */
 .student-picker-stats {
   display: flex;
-  gap: var(--spacing-xs, 6px);
+  gap: var(--spacing-sm, 8px);
   flex-wrap: wrap;
 }
 
@@ -133,91 +103,36 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 4px 8px;
   background: var(--color-surface-secondary, #f5f5f5);
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm, 4px);
   font-size: 12px;
   color: var(--color-text-secondary, #666);
-  font-weight: 500;
-  white-space: nowrap;
 }
 
 .stat-badge svg {
   opacity: 0.7;
-  flex-shrink: 0;
 }
 
-.stat-badge-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.stat-badge--groups {
-  background: rgba(79, 70, 229, 0.08);
-  color: var(--color-primary, #4F46E5);
-}
-
-.stat-badge--students {
-  background: rgba(16, 185, 129, 0.1);
-  color: #059669;
-}
-
-/* ============================================
-   SCROLLABLE GROUPS CONTAINER
-   ============================================ */
-.student-picker-groups-container {
-  flex: 1 1 auto; /* Занимает оставшееся пространство */
-  min-height: 0; /* КРИТИЧНО: позволяет overflow работать */
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
+/* Список групп */
 .student-picker-groups {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: var(--spacing-sm, 8px);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm, 8px);
-  
-  /* Стилизация скроллбара */
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border, #d0d0d0) transparent;
+  overflow-y: auto;
+  max-height: clamp(420px, 65vh, 860px);
+  padding: var(--spacing-xs, 4px);
 }
 
-.student-picker-groups::-webkit-scrollbar {
-  width: 6px;
-}
-
-.student-picker-groups::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.student-picker-groups::-webkit-scrollbar-thumb {
-  background: var(--color-border, #d0d0d0);
-  border-radius: 3px;
-}
-
-.student-picker-groups::-webkit-scrollbar-thumb:hover {
-  background: var(--color-border-hover, #b0b0b0);
-}
-
-/* Empty state */
 .student-picker-empty {
-  padding: var(--spacing-xl, 24px) var(--spacing-lg, 16px);
+  padding: var(--spacing-lg, 16px);
   text-align: center;
   color: var(--color-text-tertiary, #8c8c8c);
   font-size: 14px;
 }
 
-/* ============================================
-   GROUP CARD
-   ============================================ */
+/* Группа */
 .sp-group {
-  flex-shrink: 0; /* Не сжимается - важно для корректного скролла */
   border: 1px solid var(--color-border, #e5e5e5);
   border-radius: var(--radius-lg, 10px);
   overflow: hidden;
@@ -236,25 +151,24 @@
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
-/* Group Header */
+/* Заголовок группы */
 .sp-group-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-sm, 10px) var(--spacing-md, 12px);
-  min-height: 48px;
-  gap: var(--spacing-sm, 8px);
+  padding: var(--spacing-md, 14px) var(--spacing-lg, 16px);
+  min-height: 56px;
+  gap: var(--spacing-md, 12px);
 }
 
 .sp-group-checkbox {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--spacing-sm, 8px);
+  gap: var(--spacing-md, 12px);
   cursor: pointer;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
 }
 
 .sp-group-checkbox input[type="checkbox"] {
@@ -286,6 +200,16 @@
   height: 14px;
 }
 
+.sp-checkbox-custom.small {
+  width: 20px;
+  height: 20px;
+}
+
+.sp-checkbox-custom.small svg {
+  width: 12px;
+  height: 12px;
+}
+
 .sp-group-checkbox input:checked + .sp-checkbox-custom {
   background: var(--color-primary, #4F46E5);
   border-color: var(--color-primary, #4F46E5);
@@ -295,25 +219,24 @@
 }
 
 .sp-group-name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--color-text-primary, #1a1a1a);
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.3;
 }
 
 .sp-group-count {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text-tertiary, #8c8c8c);
   flex-shrink: 0;
-  padding: 3px 8px;
+  padding: 4px 10px;
   background: var(--color-surface-secondary, #f5f5f5);
-  border-radius: 4px;
+  border-radius: 6px;
   font-weight: 500;
-  white-space: nowrap;
 }
 
 .sp-expand-btn {
@@ -344,19 +267,68 @@
   transform: rotate(180deg);
 }
 
-/* ============================================
-   GROUP EXPANDED CONTENT
-   ============================================ */
+/* Содержимое группы (ученики) */
 .sp-group-students {
-  padding: var(--spacing-md, 12px) var(--spacing-md, 12px) var(--spacing-md, 12px);
+  padding: var(--spacing-lg, 16px);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm, 10px);
+  gap: var(--spacing-md, 12px);
   border-top: 1px solid var(--color-border-light, #f0f0f0);
   background: linear-gradient(to bottom, #fafafa, #f5f5f5);
 }
 
-/* Mode toggle (All / Select) */
+.sp-students-hint {
+  font-size: 12px;
+  color: var(--color-text-tertiary, #8c8c8c);
+  line-height: 1.35;
+}
+
+/* All-students compact card (instead of inline list) */
+.sp-allstudents-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md, 12px);
+  padding: 12px 14px;
+  border-radius: var(--radius-lg, 10px);
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+}
+
+.sp-allstudents-text {
+  font-size: 13px;
+  color: var(--color-text-secondary, #666);
+}
+
+.sp-allstudents-select-btn {
+  border: none;
+  background: var(--color-primary, #4F46E5);
+  color: var(--color-text-on-primary, #fff);
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.18);
+  flex-shrink: 0;
+}
+
+.sp-allstudents-select-btn:hover {
+  filter: brightness(1.02);
+  transform: translateY(-1px);
+}
+
+@keyframes sp-expand {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Переключатель режима */
 .sp-mode-toggle {
   display: flex;
   gap: 4px;
@@ -368,7 +340,7 @@
 
 .sp-mode-btn {
   flex: 1;
-  padding: 8px 12px;
+  padding: 8px 14px;
   font-size: 13px;
   font-weight: 500;
   border: none;
@@ -377,12 +349,10 @@
   cursor: pointer;
   color: var(--color-text-secondary, #666);
   transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
-  white-space: nowrap;
 }
 
 .sp-mode-btn:hover:not(.active) {
   color: var(--color-text-primary, #1a1a1a);
-  background: var(--color-surface-secondary, #f8f8f8);
 }
 
 .sp-mode-btn.active {
@@ -391,53 +361,83 @@
   box-shadow: 0 1px 3px rgba(79, 70, 229, 0.25);
 }
 
-/* All students card */
-.sp-allstudents-card {
+/* Список учеников */
+.sp-students-list {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-sm, 10px);
-  padding: 10px 12px;
-  border-radius: var(--radius-md, 8px);
+  flex-direction: column;
+  gap: 6px;
+  max-height: clamp(420px, 55vh, 820px);
+  min-height: clamp(220px, 32vh, 420px);
+  overflow-y: auto;
+  padding: 12px;
   background: var(--color-surface, #fff);
+  border-radius: var(--radius-lg, 10px);
   border: 1px solid var(--color-border, #e0e0e0);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
 }
 
-.sp-allstudents-text {
+.sp-students-list.is-readonly {
+  opacity: 0.8;
+}
+
+.sp-loading-students,
+.sp-no-students {
+  padding: var(--spacing-md, 12px);
+  text-align: center;
   font-size: 13px;
-  color: var(--color-text-secondary, #666);
-  flex: 1;
-  min-width: 0;
+  color: var(--color-text-tertiary, #8c8c8c);
 }
 
-.sp-allstudents-select-btn {
-  border: none;
-  background: var(--color-primary, #4F46E5);
-  color: var(--color-text-on-primary, #fff);
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
+.sp-student-item {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  min-height: 52px;
+  border-radius: var(--radius-md, 8px);
   cursor: pointer;
   transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.18);
-  flex-shrink: 0;
+  border: 1px solid var(--color-border-light, #f0f0f0);
+  background: var(--color-surface, #fff);
+}
+
+.sp-student-item:hover {
+  background: var(--color-surface-secondary, #f8f8ff);
+  border-color: var(--color-primary-light, #c7d2fe);
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.08);
+}
+
+.sp-student-item input[type="checkbox"] {
+  display: none;
+}
+
+.sp-student-item input:checked + .sp-checkbox-custom {
+  background: var(--color-primary, #4F46E5);
+  border-color: var(--color-primary, #4F46E5);
+  color: var(--color-text-on-primary, #fff);
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+  transform: scale(1.02);
+}
+
+.sp-student-name {
+  font-size: 15px;
+  font-weight: 450;
+  color: var(--color-text-primary, #1a1a1a);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.sp-allstudents-select-btn:hover {
-  filter: brightness(1.05);
-  transform: translateY(-1px);
-}
-
-/* Custom selection summary */
+/* Summary in "Select" mode */
 .sp-custom-summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-sm, 10px);
-  padding: 10px 12px;
-  border-radius: var(--radius-md, 8px);
+  gap: var(--spacing-md, 12px);
+  padding: 12px 14px;
+  border-radius: var(--radius-lg, 10px);
   background: var(--color-surface, #fff);
   border: 1px solid var(--color-border, #e0e0e0);
 }
@@ -445,8 +445,6 @@
 .sp-custom-summary-text {
   font-size: 13px;
   color: var(--color-text-secondary, #666);
-  flex: 1;
-  min-width: 0;
 }
 
 .sp-custom-summary-btn {
@@ -454,13 +452,11 @@
   background: var(--color-surface, #fff);
   color: var(--color-text-primary, #1a1a1a);
   padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 12px;
+  border-radius: var(--radius-md, 8px);
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
-  flex-shrink: 0;
-  white-space: nowrap;
 }
 
 .sp-custom-summary-btn:hover {
@@ -469,9 +465,7 @@
   transform: translateY(-1px);
 }
 
-/* ============================================
-   MODAL (Student Selection)
-   ============================================ */
+/* Modal */
 .sp-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -485,8 +479,8 @@
 }
 
 .sp-modal {
-  width: min(640px, calc(100vw - 32px));
-  max-height: min(85vh, 700px);
+  width: min(920px, calc(100vw - 32px));
+  max-height: min(92vh, 980px);
   background: var(--color-surface, #fff);
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -494,18 +488,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  animation: sp-modal-enter 200ms var(--ease-smooth, ease);
-}
-
-@keyframes sp-modal-enter {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+  animation: sp-expand 160ms var(--ease-smooth, ease);
 }
 
 .sp-modal-header {
@@ -513,14 +496,12 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 16px 12px;
+  padding: 18px 18px 12px;
   border-bottom: 1px solid var(--color-border-light, #f0f0f0);
-  flex-shrink: 0;
 }
 
 .sp-modal-title {
   min-width: 0;
-  flex: 1;
 }
 
 .sp-modal-group-name {
@@ -563,9 +544,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--color-border-light, #f0f0f0);
+  padding: 12px 18px;
 }
 
 .sp-modal-search {
@@ -595,7 +574,6 @@
   outline: none;
   font-size: 14px;
   width: 100%;
-  min-width: 0;
   background: transparent;
   color: var(--color-text-primary, #1a1a1a);
 }
@@ -625,191 +603,45 @@
   border: none;
   background: var(--color-primary, #4F46E5);
   color: var(--color-text-on-primary, #fff);
-  padding: 10px 16px;
+  padding: 10px 14px;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.22);
-  flex-shrink: 0;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.22);
 }
 
 .sp-modal-done:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.02);
   transform: translateY(-1px);
 }
 
-/* Modal student list - scrollable */
 .sp-modal-list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 12px 16px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border, #d0d0d0) transparent;
+  padding: 0 18px 18px;
+  overflow: auto;
+  min-height: clamp(320px, 55vh, 760px);
 }
 
-.sp-modal-list::-webkit-scrollbar {
-  width: 6px;
+.sp-student-item.sp-student-item-modal {
+  grid-template-columns: 28px 1fr;
+  padding: 14px 16px;
+  min-height: 56px;
 }
 
-.sp-modal-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sp-modal-list::-webkit-scrollbar-thumb {
-  background: var(--color-border, #d0d0d0);
-  border-radius: 3px;
-}
-
-.sp-loading-students,
-.sp-no-students {
-  padding: var(--spacing-xl, 24px) var(--spacing-md, 12px);
-  text-align: center;
-  font-size: 14px;
-  color: var(--color-text-tertiary, #8c8c8c);
-}
-
-/* Student item in modal */
-.sp-student-item {
-  display: grid;
-  grid-template-columns: 24px 1fr;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  min-height: 48px;
-  border-radius: var(--radius-md, 8px);
-  cursor: pointer;
-  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
-  border: 1px solid var(--color-border-light, #f0f0f0);
-  background: var(--color-surface, #fff);
-  flex-shrink: 0; /* Не сжимается в списке */
-}
-
-.sp-student-item:hover {
-  background: var(--color-surface-secondary, #f8f8ff);
-  border-color: var(--color-primary-light, #c7d2fe);
-  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.08);
-}
-
-.sp-student-item--selected {
-  background: rgba(79, 70, 229, 0.04);
-  border-color: var(--color-primary-light, #c7d2fe);
-}
-
-.sp-student-item input[type="checkbox"] {
-  display: none;
-}
-
-.sp-student-item input:checked + .sp-checkbox-custom {
-  background: var(--color-primary, #4F46E5);
-  border-color: var(--color-primary, #4F46E5);
-  color: var(--color-text-on-primary, #fff);
-  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
-  transform: scale(1.02);
-}
-
-.sp-student-name {
-  font-size: 14px;
-  font-weight: 450;
-  color: var(--color-text-primary, #1a1a1a);
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-
-.sp-student-item-modal {
-  grid-template-columns: 24px 1fr;
-  padding: 12px 14px;
-  min-height: 48px;
-}
-
-/* ============================================
-   RESPONSIVE ADJUSTMENTS
-   ============================================ */
-@media (max-width: 768px) {
-  .student-picker-header {
-    padding: var(--spacing-sm, 10px);
-  }
-  
-  .student-picker-groups {
-    padding: var(--spacing-xs, 6px);
-    gap: var(--spacing-xs, 6px);
-  }
-
-  .sp-group-header {
-    padding: var(--spacing-xs, 8px) var(--spacing-sm, 10px);
-    min-height: 44px;
-  }
-
-  .sp-group-name {
-    font-size: 13px;
-  }
-
-  .sp-group-count {
-    font-size: 11px;
-    padding: 2px 6px;
-  }
-
-  .sp-checkbox-custom {
-    width: 20px;
-    height: 20px;
-  }
-
-  .sp-group-checkbox {
-    grid-template-columns: 20px minmax(0, 1fr) auto;
-    gap: 6px;
-  }
-  
+@media (max-width: 520px) {
   .sp-modal {
     width: 100%;
-    max-height: 90vh;
+    max-height: 92vh;
     border-radius: 14px;
   }
 
   .sp-modal-toolbar {
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
   }
 
   .sp-modal-done {
     width: 100%;
-  }
-  
-  .sp-allstudents-card,
-  .sp-custom-summary {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--spacing-sm, 8px);
-  }
-  
-  .sp-allstudents-select-btn,
-  .sp-custom-summary-btn {
-    width: 100%;
-    text-align: center;
-  }
-}
-
-/* Tablet и меньше */
-@media (max-width: 1023px) {
-  .student-picker {
-    max-height: 400px;
-  }
-}
-
-/* Desktop */
-@media (min-width: 1024px) {
-  .student-picker {
-    /* Адаптируется к высоте родителя (.hc-sidebar) */
-    max-height: 100%;
   }
 }

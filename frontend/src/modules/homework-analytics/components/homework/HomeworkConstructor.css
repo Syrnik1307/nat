@@ -207,7 +207,6 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  min-height: 0; /* Критично для работы overflow в дочерних flex-элементах */
 }
 
 @media (min-width: 1024px) {
@@ -216,26 +215,7 @@
     top: 70px;
     height: fit-content;
     max-height: calc(100vh - 90px);
-    overflow: hidden; /* Убираем авто-скролл на сайдбаре - скролл внутри StudentPicker */
-  }
-}
-
-/* Контейнер для StudentPicker в сайдбаре */
-.hc-sidebar > .student-picker {
-  flex: 1 1 auto;
-  min-height: 200px;
-  max-height: 50vh; /* Ограничиваем высоту на больших экранах */
-}
-
-@media (min-width: 1024px) {
-  .hc-sidebar > .student-picker {
-    max-height: calc(100vh - 400px); /* Учитываем header + params card */
-  }
-}
-
-@media (max-width: 1023px) {
-  .hc-sidebar > .student-picker {
-    max-height: 350px;
+    overflow-y: auto;
   }
 }
 
