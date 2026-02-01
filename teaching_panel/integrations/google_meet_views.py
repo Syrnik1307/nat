@@ -129,12 +129,21 @@ class GoogleMeetAuthURLView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Check if integration is configured globally
-        if not getattr(settings, 'GOOGLE_MEET_CLIENT_ID', '') or not getattr(settings, 'GOOGLE_MEET_CLIENT_SECRET', ''):
+        # Check if integration is configured: either globally OR user has personal credentials
+        has_global_config = (
+            getattr(settings, 'GOOGLE_MEET_CLIENT_ID', '') and
+            getattr(settings, 'GOOGLE_MEET_CLIENT_SECRET', '')
+        )
+        has_user_config = (
+            getattr(request.user, 'google_meet_client_id', '') and
+            getattr(request.user, 'google_meet_client_secret', '')
+        )
+        
+        if not has_global_config and not has_user_config:
             return Response(
                 {
-                    'detail': 'Google Meet не настроен администратором',
-                    'need_admin_setup': True,
+                    'detail': 'Google Meet не настроен. Введите Client ID и Client Secret.',
+                    'need_credentials': True,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
