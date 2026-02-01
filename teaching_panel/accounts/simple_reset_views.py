@@ -34,7 +34,7 @@ class SimpleResetThrottle(AnonRateThrottle):
     Защита от brute-force подбора email'ов.
     """
     rate = '5/min'  # DRF поддерживает: 's' (sec), 'm' (min), 'h' (hour), 'd' (day)
-    scope = 'simple_password_reset'
+    # Note: scope не нужен когда rate указан явно
 
 
 def _validate_password(password: str) -> Tuple[bool, str]:
