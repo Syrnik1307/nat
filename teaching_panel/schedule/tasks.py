@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
     retry_backoff=60,
     retry_backoff_max=300,
     max_retries=2,
-    retry_jitter=True
+    retry_jitter=True,
+    soft_time_limit=120,  # 2 минуты - мягкий лимит (raises SoftTimeLimitExceeded)
+    time_limit=180,       # 3 минуты - жёсткий лимит (kills task)
 )
 def warmup_zoom_oauth_tokens():
     """

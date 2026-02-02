@@ -440,6 +440,12 @@ CELERY_TASK_DEFAULT_RETRY_DELAY = 60  # 1 minute initial delay
 CELERY_TASK_MAX_RETRIES = 3  # Default max retries
 
 # =============================================================================
+# TIME LIMITS: Prevent tasks from running forever and blocking workers
+# =============================================================================
+CELERY_TASK_SOFT_TIME_LIMIT = 300  # 5 minutes soft limit (raises SoftTimeLimitExceeded)
+CELERY_TASK_TIME_LIMIT = 600       # 10 minutes hard limit (kills task with SIGKILL)
+
+# =============================================================================
 # PREFETCH: Limit tasks per worker to improve fairness
 # =============================================================================
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # Only prefetch 1 task per worker
