@@ -1,0 +1,27 @@
+[Unit]
+Description=Teaching Panel Celery Beat Scheduler
+After=network.target redis-server.service celery.service
+Requires=redis-server.service
+Wants=celery.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+Environment="DJANGO_SETTINGS_MODULE=teaching_panel.settings"
+EnvironmentFile=-/var/www/teaching_panel/.env
+
+# Ensure directory exists before start
+ExecStartPre=/bin/mkdir -p /var/run/celery
+ExecStartPre=/bin/chown www-data:www-data /var/run/celery
+
+ExecStart=/var/www/teaching_panel/venv/bin/celery -A teaching_panel beat --loglevel=info --logfile=/var/log/celery/beat.log --pidfile=/var/run/celery/beat.pid
+
+# Restart strategy
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

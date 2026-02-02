@@ -631,3 +631,52 @@ svg,
 .will-transform { will-change: transform; }
 .will-opacity { will-change: opacity; }
 .will-both { will-change: transform, opacity; }
+
+/* ========================================
+   🚀 PERFORMANCE OPTIMIZATIONS
+   ======================================== */
+
+/* Content-visibility for long lists - браузер не рендерит невидимый контент */
+.perf-virtualized,
+.list-virtualized,
+[data-virtualized="true"] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 200px; /* Приблизительная высота элемента */
+}
+
+/* Оптимизированные списки уроков/студентов */
+.lesson-list > *,
+.student-list > *,
+.homework-list > *,
+.recording-list > *,
+.group-list > *,
+[class*="list-item"],
+[class*="card-list"] > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 80px;
+}
+
+/* Contain для изолированных компонентов - ускоряет reflow */
+.perf-contain,
+.card,
+.modal-content,
+[data-contain="true"] {
+  contain: layout style;
+}
+
+/* Paint containment для карточек */
+.glass-card,
+.content-card,
+.section-card,
+[class*="Card"] {
+  contain: layout style paint;
+}
+
+/* Принудительный GPU слой для часто анимируемых элементов */
+.perf-gpu,
+.modal-backdrop,
+.sidebar,
+.navbar {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}

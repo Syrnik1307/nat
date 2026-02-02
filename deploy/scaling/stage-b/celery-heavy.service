@@ -1,0 +1,49 @@
+# =============================================================================
+# STAGE B: Celery Heavy Worker (Video Processing, GDrive Uploads)
+# Server: 4 vCPU / 8 GB RAM
+# ISOLATED: Heavy tasks don't block notifications
+# =============================================================================
+
+[Unit]
+Description=Teaching Panel Celery Worker - Heavy (Stage B)
+After=network.target redis.service pgbouncer.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+EnvironmentFile=-/var/www/teaching_panel/.env
+
+# Override DATABASE_URL to use PgBouncer
+Environment="DATABASE_URL=postgresql://teaching_panel:PASSWORD@127.0.0.1:6432/teaching_panel"
+
+# STAGE B: 1 worker for heavy queue (video processing)
+# Higher memory limit for video files
+ExecStart=/var/www/teaching_panel/venv/bin/celery -A teaching_panel worker \
+    --loglevel=info \
+    --concurrency=1 \
+    --pool=prefork \
+    --max-memory-per-child=400000 \
+    --max-tasks-per-child=20 \
+    --queues=heavy \
+    --hostname=heavy@%h \
+    --without-gossip \
+    --without-mingle
+
+# Higher memory limit for video processing
+MemoryMax=600M
+MemoryHigh=500M
+
+# Lower CPU priority - don't starve web requests
+CPUWeight=50
+Nice=5
+
+Restart=always
+RestartSec=10
+TimeoutStopSec=300
+
+[Install]
+WantedBy=multi-user.target

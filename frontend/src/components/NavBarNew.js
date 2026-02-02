@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { getAccessToken } from '../apiService';
+import { getAccessToken, getLessons, getGroups, getHomeworkList, getTeacherStatsSummary } from '../apiService';
+import { prefetch, TTL } from '../utils/dataCache';
 import Logo from './Logo';
 import './NavBar.css';
 
@@ -23,6 +24,51 @@ import './NavBar.css';
  * - Личные беседы
  * - Шаблоны
  */
+
+// === PREFETCH FUNCTIONS для мгновенных переходов ===
+// Запускаются при hover/focus на ссылку меню
+
+const prefetchTeacherHome = () => {
+  const now = new Date();
+  const yyyy = String(now.getFullYear());
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const today = `${yyyy}-${mm}-${dd}`;
+  
+  prefetch('teacher:stats', () => getTeacherStatsSummary().then(r => r.data), TTL.LONG);
+  prefetch(`teacher:lessons:${today}`, () => getLessons({ date: today, include_recurring: true })
+    .then(r => Array.isArray(r.data) ? r.data : r.data.results || []), TTL.SHORT);
+  prefetch('teacher:groups', () => getGroups()
+    .then(r => Array.isArray(r.data) ? r.data : r.data.results || []), TTL.MEDIUM);
+};
+
+const prefetchCalendar = () => {
+  const now = new Date();
+  const in30 = new Date();
+  in30.setDate(now.getDate() + 30);
+  
+  prefetch('teacher:calendar', () => getLessons({
+    start: now.toISOString(),
+    end: in30.toISOString(),
+    include_recurring: true,
+  }).then(r => Array.isArray(r.data) ? r.data : r.data.results || []), TTL.SHORT);
+};
+
+const prefetchGroups = () => {
+  prefetch('teacher:groups', () => getGroups()
+    .then(r => Array.isArray(r.data) ? r.data : r.data.results || []), TTL.MEDIUM);
+};
+
+const prefetchHomework = () => {
+  prefetch('teacher:homework', () => getHomeworkList({})
+    .then(r => Array.isArray(r.data) ? r.data : r.data.results || []), TTL.MEDIUM);
+  prefetchGroups();
+};
+
+const prefetchAnalytics = () => {
+  prefetch('teacher:stats', () => getTeacherStatsSummary().then(r => r.data), TTL.LONG);
+  prefetchGroups();
+};
 
 const NavBar = () => {
   const { accessTokenValid, role, logout, user } = useAuth();
@@ -210,6 +256,8 @@ const NavBar = () => {
         to={homePath} 
         className="nav-link"
         onClick={() => setShowMobileMenu(false)}
+        onMouseEnter={role === 'teacher' ? prefetchTeacherHome : undefined}
+        onFocus={role === 'teacher' ? prefetchTeacherHome : undefined}
       >
         <span className="nav-icon"></span>
         <span>Главная</span>
@@ -234,6 +282,8 @@ const NavBar = () => {
                 }
                 setShowLessonsMenu(prev => !prev);
               }}
+              onMouseEnter={prefetchCalendar}
+              onFocus={prefetchCalendar}
               aria-expanded={showLessonsMenu}
               aria-haspopup="true"
             >
@@ -322,6 +372,8 @@ const NavBar = () => {
             to="/homework/constructor" 
             className="nav-link"
             onClick={() => setShowMobileMenu(false)}
+            onMouseEnter={prefetchHomework}
+            onFocus={prefetchHomework}
           >
             <span className="nav-icon"></span>
             <span>ДЗ</span>
@@ -331,6 +383,8 @@ const NavBar = () => {
             to="/groups/manage" 
             className="nav-link"
             onClick={() => setShowMobileMenu(false)}
+            onMouseEnter={prefetchGroups}
+            onFocus={prefetchGroups}
           >
             <span className="nav-icon"></span>
             <span>Ученики</span>
@@ -358,6 +412,8 @@ const NavBar = () => {
             to="/analytics" 
             className="nav-link"
             onClick={() => setShowMobileMenu(false)}
+            onMouseEnter={prefetchAnalytics}
+            onFocus={prefetchAnalytics}
           >
             <span className="nav-icon"></span>
             <span>Аналитика</span>

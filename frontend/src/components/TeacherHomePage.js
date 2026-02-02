@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getTeacherStatsSummary, getLessons, getGroups, startQuickLesson, startLessonNew, updateLesson, endLesson } from '../apiService';
-import { getCached } from '../utils/dataCache';
+import { getCached, invalidateCache, TTL } from '../utils/dataCache';
 import { Link } from 'react-router-dom';
 import SubscriptionBanner from './SubscriptionBanner';
 import TelegramReminderToast from './TelegramReminderToast';
@@ -240,8 +240,6 @@ const TeacherHomePage = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      const cacheTTL = 30000; // 30 секунд
-      
       try {
         // ВАЖНО: не используем toISOString() (UTC), иначе день может сдвигаться назад.
         // Backend поддерживает параметр `date=YYYY-MM-DD` и сам строит диапазон в локальной TZ.
@@ -251,22 +249,24 @@ const TeacherHomePage = () => {
         const dd = String(now.getDate()).padStart(2, '0');
         const today = `${yyyy}-${mm}-${dd}`;
         
-        // OPTIMIZATION: Всегда используем getCached для дедупликации параллельных запросов
-        // getCached автоматически дедуплицирует in-flight запросы между компонентами
+        // OPTIMIZATION: Используем разные TTL для разных типов данных
+        // - stats: долгий TTL (LONG) - редко меняется
+        // - lessons: короткий TTL (SHORT) - актуальность важна
+        // - groups: средний TTL (MEDIUM) - полустатичные
         const [statsData, lessonsData, groupsData] = await Promise.all([
           getCached('teacher:stats', async () => {
             const res = await getTeacherStatsSummary();
             console.log('[TeacherHomePage] Stats fetched:', res.data);
             return res.data;
-          }, cacheTTL),
+          }, TTL.LONG),
           getCached(`teacher:lessons:${today}`, async () => {
             const res = await getLessons({ date: today, include_recurring: true });
             return Array.isArray(res.data) ? res.data : res.data.results || [];
-          }, cacheTTL),
+          }, TTL.SHORT),
           getCached('teacher:groups', async () => {
             const res = await getGroups();
             return Array.isArray(res.data) ? res.data : res.data.results || [];
-          }, cacheTTL),
+          }, TTL.MEDIUM),
         ]);
         
         setStats(statsData);
@@ -338,12 +338,16 @@ const TeacherHomePage = () => {
       if (res.data?.zoom_start_url) {
         window.open(res.data.zoom_start_url, '_blank');
         setShowStartModal(false);
+        // Инвалидируем кеш уроков - новый урок создан
+        invalidateCache('teacher:lessons');
       } else if (res.data?.meet_link) {
         window.open(res.data.meet_link, '_blank');
         setShowStartModal(false);
+        invalidateCache('teacher:lessons');
       } else if (res.data?.start_url) {
         window.open(res.data.start_url, '_blank');
         setShowStartModal(false);
+        invalidateCache('teacher:lessons');
       }
     } catch (err) {
       setStartError(err.response?.data?.detail || 'Ошибка запуска урока');
@@ -416,6 +420,8 @@ const TeacherHomePage = () => {
           ? { ...l, ended_at: new Date().toISOString(), zoom_start_url: null }
           : l
       ));
+      // Инвалидируем кеш статистики - завершённый урок влияет на статистику
+      invalidateCache('teacher:stats');
     } catch (err) {
       console.error('Failed to end lesson:', err);
     } finally {

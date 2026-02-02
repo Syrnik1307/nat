@@ -1,0 +1,58 @@
+# =============================================================================
+# STAGE A: MVP Configuration (300 teachers / 3,000 students)
+# Server: 2 vCPU / 4 GB RAM
+# Expected: 50-80 RPS peak
+# =============================================================================
+
+[Unit]
+Description=Teaching Panel Django Application (Stage A - MVP)
+After=network.target postgresql.service
+Wants=nginx.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="DJANGO_SETTINGS_MODULE=teaching_panel.settings"
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+EnvironmentFile=-/var/www/teaching_panel/.env
+
+# STAGE A CONFIGURATION:
+# - 3 gevent workers (async I/O optimal for DB-heavy app)
+# - 1000 connections per worker (gevent greenlets)
+# - 60s timeout (balance between long requests and resource release)
+# - max-requests 1500 (restart workers to prevent memory leaks)
+ExecStart=/var/www/teaching_panel/venv/bin/gunicorn \
+    --bind 127.0.0.1:8000 \
+    --workers 3 \
+    --worker-class gevent \
+    --worker-connections 1000 \
+    --timeout 60 \
+    --graceful-timeout 30 \
+    --keep-alive 5 \
+    --max-requests 1500 \
+    --max-requests-jitter 150 \
+    --access-logfile /var/log/teaching_panel/access.log \
+    --error-logfile /var/log/teaching_panel/error.log \
+    --capture-output \
+    --preload \
+    teaching_panel.wsgi:application
+
+# Restart settings
+Restart=always
+RestartSec=3
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Resource limits for 4GB server
+# Workers: 3 × ~120MB = 360MB
+# Buffer for spikes: +200MB
+MemoryMax=600M
+MemoryHigh=500M
+
+# CPU shares (default priority)
+CPUWeight=100
+
+[Install]
+WantedBy=multi-user.target

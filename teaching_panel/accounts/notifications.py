@@ -670,6 +670,7 @@ def notify_admin_payment(
     Отправить уведомление админу о новом платеже.
     
     Использует отдельного бота (TELEGRAM_PAYMENTS_BOT_TOKEN) для уведомлений о платежах.
+    ИДЕМПОТЕНТНО: проверяет admin_notified_at, чтобы не отправлять дубли.
     
     Args:
         payment: Объект Payment
@@ -680,6 +681,11 @@ def notify_admin_payment(
     Returns:
         bool: True если уведомление отправлено
     """
+    # IDEMPOTENCY CHECK: Уже отправляли уведомление для этого платежа?
+    if payment.admin_notified_at is not None:
+        logger.debug(f'Admin notification already sent for payment {payment.payment_id} at {payment.admin_notified_at}')
+        return False
+    
     # Chat ID админа для уведомлений о платежах
     admin_chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', None)
     if not admin_chat_id:
@@ -725,6 +731,12 @@ def notify_admin_payment(
     try:
         response = requests.post(url, json=payload, timeout=10)
         if response.ok:
+            # СРАЗУ помечаем как отправленное, чтобы избежать дублей при повторных webhook
+            try:
+                payment.admin_notified_at = timezone.now()
+                payment.save(update_fields=['admin_notified_at'])
+            except Exception as e:
+                logger.warning(f'Failed to mark payment as notified: {e}')
             logger.info(f'Admin payment notification sent for payment {payment.payment_id}')
             return True
         logger.warning(f'Failed to send admin payment notification: {response.status_code} {response.text}')

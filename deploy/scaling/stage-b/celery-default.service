@@ -1,0 +1,43 @@
+# =============================================================================
+# STAGE B: Celery Workers Configuration (Growth)
+# Server: 4 vCPU / 8 GB RAM
+# SPLIT: Default/Notifications vs Heavy queues
+# =============================================================================
+
+[Unit]
+Description=Teaching Panel Celery Worker - Default (Stage B)
+After=network.target redis.service pgbouncer.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+EnvironmentFile=-/var/www/teaching_panel/.env
+
+# Override DATABASE_URL to use PgBouncer
+Environment="DATABASE_URL=postgresql://teaching_panel:PASSWORD@127.0.0.1:6432/teaching_panel"
+
+# STAGE B: 2 workers for default/notifications/periodic
+ExecStart=/var/www/teaching_panel/venv/bin/celery -A teaching_panel worker \
+    --loglevel=info \
+    --concurrency=2 \
+    --pool=prefork \
+    --max-memory-per-child=200000 \
+    --max-tasks-per-child=100 \
+    --queues=default,notifications,periodic \
+    --hostname=default@%h \
+    --without-gossip \
+    --without-mingle
+
+MemoryMax=600M
+MemoryHigh=500M
+
+Restart=always
+RestartSec=10
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

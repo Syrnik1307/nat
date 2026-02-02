@@ -1,0 +1,40 @@
+# =============================================================================
+# STAGE C: Celery Default Workers (Notifications, Periodic tasks)
+# Server: 8 vCPU / 16 GB RAM
+# =============================================================================
+
+[Unit]
+Description=Teaching Panel Celery Worker - Default (Stage C)
+After=network.target redis.service pgbouncer.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+EnvironmentFile=-/var/www/teaching_panel/.env
+Environment="DATABASE_URL=postgresql://teaching_panel:PASSWORD@127.0.0.1:6432/teaching_panel"
+
+# STAGE C: 3 workers for default/notifications/periodic
+ExecStart=/var/www/teaching_panel/venv/bin/celery -A teaching_panel worker \
+    --loglevel=info \
+    --concurrency=3 \
+    --pool=prefork \
+    --max-memory-per-child=200000 \
+    --max-tasks-per-child=150 \
+    --queues=default,notifications,periodic \
+    --hostname=default@%h \
+    --without-gossip \
+    --without-mingle
+
+MemoryMax=800M
+MemoryHigh=700M
+
+Restart=always
+RestartSec=5
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

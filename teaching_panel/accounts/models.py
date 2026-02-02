@@ -975,6 +975,9 @@ class Payment(models.Model):
     paid_at = models.DateTimeField(null=True, blank=True)
 
     metadata = models.JSONField(default=dict, blank=True)
+    
+    # Флаг для предотвращения дублирования уведомлений админу
+    admin_notified_at = models.DateTimeField(null=True, blank=True, help_text='Когда было отправлено уведомление админу')
 
     class Meta:
         verbose_name = 'Платеж'

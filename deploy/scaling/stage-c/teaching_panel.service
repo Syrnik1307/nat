@@ -1,0 +1,59 @@
+# =============================================================================
+# STAGE C: Scale Configuration (1,500 teachers / 15,000 students)
+# Server: 8 vCPU / 16 GB RAM (or 2x4 vCPU / 8 GB with load balancer)
+# Expected: 250-400 RPS peak
+# REQUIRES: PgBouncer + separate Celery worker server recommended
+# =============================================================================
+
+[Unit]
+Description=Teaching Panel Django Application (Stage C - Scale)
+After=network.target pgbouncer.service
+Wants=nginx.service pgbouncer.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="DJANGO_SETTINGS_MODULE=teaching_panel.settings"
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+EnvironmentFile=-/var/www/teaching_panel/.env
+
+# PgBouncer connection
+Environment="DATABASE_URL=postgresql://teaching_panel:PASSWORD@127.0.0.1:6432/teaching_panel"
+
+# STAGE C CONFIGURATION:
+# - 8 gevent workers (match vCPU count)
+# - 30s timeout (fast failure)
+# - Higher max-requests for stability
+ExecStart=/var/www/teaching_panel/venv/bin/gunicorn \
+    --bind 127.0.0.1:8000 \
+    --workers 8 \
+    --worker-class gevent \
+    --worker-connections 1000 \
+    --timeout 30 \
+    --graceful-timeout 15 \
+    --keep-alive 5 \
+    --max-requests 2500 \
+    --max-requests-jitter 250 \
+    --access-logfile /var/log/teaching_panel/access.log \
+    --error-logfile /var/log/teaching_panel/error.log \
+    --capture-output \
+    --preload \
+    teaching_panel.wsgi:application
+
+Restart=always
+RestartSec=2
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+# Resource limits for 16GB server
+# Workers: 8 × ~120MB = 960MB
+# Buffer: +500MB
+MemoryMax=1500M
+MemoryHigh=1200M
+
+CPUWeight=100
+
+[Install]
+WantedBy=multi-user.target

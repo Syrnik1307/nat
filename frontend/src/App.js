@@ -14,9 +14,18 @@ import StudentNavBarBase from './components/StudentNavBar';
 const NavBarNew = memo(NavBarNewBase);
 const StudentNavBar = memo(StudentNavBarBase);
 
-// Минимальный fallback - почти мгновенный skeleton
-// Показываем прелоадер сразу, но с лёгким fade-in для плавности
+// Минимальный fallback с ЗАДЕРЖКОЙ показа
+// Избегаем "мерцания" spinner'а при быстрой загрузке (< 150ms)
 const PageLoader = () => {
+  const [show, setShow] = React.useState(false);
+  
+  React.useEffect(() => {
+    const timer = setTimeout(() => setShow(true), 150);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  if (!show) return null;
+  
   return (
     <div className="page-loader-wrapper visible">
       <div className="page-loader-content">
@@ -29,12 +38,12 @@ const PageLoader = () => {
           align-items: center;
           min-height: 40vh;
           background: transparent;
-          opacity: 1;
-          animation: pageLoaderFadeIn 0.1s ease-out;
+          opacity: 0;
+          animation: pageLoaderFadeIn 0.15s ease-out forwards;
         }
         @keyframes pageLoaderFadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         .page-loader-content {
           display: flex;

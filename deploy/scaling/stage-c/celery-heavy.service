@@ -1,0 +1,50 @@
+# =============================================================================
+# STAGE C: Celery Heavy Workers (Video Processing)
+# RECOMMENDED: Run on separate server to avoid resource contention
+# Server: 4 vCPU / 8 GB RAM dedicated
+# =============================================================================
+
+[Unit]
+Description=Teaching Panel Celery Worker - Heavy (Stage C)
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+EnvironmentFile=-/var/www/teaching_panel/.env
+
+# Direct PostgreSQL connection (no PgBouncer needed for batch jobs)
+# Or use PgBouncer if on same server
+Environment="DATABASE_URL=postgresql://teaching_panel:PASSWORD@db.example.com:5432/teaching_panel"
+
+# STAGE C: 2 workers for heavy queue (video processing)
+# Higher concurrency since this is dedicated server
+ExecStart=/var/www/teaching_panel/venv/bin/celery -A teaching_panel worker \
+    --loglevel=info \
+    --concurrency=2 \
+    --pool=prefork \
+    --max-memory-per-child=500000 \
+    --max-tasks-per-child=30 \
+    --queues=heavy \
+    --hostname=heavy@%h \
+    --without-gossip \
+    --without-mingle
+
+# Higher limits for video processing
+MemoryMax=2G
+MemoryHigh=1500M
+
+# Lower CPU priority
+CPUWeight=50
+Nice=5
+
+Restart=always
+RestartSec=10
+TimeoutStopSec=600
+
+[Install]
+WantedBy=multi-user.target
