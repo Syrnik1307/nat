@@ -150,7 +150,7 @@ class TBankService:
         1. Collect all root-level params (exclude nested objects/arrays)
         2. Add Password to params
         3. Sort alphabetically by key
-        4. Concatenate values only
+        4. Concatenate values only (booleans as lowercase "true"/"false")
         5. SHA-256 hash the result
         
         Docs: https://developer.tbank.ru/eacq/intro/developer/token
@@ -161,8 +161,16 @@ class TBankService:
         sign_params['Password'] = settings.TBANK_PASSWORD
         
         # Sort by key and concatenate values
+        # IMPORTANT: booleans must be lowercase "true"/"false" per T-Bank docs
         sorted_keys = sorted(sign_params.keys())
-        concat_string = ''.join(str(sign_params[k]) for k in sorted_keys)
+        values = []
+        for k in sorted_keys:
+            v = sign_params[k]
+            if isinstance(v, bool):
+                values.append('true' if v else 'false')
+            else:
+                values.append(str(v))
+        concat_string = ''.join(values)
         
         # SHA-256 hash
         token = hashlib.sha256(concat_string.encode('utf-8')).hexdigest()
