@@ -183,6 +183,20 @@ class SupportTicket(models.Model):
     expected_behavior = models.TextField('Ожидаемое поведение', blank=True, default='')
     actual_behavior = models.TextField('Фактическое поведение', blank=True, default='')
     
+    # Источник обращения
+    SOURCE_CHOICES = (
+        ('web', 'Веб-форма'),
+        ('telegram', 'Telegram'),
+        ('email', 'Email'),
+        ('admin', 'Создано админом'),
+    )
+    source = models.CharField(
+        'Источник',
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        default='web'
+    )
+    
     class Meta:
         verbose_name = 'Обращение в поддержку'
         verbose_name_plural = 'Обращения в поддержку'
