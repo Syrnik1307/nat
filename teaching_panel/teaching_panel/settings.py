@@ -392,12 +392,6 @@ CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
 # =============================================================================
-# TIME LIMITS: Prevent stuck tasks
-# =============================================================================
-CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 минут hard limit (SIGKILL)
-CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 минут soft limit (SoftTimeLimitExceeded)
-
-# =============================================================================
 # TASK QUEUES: Separate heavy and light tasks
 # Heavy tasks (video processing) don't block emails/notifications
 # =============================================================================
