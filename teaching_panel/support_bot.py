@@ -789,29 +789,29 @@ async def notify_new_ticket(ticket_id: int, bot_token: str):
     """
     bot = Application.builder().token(bot_token).build()
     
-    try:
-        ticket = SupportTicket.objects.get(id=ticket_id)
-    except SupportTicket.DoesNotExist:
+    # Используем async-safe обёртку
+    ticket_data = await get_ticket_with_user(ticket_id)
+    if not ticket_data:
         return
     
-    # Получаем всех админов с Telegram ID
-    admins = CustomUser.objects.filter(is_staff=True, telegram_id__isnull=False)
+    # Получаем всех админов с Telegram ID через async-safe обёртку
+    admins = await get_staff_admins()
     
     priority_emoji = {
         'low': '🟢',
         'normal': '🟡',
         'high': '🟠',
         'urgent': '🔴'
-    }.get(ticket.priority, '⚪')
+    }.get(ticket_data['priority'], '⚪')
     
     message = (
-        f"🆕 *Новый тикет #{ticket.id}*\n\n"
-        f"{priority_emoji} *Приоритет:* {ticket.get_priority_display()}\n"
-        f"🏷️ *Категория:* {ticket.category}\n"
-        f"📝 *Тема:* {ticket.subject}\n"
-        f"📄 *Описание:*\n{ticket.description[:200]}...\n\n"
-        f"👤 *От:* {ticket.user.get_full_name() if ticket.user else ticket.email}\n\n"
-        f"Для просмотра: /view\\_{ticket.id}"
+        f"🆕 *Новый тикет #{ticket_data['id']}*\n\n"
+        f"{priority_emoji} *Приоритет:* {ticket_data['priority_display']}\n"
+        f"🏷️ *Категория:* {ticket_data['category']}\n"
+        f"📝 *Тема:* {ticket_data['subject']}\n"
+        f"📄 *Описание:*\n{ticket_data['description']}...\n\n"
+        f"👤 *От:* {ticket_data['user_name']}\n\n"
+        f"Для просмотра: /view\\_{ticket_data['id']}"
     )
     
     for admin in admins:
@@ -827,12 +827,37 @@ async def notify_new_ticket(ticket_id: int, bot_token: str):
 
 # ============ Инцидент-режим ============
 
+@sync_to_async
+def start_incident_sync(title, user):
+    """Начать инцидент (async-safe)"""
+    status = SystemStatus.get_current()
+    status.start_incident(title=title, user=user)
+    return status.incident_started_at.strftime('%d.%m.%Y %H:%M')
+
+
+@sync_to_async
+def resolve_incident_sync(message, user):
+    """Завершить инцидент (async-safe)"""
+    status = SystemStatus.get_current()
+    if status.status == 'operational':
+        return None
+    old_title = status.incident_title
+    status.resolve_incident(message=message, user=user)
+    return old_title
+
+
+@sync_to_async
+def get_system_status():
+    """Получить текущий статус системы (async-safe)"""
+    return SystemStatus.get_current()
+
+
 async def incident_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /incident <название> - начать инцидент (P0)"""
     telegram_id = update.effective_user.id
     
     try:
-        user = CustomUser.objects.get(telegram_id=telegram_id)
+        user = await get_user_by_telegram_id(telegram_id)
         if not user.is_staff:
             await update.message.reply_text("❌ Доступ запрещён")
             return
@@ -851,17 +876,16 @@ async def incident_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     title = ' '.join(args)
-    status = SystemStatus.get_current()
-    status.start_incident(title=title, user=user)
+    incident_time = await start_incident_sync(title, user)
     
-    # Уведомляем всех админов
-    admins = CustomUser.objects.filter(is_staff=True, telegram_id__isnull=False)
+    # Уведомляем всех админов через async-safe обёртку
+    admins = await get_staff_admins()
     
     message = (
         f"🔴🔴🔴 *ИНЦИДЕНТ ОБЪЯВЛЕН* 🔴🔴🔴\n\n"
         f"📛 *{title}*\n\n"
         f"Объявил: {user.first_name}\n"
-        f"Время: {status.incident_started_at.strftime('%d.%m.%Y %H:%M')}\n\n"
+        f"Время: {incident_time}\n\n"
         f"Автоответ включён для новых тикетов.\n"
         f"Закончить: /resolve <сообщение>"
     )
