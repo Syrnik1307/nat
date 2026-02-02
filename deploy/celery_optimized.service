@@ -1,0 +1,40 @@
+[Unit]
+Description=Teaching Panel Celery Worker (Memory Optimized)
+After=network.target redis.service postgresql.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+
+# MEMORY OPTIMIZATION 2026-02-02:
+# - Single worker (-c 1) to reduce memory footprint on 2GB server
+# - max-memory-per-child: Restart worker if exceeds 150MB to prevent leaks
+# - max-tasks-per-child: Restart after 50 tasks to free accumulated memory
+# - Pool: prefork is more memory efficient than solo/eventlet for periodic tasks
+ExecStart=/var/www/teaching_panel/venv/bin/celery -A teaching_panel worker \
+    --loglevel=info \
+    --concurrency=1 \
+    --pool=prefork \
+    --max-memory-per-child=150000 \
+    --max-tasks-per-child=50 \
+    --without-gossip \
+    --without-mingle \
+    --without-heartbeat
+
+# Memory limits enforced by systemd
+MemoryMax=300M
+MemoryHigh=250M
+
+Restart=always
+RestartSec=10
+
+# Graceful shutdown: give tasks time to complete
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

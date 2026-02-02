@@ -152,12 +152,24 @@ except ImportError:
 
 if os.environ.get('DATABASE_URL') and HAS_DJ_DATABASE_URL:
     # Production: Use PostgreSQL/MySQL via DATABASE_URL
+    # NOTE: conn_max_age=0 is intentional for Celery workers (prevents stale connections)
+    # Gunicorn with gthread can use persistent connections, but Celery should not
+    _is_celery_worker = 'celery' in os.environ.get('CELERY_LOADER', '').lower() or \
+                        any('celery' in arg.lower() for arg in os.sys.argv)
+    _conn_max_age = 0 if _is_celery_worker else 60  # 1 minute for web, 0 for Celery
+    
     DATABASES = {
         'default': dj_database_url.config(
             default=os.environ.get('DATABASE_URL'),
-            conn_max_age=600,
+            conn_max_age=_conn_max_age,
             conn_health_checks=True,
         )
+    }
+    
+    # Add PostgreSQL-specific options for connection stability
+    DATABASES['default']['OPTIONS'] = {
+        'connect_timeout': 10,  # 10 seconds to establish connection
+        'options': '-c statement_timeout=30000',  # 30 seconds max query time
     }
 else:
     # Development: Use SQLite
@@ -445,6 +457,13 @@ CELERY_TASK_TIME_LIMIT = 600       # 10 minutes hard limit (kills task with SIGK
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # Only prefetch 1 task per worker
 
 # =============================================================================
+# MEMORY OPTIMIZATION: Prevent memory leaks in long-running workers
+# Critical for 2GB RAM servers with multiple Python processes
+# =============================================================================
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 50  # Restart worker after 50 tasks to free memory
+CELERY_WORKER_MAX_MEMORY_PER_CHILD = 150000  # 150MB limit per worker, then restart
+
+# =============================================================================
 # REDIS CONNECTION: Prevent stale connections
 # =============================================================================
 CELERY_BROKER_TRANSPORT_OPTIONS = {
@@ -480,6 +499,7 @@ if sys.platform == 'win32':
     CELERY_WORKER_POOL = 'solo'
 
 # Celery Beat расписание
+# OPTIMIZED 2026-02-02: Снижена частота задач для экономии памяти на 2GB сервере
 CELERY_BEAT_SCHEDULE = {
     'warmup-zoom-oauth-tokens': {
         'task': 'schedule.tasks.warmup_zoom_oauth_tokens',
@@ -487,15 +507,15 @@ CELERY_BEAT_SCHEDULE = {
     },
     'release-stuck-zoom-accounts': {
         'task': 'schedule.tasks.release_stuck_zoom_accounts',
-        'schedule': 600.0,  # каждые 10 минут
+        'schedule': 900.0,  # каждые 15 минут (было 10)
     },
     'schedule-lesson-reminders': {
         'task': 'schedule.tasks.schedule_upcoming_lesson_reminders',
-        'schedule': 300.0,  # каждые 5 минут
+        'schedule': 600.0,  # каждые 10 минут (было 5)
     },
     'send-recurring-lesson-reminders': {
         'task': 'schedule.tasks.send_recurring_lesson_reminders',
-        'schedule': 60.0,  # каждую минуту (для точного времени напоминаний)
+        'schedule': 120.0,  # каждые 2 минуты (было 60 сек)
     },
     'check-expiring-subscriptions': {
         'task': 'accounts.tasks.check_expiring_subscriptions',

@@ -1,0 +1,60 @@
+# =============================================================================
+# OPTIMIZED SYSTEMD SERVICE для teaching_panel (2GB RAM server)
+# =============================================================================
+# UPDATED 2026-02-02: Снижен таймаут для быстрой реакции на зависшие запросы
+# =============================================================================
+
+[Unit]
+Description=Teaching Panel Django Application
+After=network.target postgresql.service
+Wants=nginx.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+Environment="DJANGO_SETTINGS_MODULE=teaching_panel.settings"
+Environment="PATH=/var/www/teaching_panel/venv/bin"
+
+# MEMORY OPTIMIZATION 2026-02-02:
+# - 1 worker с 4 threads (было 2 workers) - экономит ~100MB
+# - gthread для лучшей concurrency с меньшим footprint
+# - timeout 30s (было 300s!) - не даём запросам зависать
+# - max-requests 300 (было 500) - чаще рестартуем для освобождения памяти
+ExecStart=/var/www/teaching_panel/venv/bin/gunicorn \
+    --bind 127.0.0.1:8000 \
+    --workers 1 \
+    --threads 4 \
+    --worker-class gthread \
+    --timeout 30 \
+    --graceful-timeout 10 \
+    --keep-alive 2 \
+    --max-requests 300 \
+    --max-requests-jitter 50 \
+    --access-logfile /var/log/teaching_panel/access.log \
+    --error-logfile /var/log/teaching_panel/error.log \
+    --capture-output \
+    teaching_panel.wsgi:application
+
+# ============ RESTART SETTINGS ====================
+Restart=always
+RestartSec=2
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+# ============ RESOURCE LIMITS (CRITICAL!) ====================
+# Жёсткий лимит 400MB - при превышении процесс убивается
+MemoryMax=400M
+# Мягкий лимит 300MB - начинает swap
+MemoryHigh=300M
+# Swap limit
+MemorySwapMax=128M
+
+# ============ CGROUP ISOLATION ====================
+# Защита от влияния на другие сервисы
+CPUWeight=100
+IOWeight=100
+
+[Install]
+WantedBy=multi-user.target

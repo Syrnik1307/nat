@@ -139,6 +139,11 @@ def close_db_connections_after_task(sender=None, task_id=None, task=None, retval
     """
     from django import db
     db.connections.close_all()
+    
+    # MEMORY OPTIMIZATION 2026-02-02: Force garbage collection after heavy tasks
+    # This helps on 2GB RAM servers by freeing memory immediately
+    import gc
+    gc.collect()
 
 
 @worker_shutdown.connect
