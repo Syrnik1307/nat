@@ -916,7 +916,7 @@ async def incident_resolve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     
     try:
-        user = CustomUser.objects.get(telegram_id=telegram_id)
+        user = await get_user_by_telegram_id(telegram_id)
         if not user.is_staff:
             await update.message.reply_text("❌ Доступ запрещён")
             return
@@ -924,20 +924,17 @@ async def incident_resolve(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Сначала зарегистрируйтесь через /start")
         return
     
-    status = SystemStatus.get_current()
-    
-    if status.status == 'operational':
-        await update.message.reply_text("ℹ️ Нет активного инцидента")
-        return
-    
     args = context.args
     message = ' '.join(args) if args else 'Проблема решена'
     
-    old_title = status.incident_title
-    status.resolve_incident(message=message, user=user)
+    old_title = await resolve_incident_sync(message, user)
     
-    # Уведомляем всех админов
-    admins = CustomUser.objects.filter(is_staff=True, telegram_id__isnull=False)
+    if old_title is None:
+        await update.message.reply_text("ℹ️ Нет активного инцидента")
+        return
+    
+    # Уведомляем всех админов через async-safe обёртку
+    admins = await get_staff_admins()
     
     notification = (
         f"✅ *ИНЦИДЕНТ ЗАВЕРШЁН*\n\n"
@@ -971,7 +968,7 @@ async def system_status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     
     try:
-        user = CustomUser.objects.get(telegram_id=telegram_id)
+        user = await get_user_by_telegram_id(telegram_id)
         if not user.is_staff:
             await update.message.reply_text("❌ Доступ запрещён")
             return
@@ -979,7 +976,7 @@ async def system_status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Сначала зарегистрируйтесь через /start")
         return
     
-    status = SystemStatus.get_current()
+    status = await get_system_status()
     
     status_emoji = {
         'operational': '✅',
@@ -1017,7 +1014,7 @@ async def sla_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     
     try:
-        user = CustomUser.objects.get(telegram_id=telegram_id)
+        user = await get_user_by_telegram_id(telegram_id)
         if not user.is_staff:
             await update.message.reply_text("❌ Доступ запрещён")
             return
@@ -1030,16 +1027,25 @@ async def sla_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     now = timezone.now()
     
-    # Тикеты без первого ответа с просроченным SLA
-    breached = []
-    open_tickets = SupportTicket.objects.filter(
-        status__in=['new', 'in_progress'],
-        first_response_at__isnull=True
-    )
+    @sync_to_async
+    def get_sla_breached_tickets():
+        """Получить тикеты с нарушением SLA (async-safe)"""
+        breached = []
+        open_tickets = SupportTicket.objects.filter(
+            status__in=['new', 'in_progress'],
+            first_response_at__isnull=True
+        )
+        for ticket in open_tickets:
+            if ticket.sla_breached:
+                breached.append({
+                    'id': ticket.id,
+                    'priority': ticket.priority,
+                    'subject': ticket.subject[:30],
+                    'sla_deadline': ticket.sla_deadline
+                })
+        return breached
     
-    for ticket in open_tickets:
-        if ticket.sla_breached:
-            breached.append(ticket)
+    breached = await get_sla_breached_tickets()
     
     if not breached:
         await update.message.reply_text("✅ Нет тикетов с нарушением SLA!")
@@ -1053,14 +1059,14 @@ async def sla_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'p1': '🔴',
             'p2': '🟡',
             'p3': '🟢'
-        }.get(ticket.priority, '⚪')
+        }.get(ticket['priority'], '⚪')
         
-        overdue_mins = int((now - ticket.sla_deadline).total_seconds() / 60)
+        overdue_mins = int((now - ticket['sla_deadline']).total_seconds() / 60)
         
         message += (
-            f"{priority_emoji} *#{ticket.id}* - {ticket.subject[:30]}\n"
+            f"{priority_emoji} *#{ticket['id']}* - {ticket['subject']}\n"
             f"⏱️ Просрочен на {overdue_mins} мин\n"
-            f"/view\\_{ticket.id}\n\n"
+            f"/view\\_{ticket['id']}\n\n"
         )
     
     await update.message.reply_text(message, parse_mode='Markdown')
