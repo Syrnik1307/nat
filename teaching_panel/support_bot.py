@@ -83,7 +83,7 @@ def create_support_message(ticket, author, message, is_staff_reply=False):
 
 
 @sync_to_async
-def create_ticket(user, subject, description, category, email=None, page_url=None):
+def create_ticket(user, subject, description, category, email=None, page_url=None, priority='normal', status='new'):
     """Создать новый тикет (async-safe)"""
     return SupportTicket.objects.create(
         user=user,
@@ -91,7 +91,9 @@ def create_ticket(user, subject, description, category, email=None, page_url=Non
         description=description,
         category=category,
         email=email or (user.email if user else None),
-        page_url=page_url
+        page_url=page_url,
+        priority=priority,
+        status=status
     )
 
 
@@ -142,6 +144,30 @@ def get_ticket_stats():
         'waiting': SupportTicket.objects.filter(status='waiting_user').count(),
         'resolved': SupportTicket.objects.filter(status='resolved').count()
     }
+
+
+@sync_to_async
+def get_staff_admins():
+    """Получить список админов с Telegram ID (async-safe)"""
+    return list(CustomUser.objects.filter(is_staff=True, telegram_id__isnull=False))
+
+
+@sync_to_async
+def get_ticket_with_user(ticket_id):
+    """Получить тикет с данными пользователя (async-safe)"""
+    try:
+        ticket = SupportTicket.objects.select_related('user').get(id=ticket_id)
+        return {
+            'id': ticket.id,
+            'priority': ticket.priority,
+            'priority_display': ticket.get_priority_display(),
+            'category': ticket.category,
+            'subject': ticket.subject,
+            'description': ticket.description[:200],
+            'user_name': ticket.user.get_full_name() if ticket.user else ticket.email
+        }
+    except SupportTicket.DoesNotExist:
+        return None
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -541,7 +567,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ticket_id = ctx.get('ticket_id')
         
         try:
-            ticket = SupportTicket.objects.get(id=ticket_id)
+            ticket = await get_ticket_by_id(ticket_id)
         except SupportTicket.DoesNotExist:
             await update.message.reply_text(f"❌ Тикет #{ticket_id} не найден")
             if telegram_id in user_context:
@@ -551,12 +577,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Создаём ответ
         message_text = update.message.text
         
-        msg = SupportMessage.objects.create(
-            ticket=ticket,
-            author=user,
-            message=message_text,
-            is_staff_reply=True
-        )
+        await create_support_message(ticket, user, message_text, is_staff_reply=True)
         
         # Обновляем статус
         if ticket.status == 'new':
@@ -564,7 +585,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif ticket.status in ['resolved', 'closed']:
             ticket.status = 'in_progress'
         
-        ticket.save()
+        await save_ticket(ticket)
         
         await update.message.reply_text(
             f"✅ Ответ отправлен на тикет #{ticket_id}"
@@ -593,12 +614,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             category = creating.get('category', 'other')
             subject = creating.get('subject', 'Обращение из Telegram')
             
-            ticket = SupportTicket.objects.create(
+            ticket = await create_ticket(
                 user=user,
                 subject=subject,
                 description=description,
                 category=category,
-                priority='p2',
+                priority='normal',
                 status='new'
             )
             
@@ -626,7 +647,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     callback_data = query.data
     
     try:
-        user = CustomUser.objects.get(telegram_id=telegram_id)
+        user = await get_user_by_telegram_id(telegram_id)
     except CustomUser.DoesNotExist:
         await query.message.reply_text("❌ Сначала зарегистрируйтесь через /start")
         return
@@ -665,7 +686,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     try:
-        ticket = SupportTicket.objects.get(id=ticket_id)
+        ticket = await get_ticket_by_id(ticket_id)
     except SupportTicket.DoesNotExist:
         await query.message.reply_text(f"❌ Тикет #{ticket_id} не найден")
         return
@@ -680,16 +701,16 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     elif action == 'assign':
         ticket.assigned_to = user
-        ticket.save()
+        await save_ticket(ticket)
         await query.message.reply_text(f"✅ Тикет #{ticket_id} назначен вам")
     
     elif action == 'resolve':
-        ticket.mark_resolved()
+        await sync_to_async(ticket.mark_resolved)()
         await query.message.reply_text(f"✅ Тикет #{ticket_id} отмечен как решённый")
     
     elif action == 'progress':
         ticket.status = 'in_progress'
-        ticket.save()
+        await save_ticket(ticket)
         await query.message.reply_text(f"🔄 Тикет #{ticket_id} взят в работу")
 
 
@@ -698,7 +719,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     
     try:
-        user = CustomUser.objects.get(telegram_id=telegram_id)
+        user = await get_user_by_telegram_id(telegram_id)
         if not user.is_staff:
             await update.message.reply_text("❌ Доступ запрещён")
             return
@@ -706,27 +727,28 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Сначала зарегистрируйтесь через /start")
         return
     
-    from django.db.models import Count
+    # Получаем статистику через async wrapper
+    stats_data = await get_ticket_stats()
     
-    total = SupportTicket.objects.count()
-    new = SupportTicket.objects.filter(status='new').count()
-    in_progress = SupportTicket.objects.filter(status='in_progress').count()
-    waiting = SupportTicket.objects.filter(status='waiting_user').count()
-    resolved = SupportTicket.objects.filter(status='resolved').count()
+    @sync_to_async
+    def get_user_stats(u):
+        my_total = SupportTicket.objects.filter(assigned_to=u).count()
+        my_active = SupportTicket.objects.filter(
+            assigned_to=u,
+            status__in=['new', 'in_progress', 'waiting_user']
+        ).count()
+        return my_total, my_active
     
-    my_total = SupportTicket.objects.filter(assigned_to=user).count()
-    my_active = SupportTicket.objects.filter(
-        assigned_to=user,
-        status__in=['new', 'in_progress', 'waiting_user']
-    ).count()
+    my_total, my_active = await get_user_stats(user)
+    total = stats_data['new'] + stats_data['in_progress'] + stats_data['waiting'] + stats_data['resolved']
     
     message = (
         f"📊 *Статистика поддержки*\n\n"
         f"*Всего тикетов:* {total}\n"
-        f"🆕 Новых: {new}\n"
-        f"🔄 В работе: {in_progress}\n"
-        f"⏳ Ожидают ответа: {waiting}\n"
-        f"✅ Решённых: {resolved}\n\n"
+        f"🆕 Новых: {stats_data['new']}\n"
+        f"🔄 В работе: {stats_data['in_progress']}\n"
+        f"⏳ Ожидают ответа: {stats_data['waiting']}\n"
+        f"✅ Решённых: {stats_data['resolved']}\n\n"
         f"*Ваши тикеты:*\n"
         f"📌 Всего назначено: {my_total}\n"
         f"🔥 Активных: {my_active}"

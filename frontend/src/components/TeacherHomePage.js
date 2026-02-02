@@ -336,11 +336,35 @@ const TeacherHomePage = () => {
       
       // Открываем ссылку СРАЗУ после получения ответа (как было раньше)
       if (res.data?.zoom_start_url) {
+        // OPTIMISTIC UPDATE: добавляем урок в список сразу
+        if (res.data?.id) {
+          const newLesson = {
+            id: res.data.id,
+            title: quickLessonTitle.trim() || 'Быстрый урок',
+            status: 'in_progress',
+            zoom_start_url: res.data.zoom_start_url,
+            group_name: groups.find(g => g.id === selectedGroupId)?.name,
+            started_at: new Date().toISOString(),
+          };
+          setLessons(prev => [newLesson, ...prev]);
+        }
         window.open(res.data.zoom_start_url, '_blank');
         setShowStartModal(false);
         // Инвалидируем кеш уроков - новый урок создан
         invalidateCache('teacher:lessons');
       } else if (res.data?.meet_link) {
+        // OPTIMISTIC UPDATE для Google Meet
+        if (res.data?.id) {
+          const newLesson = {
+            id: res.data.id,
+            title: quickLessonTitle.trim() || 'Быстрый урок',
+            status: 'in_progress',
+            meet_link: res.data.meet_link,
+            group_name: groups.find(g => g.id === selectedGroupId)?.name,
+            started_at: new Date().toISOString(),
+          };
+          setLessons(prev => [newLesson, ...prev]);
+        }
         window.open(res.data.meet_link, '_blank');
         setShowStartModal(false);
         invalidateCache('teacher:lessons');

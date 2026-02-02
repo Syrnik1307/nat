@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { prefetch } from '../utils/dataCache';
+import { prefetch, TTL } from '../utils/dataCache';
 import { getLessons, getHomeworkList, getSubmissions, getGroups } from '../apiService';
 import '../styles/StudentNavBar.css';
 
@@ -22,7 +22,7 @@ const IconX = ({ size = 24 }) => (
   </svg>
 );
 
-// Prefetch функции для разных страниц
+// Prefetch функции для разных страниц (с TTL для корректного кеширования)
 const prefetchStudentData = () => {
   const now = new Date();
   const in30 = new Date();
@@ -32,21 +32,21 @@ const prefetchStudentData = () => {
     start: now.toISOString(),
     end: in30.toISOString(),
     include_recurring: true,
-  }).then(res => Array.isArray(res.data) ? res.data : res.data.results || []));
+  }).then(res => Array.isArray(res.data) ? res.data : res.data.results || []), TTL.SHORT);
   
   prefetch('student:groups', () => getGroups()
-    .then(res => Array.isArray(res.data) ? res.data : res.data.results || []));
+    .then(res => Array.isArray(res.data) ? res.data : res.data.results || []), TTL.MEDIUM);
 };
 
 const prefetchHomeworkData = () => {
   prefetch('student:homework:list', () => getHomeworkList({})
-    .then(res => Array.isArray(res.data) ? res.data : res.data.results || []));
+    .then(res => Array.isArray(res.data) ? res.data : res.data.results || []), TTL.MEDIUM);
   
   prefetch('student:homework:submissions', () => getSubmissions({})
-    .then(res => Array.isArray(res.data) ? res.data : res.data.results || []));
+    .then(res => Array.isArray(res.data) ? res.data : res.data.results || []), TTL.MEDIUM);
   
   prefetch('student:groups', () => getGroups()
-    .then(res => Array.isArray(res.data) ? res.data : res.data.results || []));
+    .then(res => Array.isArray(res.data) ? res.data : res.data.results || []), TTL.MEDIUM);
 };
 
 const navItems = [
