@@ -41,10 +41,11 @@ class CreateZoomOrderSerializer(serializers.Serializer):
     is_new_account = serializers.BooleanField(
         help_text='True = создать новый аккаунт, False = оплатить существующий'
     )
-    zoom_email = serializers.EmailField(
+    zoom_email = serializers.CharField(
+        max_length=255,
         required=False,
         allow_blank=True,
-        help_text='Email для Zoom аккаунта (для нового аккаунта)'
+        help_text='Email/логин для Zoom аккаунта'
     )
     zoom_password = serializers.CharField(
         max_length=100,
