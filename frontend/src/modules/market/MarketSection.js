@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { apiClient } from '../../apiService';
+import { getCached, TTL } from '../../utils/dataCache';
 import ZoomPurchaseModal from './ZoomPurchaseModal';
 import './MarketSection.css';
 
@@ -61,8 +62,12 @@ const MarketSection = () => {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const response = await apiClient.get('/market/products/');
-      setProducts(response.data || []);
+      // Используем кеширование с длинным TTL - продукты редко меняются
+      const data = await getCached('market:products', async () => {
+        const response = await apiClient.get('/market/products/');
+        return response.data || [];
+      }, TTL.STATIC); // 10 минут
+      setProducts(data);
     } catch (err) {
       console.error('Failed to fetch products:', err);
     }
@@ -102,9 +107,20 @@ const MarketSection = () => {
   if (loading) {
     return (
       <div className="market-section">
-        <div className="market-loading">
-          <div className="market-loading-spinner" />
-          <span>Загрузка...</span>
+        <div className="market-header">
+          <h2>Маркет</h2>
+          <p>Цифровые услуги для вашего обучения</p>
+        </div>
+        {/* Skeleton loader вместо spinner */}
+        <div className="market-products">
+          {[1, 2].map((i) => (
+            <div key={i} className="market-product-card skeleton">
+              <div className="product-icon skeleton-icon" />
+              <div className="skeleton-title" />
+              <div className="skeleton-desc" />
+              <div className="skeleton-price" />
+            </div>
+          ))}
         </div>
       </div>
     );
