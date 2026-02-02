@@ -40,18 +40,9 @@ const ShoppingBagIcon = () => (
   </svg>
 );
 
-const STATUS_LABELS = {
-  pending: 'Ожидает оплаты',
-  paid: 'Оплачен',
-  completed: 'Выполнен',
-  cancelled: 'Отменен',
-  refunded: 'Возврат',
-};
-
 const MarketSection = () => {
   const location = useLocation();
   const [products, setProducts] = useState([]);
-  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -77,23 +68,14 @@ const MarketSection = () => {
     }
   }, []);
 
-  const fetchOrders = useCallback(async () => {
-    try {
-      const response = await apiClient.get('/market/my-orders/');
-      setOrders(response.data || []);
-    } catch (err) {
-      console.error('Failed to fetch orders:', err);
-    }
-  }, []);
-
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchProducts(), fetchOrders()]);
+      await fetchProducts();
       setLoading(false);
     };
     loadData();
-  }, [fetchProducts, fetchOrders]);
+  }, [fetchProducts]);
 
   const handleBuyClick = (product) => {
     setSelectedProduct(product);
@@ -111,15 +93,6 @@ const MarketSection = () => {
     if (paymentUrl) {
       window.location.href = paymentUrl;
     }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
   };
 
   const formatPrice = (price) => {
@@ -224,26 +197,6 @@ const MarketSection = () => {
         <div className="market-empty">
           <ShoppingBagIcon className="market-empty-icon" />
           <p>Товары скоро появятся</p>
-        </div>
-      )}
-
-      {/* Orders History */}
-      {orders.length > 0 && (
-        <div className="market-orders">
-          <h3>Мои заказы</h3>
-          <div className="orders-list">
-            {orders.map((order) => (
-              <div key={order.id} className="order-item">
-                <div className="order-info">
-                  <span className="order-product">{order.product_title}</span>
-                  <span className="order-date">{formatDate(order.created_at)}</span>
-                </div>
-                <span className={`order-status ${order.status}`}>
-                  {STATUS_LABELS[order.status] || order.status}
-                </span>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
