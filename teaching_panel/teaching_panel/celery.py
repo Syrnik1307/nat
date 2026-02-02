@@ -21,7 +21,7 @@ import os
 import logging
 
 from celery import Celery
-from celery.signals import worker_ready, beat_init, task_prerun, task_postrun, worker_shutdown
+from celery.signals import worker_ready, beat_init, task_prerun, task_postrun, worker_shutdown, task_failure
 
 logger = logging.getLogger(__name__)
 
@@ -151,4 +151,57 @@ def cleanup_on_worker_shutdown(sender=None, **kwargs):
     from django import db
     db.connections.close_all()
     logger.info("Celery worker shutting down - all DB connections closed")
+
+
+# =============================================================================
+# MONITORING: Alert on task failures and time limit exceeded
+# =============================================================================
+
+@task_failure.connect
+def alert_on_task_failure(sender=None, task_id=None, exception=None, args=None, kwargs=None, traceback=None, einfo=None, **kw):
+    """
+    Send Telegram alert when a Celery task fails or exceeds time limit.
+    
+    This catches:
+    - SoftTimeLimitExceeded (task ran too long)
+    - TimeLimitExceeded (task killed by hard limit)
+    - Any other unhandled exceptions
+    """
+    from celery.exceptions import SoftTimeLimitExceeded, TimeLimitExceeded
+    
+    task_name = sender.name if sender else 'unknown'
+    exc_type = type(exception).__name__ if exception else 'Unknown'
+    exc_msg = str(exception)[:500] if exception else 'No message'
+    
+    # Determine severity
+    if isinstance(exception, (SoftTimeLimitExceeded, TimeLimitExceeded)):
+        severity = 'warning'
+        emoji = '⏱️'
+        title = 'TASK TIME LIMIT EXCEEDED'
+    else:
+        severity = 'error'
+        emoji = '🚨'
+        title = 'CELERY TASK FAILED'
+    
+    # Log locally
+    logger.error(f"[CELERY_FAILURE] {task_name}: {exc_type} - {exc_msg}")
+    
+    # Send Telegram alert (non-blocking)
+    try:
+        from teaching_panel.telegram_logging import send_telegram_alert
+        
+        message = (
+            f"{emoji} <b>{title}</b>\n\n"
+            f"<b>Task:</b> <code>{task_name}</code>\n"
+            f"<b>Exception:</b> {exc_type}\n"
+            f"<b>Message:</b> {exc_msg}\n"
+            f"<b>Task ID:</b> <code>{task_id}</code>"
+        )
+        
+        # Fire and forget - don't block on alert sending
+        send_telegram_alert.delay(message, severity=severity)
+        
+    except Exception as alert_err:
+        logger.warning(f"[CELERY_FAILURE] Failed to send alert: {alert_err}")
+
 

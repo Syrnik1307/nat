@@ -152,7 +152,7 @@ const MarketSection = () => {
           </div>
         </div>
         <a 
-          href="https://t.me/lectio_support" 
+          href="https://t.me/help_lectio_space_bot" 
           target="_blank" 
           rel="noopener noreferrer"
           className="custom-banner-button"
