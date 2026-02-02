@@ -58,6 +58,106 @@
   border-color: var(--color-primary);
 }
 
+/* Custom Services Banner */
+.market-custom-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(124, 58, 237, 0.08) 100%);
+  border: 1px solid rgba(79, 70, 229, 0.2);
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  transition: 
+    border-color var(--duration-normal) var(--ease-smooth),
+    box-shadow var(--duration-normal) var(--ease-smooth);
+}
+
+.market-custom-banner:hover {
+  border-color: rgba(79, 70, 229, 0.4);
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.1);
+}
+
+.custom-banner-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-banner-icon svg {
+  width: 24px;
+  height: 24px;
+  color: white;
+}
+
+.custom-banner-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.custom-banner-content h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 4px;
+}
+
+.custom-banner-content p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.custom-banner-button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: 10px;
+  transition: 
+    transform var(--duration-fast) var(--ease-smooth),
+    box-shadow var(--duration-fast) var(--ease-smooth);
+}
+
+.custom-banner-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+  color: white;
+}
+
+.custom-banner-button:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .market-custom-banner {
+    flex-direction: column;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .custom-banner-content {
+    order: 2;
+  }
+
+  .custom-banner-button {
+    order: 3;
+    width: 100%;
+  }
+}
+
 .product-icon {
   width: 48px;
   height: 48px;

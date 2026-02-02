@@ -64,7 +64,7 @@ const SimpleResetPage = () => {
     setLoading(true);
     
     try {
-      const response = await fetch('/api/accounts/simple-reset/', {
+      const response = await fetch('/api/simple-reset/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
