@@ -180,6 +180,7 @@ class MarketWebhookView(APIView):
     """
     POST /api/market/webhook/
     Handle T-Bank payment webhooks for market orders.
+    IDEMPOTENT: Duplicate webhooks are safe - we check order status before processing.
     """
     permission_classes = [AllowAny]
     
@@ -216,7 +217,15 @@ class MarketWebhookView(APIView):
         return Response({'status': 'OK'})
     
     def _handle_payment_confirmed(self, order: MarketOrder):
-        """Handle confirmed payment: update status and notify admin."""
+        """
+        Handle confirmed payment: update status and notify admin.
+        IDEMPOTENT: If order is already PAID or beyond, skip processing.
+        """
+        # IDEMPOTENCY CHECK: Already processed?
+        if order.status in [MarketOrder.STATUS_PAID, MarketOrder.STATUS_COMPLETED]:
+            logger.info(f"Market order #{order.id} already {order.status}, skipping (idempotent)")
+            return
+        
         order.status = MarketOrder.STATUS_PAID
         order.paid_at = timezone.now()
         order.save(update_fields=['status', 'paid_at', 'updated_at'])
