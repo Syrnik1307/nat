@@ -86,7 +86,7 @@ class ZoomAPIClient:
                     'account_id': self.account_id
                 },
                 auth=(self.client_id, self.client_secret),
-                timeout=10
+                timeout=(5, 15)  # (connect_timeout, read_timeout)
             )
             oauth_time = _time.time() - oauth_start
             logger.info(f"[ZOOM_PERF] OAuth request took {oauth_time:.3f}s")

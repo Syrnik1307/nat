@@ -13,14 +13,24 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='schedule.tasks.warmup_zoom_oauth_tokens')
+@shared_task(
+    name='schedule.tasks.warmup_zoom_oauth_tokens',
+    autoretry_for=(Exception,),
+    retry_backoff=60,
+    retry_backoff_max=300,
+    max_retries=2,
+    retry_jitter=True
+)
 def warmup_zoom_oauth_tokens():
     """
     Прогрев OAuth токенов Zoom для всех учителей с credentials.
     
     Запускается каждые 55 минут чтобы токены всегда были в кеше.
     Это экономит ~10 секунд на каждом запуске урока.
+    
+    Retry: до 2 раз с backoff 60-300 секунд при сетевых ошибках.
     """
+    import requests.exceptions
     from accounts.models import CustomUser
     from .zoom_client import ZoomAPIClient
     
@@ -40,6 +50,8 @@ def warmup_zoom_oauth_tokens():
     
     warmed_count = 0
     skipped_count = 0
+    timeout_count = 0
+    error_count = 0
     
     for teacher in teachers_with_zoom:
         if not teacher.zoom_account_id or not teacher.zoom_client_id or not teacher.zoom_client_secret:
@@ -61,16 +73,36 @@ def warmup_zoom_oauth_tokens():
             client._get_access_token()
             warmed_count += 1
             logger.info(f"[ZOOM_WARMUP] Warmed token for teacher {teacher.email}")
+        except requests.exceptions.Timeout as e:
+            # Таймаут - не критичная ошибка, просто логируем
+            timeout_count += 1
+            logger.warning(f"[ZOOM_WARMUP] Timeout for {teacher.email}: {e}")
+        except requests.exceptions.ConnectionError as e:
+            # Сетевая ошибка - не критичная
+            timeout_count += 1
+            logger.warning(f"[ZOOM_WARMUP] Connection error for {teacher.email}: {e}")
         except Exception as e:
             # Логируем только warning для реальных ошибок, не для невалидных credentials
             error_msg = str(e).lower()
             if 'invalid' in error_msg or '400' in error_msg or '401' in error_msg:
                 logger.debug(f"[ZOOM_WARMUP] Invalid credentials for {teacher.email}: {e}")
+            elif 'timeout' in error_msg or 'timed out' in error_msg:
+                timeout_count += 1
+                logger.warning(f"[ZOOM_WARMUP] Timeout for {teacher.email}: {e}")
             else:
+                error_count += 1
                 logger.warning(f"[ZOOM_WARMUP] Failed to warm token for {teacher.email}: {e}")
     
-    logger.info(f"[ZOOM_WARMUP] Warmed {warmed_count} tokens, skipped {skipped_count} invalid")
-    return warmed_count
+    result = {
+        'warmed': warmed_count,
+        'skipped': skipped_count,
+        'timeouts': timeout_count,
+        'errors': error_count,
+        'timestamp': timezone.now().isoformat()
+    }
+    
+    logger.info(f"[ZOOM_WARMUP] Result: {result}")
+    return result
 
 
 @shared_task(name='schedule.tasks.release_stuck_zoom_accounts')
