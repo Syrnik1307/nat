@@ -172,15 +172,21 @@ def get_unread_count(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_telegram_support_link(request):
-    """Вернуть deep-link на Telegram бота, который откроет поддержку.
+    """Вернуть deep-link на Telegram бота поддержки.
 
     - Если Telegram уже привязан, возвращаем start=support.
     - Если не привязан, генерируем одноразовый TelegramLinkCode и используем start=support_<CODE>.
     """
-    username = (getattr(settings, 'TELEGRAM_BOT_USERNAME', '') or '').lstrip('@').strip()
+    import os
+    # Используем отдельного бота поддержки, а не основного бота
+    username = os.getenv('SUPPORT_BOT_USERNAME', '').lstrip('@').strip()
+    if not username:
+        # Fallback на основного бота если SUPPORT_BOT_USERNAME не настроен
+        username = (getattr(settings, 'TELEGRAM_BOT_USERNAME', '') or '').lstrip('@').strip()
+    
     if not username:
         return Response(
-            {'detail': 'TELEGRAM_BOT_USERNAME не настроен'},
+            {'detail': 'SUPPORT_BOT_USERNAME не настроен'},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 

@@ -21,7 +21,7 @@ import os
 import logging
 
 from celery import Celery
-from celery.signals import worker_ready, beat_init
+from celery.signals import worker_ready, beat_init, task_prerun, task_postrun, worker_shutdown
 
 logger = logging.getLogger(__name__)
 
@@ -92,4 +92,63 @@ def debug_task(self):
     """Simple debug task that logs request information."""
     print(f"Request: {self.request!r}")
     return "Debug task executed"
-    return "Debug task executed"
+
+
+# =============================================================================
+# DATABASE CONNECTION MANAGEMENT FOR CELERY
+# Critical for preventing "server closed the connection unexpectedly" errors
+# =============================================================================
+
+@task_prerun.connect
+def close_stale_db_connections_before_task(sender=None, task_id=None, task=None, **kwargs):
+    """
+    Close stale database connections BEFORE each task runs.
+    
+    This prevents "server closed the connection unexpectedly" errors that occur
+    when a long-lived Celery worker tries to use a database connection that
+    PostgreSQL has already terminated (due to timeout or restart).
+    
+    Django's persistent connections (CONN_MAX_AGE) can become stale in Celery
+    workers because workers live much longer than typical web requests.
+    """
+    from django import db
+    
+    # Close connections that are unusable
+    for conn in db.connections.all():
+        if conn.connection is not None:
+            try:
+                # Ping the connection to check if it's still valid
+                conn.ensure_connection()
+            except Exception:
+                # Connection is dead, close it so Django creates a new one
+                conn.close()
+
+
+@task_postrun.connect
+def close_db_connections_after_task(sender=None, task_id=None, task=None, retval=None, state=None, **kwargs):
+    """
+    Close all database connections AFTER each task completes.
+    
+    This ensures that:
+    1. Connections don't pile up and exhaust the PostgreSQL connection pool
+    2. No stale connections are left for the next task
+    3. Memory associated with connections is freed
+    
+    This is the recommended pattern for Celery + Django:
+    https://docs.celeryq.dev/en/stable/django/first-steps-with-django.html
+    """
+    from django import db
+    db.connections.close_all()
+
+
+@worker_shutdown.connect
+def cleanup_on_worker_shutdown(sender=None, **kwargs):
+    """
+    Clean up all database connections when Celery worker is shutting down.
+    
+    This ensures graceful termination and prevents connection leaks.
+    """
+    from django import db
+    db.connections.close_all()
+    logger.info("Celery worker shutting down - all DB connections closed")
+
