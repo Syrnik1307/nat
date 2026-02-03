@@ -944,6 +944,12 @@ class LessonViewSet(viewsets.ModelViewSet):
                 # Используем __date для фильтрации по дате независимо от часового пояса
                 queryset = queryset.filter(start_time__date=parsed_date)
         
+        # Фильтр для скрытия завершённых уроков (exclude_ended=1)
+        # Полезно для виджета "Уроки на сегодня" - показываем только активные
+        exclude_ended = self.request.query_params.get('exclude_ended')
+        if exclude_ended and str(exclude_ended).lower() in ('1', 'true', 'yes'):
+            queryset = queryset.filter(ended_at__isnull=True)
+        
         # Фильтр по датам (для календаря)
         # ВАЖНО: фильтруем по пересечению интервалов, иначе урок, начавшийся ДО start,
         # но ещё идущий, будет скрыт (это и ломает “начал урок, ученики не видят карточку”).
@@ -1020,7 +1026,11 @@ class LessonViewSet(viewsets.ModelViewSet):
         end_param = request.query_params.get('end')
         teacher_id = request.query_params.get('teacher') or ''
         group_id = request.query_params.get('group') or ''
-        raw_key = f"calendar:{teacher_id}:{group_id}:{start_param}:{end_param}"
+        
+        # БЕЗОПАСНОСТЬ: Включаем user.id в ключ кэша для предотвращения утечки данных
+        user = request.user
+        user_id = user.id if user.is_authenticated else 'anon'
+        raw_key = f"calendar:{user_id}:{teacher_id}:{group_id}:{start_param}:{end_param}"
         # Убираем пробелы, если ключ слишком длинный или содержит запрещенные символы — хэшируем
         safe_key = raw_key.replace(' ', '_')
         if len(safe_key) > 200:
@@ -1062,14 +1072,28 @@ class LessonViewSet(viewsets.ModelViewSet):
         start_dt = safe_parse(start_date_param)
         end_dt = safe_parse(end_date_param)
         if start_dt and end_dt:
-            # Берем регулярные уроки преподавателя/групп из контекста запроса
+            # БЕЗОПАСНОСТЬ: Фильтруем регулярные уроки по роли пользователя
             recurring_qs = RecurringLesson.objects.all()
-            teacher_id = request.query_params.get('teacher')
-            group_id = request.query_params.get('group')
-            if teacher_id:
-                recurring_qs = recurring_qs.filter(teacher_id=teacher_id)
-            if group_id:
-                recurring_qs = recurring_qs.filter(group_id=group_id)
+            role = getattr(user, 'role', None) if user.is_authenticated else None
+            
+            if role == 'teacher':
+                # Учитель видит только свои регулярные уроки
+                recurring_qs = recurring_qs.filter(teacher=user)
+            elif role == 'student':
+                # Студент видит только регулярные уроки групп, в которых он состоит
+                recurring_qs = recurring_qs.filter(group__students=user)
+            elif role != 'admin':
+                # Неизвестная роль или не авторизован - пустой queryset
+                recurring_qs = recurring_qs.none()
+            # Admin видит всё (без дополнительной фильтрации)
+            
+            # Дополнительные фильтры из query params (применяются поверх ролевой фильтрации)
+            teacher_id_param = request.query_params.get('teacher')
+            group_id_param = request.query_params.get('group')
+            if teacher_id_param:
+                recurring_qs = recurring_qs.filter(teacher_id=teacher_id_param)
+            if group_id_param:
+                recurring_qs = recurring_qs.filter(group_id=group_id_param)
 
             # Функция проверки типа недели
             def matches_week_type(week_type, date):
@@ -2250,9 +2274,14 @@ class RecurringLessonViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if not user.is_authenticated:
             return queryset.none()
-        if getattr(user, 'role', None) == 'teacher':
+        
+        role = getattr(user, 'role', None)
+        if role == 'admin':
+            # Админ видит всё
+            pass
+        elif role == 'teacher':
             queryset = queryset.filter(teacher=user)
-        elif getattr(user, 'role', None) == 'student':
+        elif role == 'student':
             queryset = queryset.filter(group__students=user)
         else:
             return queryset.none()

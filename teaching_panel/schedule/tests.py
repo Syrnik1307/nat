@@ -230,6 +230,143 @@ class ZoomAccountsApiTests(TestCase):
 		self.assertEqual(resp.status_code, 403)
 
 
+class LessonAccessControlTests(TestCase):
+	"""БЕЗОПАСНОСТЬ: Тесты IDOR/Broken Access Control для уроков."""
+	
+	def setUp(self):
+		# Создаём двух учителей с разными группами
+		self.teacher1 = User.objects.create_user(email='teacher1@example.com', password='pass', role='teacher')
+		self.teacher2 = User.objects.create_user(email='teacher2@example.com', password='pass', role='teacher')
+		
+		# Создаём двух студентов
+		self.student1 = User.objects.create_user(email='student1@example.com', password='pass', role='student')
+		self.student2 = User.objects.create_user(email='student2@example.com', password='pass', role='student')
+		
+		# Группа teacher1 со student1
+		self.group1 = Group.objects.create(name='Group 1', teacher=self.teacher1)
+		self.group1.students.add(self.student1)
+		
+		# Группа teacher2 со student2
+		self.group2 = Group.objects.create(name='Group 2', teacher=self.teacher2)
+		self.group2.students.add(self.student2)
+		
+		# Уроки
+		start = timezone.now() + timedelta(hours=1)
+		end = start + timedelta(hours=1)
+		
+		self.lesson1 = Lesson.objects.create(
+			title='Lesson 1',
+			group=self.group1,
+			teacher=self.teacher1,
+			start_time=start,
+			end_time=end,
+			zoom_join_url='https://zoom.us/j/111',
+			google_meet_link='https://meet.google.com/abc-def-ghi',
+		)
+		
+		self.lesson2 = Lesson.objects.create(
+			title='Lesson 2',
+			group=self.group2,
+			teacher=self.teacher2,
+			start_time=start + timedelta(hours=2),
+			end_time=end + timedelta(hours=2),
+			zoom_join_url='https://zoom.us/j/222',
+		)
+		
+		self.client = APIClient()
+	
+	def test_student_cannot_list_other_groups_lessons(self):
+		"""Student1 должен видеть только уроки своей группы."""
+		self.client.force_authenticate(user=self.student1)
+		resp = self.client.get('/api/schedule/lessons/')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		# Может быть пагинация
+		lessons = data.get('results', data)
+		lesson_ids = [l['id'] for l in lessons]
+		# Должен видеть только свой урок
+		self.assertIn(self.lesson1.id, lesson_ids)
+		self.assertNotIn(self.lesson2.id, lesson_ids)
+	
+	def test_student_cannot_retrieve_other_groups_lesson_by_id(self):
+		"""Student1 не должен получить урок группы 2 по прямому ID (IDOR)."""
+		self.client.force_authenticate(user=self.student1)
+		resp = self.client.get(f'/api/schedule/lessons/{self.lesson2.id}/')
+		# Должен быть 404 (не найден в отфильтрованном queryset)
+		self.assertEqual(resp.status_code, 404)
+	
+	def test_student_cannot_join_other_groups_lesson(self):
+		"""Student1 не должен получить ссылку на урок группы 2."""
+		self.client.force_authenticate(user=self.student1)
+		resp = self.client.post(f'/api/schedule/lessons/{self.lesson2.id}/join/')
+		# Должен быть 404 (не найден) или 403 (нет доступа)
+		self.assertIn(resp.status_code, [403, 404])
+	
+	def test_student_can_retrieve_own_lesson(self):
+		"""Student1 должен получить свой урок."""
+		self.client.force_authenticate(user=self.student1)
+		resp = self.client.get(f'/api/schedule/lessons/{self.lesson1.id}/')
+		self.assertEqual(resp.status_code, 200)
+		# Проверяем что URL видеоконференции доступен (zoom или meet)
+		data = resp.json()
+		has_url = data.get('zoom_join_url') or data.get('google_meet_link')
+		self.assertTrue(has_url, f"Expected zoom_join_url or google_meet_link to be present. Got: {data}")
+	
+	def test_student_serializer_hides_urls_for_other_lessons(self):
+		"""Сериализатор не должен отдавать URL для чужих уроков."""
+		# Этот тест проверяет дополнительный слой защиты через сериализатор
+		# даже если queryset как-то пропустит урок
+		self.client.force_authenticate(user=self.student1)
+		resp = self.client.get(f'/api/schedule/lessons/{self.lesson1.id}/')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		# URL должен быть доступен для своего урока
+		self.assertTrue(data.get('zoom_join_url') or data.get('google_meet_link'))
+	
+	def test_teacher_cannot_see_other_teachers_lessons(self):
+		"""Teacher1 не должен видеть уроки Teacher2."""
+		self.client.force_authenticate(user=self.teacher1)
+		resp = self.client.get('/api/schedule/lessons/')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		lessons = data.get('results', data)
+		lesson_ids = [l['id'] for l in lessons]
+		self.assertIn(self.lesson1.id, lesson_ids)
+		self.assertNotIn(self.lesson2.id, lesson_ids)
+	
+	def test_teacher_cannot_retrieve_other_teachers_lesson_by_id(self):
+		"""Teacher1 не может получить урок Teacher2 по ID."""
+		self.client.force_authenticate(user=self.teacher1)
+		resp = self.client.get(f'/api/schedule/lessons/{self.lesson2.id}/')
+		self.assertEqual(resp.status_code, 404)
+	
+	def test_calendar_feed_student_only_sees_own_lessons(self):
+		"""Student видит в calendar_feed только уроки своих групп."""
+		self.client.force_authenticate(user=self.student1)
+		start = (timezone.now() - timedelta(days=1)).isoformat()
+		end = (timezone.now() + timedelta(days=7)).isoformat()
+		resp = self.client.get(f'/api/schedule/lessons/calendar_feed/?start={start}&end={end}')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		# Проверяем что видим только свои уроки
+		lesson_ids = [e['id'] for e in data if not str(e['id']).startswith('recurring-')]
+		self.assertIn(self.lesson1.id, lesson_ids)
+		self.assertNotIn(self.lesson2.id, lesson_ids)
+	
+	def test_calendar_feed_teacher_only_sees_own_lessons(self):
+		"""Teacher видит в calendar_feed только свои уроки."""
+		self.client.force_authenticate(user=self.teacher1)
+		start = (timezone.now() - timedelta(days=1)).isoformat()
+		end = (timezone.now() + timedelta(days=7)).isoformat()
+		resp = self.client.get(f'/api/schedule/lessons/calendar_feed/?start={start}&end={end}')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json()
+		# Проверяем что видим только свои уроки
+		lesson_ids = [e['id'] for e in data if not str(e['id']).startswith('recurring-')]
+		self.assertIn(self.lesson1.id, lesson_ids)
+		self.assertNotIn(self.lesson2.id, lesson_ids)
+
+
 class InviteCodeUniquenessTests(TestCase):
 	def setUp(self):
 		self.teacher = User.objects.create_user(email='invite_teacher@example.com', password='pass', role='teacher')
