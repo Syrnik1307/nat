@@ -6,8 +6,13 @@ from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils.html import strip_tags
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
+
+# Пул потоков для асинхронной отправки email (fire-and-forget)
+_email_executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix='email_sender')
 
 
 class EmailService:
@@ -21,7 +26,7 @@ class EmailService:
         if not self.enabled:
             logger.warning('Email backend not configured. Email sending will be disabled.')
     
-    def send_verification_email(self, email, code, token):
+    def send_verification_email(self, email, code, token, async_send=True):
         """
         Отправка email с кодом верификации
         
@@ -29,6 +34,7 @@ class EmailService:
             email (str): Email адрес получателя
             code (str): 6-значный код верификации
             token (str): UUID токен для ссылки верификации
+            async_send (bool): Отправлять асинхронно (по умолчанию True)
             
         Returns:
             dict: {'success': bool, 'message': str}
@@ -39,6 +45,27 @@ class EmailService:
                 'success': False,
                 'message': 'Email service not configured'
             }
+        
+        # Асинхронная отправка - сразу возвращаем success, отправляем в фоне
+        if async_send:
+            try:
+                _email_executor.submit(self._send_verification_email_sync, email, code, token)
+                logger.info(f'Verification email queued for async sending to {email}')
+                return {
+                    'success': True,
+                    'message': 'Email queued for sending'
+                }
+            except Exception as e:
+                logger.error(f'Failed to queue verification email to {email}: {str(e)}')
+                # Fallback на синхронную отправку
+                return self._send_verification_email_sync(email, code, token)
+        
+        return self._send_verification_email_sync(email, code, token)
+    
+    def _send_verification_email_sync(self, email, code, token):
+        """
+        Синхронная отправка email (внутренний метод)
+        """
         
         try:
             # Формируем ссылку для верификации
@@ -184,13 +211,14 @@ class EmailService:
                 'message': f'Failed to send email: {str(e)}'
             }
     
-    def send_welcome_email(self, email, user_name):
+    def send_welcome_email(self, email, user_name, async_send=True):
         """
         Отправка приветственного письма после успешной верификации
         
         Args:
             email (str): Email адрес
             user_name (str): Имя пользователя
+            async_send (bool): Отправлять асинхронно (по умолчанию True)
             
         Returns:
             dict: {'success': bool, 'message': str}
@@ -198,6 +226,25 @@ class EmailService:
         if not self.enabled:
             return {'success': False, 'message': 'Email service not configured'}
         
+        # Асинхронная отправка
+        if async_send:
+            try:
+                _email_executor.submit(self._send_welcome_email_sync, email, user_name)
+                logger.info(f'Welcome email queued for async sending to {email}')
+                return {
+                    'success': True,
+                    'message': 'Welcome email queued for sending'
+                }
+            except Exception as e:
+                logger.error(f'Failed to queue welcome email to {email}: {str(e)}')
+                return self._send_welcome_email_sync(email, user_name)
+        
+        return self._send_welcome_email_sync(email, user_name)
+    
+    def _send_welcome_email_sync(self, email, user_name):
+        """
+        Синхронная отправка welcome email (внутренний метод)
+        """
         try:
             subject = f'Добро пожаловать в Teaching Panel, {user_name}!'
             
