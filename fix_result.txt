@@ -1,0 +1,79 @@
+=== Текущая конфигурация nginx ===
+Используем: /etc/nginx/sites-available/lectio.space
+
+=== Проверяем X-Forwarded-Proto ===
+X-Forwarded-Proto уже есть в конфиге
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+=== Проверяем все location с proxy_pass ===
+        proxy_pass http://django/accounts/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 75s;
+--
+        proxy_pass http://django/schedule/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 75s;
+--
+        proxy_pass http://django;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+--
+        proxy_pass http://django/ws/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+--
+        proxy_pass http://django;
+        proxy_set_header Host $host;
+
+=== Тестируем nginx конфигурацию ===
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+=== Перезагружаем nginx ===
+
+=== Проверяем что сервис работает ===
+● nginx.service - A high performance web server and a reverse proxy server
+     Loaded: loaded (/lib/systemd/system/nginx.service; enabled; vendor preset: enabled)
+     Active: active (running) since Tue 2026-02-03 11:53:57 UTC; 38min ago
+       Docs: man:nginx(8)
+    Process: 54525 ExecStartPre=/usr/sbin/nginx -t -q -g daemon on; master_process on; (code=exited, status=0/SUCCESS)
+    Process: 54526 ExecStart=/usr/sbin/nginx -g daemon on; master_process on; (code=exited, status=0/SUCCESS)
+    Process: 57078 ExecReload=/usr/sbin/nginx -g daemon on; master_process on; -s reload (code=exited, status=0/SUCCESS)
+   Main PID: 54527 (nginx)
+      Tasks: 6 (limit: 9556)
+     Memory: 11.4M
+
+=== Проверяем SSL и заголовки ===
+HTTP/2 401 
+server: nginx/1.18.0 (Ubuntu)
+date: Tue, 03 Feb 2026 12:32:08 GMT
+content-type: application/json
+content-length: 58
+www-authenticate: Bearer realm="api"
+allow: GET, HEAD, OPTIONS
+x-request-duration: 0.002
+x-frame-options: DENY
+vary: origin, Cookie
+x-content-type-options: nosniff
+referrer-policy: same-origin
+cross-origin-opener-policy: same-origin
+strict-transport-security: max-age=31536000; includeSubDomains
+x-content-type-options: nosniff
+
+=== Готово! ===

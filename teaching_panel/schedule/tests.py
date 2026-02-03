@@ -93,6 +93,71 @@ class LessonValidationTests(TestCase):
 		self.assertTrue('пересекающийся' in str(resp.json()))
 
 
+class LessonEndAndArchiveTests(TestCase):
+	"""Тесты для завершения урока и скрытия из виджета 'Сегодня'"""
+	
+	def setUp(self):
+		self.teacher = User.objects.create_user(email='endtest@example.com', password='pass', role='teacher')
+		self.group = Group.objects.create(name='EndTestGroup', teacher=self.teacher)
+		self.client = APIClient()
+		self.client.force_authenticate(user=self.teacher)
+		
+		# Урок на сегодня
+		today = timezone.now().date()
+		start = timezone.now() + timedelta(hours=1)
+		end = start + timedelta(hours=1)
+		self.lesson = Lesson.objects.create(
+			title='Today Lesson',
+			group=self.group,
+			teacher=self.teacher,
+			start_time=start,
+			end_time=end
+		)
+	
+	def test_end_lesson_sets_ended_at(self):
+		"""POST /api/schedule/lessons/{id}/end/ устанавливает ended_at"""
+		resp = self.client.post(f'/api/schedule/lessons/{self.lesson.id}/end/')
+		self.assertEqual(resp.status_code, 200)
+		self.assertIn('ended_at', resp.json())
+		
+		self.lesson.refresh_from_db()
+		self.assertIsNotNone(self.lesson.ended_at)
+	
+	def test_exclude_ended_filter_hides_completed_lessons(self):
+		"""Параметр exclude_ended=1 скрывает завершённые уроки"""
+		today = timezone.now().date().isoformat()
+		
+		# До завершения - урок виден
+		resp = self.client.get(f'/api/schedule/lessons/?date={today}&exclude_ended=1')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json() if isinstance(resp.json(), list) else resp.json().get('results', [])
+		self.assertEqual(len(data), 1)
+		
+		# Завершаем урок
+		self.lesson.ended_at = timezone.now()
+		self.lesson.save()
+		
+		# После завершения - урок скрыт
+		resp = self.client.get(f'/api/schedule/lessons/?date={today}&exclude_ended=1')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json() if isinstance(resp.json(), list) else resp.json().get('results', [])
+		self.assertEqual(len(data), 0)
+	
+	def test_without_exclude_ended_shows_all(self):
+		"""Без exclude_ended завершённые уроки всё равно видны"""
+		today = timezone.now().date().isoformat()
+		
+		# Завершаем урок
+		self.lesson.ended_at = timezone.now()
+		self.lesson.save()
+		
+		# Без параметра exclude_ended - урок виден
+		resp = self.client.get(f'/api/schedule/lessons/?date={today}')
+		self.assertEqual(resp.status_code, 200)
+		data = resp.json() if isinstance(resp.json(), list) else resp.json().get('results', [])
+		self.assertEqual(len(data), 1)
+
+
 @override_settings(ZOOM_ACCOUNT_ID='test_acc_id', ZOOM_CLIENT_ID='test_client_id', ZOOM_CLIENT_SECRET='test_secret')
 class LessonStartNewAPITests(TestCase):
 	def setUp(self):

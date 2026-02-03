@@ -134,7 +134,7 @@ try {
     Write-Host "  ✅ ДЕПЛОЙ ЗАВЕРШЁН" -ForegroundColor Green
     Write-Host "================================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "Сайт: https://lectio.tw1.ru" -ForegroundColor Cyan
+    Write-Host "Сайт: https://lectiospace.ru" -ForegroundColor Cyan
     Write-Host ""
 } catch {
     Write-Host ""

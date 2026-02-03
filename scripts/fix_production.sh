@@ -121,12 +121,12 @@ echo -e "${YELLOW}[4/5] Обновление ALLOWED_HOSTS...${NC}"
 
 ENV_FILE="/var/www/teaching_panel/teaching_panel/.env"
 if [ -f "$ENV_FILE" ]; then
-    # Добавляем lectio.tw1.ru если его нет
-    if ! grep -q "lectio.tw1.ru" "$ENV_FILE"; then
-        sed -i 's/ALLOWED_HOSTS=\(.*\)/ALLOWED_HOSTS=\1,lectio.tw1.ru/' "$ENV_FILE"
-        echo -e "${GREEN}✅ lectio.tw1.ru добавлен в ALLOWED_HOSTS${NC}"
+    # Добавляем lectiospace.ru если его нет
+    if ! grep -q "lectiospace.ru" "$ENV_FILE"; then
+        sed -i 's/ALLOWED_HOSTS=\(.*\)/ALLOWED_HOSTS=\1,lectiospace.ru/' "$ENV_FILE"
+        echo -e "${GREEN}✅ lectiospace.ru добавлен в ALLOWED_HOSTS${NC}"
     else
-        echo "lectio.tw1.ru уже в ALLOWED_HOSTS"
+        echo "lectiospace.ru уже в ALLOWED_HOSTS"
     fi
 fi
 echo ""

@@ -4,15 +4,15 @@
 **Статус**: ✅ Готово к развертыванию
 **Версия**: 1.1
 
-**Домен/сервер:** lectio.space (A → 72.56.81.163, AAAA не используем)
-**SSL:** Let's Encrypt, сертификаты в `/etc/letsencrypt/live/lectio.space/`
-**Nginx:** server_name `lectio.space www.lectio.space`, редирект 80 → 443
+**Домен/сервер:** lectiospace.ru (A → 72.56.81.163, AAAA не используем)
+**SSL:** Let's Encrypt, сертификаты в `/etc/letsencrypt/live/lectiospace.ru/`
+**Nginx:** server_name `lectiospace.ru www.lectiospace.ru`, редирект 80 → 443
 **.env ключевые параметры:**
 ```
-ALLOWED_HOSTS=lectio.space,www.lectio.space,72.56.81.163
-FRONTEND_URL=https://lectio.space
-CORS_EXTRA=https://lectio.space,https://www.lectio.space
-CSRF_TRUSTED_ORIGINS=https://lectio.space,https://www.lectio.space
+ALLOWED_HOSTS=lectiospace.ru,www.lectiospace.ru,72.56.81.163
+FRONTEND_URL=https://lectiospace.ru
+CORS_EXTRA=https://lectiospace.ru,https://www.lectiospace.ru
+CSRF_TRUSTED_ORIGINS=https://lectiospace.ru,https://www.lectiospace.ru
 DEBUG=False
 ```
 
@@ -59,7 +59,7 @@ ssh-copy-id -i ~/.ssh/id_rsa.pub user@server.com
 2. **SSH alias в ~/.ssh/config:**
 ```bash
 Host tp
-   HostName lectio.space
+   HostName lectiospace.ru
    User deploy_user
     IdentityFile ~/.ssh/id_rsa
     StrictHostKeyChecking no
@@ -79,7 +79,7 @@ ssh tp "echo 'SSH connection OK'"
 4. **Сервисы:** 
    - `teaching_panel.service` (systemd)
    - `nginx` (веб-сервер)
-5. **DNS:** A записи `lectio.space` и `www` → `72.56.81.163`, без AAAA; после смены DNS дождитесь обновления кеша (обычно 30–60 мин).
+5. **DNS:** A записи `lectiospace.ru` и `www` → `72.56.81.163`, без AAAA; после смены DNS дождитесь обновления кеша (обычно 30–60 мин).
 
 ---
 
@@ -204,7 +204,7 @@ ssh-add -l
 ssh-add ~/.ssh/id_rsa
 
 # Или используй ssh-keyscan для добавления в known_hosts
-ssh-keyscan lectio.space >> ~/.ssh/known_hosts 2>/dev/null
+ssh-keyscan lectiospace.ru >> ~/.ssh/known_hosts 2>/dev/null
 ```
 
 ### ❌ Проблема: "Permission denied" при sudo
@@ -333,8 +333,8 @@ Running migrations:
 ========================================
 
 Проверка доступности:
-   - API: https://lectio.space/api/
-   - Frontend: https://lectio.space/
+   - API: https://lectiospace.ru/api/
+   - Frontend: https://lectiospace.ru/
 
 Полезные команды:
   - Логи: ssh tp 'sudo journalctl -u teaching_panel -f'

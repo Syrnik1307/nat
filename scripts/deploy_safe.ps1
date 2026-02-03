@@ -21,7 +21,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # ==================== КОНФИГУРАЦИЯ ====================
-$SiteUrl = "https://lectio.tw1.ru"
+$SiteUrl = "https://lectiospace.ru"
 $SshHost = "tp"
 $RemotePath = "/var/www/teaching_panel"
 $LocalFrontend = "frontend/build"

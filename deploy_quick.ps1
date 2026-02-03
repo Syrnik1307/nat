@@ -41,7 +41,7 @@ Write-Ok "SSH connected"
 
 if ($Status) {
     Write-Step "Checking service status..."
-    ssh $Server "systemctl is-active teaching_panel nginx; curl -sI https://lectio.tw1.ru | head -3"
+    ssh $Server "systemctl is-active teaching_panel nginx; curl -sI https://lectiospace.ru | head -3"
     exit 0
 }
 
@@ -85,7 +85,7 @@ if (-not $Frontend) {
 
 $commands += "sudo systemctl reload nginx"
 $commands += "echo '=== DEPLOY COMPLETE ==='"
-$commands += "curl -sI https://lectio.tw1.ru | head -3"
+$commands += "curl -sI https://lectiospace.ru | head -3"
 
 $fullCmd = $commands -join " && "
 
@@ -98,7 +98,7 @@ ssh $Server $fullCmd
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "`n" 
-    Write-Ok "Deploy successful! Site: https://lectio.tw1.ru"
+    Write-Ok "Deploy successful! Site: https://lectiospace.ru"
 } else {
     Write-Err "Deploy failed with exit code $LASTEXITCODE"
     exit 1

@@ -120,7 +120,7 @@ echo ""
 
 # Тест login
 echo -e "${YELLOW}Step 7: Smoke test - login...${NC}"
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST https://lectio.tw1.ru/api/jwt/token/ \
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST https://lectiospace.ru/api/jwt/token/ \
     -H "Content-Type: application/json" \
     -H "X-Forwarded-Proto: https" \
     -d '{"email":"test@test.com","password":"Test1234"}' \

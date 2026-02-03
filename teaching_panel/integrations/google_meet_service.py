@@ -121,7 +121,7 @@ class GoogleMeetService:
         uri = getattr(
             settings,
             'GOOGLE_MEET_REDIRECT_URI',
-            'https://lectio.tw1.ru/api/integrations/google-meet/callback/',
+            'https://lectiospace.ru/api/integrations/google-meet/callback/',
         )
 
         # Safety net for production misconfiguration.
@@ -129,7 +129,7 @@ class GoogleMeetService:
         if not getattr(settings, 'DEBUG', False):
             bad_prefixes = ('http://localhost', 'http://127.0.0.1', 'http://0.0.0.0')
             if isinstance(uri, str) and uri.startswith(bad_prefixes):
-                return 'https://lectio.tw1.ru/api/integrations/google-meet/callback/'
+                return 'https://lectiospace.ru/api/integrations/google-meet/callback/'
 
         return uri
     

@@ -17,8 +17,8 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 # ==================== КОНФИГУРАЦИЯ ====================
-SITE_URL="${SITE_URL:-https://lectio.tw1.ru}"
-BACKEND_URL="${BACKEND_URL:-https://lectio.tw1.ru}"
+SITE_URL="${SITE_URL:-https://lectiospace.ru}"
+BACKEND_URL="${BACKEND_URL:-https://lectiospace.ru}"
 LOG_FILE="${LOG_FILE:-/var/log/lectio-monitor/comprehensive.log}"
 
 SMOKE_TEACHER_EMAIL="${SMOKE_TEACHER_EMAIL:-smoke_teacher@test.local}"

@@ -1,0 +1,10 @@
+/var/www/teaching_panel/teaching_panel/teaching_panel/settings.py:698: RuntimeWarning: WARNING: reCAPTCHA not configured. Set RECAPTCHA_PUBLIC_KEY and RECAPTCHA_PRIVATE_KEY for bot protection.
+  warnings.warn(
+/var/www/teaching_panel/venv/lib/python3.8/site-packages/google/api_core/_python_version_support.py:237: FutureWarning: You are using a non-supported Python version (3.8.10). Google will not post any further updates to google.api_core supporting this Python version. Please upgrade to the latest Python version, or at least Python 3.10, and then update google.api_core.
+  warnings.warn(message, FutureWarning)
+INFO 2026-02-03 12:35:38,605 apps 57877 140272530102016 ScheduleConfig: Warming up GDrive manager...
+An error occurred: module 'importlib.metadata' has no attribute 'packages_distributions'
+SECURE_PROXY_SSL_HEADER: ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE: True
+CSRF_COOKIE_SECURE: True
+SECURE_SSL_REDIRECT: True

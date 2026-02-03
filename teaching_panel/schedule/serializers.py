@@ -90,6 +90,10 @@ class LessonSerializer(serializers.ModelSerializer):
     teacher = serializers.PrimaryKeyRelatedField(read_only=True)
     # БЕЗОПАСНОСТЬ: zoom_start_url только для учителей
     zoom_start_url = serializers.SerializerMethodField()
+    # БЕЗОПАСНОСТЬ: zoom_join_url, zoom_password, google_meet_link - только для участников урока
+    zoom_join_url = serializers.SerializerMethodField()
+    zoom_password = serializers.SerializerMethodField()
+    google_meet_link = serializers.SerializerMethodField()
     # Для отображения в календаре: есть ли запись и ДЗ
     recording_id = serializers.SerializerMethodField()
     homework_id = serializers.SerializerMethodField()
@@ -116,11 +120,55 @@ class LessonSerializer(serializers.ModelSerializer):
             'ended_at',  # Когда урок был завершён
         ]
     
+    def _user_can_access_lesson_urls(self, obj):
+        """
+        БЕЗОПАСНОСТЬ: Проверяет, может ли текущий пользователь видеть ссылки на урок.
+        Доступ имеют:
+        - admin: всегда
+        - teacher: только для своих уроков
+        - student: только если состоит в группе урока
+        """
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        user = request.user
+        role = getattr(user, 'role', None)
+        
+        if role == 'admin':
+            return True
+        if role == 'teacher':
+            return obj.teacher_id == user.id
+        if role == 'student':
+            # Проверяем членство в группе урока
+            return obj.group.students.filter(id=user.id).exists()
+        return False
+    
+    def get_zoom_join_url(self, obj):
+        """БЕЗОПАСНОСТЬ: zoom_join_url только для участников урока"""
+        if not self._user_can_access_lesson_urls(obj):
+            return None
+        return obj.zoom_join_url
+    
+    def get_zoom_password(self, obj):
+        """БЕЗОПАСНОСТЬ: zoom_password только для участников урока"""
+        if not self._user_can_access_lesson_urls(obj):
+            return None
+        return obj.zoom_password
+    
+    def get_google_meet_link(self, obj):
+        """БЕЗОПАСНОСТЬ: google_meet_link только для участников урока"""
+        if not self._user_can_access_lesson_urls(obj):
+            return None
+        return obj.google_meet_link
+
     def get_join_url(self, obj):
         """
         Универсальная ссылка для подключения к уроку.
+        БЕЗОПАСНОСТЬ: Возвращает ссылку только участникам урока.
         Приоритет: Google Meet > Zoom.
         """
+        if not self._user_can_access_lesson_urls(obj):
+            return None
         if obj.google_meet_link:
             return obj.google_meet_link
         return obj.zoom_join_url or None
@@ -284,14 +332,6 @@ class LessonSerializer(serializers.ModelSerializer):
         
         return updated_lesson
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        user = self.context.get('request').user if self.context.get('request') else None
-        # Скрываем zoom_start_url для студентов
-        if not (user and user.is_authenticated and getattr(user, 'role', None) == 'teacher'):
-            data.pop('zoom_start_url', None)
-        return data
-
 
 class LessonCalendarSerializer(serializers.ModelSerializer):
     """Упрощенный сериализатор для календаря (FullCalendar.js)"""
@@ -314,8 +354,29 @@ class LessonCalendarSerializer(serializers.ModelSerializer):
         colors = ['#3788d8', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6']
         return colors[obj.group.id % len(colors)]
     
+    def _user_can_access_lesson_urls(self, obj):
+        """
+        БЕЗОПАСНОСТЬ: Проверяет, может ли текущий пользователь видеть ссылки на урок.
+        """
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        user = request.user
+        role = getattr(user, 'role', None)
+        
+        if role == 'admin':
+            return True
+        if role == 'teacher':
+            return obj.teacher_id == user.id
+        if role == 'student':
+            return obj.group.students.filter(id=user.id).exists()
+        return False
+
     def get_extendedProps(self, obj):
-        """Дополнительные данные для событий"""
+        """Дополнительные данные для событий. БЕЗОПАСНОСТЬ: zoomUrl только для участников урока."""
+        # Проверяем доступ к ссылке
+        zoom_url = obj.zoom_join_url if self._user_can_access_lesson_urls(obj) else None
+        
         return {
             'groupId': obj.group.id,
             'groupName': obj.group.name,
@@ -323,7 +384,7 @@ class LessonCalendarSerializer(serializers.ModelSerializer):
             'teacherName': obj.teacher.get_full_name(),
             'location': obj.location,
             'topics': obj.topics,
-            'zoomUrl': obj.zoom_join_url,
+            'zoomUrl': zoom_url,  # БЕЗОПАСНОСТЬ: скрыто для неавторизованных
             'lessonTitle': obj.title,  # Оригинальная тема урока (может быть пустой)
             'displayName': obj.display_name,  # Полное отображаемое имя
         }
@@ -351,6 +412,10 @@ class LessonDetailSerializer(serializers.ModelSerializer):
     recordings = serializers.SerializerMethodField()
     duration_minutes = serializers.IntegerField(source='duration', read_only=True)
     display_name = serializers.CharField(read_only=True)
+    # БЕЗОПАСНОСТЬ: чувствительные поля через SerializerMethodField
+    zoom_start_url = serializers.SerializerMethodField()
+    zoom_join_url = serializers.SerializerMethodField()
+    zoom_password = serializers.SerializerMethodField()
     
     class Meta:
         model = Lesson
@@ -363,6 +428,49 @@ class LessonDetailSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
 
+    def _user_can_access_lesson_urls(self, obj):
+        """
+        БЕЗОПАСНОСТЬ: Проверяет, может ли текущий пользователь видеть ссылки на урок.
+        """
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        user = request.user
+        role = getattr(user, 'role', None)
+        
+        if role == 'admin':
+            return True
+        if role == 'teacher':
+            return obj.teacher_id == user.id
+        if role == 'student':
+            return obj.group.students.filter(id=user.id).exists()
+        return False
+    
+    def get_zoom_start_url(self, obj):
+        """БЕЗОПАСНОСТЬ: zoom_start_url только для учителя урока и админов"""
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+        user = request.user
+        role = getattr(user, 'role', None)
+        if role == 'admin':
+            return obj.zoom_start_url
+        if role == 'teacher' and obj.teacher_id == user.id:
+            return obj.zoom_start_url
+        return None
+    
+    def get_zoom_join_url(self, obj):
+        """БЕЗОПАСНОСТЬ: zoom_join_url только для участников урока"""
+        if not self._user_can_access_lesson_urls(obj):
+            return None
+        return obj.zoom_join_url
+    
+    def get_zoom_password(self, obj):
+        """БЕЗОПАСНОСТЬ: zoom_password только для участников урока"""
+        if not self._user_can_access_lesson_urls(obj):
+            return None
+        return obj.zoom_password
+
     def get_recordings(self, obj):
         return [
             {
@@ -372,13 +480,6 @@ class LessonDetailSerializer(serializers.ModelSerializer):
             }
             for rec in obj.recordings.all()
         ]
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        user = self.context.get('request').user if self.context.get('request') else None
-        if not (user and user.is_authenticated and getattr(user, 'role', None) == 'teacher'):
-            data.pop('zoom_start_url', None)
-        return data
 
 
 

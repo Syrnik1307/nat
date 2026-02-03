@@ -1,0 +1,4 @@
+/etc/nginx/sites-enabled/lectiospace.ru:    server_name lectiospace.ru www.lectiospace.ru;
+/etc/nginx/sites-enabled/lectiospace.ru:    server_name lectiospace.ru www.lectiospace.ru;
+/etc/nginx/sites-enabled/lectiospace.ru:    ssl_certificate /etc/letsencrypt/live/lectiospace.ru-0001/fullchain.pem;
+/etc/nginx/sites-enabled/lectiospace.ru:    ssl_certificate_key /etc/letsencrypt/live/lectiospace.ru-0001/privkey.pem;

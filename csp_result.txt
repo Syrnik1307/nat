@@ -1,0 +1,28 @@
+=== ╨ó╨╡╨║╤â╤ë╨╕╨╡ security headers ===
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        add_header Cache-Control "public, immutable";
+        add_header Cache-Control "public, immutable";
+        add_header Cache-Control "public, immutable";
+        add_header Cache-Control "public, immutable";
+        add_header Cache-Control "public";
+
+=== ╨ƒ╤Ç╨╛╨▓╨╡╤Ç╤Å╨╡╨╝ ╨╜╨░╨╗╨╕╤ç╨╕╨╡ upgrade-insecure-requests ===
+╨ö╨╛╨▒╨░╨▓╨╗╤Å╨╡╨╝ Content-Security-Policy: upgrade-insecure-requests
+╨ö╨╛╨▒╨░╨▓╨╗╨╡╨╜╨╛!
+
+=== ╨ƒ╤Ç╨╛╨▓╨╡╤Ç╤Å╨╡╨╝ ╤ü╨╕╨╜╤é╨░╨║╤ü╨╕╤ü nginx ===
+nginx: [emerg] duplicate upstream "django_up" in /etc/nginx/sites-enabled/lectiospace.ru.bak.1770122343:1
+nginx: configuration file /etc/nginx/nginx.conf test failed
+
+=== ╨ƒ╨╡╤Ç╨╡╨╖╨░╨│╤Ç╤â╨╢╨░╨╡╨╝ nginx ===
+
+=== ╨ƒ╤Ç╨╛╨▓╨╡╤Ç╤Å╨╡╨╝ ╨╖╨░╨│╨╛╨╗╨╛╨▓╨║╨╕ ===
+
+=== ╨ô╨╛╤é╨╛╨▓╨╛! ╨ƒ╨╛╨╢╨░╨╗╤â╨╣╤ü╤é╨░ ╨╛╨▒╨╜╨╛╨▓╨╕╤é╨╡ ╤ü╤é╤Ç╨░╨╜╨╕╤å╤â (Ctrl+F5) ===
+Job for nginx.service failed.
+See "systemctl status nginx.service" and "journalctl -xe" for details.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# 🌐 ПОЛНАЯ ИНСТРУКЦИЯ ДЛЯ МИГРАЦИИ НА lectio.space
+# 🌐 ПОЛНАЯ ИНСТРУКЦИЯ ДЛЯ МИГРАЦИИ НА lectiospace.ru
 # Выполняй команды в указанном порядке на СЕРВЕРЕ
 
 # ============================================================
@@ -13,7 +13,7 @@ sudo apt-get update
 sudo apt-get install -y certbot python3-certbot-nginx
 
 # Получить сертификат
-sudo certbot certonly --standalone -d lectio.space -d www.lectio.space
+sudo certbot certonly --standalone -d lectiospace.ru -d www.lectiospace.ru
 
 # Ответить на вопросы:
 # - Enter email: твой email
@@ -21,7 +21,7 @@ sudo certbot certonly --standalone -d lectio.space -d www.lectio.space
 # - Share email (опционально): N или Y
 
 echo "✅ SSL сертификат установлен!"
-echo "   Путь: /etc/letsencrypt/live/lectio.space/"
+echo "   Путь: /etc/letsencrypt/live/lectiospace.ru/"
 echo ""
 
 # ============================================================
@@ -76,8 +76,8 @@ python manage.py collectstatic --noinput --clear
 
 # Обновить Nginx конфиг
 cd /var/www/teaching_panel
-sudo cp /tmp/lectio_space_nginx.conf /etc/nginx/sites-available/lectio.space
-sudo ln -sf /etc/nginx/sites-available/lectio.space /etc/nginx/sites-enabled/lectio.space
+sudo cp /tmp/lectio_space_nginx.conf /etc/nginx/sites-available/lectiospace.ru
+sudo ln -sf /etc/nginx/sites-available/lectiospace.ru /etc/nginx/sites-enabled/lectiospace.ru
 sudo rm -f /etc/nginx/sites-enabled/default
 
 # Проверить синтаксис Nginx
@@ -106,9 +106,9 @@ echo "📋 Последние логи Django:"
 sudo journalctl -u teaching_panel -n 20 --no-pager
 
 # Проверить доступность
-curl -I https://lectio.space
+curl -I https://lectiospace.ru
 echo ""
-echo "🌍 Сайт должен быть доступен по: https://lectio.space"
+echo "🌍 Сайт должен быть доступен по: https://lectiospace.ru"
 echo ""
 
 # ============================================================

@@ -27,8 +27,8 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 # ==================== КОНФИГУРАЦИЯ ====================
-SITE_URL="${SITE_URL:-https://lectio.tw1.ru}"
-BACKEND_URL="${BACKEND_URL:-https://lectio.tw1.ru}"
+SITE_URL="${SITE_URL:-https://lectiospace.ru}"
+BACKEND_URL="${BACKEND_URL:-https://lectiospace.ru}"
 PROJECT_ROOT="${PROJECT_ROOT:-/var/www/teaching_panel}"
 LOG_FILE="${LOG_FILE:-/var/log/lectio-monitor/ultimate.log}"
 REPORT_FILE="/var/log/lectio-monitor/ultimate_report_$(date +%Y%m%d_%H%M%S).txt"

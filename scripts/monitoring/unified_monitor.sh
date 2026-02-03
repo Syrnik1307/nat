@@ -18,8 +18,8 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 # ==================== КОНФИГУРАЦИЯ ====================
-SITE_URL="${SITE_URL:-https://lectio.tw1.ru}"
-API_URL="${API_URL:-https://lectio.tw1.ru/api/health/}"
+SITE_URL="${SITE_URL:-https://lectiospace.ru}"
+API_URL="${API_URL:-https://lectiospace.ru/api/health/}"
 BACKEND_SERVICE="${BACKEND_SERVICE:-teaching_panel}"
 LOG_FILE="/var/log/lectio-monitor/unified.log"
 STATE_DIR="/var/run/lectio-monitor"

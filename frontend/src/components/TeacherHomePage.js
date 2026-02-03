@@ -260,7 +260,7 @@ const TeacherHomePage = () => {
             return res.data;
           }, TTL.LONG),
           getCached(`teacher:lessons:${today}`, async () => {
-            const res = await getLessons({ date: today, include_recurring: true });
+            const res = await getLessons({ date: today, include_recurring: true, exclude_ended: true });
             return Array.isArray(res.data) ? res.data : res.data.results || [];
           }, TTL.SHORT),
           getCached('teacher:groups', async () => {
@@ -438,16 +438,15 @@ const TeacherHomePage = () => {
     setEndingLessonId(lessonId);
     try {
       await endLesson(lessonId);
-      // Обновляем локально - ставим ended_at и убираем zoom_start_url
-      setLessons(prev => prev.map(l => 
-        l.id === lessonId 
-          ? { ...l, ended_at: new Date().toISOString(), zoom_start_url: null }
-          : l
-      ));
-      // Инвалидируем кеш статистики - завершённый урок влияет на статистику
+      // OPTIMISTIC UPDATE: убираем урок из списка (он теперь в архиве)
+      setLessons(prev => prev.filter(l => l.id !== lessonId));
+      // Инвалидируем кеш статистики и уроков
       invalidateCache('teacher:stats');
+      invalidateCache('teacher:lessons');
     } catch (err) {
       console.error('Failed to end lesson:', err);
+      // Если ошибка - перезагружаем уроки чтобы восстановить состояние
+      invalidateCache('teacher:lessons');
     } finally {
       setEndingLessonId(null);
     }
@@ -986,10 +985,10 @@ const TeacherHomePage = () => {
                             <IconCheck size={14} />
                             <span>Закончен</span>
                           </span>
-                        ) : lesson.zoom_start_url ? (
+                        ) : (lesson.zoom_start_url || lesson.google_meet_link) ? (
                           <>
                             <a 
-                              href={lesson.zoom_start_url} 
+                              href={lesson.zoom_start_url || lesson.google_meet_link} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="schedule-start-btn active"

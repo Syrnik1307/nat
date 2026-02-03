@@ -21,9 +21,9 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 # ==================== КОНФИГУРАЦИЯ ====================
-SITE_URL="${SITE_URL:-https://lectio.tw1.ru}"
+SITE_URL="${SITE_URL:-https://lectiospace.ru}"
 # Для публичных проверок используем HTTPS URL (через nginx)
-BACKEND_URL="${BACKEND_URL:-https://lectio.tw1.ru}"
+BACKEND_URL="${BACKEND_URL:-https://lectiospace.ru}"
 # Для авторизованных API проверок используем внутренний URL (избегаем hairpin NAT)
 INTERNAL_BACKEND_URL="${INTERNAL_BACKEND_URL:-http://127.0.0.1:8000}"
 AUTH_BACKEND_URL="${AUTH_BACKEND_URL:-$INTERNAL_BACKEND_URL}"

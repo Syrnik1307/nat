@@ -3,11 +3,11 @@
 
 ENV_FILE="/var/www/teaching_panel/teaching_panel/.env"
 
-# 1. Добавляем lectio.tw1.ru в ALLOWED_HOSTS
-if grep -q "lectio.tw1.ru" "$ENV_FILE"; then
-    echo "lectio.tw1.ru уже в ALLOWED_HOSTS"
+# 1. Добавляем lectiospace.ru в ALLOWED_HOSTS
+if grep -q "lectiospace.ru" "$ENV_FILE"; then
+    echo "lectiospace.ru уже в ALLOWED_HOSTS"
 else
-    sed -i 's/ALLOWED_HOSTS=.*/ALLOWED_HOSTS=lectio.space,www.lectio.space,lectio.tw1.ru,72.56.81.163,127.0.0.1,localhost/' "$ENV_FILE"
+    sed -i 's/ALLOWED_HOSTS=.*/ALLOWED_HOSTS=lectiospace.ru,www.lectiospace.ru,72.56.81.163,127.0.0.1,localhost/' "$ENV_FILE"
     echo "ALLOWED_HOSTS обновлён"
 fi
 

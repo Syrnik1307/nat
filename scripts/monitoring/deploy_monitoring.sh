@@ -13,7 +13,7 @@
 
 set -e
 
-SERVER="root@lectio.tw1.ru"
+SERVER="root@lectiospace.ru"
 REMOTE_DIR="/opt/lectio-monitor"
 LOCAL_DIR="$(dirname "$0")"
 

@@ -1,0 +1,2 @@
+-rw-r--r-- 1 www-data www-data 1622 Feb  2 08:16 /var/www/teaching_panel/frontend/build/index.html
+ls: cannot access '/var/www/teaching_panel/frontend/build/static/js/main*.js': No such file or directory

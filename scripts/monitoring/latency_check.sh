@@ -16,7 +16,7 @@ if [[ -f "$CONFIG_FILE" ]]; then
     source "$CONFIG_FILE"
 fi
 
-SITE_URL="${SITE_URL:-https://lectio.tw1.ru}"
+SITE_URL="${SITE_URL:-https://lectiospace.ru}"
 LOG_FILE="/var/log/lectio-monitor/latency.log"
 STATE_FILE="/var/run/lectio-monitor/latency_state"
 

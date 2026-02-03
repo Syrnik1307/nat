@@ -13,7 +13,7 @@ class MyReferralLinkView(APIView):
     def get(self, request):
         user = request.user
         # Базовый домен для ссылки
-        origin = getattr(settings, 'FRONTEND_URL', '').rstrip('/') or 'https://lectio.space'
+        origin = getattr(settings, 'FRONTEND_URL', '').rstrip('/') or 'https://lectiospace.ru'
         # Ссылка: добавляем ?ref=<code> и рекомендуем UTM
         link = f"{origin}/?ref={user.referral_code}&utm_source=telegram&utm_medium=referral&utm_campaign=teaching_panel"
         return Response({

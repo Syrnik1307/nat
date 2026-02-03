@@ -1,22 +1,22 @@
 #!/bin/bash
-# 🔐 Финализация SSL для lectio.space
+# 🔐 Финализация SSL для lectiospace.ru
 # Запусти после изменения DNS записей!
 
 echo "🔍 Проверяю DNS..."
-DNS_IP=$(dig +short lectio.space)
+DNS_IP=$(dig +short lectiospace.ru)
 
 if [ "$DNS_IP" = "72.56.81.163" ]; then
     echo "✅ DNS настроен правильно: $DNS_IP"
     
     echo "🔐 Получаю SSL сертификат..."
     systemctl stop nginx
-    certbot certonly --standalone -d lectio.space -d www.lectio.space --non-interactive --agree-tos --email admin@lectio.space
+    certbot certonly --standalone -d lectiospace.ru -d www.lectiospace.ru --non-interactive --agree-tos --email admin@lectiospace.ru
     
-    if [ -f /etc/letsencrypt/live/lectio.space/fullchain.pem ]; then
+    if [ -f /etc/letsencrypt/live/lectiospace.ru/fullchain.pem ]; then
         echo "✅ SSL сертификат получен!"
         
         # Обновляю Nginx на HTTPS
-        cat > /etc/nginx/sites-available/lectio.space << 'NGINXEOF'
+        cat > /etc/nginx/sites-available/lectiospace.ru << 'NGINXEOF'
 upstream django {
     server 127.0.0.1:8000;
 }
@@ -25,7 +25,7 @@ upstream django {
 server {
     listen 80;
     listen [::]:80;
-    server_name lectio.space www.lectio.space;
+    server_name lectiospace.ru www.lectiospace.ru;
     
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -40,10 +40,10 @@ server {
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name lectio.space www.lectio.space;
+    server_name lectiospace.ru www.lectiospace.ru;
 
-    ssl_certificate /etc/letsencrypt/live/lectio.space/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/lectio.space/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/lectiospace.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/lectiospace.ru/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
@@ -90,7 +90,7 @@ NGINXEOF
         echo "=========================================="
         echo "✅ МИГРАЦИЯ ЗАВЕРШЕНА!"
         echo "=========================================="
-        echo "🌍 Сайт доступен: https://lectio.space"
+        echo "🌍 Сайт доступен: https://lectiospace.ru"
         echo ""
     else
         echo "❌ Ошибка получения SSL!"

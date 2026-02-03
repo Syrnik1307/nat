@@ -1,0 +1,13 @@
+HTTP/2 200 
+server: nginx/1.18.0 (Ubuntu)
+date: Tue, 03 Feb 2026 12:40:47 GMT
+content-type: text/html
+content-length: 1622
+last-modified: Mon, 02 Feb 2026 08:16:47 GMT
+vary: Accept-Encoding
+etag: "69805d6f-656"
+cache-control: no-cache, no-store, must-revalidate
+pragma: no-cache
+expires: 0
+accept-ranges: bytes
+

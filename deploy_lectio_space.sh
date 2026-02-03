@@ -1,10 +1,10 @@
 #!/bin/bash
-# 🚀 Production Deployment Script для lectio.space
+# 🚀 Production Deployment Script для lectiospace.ru
 # Это скрипт для запуска на СЕРВЕРЕ (не локально!)
 
 set -e  # Exit on error
 
-echo "🚀 Начинаю миграцию на lectio.space..."
+echo "🚀 Начинаю миграцию на lectiospace.ru..."
 echo "=================================================="
 
 # Переменные
@@ -22,9 +22,9 @@ echo "✅ Код обновлен"
 echo "🔧 Обновляю .env файл..."
 cat > $DJANGO_DIR/.env << 'EOF'
 DEBUG=False
-ALLOWED_HOSTS=lectio.space,www.lectio.space,127.0.0.1
-CORS_EXTRA=https://lectio.space,https://www.lectio.space
-FRONTEND_URL=https://lectio.space
+ALLOWED_HOSTS=lectiospace.ru,www.lectiospace.ru,127.0.0.1
+CORS_EXTRA=https://lectiospace.ru,https://www.lectiospace.ru
+FRONTEND_URL=https://lectiospace.ru
 GDRIVE_ROOT_FOLDER_ID=1u1V9O-enN0tAYj98zy40yinB84yyi8IB
 USE_GDRIVE_STORAGE=1
 SECURE_SSL_REDIRECT=True
@@ -57,8 +57,8 @@ echo "✅ Static собраны"
 
 # 6️⃣ Копирую Nginx конфиг
 echo "⚙️  Обновляю Nginx конфиг..."
-sudo cp /tmp/lectio_space_nginx.conf /etc/nginx/sites-available/lectio.space
-sudo ln -sf /etc/nginx/sites-available/lectio.space /etc/nginx/sites-enabled/lectio.space
+sudo cp /tmp/lectio_space_nginx.conf /etc/nginx/sites-available/lectiospace.ru
+sudo ln -sf /etc/nginx/sites-available/lectiospace.ru /etc/nginx/sites-enabled/lectiospace.ru
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t  # Проверяю синтаксис
 echo "✅ Nginx конфиг обновлен"
@@ -78,5 +78,5 @@ echo ""
 echo "📊 Статус сервисов:"
 sudo systemctl status teaching_panel nginx --no-pager | head -20
 echo ""
-echo "🌍 Проверь: https://lectio.space"
+echo "🌍 Проверь: https://lectiospace.ru"
 echo "📝 Логи: sudo journalctl -u teaching_panel -f"

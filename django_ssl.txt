@@ -1,0 +1,2 @@
+bash: -c: line 0: syntax error near unexpected token `getattr'
+bash: -c: line 0: `cd /var/www/teaching_panel/teaching_panel && source /var/www/teaching_panel/venv/bin/activate && python -c from django.conf import settings; print(getattr(settings,  SECURE_PROXY_SSL_HEADER, NOT SET))'

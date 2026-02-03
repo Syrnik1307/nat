@@ -5,7 +5,7 @@
 # ВАРИАНТ 1: Через tmux (самый надежный)
 ssh user@YOUR_SERVER_IP << 'DEPLOY_END'
 set -e
-echo "🚀 Начинаю деплой lectio.space..."
+echo "🚀 Начинаю деплой lectiospace.ru..."
 
 # 1. Git pull
 cd /var/www/teaching_panel && sudo -u www-data git pull origin main
@@ -13,9 +13,9 @@ cd /var/www/teaching_panel && sudo -u www-data git pull origin main
 # 2. Обновить .env
 cat > teaching_panel/.env << 'ENV_END'
 DEBUG=False
-ALLOWED_HOSTS=lectio.space,www.lectio.space,127.0.0.1
-CORS_EXTRA=https://lectio.space,https://www.lectio.space
-FRONTEND_URL=https://lectio.space
+ALLOWED_HOSTS=lectiospace.ru,www.lectiospace.ru,127.0.0.1
+CORS_EXTRA=https://lectiospace.ru,https://www.lectiospace.ru
+FRONTEND_URL=https://lectiospace.ru
 GDRIVE_ROOT_FOLDER_ID=1u1V9O-enN0tAYj98zy40yinB84yyi8IB
 USE_GDRIVE_STORAGE=1
 SECURE_SSL_REDIRECT=True
@@ -32,13 +32,13 @@ echo "SECRET_KEY=$SECRET_KEY" >> teaching_panel/.env
 cd teaching_panel && pip install -r requirements.txt --quiet && python manage.py migrate --noinput && python manage.py collectstatic --noinput --clear
 
 # 5. Nginx
-cd .. && sudo cp /tmp/lectio_space_nginx.conf /etc/nginx/sites-available/lectio.space 2>/dev/null || sudo tee /etc/nginx/sites-available/lectio.space > /dev/null << 'NGINX_END'
+cd .. && sudo cp /tmp/lectio_space_nginx.conf /etc/nginx/sites-available/lectiospace.ru 2>/dev/null || sudo tee /etc/nginx/sites-available/lectiospace.ru > /dev/null << 'NGINX_END'
 upstream django { server 127.0.0.1:8000; }
-server { listen 80; server_name lectio.space www.lectio.space; return 301 https://$server_name$request_uri; }
+server { listen 80; server_name lectiospace.ru www.lectiospace.ru; return 301 https://$server_name$request_uri; }
 server {
-  listen 443 ssl http2; server_name lectio.space www.lectio.space;
-  ssl_certificate /etc/letsencrypt/live/lectio.space/fullchain.pem;
-  ssl_certificate_key /etc/letsencrypt/live/lectio.space/privkey.pem;
+  listen 443 ssl http2; server_name lectiospace.ru www.lectiospace.ru;
+  ssl_certificate /etc/letsencrypt/live/lectiospace.ru/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/lectiospace.ru/privkey.pem;
   ssl_protocols TLSv1.2 TLSv1.3;
   client_max_body_size 500M;
   add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
@@ -56,7 +56,7 @@ server {
 }
 NGINX_END
 
-sudo ln -sf /etc/nginx/sites-available/lectio.space /etc/nginx/sites-enabled/lectio.space
+sudo ln -sf /etc/nginx/sites-available/lectiospace.ru /etc/nginx/sites-enabled/lectiospace.ru
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 
@@ -64,7 +64,7 @@ sudo nginx -t
 sudo systemctl restart teaching_panel nginx
 
 echo "✅ ДЕПЛОЙ ЗАВЕРШЕН!"
-echo "🌍 Проверь: https://lectio.space"
+echo "🌍 Проверь: https://lectiospace.ru"
 DEPLOY_END
 
 
@@ -97,7 +97,7 @@ scp .env.production user@YOUR_SERVER_IP:/tmp/
 ssh user@YOUR_SERVER_IP << 'SSL_END'
 sudo apt-get update
 sudo apt-get install -y certbot python3-certbot-nginx
-sudo certbot certonly --standalone -d lectio.space -d www.lectio.space
+sudo certbot certonly --standalone -d lectiospace.ru -d www.lectiospace.ru
 SSL_END
 
 # 3. Ответить на вопросы certbot:
@@ -116,4 +116,4 @@ ssh user@YOUR_SERVER_IP "sudo systemctl status teaching_panel nginx --no-pager"
 ssh user@YOUR_SERVER_IP "sudo journalctl -u teaching_panel -f"
 
 # Открыть в браузере
-# https://lectio.space
+# https://lectiospace.ru

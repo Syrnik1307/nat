@@ -11,7 +11,7 @@ echo ""
 read -p "GOOGLE_MEET_CLIENT_ID: " CLIENT_ID
 read -p "GOOGLE_MEET_CLIENT_SECRET: " CLIENT_SECRET
 
-REDIRECT_URI="https://lectio.tw1.ru/api/integrations/google-meet/callback/"
+REDIRECT_URI="https://lectiospace.ru/api/integrations/google-meet/callback/"
 
 # Проверить что override.conf существует
 OVERRIDE_FILE="/etc/systemd/system/teaching_panel.service.d/override.conf"
@@ -53,4 +53,4 @@ echo "Google Meet integration is now enabled."
 echo "Check status: sudo systemctl status teaching_panel"
 echo ""
 echo "Users can now connect Google Meet at:"
-echo "https://lectio.tw1.ru/profile?tab=platforms"
+echo "https://lectiospace.ru/profile?tab=platforms"

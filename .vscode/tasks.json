@@ -1316,6 +1316,156 @@
 			"type": "shell",
 			"command": "ssh tp \"tail -40 /var/log/smoke_check.log\"",
 			"isBackground": false
+		},
+		{
+			"label": "check-mixed-content",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru \"grep -r 'proxy_pass' /etc/nginx/sites-enabled/\"",
+			"group": "test"
+		},
+		{
+			"label": "check-http-in-js",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru \"grep -roh 'http://[^\\\"]*' /var/www/react-app/static/js/ 2>/dev/null | grep -v w3.org | sort -u | head -20\"",
+			"group": "test"
+		},
+		{
+			"label": "check-http-html",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru \"grep -r 'http://' /var/www/react-app/*.html\"",
+			"group": "test"
+		},
+		{
+			"label": "view-nginx-conf",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru \"cat /etc/nginx/sites-available/lectiospace.ru\"",
+			"group": "test"
+		},
+		{
+			"label": "get-nginx-config",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru \"cat /etc/nginx/sites-available/lectiospace.ru > /tmp/nginx_conf.txt\" && scp root@lectiospace.ru:/tmp/nginx_conf.txt nginx_lectiospace.txt && type nginx_lectiospace.txt",
+			"group": "test"
+		},
+		{
+			"label": "fix-mixed-content",
+			"type": "shell",
+			"command": "scp fix_mixed_content.sh root@lectiospace.ru:/tmp/ && ssh root@lectiospace.ru 'chmod +x /tmp/fix_mixed_content.sh && /tmp/fix_mixed_content.sh 2>&1'",
+			"group": "build"
+		},
+		{
+			"label": "fix-save-result",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru '/tmp/fix_mixed_content.sh > /tmp/fix_result.txt 2>&1' && scp root@lectiospace.ru:/tmp/fix_result.txt fix_result.txt",
+			"group": "build"
+		},
+		{
+			"label": "check-nginx-files",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru 'ls -la /etc/nginx/sites-available/ && echo \"---\" && cat /etc/nginx/sites-available/lectiospace.ru 2>/dev/null || echo \"File not found\"' > nginx_check.txt 2>&1 && type nginx_check.txt",
+			"group": "test"
+		},
+		{
+			"label": "find-nginx-domain",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru 'grep -l \"lectiospace.ru\" /etc/nginx/sites-available/* && echo \"---ENABLED---\" && ls /etc/nginx/sites-enabled/' > nginx_domain.txt 2>&1 && type nginx_domain.txt",
+			"group": "test"
+		},
+		{
+			"label": "grep-domain-nginx",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru 'grep -r lectiospace.ru /etc/nginx/sites-available/ | head -20' > grep_domain.txt 2>&1 && type grep_domain.txt",
+			"group": "test"
+		},
+		{
+			"label": "grep-all-nginx",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru 'grep -r lectiospace /etc/nginx/' > grep_all_nginx.txt 2>&1 && type grep_all_nginx.txt",
+			"group": "test"
+		},
+		{
+			"label": "read-nginx-lectiospace",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru 'cat /etc/nginx/sites-enabled/lectiospace.ru' > nginx_lectiospace_conf.txt 2>&1 && type nginx_lectiospace_conf.txt",
+			"group": "test"
+		},
+		{
+			"label": "check-django-ssl",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru 'cd /var/www/teaching_panel/teaching_panel && source /var/www/teaching_panel/venv/bin/activate && python -c \"from django.conf import settings; print(getattr(settings, 'SECURE_PROXY_SSL_HEADER', 'NOT SET'))\"' > django_ssl.txt 2>&1 && type django_ssl.txt",
+			"group": "test"
+		},
+		{
+			"label": "check-django-ssl-v2",
+			"type": "shell",
+			"command": "scp check_django_ssl.sh root@lectiospace.ru:/tmp/ && ssh root@lectiospace.ru 'bash /tmp/check_django_ssl.sh' > django_ssl_result.txt 2>&1 && type django_ssl_result.txt",
+			"group": "test"
+		},
+		{
+			"label": "find-http-in-page",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru 'curl -s https://lectiospace.ru/auth-new 2>&1 | grep -ioE \"http://[^\\\" ><]+\" | grep -v w3.org | head -20' > page_http.txt 2>&1 && type page_http.txt",
+			"group": "test"
+		},
+		{
+			"label": "find-http-sources",
+			"type": "shell",
+			"command": "scp find_http_sources.sh root@lectiospace.ru:/tmp/ && ssh root@lectiospace.ru 'bash /tmp/find_http_sources.sh' > http_sources.txt 2>&1 && type http_sources.txt",
+			"group": "test"
+		},
+		{
+			"label": "check-build-date",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru 'ls -la /var/www/teaching_panel/frontend/build/*.html /var/www/teaching_panel/frontend/build/static/js/main*.js | head -5' > build_date.txt 2>&1 && type build_date.txt",
+			"group": "test"
+		},
+		{
+			"label": "list-js-files",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru 'ls -la /var/www/teaching_panel/frontend/build/static/js/' > js_files.txt 2>&1 && type js_files.txt",
+			"group": "test"
+		},
+		{
+			"label": "add-csp-header",
+			"type": "shell",
+			"command": "scp add_csp_header.sh root@lectiospace.ru:/tmp/ && ssh root@lectiospace.ru 'bash /tmp/add_csp_header.sh' > csp_result.txt 2>&1 && type csp_result.txt",
+			"group": "build"
+		},
+		{
+			"label": "fix-nginx",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru 'rm /etc/nginx/sites-enabled/*.bak.* 2>/dev/null; nginx -t && systemctl reload nginx' > nginx_fix.txt 2>&1 && type nginx_fix.txt",
+			"group": "build"
+		},
+		{
+			"label": "check-headers",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru 'curl -sI https://lectiospace.ru/ | grep -iE \"policy|security\"' > headers_check.txt 2>&1 && type headers_check.txt",
+			"group": "test"
+		},
+		{
+			"label": "all-headers",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru \"curl -sI https://lectiospace.ru/\" > all_headers.txt 2>&1 && type all_headers.txt",
+			"group": "test"
+		},
+		{
+			"label": "csp-check",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru \"grep 'Content-Security-Policy' /etc/nginx/sites-enabled/lectiospace.ru || echo 'CSP not found'\" > csp_check.txt 2>&1 && type csp_check.txt",
+			"group": "test"
+		},
+		{
+			"label": "deploy-nginx-config",
+			"type": "shell",
+			"command": "scp nginx_lectiospace_new.conf root@lectiospace.ru:/etc/nginx/sites-enabled/lectiospace.ru && ssh root@lectiospace.ru \"nginx -t && systemctl reload nginx && echo OK\" > deploy_nginx.txt 2>&1 && type deploy_nginx.txt",
+			"group": "build"
+		},
+		{
+			"label": "verify-nginx-deploy",
+			"type": "shell",
+			"command": "ssh root@lectiospace.ru \"nginx -t && systemctl reload nginx && curl -sI https://lectiospace.ru/ | head -20\" 2>&1 | Out-File -Encoding utf8 deploy_nginx_result.txt; Get-Content deploy_nginx_result.txt",
+			"group": "build"
 		}
 	]
 }

@@ -101,7 +101,7 @@ const SupportWidget = () => {
   const submitTicket = async (e) => {
     e.preventDefault();
     if (!formData.subject.trim() || !formData.description.trim()) {
-      setErrorText('Заполните тему и описание проблемы');
+      setErrorText('Заполните тему и описание');
       return;
     }
 
@@ -196,8 +196,8 @@ const SupportWidget = () => {
           </svg>
         </span>
         <span>
-          <strong>Сообщить о проблеме</strong>
-          <small>Создать обращение с контекстом</small>
+          <strong>Предложить улучшение</strong>
+          <small>Сообщить идею команде разработки</small>
         </span>
       </button>
 
@@ -215,7 +215,7 @@ const SupportWidget = () => {
           </svg>
         </span>
         <span>
-          <strong>Telegram</strong>
+          <strong>Чат в Telegram</strong>
           <small>Быстрый чат с поддержкой</small>
         </span>
       </button>
@@ -256,7 +256,7 @@ const SupportWidget = () => {
           type="text"
           value={formData.subject}
           onChange={(e) => handleInputChange('subject', e.target.value)}
-          placeholder="Кратко опишите проблему"
+          placeholder="Кратко опишите идею"
           maxLength={200}
           required
         />
@@ -267,7 +267,7 @@ const SupportWidget = () => {
         <textarea
           value={formData.description}
           onChange={(e) => handleInputChange('description', e.target.value)}
-          placeholder="Подробно опишите что произошло..."
+          placeholder="Подробно опишите идею или пожелание..."
           rows={4}
           required
         />
@@ -302,7 +302,7 @@ const SupportWidget = () => {
         className="support-submit-btn"
         disabled={loading}
       >
-        {loading ? 'Отправка...' : 'Отправить обращение'}
+        {loading ? 'Отправка...' : 'Отправить предложение'}
       </button>
 
       <p className="support-context-note">
@@ -319,8 +319,8 @@ const SupportWidget = () => {
           <polyline points="22,4 12,14.01 9,11.01"/>
         </svg>
       </div>
-      <h4>Обращение отправлено</h4>
-      <p>Мы ответим вам в ближайшее время. Уведомление придёт в Telegram.</p>
+      <h4>Предложение отправлено</h4>
+      <p>Спасибо! Мы рассмотрим ваше предложение. Уведомление придёт в Telegram.</p>
       <button 
         className="support-done-btn"
         onClick={() => {

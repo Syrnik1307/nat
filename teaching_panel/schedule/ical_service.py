@@ -37,7 +37,7 @@ def format_ical_datetime(dt: datetime) -> str:
     return utc_dt.strftime('%Y%m%dT%H%M%SZ')
 
 
-def generate_uid(lesson_id: int, domain: str = 'lectio.space') -> str:
+def generate_uid(lesson_id: int, domain: str = 'lectiospace.ru') -> str:
     """Генерация уникального UID для события."""
     return f"lesson-{lesson_id}@{domain}"
 
@@ -235,12 +235,12 @@ def generate_single_event_ics(lesson) -> str:
 
 # ===== Дедлайны ДЗ и контрольных точек =====
 
-def generate_homework_uid(homework_id: int, domain: str = 'lectio.space') -> str:
+def generate_homework_uid(homework_id: int, domain: str = 'lectiospace.ru') -> str:
     """Генерация уникального UID для события дедлайна ДЗ."""
     return f"homework-{homework_id}@{domain}"
 
 
-def generate_control_point_uid(cp_id: int, domain: str = 'lectio.space') -> str:
+def generate_control_point_uid(cp_id: int, domain: str = 'lectiospace.ru') -> str:
     """Генерация уникального UID для контрольной точки."""
     return f"control-point-{cp_id}@{domain}"
 

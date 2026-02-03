@@ -36,7 +36,7 @@ fi
 http_code=$(curl -s -o /dev/null -w "%{http_code}" \
     --max-time 10 \
     --connect-timeout 5 \
-    "${SITE_URL:-https://lectio.tw1.ru}/api/health/" 2>/dev/null) || http_code="000"
+    "${SITE_URL:-https://lectiospace.ru}/api/health/" 2>/dev/null) || http_code="000"
 
 if [[ "$http_code" == "200" ]]; then
     # Сайт жив - отправляем heartbeat

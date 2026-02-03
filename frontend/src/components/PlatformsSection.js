@@ -309,7 +309,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
               <p className="google-warning-steps-title">Как пройти экран предупреждения:</p>
               <ol>
                 <li>Нажмите <strong>"Дополнительные настройки"</strong> или <strong>"Advanced"</strong></li>
-                <li>Нажмите <strong>"Перейти на страницу lectio.tw1.ru (небезопасно)"</strong></li>
+                <li>Нажмите <strong>"Перейти на страницу lectiospace.ru (небезопасно)"</strong></li>
                 <li>Разрешите доступ к календарю</li>
               </ol>
             </div>

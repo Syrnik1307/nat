@@ -1,0 +1,12 @@
+total 56
+drwxr-xr-x  2 root root 4096 Feb  3 11:47 .
+drwxr-xr-x 10 root root 4096 Feb  3 10:35 ..
+-rw-r--r--  1 root root 2416 Mar 20  2024 default.disabled
+-rw-r--r--  1 root root 4282 Feb  3 11:47 lectio.space
+-rw-r--r--  1 root root 2877 Feb  3 11:47 lectio.space.bak
+-rw-r--r--  1 root root 5878 Feb  3 11:47 lectio_tw1
+-rw-r--r--  1 root root 5585 Jan 25 08:36 teaching_panel
+-rw-r--r--  1 root root 5446 Dec  7 18:48 teaching_panel.backup
+-rw-r--r--  1 root root 4971 Dec  4 21:56 teaching_panel.bak
+---
+File not found

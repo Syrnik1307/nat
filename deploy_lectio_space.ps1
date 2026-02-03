@@ -1,4 +1,4 @@
-# 🚀 PowerShell скрипт для деплоя lectio.space
+# 🚀 PowerShell скрипт для деплоя lectiospace.ru
 # Запусти ЭТУ команду на Windows PowerShell
 
 param(
@@ -18,7 +18,7 @@ function Write-Success {
     Write-Host "✅ $Message" -ForegroundColor Green
 }
 
-Write-Host "🚀 Начинаю миграцию на lectio.space..." -ForegroundColor Yellow
+Write-Host "🚀 Начинаю миграцию на lectiospace.ru..." -ForegroundColor Yellow
 Write-Host "========================================" -ForegroundColor Yellow
 
 # 1. Копировать конфиги
@@ -29,12 +29,12 @@ Write-Success "Конфиги скопированы"
 
 # 2. Установить SSL (если еще нет)
 Write-Step "Проверяю SSL сертификат..."
-$sslCheck = ssh "${ServerUser}@${ServerIp}" "test -f /etc/letsencrypt/live/lectio.space/fullchain.pem && echo 'exists' || echo 'missing'"
+$sslCheck = ssh "${ServerUser}@${ServerIp}" "test -f /etc/letsencrypt/live/lectiospace.ru/fullchain.pem && echo 'exists' || echo 'missing'"
 if ($sslCheck -like "*missing*") {
     Write-Host "⚠️  SSL сертификат не найден!" -ForegroundColor Yellow
     Write-Host "Установи вручную:" -ForegroundColor Yellow
     Write-Host "  ssh user@$ServerIp" -ForegroundColor Cyan
-    Write-Host "  sudo certbot certonly --standalone -d lectio.space -d www.lectio.space" -ForegroundColor Cyan
+    Write-Host "  sudo certbot certonly --standalone -d lectiospace.ru -d www.lectiospace.ru" -ForegroundColor Cyan
     Read-Host "Нажми Enter когда SSL установлен..."
 }
 Write-Success "SSL готов"
@@ -48,9 +48,9 @@ cd /var/www/teaching_panel
 sudo -u www-data git pull origin main
 cat > teaching_panel/.env << 'ENV_END'
 DEBUG=False
-ALLOWED_HOSTS=lectio.space,www.lectio.space,127.0.0.1
-CORS_EXTRA=https://lectio.space,https://www.lectio.space
-FRONTEND_URL=https://lectio.space
+ALLOWED_HOSTS=lectiospace.ru,www.lectiospace.ru,127.0.0.1
+CORS_EXTRA=https://lectiospace.ru,https://www.lectiospace.ru
+FRONTEND_URL=https://lectiospace.ru
 GDRIVE_ROOT_FOLDER_ID=1u1V9O-enN0tAYj98zy40yinB84yyi8IB
 USE_GDRIVE_STORAGE=1
 SECURE_SSL_REDIRECT=True
@@ -66,8 +66,8 @@ pip install -r requirements.txt --quiet
 python manage.py migrate --noinput
 python manage.py collectstatic --noinput --clear
 cd ..
-sudo cp /tmp/lectio_space_nginx.conf /etc/nginx/sites-available/lectio.space
-sudo ln -sf /etc/nginx/sites-available/lectio.space /etc/nginx/sites-enabled/lectio.space
+sudo cp /tmp/lectio_space_nginx.conf /etc/nginx/sites-available/lectiospace.ru
+sudo ln -sf /etc/nginx/sites-available/lectiospace.ru /etc/nginx/sites-enabled/lectiospace.ru
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl restart teaching_panel nginx
@@ -85,7 +85,7 @@ Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "✅ ВСЕ ГОТОВО!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "🌍 Открой браузер: https://lectio.space" -ForegroundColor Cyan
+Write-Host "🌍 Открой браузер: https://lectiospace.ru" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "📊 Команды для проверки:" -ForegroundColor Yellow
 Write-Host "  ssh ${ServerUser}@${ServerIp} 'sudo systemctl status teaching_panel'" -ForegroundColor Gray

@@ -32,8 +32,8 @@ $config = @(
     "TELEGRAM_BOT_TOKEN=`"$token`""
     "TELEGRAM_CHAT_ID=`"$adminChatId`""
     ''
-    'SITE_URL="https://lectio.tw1.ru"'
-    'API_URL="https://lectio.tw1.ru/api/health/"'
+    'SITE_URL="https://lectiospace.ru"'
+    'API_URL="https://lectiospace.ru/api/health/"'
     'PROJECT_ROOT="/var/www/teaching_panel"'
     'FRONTEND_BUILD="/var/www/teaching_panel/frontend/build"'
     'BACKEND_SERVICE="teaching_panel"'

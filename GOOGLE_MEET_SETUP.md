@@ -24,7 +24,7 @@
 5. Application type: **Web application**
 6. Name: **Lectio Space Meet Integration**
 7. Authorized redirect URIs: добавьте:
-   - `https://lectio.tw1.ru/api/integrations/google-meet/callback/`
+   - `https://lectiospace.ru/api/integrations/google-meet/callback/`
 8. Нажмите **CREATE**
 9. Скопируйте **Client ID** и **Client Secret**
 
@@ -42,7 +42,7 @@ sudo nano /etc/systemd/system/teaching_panel.service.d/override.conf
 Environment="GOOGLE_MEET_ENABLED=1"
 Environment="GOOGLE_MEET_CLIENT_ID=ваш-client-id.apps.googleusercontent.com"
 Environment="GOOGLE_MEET_CLIENT_SECRET=ваш-client-secret"
-Environment="GOOGLE_MEET_REDIRECT_URI=https://lectio.tw1.ru/api/integrations/google-meet/callback/"
+Environment="GOOGLE_MEET_REDIRECT_URI=https://lectiospace.ru/api/integrations/google-meet/callback/"
 ```
 
 Перезапустите сервис:
@@ -54,7 +54,7 @@ sudo systemctl restart teaching_panel
 
 ## Шаг 4: Проверка
 
-1. Откройте https://lectio.tw1.ru/profile?tab=platforms
+1. Откройте https://lectiospace.ru/profile?tab=platforms
 2. Кнопка "Подключить" для Google Meet должна стать активной
 3. При нажатии откроется страница авторизации Google
 4. После подтверждения доступа вы вернётесь на страницу профиля

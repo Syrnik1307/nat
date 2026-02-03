@@ -22,7 +22,7 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 # ==================== КОНФИГУРАЦИЯ ====================
-SITE_URL="https://lectio.tw1.ru"
+SITE_URL="https://lectiospace.ru"
 PROJECT_ROOT="/var/www/teaching_panel"
 FRONTEND_BUILD="$PROJECT_ROOT/frontend/build"
 BACKEND_DIR="$PROJECT_ROOT/teaching_panel"

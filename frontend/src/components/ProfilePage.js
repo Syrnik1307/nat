@@ -140,7 +140,7 @@ const ProfilePage = () => {
       refreshUser();
     } else if (meetError === '1') {
       if (errorType === 'redirect_uri_mismatch') {
-        setErrorMessage('Ошибка redirect_uri_mismatch. В Google Cloud Console нужно добавить redirect URI: https://lectio.tw1.ru/api/integrations/google-meet/callback/');
+        setErrorMessage('Ошибка redirect_uri_mismatch. В Google Cloud Console нужно добавить redirect URI: https://lectiospace.ru/api/integrations/google-meet/callback/');
       } else if (errorType) {
         setErrorMessage(`Ошибка подключения Google Meet: ${errorType}`);
       } else {

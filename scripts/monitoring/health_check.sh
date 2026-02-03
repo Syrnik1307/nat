@@ -18,8 +18,8 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 # ==================== КОНФИГУРАЦИЯ ====================
-SITE_URL="https://lectio.tw1.ru"
-API_URL="https://lectio.tw1.ru/api/health/"
+SITE_URL="https://lectiospace.ru"
+API_URL="https://lectiospace.ru/api/health/"
 FRONTEND_BUILD="/var/www/teaching_panel/frontend/build"
 BACKEND_SERVICE="teaching_panel"
 NGINX_SERVICE="nginx"

@@ -160,7 +160,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not _is_allowed(update, allowed):
         return
 
-    site_url = os.environ.get("SITE_URL", "https://lectio.tw1.ru").rstrip("/")
+    site_url = os.environ.get("SITE_URL", "https://lectiospace.ru").rstrip("/")
     backend_url = os.environ.get("BACKEND_URL", site_url).rstrip("/")
 
     ok_main, main_status = _http_get_status(f"{site_url}/")
@@ -199,7 +199,7 @@ async def cmd_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not _is_allowed(update, allowed):
         return
 
-    site_url = os.environ.get("SITE_URL", "https://lectio.tw1.ru").rstrip("/")
+    site_url = os.environ.get("SITE_URL", "https://lectiospace.ru").rstrip("/")
     backend_url = os.environ.get("BACKEND_URL", site_url).rstrip("/")
 
     checks: list[tuple[str, str]] = []

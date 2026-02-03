@@ -20,7 +20,7 @@ if [[ -f "$CONFIG_FILE" ]]; then
     source "$CONFIG_FILE"
 fi
 
-SITE_URL="${SITE_URL:-https://lectio.tw1.ru}"
+SITE_URL="${SITE_URL:-https://lectiospace.ru}"
 PROJECT_ROOT="${PROJECT_ROOT:-/var/www/teaching_panel}"
 LOG_FILE="/var/log/lectio-monitor/deep_check.log"
 
@@ -113,7 +113,7 @@ build_single_explanation() {
             ;;
         *"SSL сертификат"*)
             explanation="Не удалось проверить SSL. Возможно, проблема с сертификатом."
-            action="Проверить SSL вручную: openssl s_client -connect lectio.tw1.ru:443"
+            action="Проверить SSL вручную: openssl s_client -connect lectiospace.ru:443"
             ;;
         *)
             explanation="Требуется проверка состояния сервера."

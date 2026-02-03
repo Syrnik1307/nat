@@ -1633,7 +1633,7 @@ class ReferralLink(models.Model):
     def __str__(self):
         return f"{self.name} ({self.code})"
     
-    def get_full_url(self, base_url='https://lectio.space'):
+    def get_full_url(self, base_url='https://lectiospace.ru'):
         """Генерирует полную реферальную ссылку"""
         params = f"ref={self.code}"
         if self.utm_source:
