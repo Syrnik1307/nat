@@ -511,6 +511,31 @@
   color: var(--text-muted);
 }
 
+/* Stats Button */
+.tm-stats-btn {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--primary-50, #eff6ff) 0%, var(--primary-100, #dbeafe) 100%);
+  color: var(--primary-700, #1e40af);
+  border: 1px solid var(--primary-200, #c7d2fe);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tm-stats-btn:hover {
+  background: linear-gradient(135deg, var(--primary-100, #dbeafe) 0%, var(--primary-200, #c7d2fe) 100%);
+  border-color: var(--primary-300, #a5b4fc);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(30, 58, 138, 0.1);
+}
+
+.tm-stats-btn:active {
+  transform: translateY(0);
+}
+
 @media (max-width: 1024px) {
   .tm-body {
     flex-direction: column;
@@ -542,4 +567,3 @@
     width: 100%;
   }
 }
-

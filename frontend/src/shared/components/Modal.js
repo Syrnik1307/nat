@@ -137,7 +137,7 @@ const Modal = ({
   };
 
   return createPortal(
-    <div style={backdropStyles} onClick={handleBackdropClick}>
+    <div className="modal-backdrop tp-allow-fixed" style={backdropStyles} onClick={handleBackdropClick}>
       <div style={modalStyles}>
         {title && (
           <div style={headerStyles}>

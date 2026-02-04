@@ -31,6 +31,7 @@ from .admin_views import (
     AdminSystemErrorsView,
     AdminSystemErrorsCountsView,
     AdminDashboardDataView,
+    AdminTeacherAnalyticsView,
 )
 from .chat_views import ChatViewSet, MessageViewSet, UserSearchViewSet
 from .email_views import (
@@ -100,6 +101,7 @@ urlpatterns = [
     path('api/admin/create-student/', AdminCreateStudentView.as_view(), name='admin_create_student'),
     path('api/admin/teachers/', AdminTeachersListView.as_view(), name='admin_teachers_list'),
     path('api/admin/teachers/<int:teacher_id>/profile/', AdminTeacherDetailView.as_view(), name='admin_teacher_profile'),
+    path('api/admin/teachers/<int:teacher_id>/analytics/', AdminTeacherAnalyticsView.as_view(), name='admin_teacher_analytics'),
     path('api/admin/teachers/<int:teacher_id>/subscription/', AdminTeacherSubscriptionView.as_view(), name='admin_teacher_subscription'),
     path('api/admin/teachers/<int:teacher_id>/storage/', AdminTeacherStorageView.as_view(), name='admin_teacher_storage'),
     path('api/admin/teachers/<int:teacher_id>/zoom/', AdminUpdateTeacherZoomView.as_view(), name='admin_update_teacher_zoom'),

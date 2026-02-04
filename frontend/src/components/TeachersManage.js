@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Notification, ConfirmModal } from '../shared/components';
 import useNotification from '../shared/hooks/useNotification';
 import { getAccessToken } from '../apiService';
+import TeacherAnalyticsModal from '../modules/Admin/TeacherAnalyticsModal';
 import './TeachersManage.css';
 
 const statusLabels = {
@@ -44,6 +45,14 @@ const TeachersManage = ({ onClose }) => {
   });
   const [newPassword, setNewPassword] = useState('');
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  
+  // Analytics modal state
+  const [analyticsModal, setAnalyticsModal] = useState({
+    isOpen: false,
+    teacherId: null,
+    teacherName: '',
+    teacherEmail: ''
+  });
 
   const {
     notification,
@@ -267,6 +276,24 @@ const TeachersManage = ({ onClose }) => {
     setSelectedTeacherId(teacher.id);
     setActionError('');
     setActionMessage('');
+  };
+
+  const handleOpenAnalytics = (teacher) => {
+    setAnalyticsModal({
+      isOpen: true,
+      teacherId: teacher.id,
+      teacherName: `${teacher.last_name || ''} ${teacher.first_name || ''}`.trim() || teacher.email,
+      teacherEmail: teacher.email
+    });
+  };
+
+  const handleCloseAnalytics = () => {
+    setAnalyticsModal({
+      isOpen: false,
+      teacherId: null,
+      teacherName: '',
+      teacherEmail: ''
+    });
   };
 
   const handleDeleteTeacher = async (teacherId, teacherName) => {
@@ -531,6 +558,7 @@ const TeachersManage = ({ onClose }) => {
                     <th onClick={() => toggleSort('created_at')} className={sortKey === 'created_at' ? 'sorted' : ''}>Создан</th>
                     <th onClick={() => toggleSort('last_login')} className={sortKey === 'last_login' ? 'sorted' : ''}>Последний вход</th>
                     <th>Zoom</th>
+                    <th style={{ width: '60px' }}>Stats</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -558,14 +586,23 @@ const TeachersManage = ({ onClose }) => {
                         <td>{formatDate(teacher.created_at)}</td>
                         <td>{formatDateTime(teacher.last_login)}</td>
                         <td>{teacher.has_zoom_config ? 'Да' : 'Нет'}</td>
+                        <td>
+                          <button
+                            className="tm-stats-btn"
+                            onClick={() => handleOpenAnalytics(teacher)}
+                            title="Аналитика учителя"
+                          >
+                            Stats
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
                   {!filteredTeachers.length && !loading && (
-                    <tr><td colSpan="9" className="tm-empty">Учителя не найдены</td></tr>
+                    <tr><td colSpan="10" className="tm-empty">Учителя не найдены</td></tr>
                   )}
                   {loading && (
-                    <tr><td colSpan="9" className="tm-loading">Загрузка...</td></tr>
+                    <tr><td colSpan="10" className="tm-loading">Загрузка...</td></tr>
                   )}
                 </tbody>
               </table>
@@ -825,6 +862,15 @@ const TeachersManage = ({ onClose }) => {
           confirmText={confirm.confirmText}
           cancelText={confirm.cancelText}
         />
+
+        {analyticsModal.isOpen && (
+          <TeacherAnalyticsModal
+            teacherId={analyticsModal.teacherId}
+            teacherName={analyticsModal.teacherName}
+            teacherEmail={analyticsModal.teacherEmail}
+            onClose={handleCloseAnalytics}
+          />
+        )}
       </div>
     </div>
   );

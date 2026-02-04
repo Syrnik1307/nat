@@ -17,6 +17,13 @@ from .serializers import UserProfileSerializer, SystemSettingsSerializer
 from .models import StatusBarMessage, SystemSettings, Subscription, Payment
 from .subscriptions_utils import get_subscription
 
+# Import for homework counting in teacher analytics
+try:
+    from homework.models import Homework
+    HOMEWORK_MODEL_AVAILABLE = True
+except ImportError:
+    HOMEWORK_MODEL_AVAILABLE = False
+
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
@@ -2847,3 +2854,131 @@ class AdminDashboardDataView(APIView):
             'monthly_subscribers': monthly_subs,
             'yearly_subscribers': yearly_subs,
         }
+
+
+class AdminTeacherAnalyticsView(APIView):
+    """
+    Read-only endpoint to get detailed analytics for a specific teacher.
+    Uses Django aggregation (Count/Sum) for efficient DB queries.
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, teacher_id):
+        # Admin access check
+        if request.user.role != 'admin':
+            return Response(
+                {'error': 'Доступ запрещен'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            teacher = User.objects.get(id=teacher_id, role='teacher')
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'Учитель не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        now = timezone.now()
+        
+        # === INTEGRATIONS STATUS ===
+        integrations = {
+            'zoom': {
+                'connected': bool(
+                    teacher.zoom_account_id and
+                    teacher.zoom_client_id and
+                    teacher.zoom_client_secret
+                ),
+                'user_id': teacher.zoom_user_id or None,
+            },
+            'google_meet': {
+                'connected': bool(teacher.google_meet_connected and teacher.google_meet_refresh_token),
+                'email': teacher.google_meet_email or None,
+            },
+            'telegram': {
+                'connected': bool(teacher.telegram_id),
+                'verified': teacher.telegram_verified,
+                'username': teacher.telegram_username or None,
+                'chat_id': teacher.telegram_chat_id or None,
+            },
+        }
+        
+        # === ACTIVITY COUNTS (using aggregation) ===
+        # Groups created by this teacher
+        groups_count = ScheduleGroup.objects.filter(teacher=teacher).count()
+        
+        # Lessons conducted
+        lessons_qs = Lesson.objects.filter(teacher=teacher)
+        total_lessons = lessons_qs.count()
+        
+        # Lessons in last 30 days
+        recent_period = now - timedelta(days=30)
+        lessons_last_30_days = lessons_qs.filter(start_time__gte=recent_period).count()
+        
+        # Homeworks created
+        homeworks_count = 0
+        if HOMEWORK_MODEL_AVAILABLE:
+            homeworks_count = Homework.objects.filter(teacher=teacher).count()
+        
+        activity = {
+            'groups_count': groups_count,
+            'total_lessons': total_lessons,
+            'lessons_last_30_days': lessons_last_30_days,
+            'homeworks_count': homeworks_count,
+        }
+        
+        # === GROWTH (students) ===
+        # Count unique students across all teacher's groups
+        student_ids = ScheduleGroup.objects.filter(
+            teacher=teacher
+        ).values_list('students', flat=True).distinct()
+        # Filter out None values
+        total_students = len([s for s in student_ids if s is not None])
+        
+        growth = {
+            'total_students': total_students,
+        }
+        
+        # === FINANCE ===
+        subscription = get_subscription(teacher)
+        
+        # Total payments for this teacher
+        payments_agg = Payment.objects.filter(
+            subscription=subscription,
+            status=Payment.STATUS_SUCCEEDED
+        ).aggregate(
+            total_amount=Coalesce(Sum('amount'), Value(0)),
+            payments_count=Count('id')
+        )
+        
+        finance = {
+            'subscription_status': subscription.status if subscription else None,
+            'subscription_plan': subscription.plan if subscription else None,
+            'subscription_expires_at': subscription.expires_at if subscription else None,
+            'total_paid': float(payments_agg['total_amount']),
+            'payments_count': payments_agg['payments_count'],
+            'last_payment_date': subscription.last_payment_date if subscription else None,
+        }
+        
+        # === BASIC INFO ===
+        days_on_platform = (now - teacher.created_at).days if teacher.created_at else 0
+        
+        teacher_info = {
+            'id': teacher.id,
+            'email': teacher.email,
+            'first_name': teacher.first_name,
+            'last_name': teacher.last_name,
+            'middle_name': teacher.middle_name,
+            'created_at': teacher.created_at,
+            'last_login': teacher.last_login,
+            'days_on_platform': days_on_platform,
+        }
+        
+        return Response({
+            'teacher': teacher_info,
+            'integrations': integrations,
+            'activity': activity,
+            'growth': growth,
+            'finance': finance,
+        })
