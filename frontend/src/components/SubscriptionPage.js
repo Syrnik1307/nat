@@ -18,8 +18,8 @@ const SubscriptionPage = ({ embedded = false }) => {
   const [processing, setProcessing] = useState(false);
   const processingRef = useRef(false);
 
-  // Zoom add-on
-  const [zoomMode, setZoomMode] = useState('pool');
+  // Zoom settings
+  const [zoomMode] = useState('personal');
   const [zoomPersonal, setZoomPersonal] = useState({
     accountId: '',
     clientId: '',
@@ -414,6 +414,72 @@ const SubscriptionPage = ({ embedded = false }) => {
               {subData?.auto_renew ? 'Отключить автопродление' : 'Подключить автопродление'}
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* Настройка Zoom */}
+      <section className="zoom-section" data-tour="subscription-zoom">
+        <h2>Настройка Zoom</h2>
+        <div className="zoom-card">
+          <p>Для проведения уроков через Zoom введите данные вашего Zoom аккаунта.</p>
+          <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+            Получить данные можно в{' '}
+            <a 
+              href="https://marketplace.zoom.us/develop/create" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: '#2563eb' }}
+            >
+              Zoom Marketplace
+            </a>
+            {' '}(создайте Server-to-Server OAuth app).
+          </p>
+          
+          <div className="zoom-form">
+            <div className="form-group">
+              <label>Account ID</label>
+              <input 
+                type="text"
+                placeholder="Ваш Account ID"
+                value={zoomPersonal.accountId}
+                onChange={(e) => setZoomPersonal({...zoomPersonal, accountId: e.target.value})}
+                disabled={processing}
+              />
+            </div>
+            <div className="form-group">
+              <label>Client ID</label>
+              <input 
+                type="text"
+                placeholder="Ваш Client ID"
+                value={zoomPersonal.clientId}
+                onChange={(e) => setZoomPersonal({...zoomPersonal, clientId: e.target.value})}
+                disabled={processing}
+              />
+            </div>
+            <div className="form-group">
+              <label>Client Secret</label>
+              <input 
+                type="password"
+                placeholder="Ваш Client Secret"
+                value={zoomPersonal.clientSecret}
+                onChange={(e) => setZoomPersonal({...zoomPersonal, clientSecret: e.target.value})}
+                disabled={processing}
+              />
+            </div>
+            <button 
+              className="save-zoom-btn"
+              onClick={handleSetupZoomAddon}
+              disabled={processing || !zoomPersonal.accountId || !zoomPersonal.clientId || !zoomPersonal.clientSecret}
+            >
+              {processing ? 'Сохранение...' : 'Сохранить настройки Zoom'}
+            </button>
+          </div>
+          
+          {subData?.zoom_connected && (
+            <div className="zoom-status connected">
+              Zoom подключен
+            </div>
+          )}
         </div>
       </section>
 
