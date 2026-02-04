@@ -10,6 +10,31 @@ const TOUR_VERSION = 'v1'; // Инкрементировать при измен
 const startedTours = new Set();
 
 /**
+ * Проверка, нужно ли показать тур (только после регистрации)
+ * Возвращает true только если пользователь только что зарегистрировался
+ */
+const shouldShowTour = (userId) => {
+  if (!userId) return false;
+  try {
+    return localStorage.getItem(`lectio_show_tour_${userId}`) === 'true';
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Сбрасывает флаг "нужен тур" после его показа
+ */
+const clearShowTourFlag = (userId) => {
+  if (!userId) return;
+  try {
+    localStorage.removeItem(`lectio_show_tour_${userId}`);
+  } catch {
+    // ignore
+  }
+};
+
+/**
  * Хук для управления онбординг-туром
  * @param {string} tourKey - Уникальный ключ тура (teacher, student)
  * @param {Array} steps - Массив шагов тура
@@ -108,9 +133,9 @@ export const useOnboarding = (tourKey, steps, options = {}) => {
     driverRef.current.drive();
   }, [steps, options, markCompleted, tourKey]);
 
-  // Автозапуск при первом входе
+  // Автозапуск при первом входе - ТОЛЬКО после регистрации
   useEffect(() => {
-    console.log(`[Onboarding:${tourKey}] useEffect - completed=${completed}, hasStarted=${startedTours.has(tourKey)}, stepsLen=${steps?.length}`);
+    console.log(`[Onboarding:${tourKey}] useEffect - completed=${completed}, hasStarted=${startedTours.has(tourKey)}, stepsLen=${steps?.length}, userId=${userId}`);
     
     // Не запускаем если уже завершён
     if (completed) {
@@ -128,20 +153,29 @@ export const useOnboarding = (tourKey, steps, options = {}) => {
       console.log(`[Onboarding:${tourKey}] Skipping - no steps`);
       return;
     }
+    
+    // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: тур показывается только если пользователь только что зарегистрировался
+    // Флаг lectio_show_tour_{userId} устанавливается в auth.js при регистрации
+    if (!shouldShowTour(userId)) {
+      console.log(`[Onboarding:${tourKey}] Skipping - no show_tour flag (not a new registration)`);
+      return;
+    }
 
-    console.log(`[Onboarding:${tourKey}] Will auto-start in 2000ms`);
+    console.log(`[Onboarding:${tourKey}] Will auto-start in 2000ms (new user registration detected)`);
     startedTours.add(tourKey); // Помечаем что этот тур стартовали
 
     // Ждём пока страница полностью загрузится
     const timer = setTimeout(() => {
       console.log(`[Onboarding:${tourKey}] Timer fired, calling startTour()`);
+      // Сбрасываем флаг "нужен тур" чтобы не показывать повторно
+      clearShowTourFlag(userId);
       startTour();
     }, 2000);
 
     return () => {
       clearTimeout(timer);
     };
-  }, [completed, steps, tourKey, startTour]);
+  }, [completed, steps, tourKey, startTour, userId]);
 
   // Cleanup при размонтировании
   useEffect(() => {

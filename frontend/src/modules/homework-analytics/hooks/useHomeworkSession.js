@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+// ============================================================================
+// MOBILE-OPTIMIZED HOMEWORK SESSION HOOK
+// Полностью переписан для надёжной работы на iOS/Safari/мобильных сетях
+// ============================================================================
+
 // Lazy-load service to avoid circular deps during tests/builds
 let cachedHomeworkService;
 const getHomeworkService = () => {
@@ -10,402 +15,505 @@ const getHomeworkService = () => {
   return cachedHomeworkService;
 };
 
-const AUTO_SAVE_INTERVAL = 30000;
-
-const HOMEWORK_CACHE_TTL_MS = 60000;
-const homeworkCache = new Map(); // homeworkId -> { ts, data }
-
-const buildInitialAnswers = (homework) => {
-  if (!homework?.questions) return {};
-  return homework.questions.reduce((accumulator, question) => {
-    accumulator[question.id] = null;
-    if (question.question_type === 'LISTENING') {
-      accumulator[question.id] = (question.config?.subQuestions || []).reduce(
-        (subAcc, subQuestion) => {
-          subAcc[subQuestion.id] = '';
-          return subAcc;
-        },
-        {}
-      );
+// ============================================================================
+// SAFE STORAGE UTILS - работают в Safari Private Mode
+// ============================================================================
+const safeStorage = {
+  isAvailable: () => {
+    try {
+      if (typeof localStorage === 'undefined') return false;
+      const testKey = '__storage_test__';
+      localStorage.setItem(testKey, testKey);
+      localStorage.removeItem(testKey);
+      return true;
+    } catch {
+      return false;
     }
-    if (question.question_type === 'MATCHING') {
-      accumulator[question.id] = {};
+  },
+  
+  get: (key) => {
+    try {
+      if (!safeStorage.isAvailable()) return null;
+      const value = localStorage.getItem(key);
+      return value ? JSON.parse(value) : null;
+    } catch {
+      return null;
     }
-    if (question.question_type === 'DRAG_DROP') {
-      accumulator[question.id] = (question.config?.items || []).map((item) => item.id);
+  },
+  
+  set: (key, value) => {
+    try {
+      if (!safeStorage.isAvailable()) return false;
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch {
+      return false;
     }
-    if (question.question_type === 'FILL_BLANKS') {
-      const blanks = question.config?.answers || [];
-      accumulator[question.id] = blanks.map(() => '');
+  },
+  
+  remove: (key) => {
+    try {
+      if (!safeStorage.isAvailable()) return;
+      localStorage.removeItem(key);
+    } catch {
+      // Ignore
     }
-    if (question.question_type === 'HOTSPOT') {
-      accumulator[question.id] = [];
-    }
-    if (question.question_type === 'CODE') {
-      accumulator[question.id] = {
-        code: question.config?.starterCode || '',
-        testResults: [],
-      };
-    }
-    return accumulator;
-  }, {});
+  }
 };
 
-/**
- * Convert backend Answer array to {questionId: value} map for frontend state.
- * Backend returns: [{question: 87, text_answer: "...", selected_choices: [1,2], attachments: [...], ...}, ...]
- * Frontend expects: {87: "..." or [1,2] or {...}, "87_attachments": [...]}
- */
-const convertAnswersArrayToMap = (answersArray, questions) => {
-  if (!Array.isArray(answersArray) || answersArray.length === 0) return {};
+// ============================================================================
+// NETWORK UTILS - retry с exponential backoff для мобильных сетей
+// ============================================================================
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const isRetryableError = (error) => {
+  if (!error) return false;
+  // Нет response = сетевая ошибка
+  if (!error.response) return true;
+  // Таймаут
+  if (error.code === 'ECONNABORTED') return true;
+  // 5xx ошибки сервера
+  if (error.response?.status >= 500) return true;
+  // 429 Too Many Requests
+  if (error.response?.status === 429) return true;
+  // Сообщение содержит network
+  if (error.message?.toLowerCase().includes('network')) return true;
+  // Fetch API errors
+  if (error.name === 'TypeError' && error.message?.includes('fetch')) return true;
+  return false;
+};
+
+const withRetry = async (fn, options = {}) => {
+  const { maxRetries = 3, baseDelay = 1000, maxDelay = 10000 } = options;
+  let lastError = null;
   
-  const questionTypesById = {};
-  if (questions) {
-    questions.forEach((q) => { questionTypesById[q.id] = q.question_type; });
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      
+      // Не повторяем для 4xx (кроме 429) - это валидационные ошибки
+      if (error.response?.status >= 400 && error.response?.status < 500 && error.response?.status !== 429) {
+        throw error;
+      }
+      
+      // Последняя попытка - выбрасываем ошибку
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Повторяем только для retryable ошибок
+      if (!isRetryableError(error)) {
+        throw error;
+      }
+      
+      // Exponential backoff с jitter
+      const delay = Math.min(baseDelay * Math.pow(2, attempt - 1) + Math.random() * 500, maxDelay);
+      console.warn(`[useHomeworkSession] Attempt ${attempt}/${maxRetries} failed, retrying in ${Math.round(delay)}ms...`);
+      await sleep(delay);
+    }
   }
   
-  return answersArray.reduce((acc, answer) => {
-    const qId = answer.question;
-    const qType = questionTypesById[qId];
+  throw lastError;
+};
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+const AUTO_SAVE_INTERVAL = 30000; // 30 сек
+const HOMEWORK_CACHE_TTL_MS = 60000; // 1 мин
+const homeworkCache = new Map();
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+const buildInitialAnswers = (homework) => {
+  if (!homework?.questions) return {};
+  return homework.questions.reduce((acc, q) => {
+    acc[q.id] = null;
     
-    // Восстанавливаем attachments если есть
-    if (Array.isArray(answer.attachments) && answer.attachments.length > 0) {
-      acc[`${qId}_attachments`] = answer.attachments;
+    switch (q.question_type) {
+      case 'LISTENING':
+        acc[q.id] = (q.config?.subQuestions || []).reduce((subAcc, sub) => {
+          subAcc[sub.id] = '';
+          return subAcc;
+        }, {});
+        break;
+      case 'MATCHING':
+        acc[q.id] = {};
+        break;
+      case 'DRAG_DROP':
+        acc[q.id] = (q.config?.items || []).map(item => item.id);
+        break;
+      case 'FILL_BLANKS':
+        acc[q.id] = (q.config?.answers || []).map(() => '');
+        break;
+      case 'HOTSPOT':
+        acc[q.id] = [];
+        break;
+      case 'CODE':
+        acc[q.id] = { code: q.config?.starterCode || '', testResults: [] };
+        break;
+      default:
+        break;
     }
     
-    // Determine value based on question type
-    if (qType === 'TEXT' || qType === 'ESSAY') {
-      acc[qId] = answer.text_answer || '';
-    } else if (qType === 'SINGLE_CHOICE') {
-      // Single choice: first selected choice or null
-      acc[qId] = answer.selected_choices?.[0] ?? null;
-    } else if (qType === 'MULTI_CHOICE') {
-      acc[qId] = answer.selected_choices || [];
-    } else if (qType === 'MATCHING' || qType === 'LISTENING') {
-      // These store structured data in text_answer as JSON
-      try {
-        acc[qId] = answer.text_answer ? JSON.parse(answer.text_answer) : {};
-      } catch {
-        acc[qId] = {};
-      }
-    } else if (qType === 'DRAG_DROP' || qType === 'FILL_BLANKS') {
-      // These also store array in text_answer as JSON
-      try {
-        acc[qId] = answer.text_answer ? JSON.parse(answer.text_answer) : [];
-      } catch {
-        acc[qId] = [];
-      }
-    } else if (qType === 'HOTSPOT') {
-      try {
-        acc[qId] = answer.text_answer ? JSON.parse(answer.text_answer) : [];
-      } catch {
-        acc[qId] = [];
-      }
-    } else if (qType === 'CODE') {
-      try {
-        acc[qId] = answer.text_answer ? JSON.parse(answer.text_answer) : { code: '', testResults: [] };
-      } catch {
-        acc[qId] = { code: '', testResults: [] };
-      }
-    } else {
-      // Fallback: prefer text_answer, then selected_choices
-      if (answer.text_answer) {
-        acc[qId] = answer.text_answer;
-      } else if (answer.selected_choices?.length) {
-        acc[qId] = answer.selected_choices;
-      } else {
-        acc[qId] = null;
-      }
-    }
     return acc;
   }, {});
 };
 
+const convertAnswersArrayToMap = (answersArray, questions) => {
+  if (!Array.isArray(answersArray) || answersArray.length === 0) return {};
+  
+  const typeById = {};
+  questions?.forEach(q => { typeById[q.id] = q.question_type; });
+  
+  return answersArray.reduce((acc, answer) => {
+    const qId = answer.question;
+    const qType = typeById[qId];
+    
+    // Attachments
+    if (Array.isArray(answer.attachments) && answer.attachments.length > 0) {
+      acc[`${qId}_attachments`] = answer.attachments;
+    }
+    
+    // Value по типу
+    switch (qType) {
+      case 'TEXT':
+      case 'ESSAY':
+        acc[qId] = answer.text_answer || '';
+        break;
+      case 'SINGLE_CHOICE':
+        acc[qId] = answer.selected_choices?.[0] ?? null;
+        break;
+      case 'MULTI_CHOICE':
+        acc[qId] = answer.selected_choices || [];
+        break;
+      case 'MATCHING':
+      case 'LISTENING':
+        try {
+          acc[qId] = answer.text_answer ? JSON.parse(answer.text_answer) : {};
+        } catch { acc[qId] = {}; }
+        break;
+      case 'DRAG_DROP':
+      case 'FILL_BLANKS':
+      case 'HOTSPOT':
+        try {
+          acc[qId] = answer.text_answer ? JSON.parse(answer.text_answer) : [];
+        } catch { acc[qId] = []; }
+        break;
+      case 'CODE':
+        try {
+          acc[qId] = answer.text_answer ? JSON.parse(answer.text_answer) : { code: '', testResults: [] };
+        } catch { acc[qId] = { code: '', testResults: [] }; }
+        break;
+      default:
+        acc[qId] = answer.text_answer || (answer.selected_choices?.length ? answer.selected_choices : null);
+    }
+    
+    return acc;
+  }, {});
+};
+
+// ============================================================================
+// MAIN HOOK
+// ============================================================================
 const useHomeworkSession = (homeworkId, injectedService) => {
   const localDraftKey = homeworkId ? `hw_draft_${homeworkId}` : null;
-  const submissionHintKey = homeworkId ? `hw_submission_id_${homeworkId}` : null;
+  const submissionHintKey = homeworkId ? `hw_sub_${homeworkId}` : null;
   const svc = injectedService || getHomeworkService();
+  
+  // State
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [homework, setHomework] = useState(null);
   const [submission, setSubmission] = useState(null);
-  const [answers, setAnswers] = useState(() => {
-    // Безопасная проверка localStorage для iOS Private Mode
-    if (localDraftKey && typeof localStorage !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(localDraftKey);
-        if (saved) return JSON.parse(saved);
-      } catch (storageErr) {
-        // localStorage недоступен в Safari Private Mode - продолжаем без черновика
-      }
-    }
-    return {};
-  });
+  const [answers, setAnswers] = useState(() => safeStorage.get(localDraftKey) || {});
   const [savingState, setSavingState] = useState({ status: 'idle', timestamp: null });
+  
+  // Refs
   const dirtyRef = useRef(false);
   const mountedRef = useRef(true);
-
-  useEffect(() => () => {
-    mountedRef.current = false;
+  const submittingRef = useRef(false); // Предотвращаем двойную отправку
+  
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
   }, []);
-
+  
+  // ============================================================================
+  // LOAD HOMEWORK
+  // ============================================================================
   const loadHomework = useCallback(async () => {
     if (!homeworkId) return;
+    
     setLoading(true);
+    setError(null);
+    
     try {
       const hwIdNum = Number(homeworkId);
-
-      // 1) Быстрый in-memory кеш для возврата назад/вперед без повторной загрузки
-      const cacheEntry = homeworkCache.get(hwIdNum);
-      const now = Date.now();
-      if (cacheEntry && now - cacheEntry.ts < HOMEWORK_CACHE_TTL_MS) {
-        setHomework(cacheEntry.data);
+      
+      // 1) Проверяем кеш
+      const cached = homeworkCache.get(hwIdNum);
+      if (cached && Date.now() - cached.ts < HOMEWORK_CACHE_TTL_MS) {
+        setHomework(cached.data);
       }
-
-      // 2) Параллельно грузим homework и (если есть) подсказку submissionId
-      const homeworkPromise = svc.fetchHomework(homeworkId);
-
-      let hintedSubmissionId = null;
-      if (submissionHintKey && typeof localStorage !== 'undefined') {
-        try {
-          const raw = localStorage.getItem(submissionHintKey);
-          const parsed = raw ? Number(raw) : null;
-          if (Number.isFinite(parsed) && parsed > 0) hintedSubmissionId = parsed;
-        } catch {
-          // localStorage недоступен в Safari Private Mode
-        }
-      }
-      const hintedSubmissionPromise = hintedSubmissionId
-        ? svc.fetchSubmission(hintedSubmissionId).catch(() => null)
-        : Promise.resolve(null);
-
-      const [rawHomework, hintedSubmissionResp] = await Promise.all([
-        homeworkPromise,
-        hintedSubmissionPromise,
-      ]);
-
-      const homeworkData = rawHomework && rawHomework.data ? rawHomework.data : rawHomework;
+      
+      // 2) Загружаем homework с retry
+      const rawHomework = await withRetry(() => svc.fetchHomework(homeworkId), { maxRetries: 3 });
+      const homeworkData = rawHomework?.data || rawHomework;
+      
+      if (!mountedRef.current) return;
+      
       setHomework(homeworkData);
       homeworkCache.set(hwIdNum, { ts: Date.now(), data: homeworkData });
-
-      // Восстановить черновик из localStorage, если есть
+      
+      // 3) Инициализируем answers
       let initialAnswers = buildInitialAnswers(homeworkData);
-      if (localDraftKey && typeof localStorage !== 'undefined') {
+      
+      // Восстанавливаем черновик
+      const savedDraft = safeStorage.get(localDraftKey);
+      if (savedDraft) {
+        initialAnswers = { ...initialAnswers, ...savedDraft };
+      }
+      
+      // 4) Ищем существующий submission
+      let submissionData = null;
+      
+      // Сначала по hint
+      const hintedId = safeStorage.get(submissionHintKey);
+      if (hintedId) {
         try {
-          const saved = localStorage.getItem(localDraftKey);
-          if (saved) initialAnswers = { ...initialAnswers, ...JSON.parse(saved) };
+          const resp = await svc.fetchSubmission(hintedId);
+          const sub = resp?.data || resp;
+          if (sub && Number(sub.homework) === hwIdNum) {
+            submissionData = sub;
+          }
         } catch {
-          // localStorage недоступен в Safari Private Mode
+          // Hint устарел - игнорируем
         }
       }
       
-      setError(null);
-      // 3) Сначала пытаемся использовать ранее найденный submission по id (быстрее, чем листинг)
-      let submissionData = null;
-      const hintedSubmission = hintedSubmissionResp?.data ? hintedSubmissionResp.data : hintedSubmissionResp;
-      if (hintedSubmission && Number(hintedSubmission.homework) === hwIdNum) {
-        submissionData = hintedSubmission;
-      }
-
-      // 4) Если подсказка не сработала, делаем листинг как fallback
+      // Fallback: листинг
       if (!submissionData) {
         try {
-          const existingSubmissions = await svc.fetchSubmissions({ homework: homeworkId });
-          const submissions = existingSubmissions?.data?.results || existingSubmissions?.data || [];
-          const matchingSubmissions = submissions.filter((sub) => Number(sub.homework) === hwIdNum);
-          if (matchingSubmissions.length > 0) {
-            submissionData = matchingSubmissions[0];
-          }
+          const listResp = await svc.fetchSubmissions({ homework: homeworkId });
+          const list = listResp?.data?.results || listResp?.data || [];
+          submissionData = list.find(s => Number(s.homework) === hwIdNum) || null;
         } catch (e) {
-          console.error('[useHomeworkSession] failed to fetch existing submissions:', e);
+          console.warn('[useHomeworkSession] fetchSubmissions failed:', e);
         }
       }
-
-      // Восстановим answers из submission (для любого статуса)
-      if (submissionData && Array.isArray(submissionData.answers) && submissionData.answers.length > 0) {
-        const restoredAnswers = convertAnswersArrayToMap(submissionData.answers, homeworkData?.questions);
-        initialAnswers = { ...initialAnswers, ...restoredAnswers };
+      
+      // Восстанавливаем answers из submission
+      if (submissionData?.answers?.length > 0) {
+        const restored = convertAnswersArrayToMap(submissionData.answers, homeworkData?.questions);
+        initialAnswers = { ...initialAnswers, ...restored };
       }
-
-      // Если submission нет или она in_progress, создаем/используем её
+      
+      // 5) Создаём submission если нет
       if (!submissionData) {
-        const rawSubmission = await svc.startSubmission(homeworkId);
-        submissionData = rawSubmission && rawSubmission.data ? rawSubmission.data : rawSubmission;
+        console.log('[useHomeworkSession] Creating new submission for homework:', homeworkId);
+        const rawSub = await withRetry(() => svc.startSubmission(homeworkId), { maxRetries: 2 });
+        submissionData = rawSub?.data || rawSub;
+        console.log('[useHomeworkSession] Created submission:', submissionData);
+      } else {
+        console.log('[useHomeworkSession] Found existing submission:', {
+          id: submissionData.id,
+          status: submissionData.status,
+          homework: submissionData.homework
+        });
       }
-
-      // Сохраняем подсказку для следующего входа (безопасно для iOS Private Mode)
-      if (submissionHintKey && submissionData?.id && typeof localStorage !== 'undefined') {
-        try {
-          localStorage.setItem(submissionHintKey, String(submissionData.id));
-        } catch {
-          // localStorage недоступен - игнорируем
-        }
+      
+      if (!mountedRef.current) return;
+      
+      // Сохраняем hint
+      if (submissionData?.id) {
+        safeStorage.set(submissionHintKey, submissionData.id);
       }
       
       setAnswers(initialAnswers);
       setSubmission(submissionData);
-    } catch (requestError) {
-      console.error('[useHomeworkSession] load failed:', requestError);
-      setError('Не удалось загрузить задание. Попробуйте обновить страницу.');
+      
+    } catch (err) {
+      console.error('[useHomeworkSession] load failed:', err);
+      if (mountedRef.current) {
+        setError('Не удалось загрузить задание. Проверьте интернет-соединение и обновите страницу.');
+      }
     } finally {
       if (mountedRef.current) {
         setLoading(false);
       }
     }
   }, [homeworkId, localDraftKey, submissionHintKey, svc]);
-
+  
   useEffect(() => {
     loadHomework();
   }, [loadHomework]);
-
+  
+  // ============================================================================
+  // RECORD ANSWER
+  // ============================================================================
   const recordAnswer = useCallback((questionId, value) => {
-    setAnswers((previous) => {
-      const next = { ...previous, [questionId]: value };
-      if (localDraftKey) {
-        try {
-          // Безопасная проверка доступности localStorage для iOS Private Mode
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem(localDraftKey, JSON.stringify(next));
-          }
-        } catch (storageErr) {
-          // localStorage недоступен в Safari Private Mode - игнорируем
-          // Черновик не сохранится локально, но ответы всё равно отправятся на сервер
-        }
-      }
+    setAnswers(prev => {
+      const next = { ...prev, [questionId]: value };
+      // Сохраняем черновик локально (для восстановления при перезагрузке)
+      safeStorage.set(localDraftKey, next);
       return next;
     });
     dirtyRef.current = true;
   }, [localDraftKey]);
-
+  
+  // ============================================================================
+  // SAVE PROGRESS (автосохранение на сервер)
+  // ============================================================================
   const saveProgress = useCallback(async () => {
+    // Не сохраняем если уже отправлено
     if (submission?.status && submission.status !== 'in_progress') return;
     if (!submission?.id) return;
     if (!dirtyRef.current) return;
+    
     try {
       setSavingState({ status: 'saving', timestamp: Date.now() });
-      await svc.saveProgress(submission.id, answers);
+      
+      await withRetry(() => svc.saveProgress(submission.id, answers), { maxRetries: 2, baseDelay: 2000 });
+      
       dirtyRef.current = false;
-      setSavingState({ status: 'saved', timestamp: Date.now() });
-      // После успешного сохранения — удалить локальный черновик (безопасно для iOS)
-      if (localDraftKey && typeof localStorage !== 'undefined') {
-        try { 
-          localStorage.removeItem(localDraftKey); 
-        } catch {
-          // localStorage недоступен в Safari Private Mode
-        }
+      
+      if (mountedRef.current) {
+        setSavingState({ status: 'saved', timestamp: Date.now() });
       }
-    } catch (saveError) {
-      console.error('[useHomeworkSession] save failed:', saveError);
-      setSavingState({ status: 'error', timestamp: Date.now() });
+      
+      // Удаляем локальный черновик после успешного сохранения на сервер
+      safeStorage.remove(localDraftKey);
+      
+    } catch (err) {
+      console.error('[useHomeworkSession] saveProgress failed:', err);
+      if (mountedRef.current) {
+        setSavingState({ status: 'error', timestamp: Date.now() });
+      }
+      throw err; // Пробрасываем для обработки в submitHomework
     }
   }, [answers, localDraftKey, submission?.id, submission?.status, svc]);
-
+  
+  // Автосохранение каждые 30 сек
   useEffect(() => {
-    if (!submission?.id) return undefined;
-    const interval = setInterval(() => {
-      saveProgress();
-    }, AUTO_SAVE_INTERVAL);
-    return () => clearInterval(interval);
-  }, [submission?.id, saveProgress]);
-
-  const submitHomework = useCallback(async () => {
     if (!submission?.id) return;
+    if (submission?.status !== 'in_progress') return;
     
-    // Сохраняем прогресс перед отправкой (с retry для iOS)
+    const interval = setInterval(() => {
+      saveProgress().catch(() => {}); // Ошибки автосохранения не критичны
+    }, AUTO_SAVE_INTERVAL);
+    
+    return () => clearInterval(interval);
+  }, [submission?.id, submission?.status, saveProgress]);
+  
+  // ============================================================================
+  // SUBMIT HOMEWORK - главная функция отправки
+  // ============================================================================
+  const submitHomework = useCallback(async () => {
+    if (!submission?.id) {
+      throw new Error('Нет активной попытки');
+    }
+    
+    // Защита от двойной отправки (особенно важно на мобильных)
+    if (submittingRef.current) {
+      console.warn('[useHomeworkSession] Submit already in progress, ignoring');
+      return null;
+    }
+    
+    submittingRef.current = true;
+    
     try {
-      await saveProgress();
-    } catch (saveErr) {
-      console.warn('[useHomeworkSession] saveProgress failed before submit, continuing:', saveErr);
-      // Продолжаем отправку даже если сохранение не удалось
-    }
-    
-    // Retry логика для iOS/мобильных сетей
-    const MAX_RETRIES = 3;
-    let lastError = null;
-    
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const resp = await svc.submit(submission.id);
-        const data = resp && resp.data ? resp.data : resp;
-        setSubmission(data);
-        
-        // После отправки удалим локальный черновик (с безопасной обработкой для iOS Private Mode)
-        if (localDraftKey) {
-          try { 
-            localStorage.removeItem(localDraftKey); 
-          } catch (storageErr) {
-            // localStorage может быть недоступен в Safari Private Mode
-            console.warn('[useHomeworkSession] localStorage cleanup failed:', storageErr);
-          }
+      // 1) Сначала сохраняем ответы (с retry)
+      if (dirtyRef.current) {
+        try {
+          await withRetry(() => svc.saveProgress(submission.id, answers), { maxRetries: 2 });
+          dirtyRef.current = false;
+        } catch (saveErr) {
+          console.warn('[useHomeworkSession] Pre-submit save failed, continuing anyway:', saveErr);
+          // Продолжаем submit даже если save упал - ответы могли уже быть на сервере
         }
-        
-        return resp;
-      } catch (submitErr) {
-        lastError = submitErr;
-        const isNetworkError = !submitErr.response && (submitErr.code === 'ECONNABORTED' || submitErr.message?.includes('Network'));
-        const isTimeout = submitErr.code === 'ECONNABORTED';
-        
-        console.warn(`[useHomeworkSession] submit attempt ${attempt}/${MAX_RETRIES} failed:`, submitErr.message);
-        
-        // Если это 400/403 - не повторяем (валидационная ошибка)
-        if (submitErr.response?.status === 400 || submitErr.response?.status === 403) {
-          throw submitErr;
-        }
-        
-        // Повторяем только при сетевых ошибках и таймаутах
-        if ((isNetworkError || isTimeout) && attempt < MAX_RETRIES) {
-          // Экспоненциальная задержка: 1с, 2с, 4с
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
-          continue;
-        }
-        
-        throw submitErr;
       }
+      
+      // 2) Отправляем submission с aggressive retry
+      const resp = await withRetry(
+        () => svc.submit(submission.id),
+        { maxRetries: 5, baseDelay: 1500, maxDelay: 15000 }
+      );
+      
+      const data = resp?.data || resp;
+      
+      if (mountedRef.current) {
+        setSubmission(data);
+      }
+      
+      // 3) Очищаем локальные данные
+      safeStorage.remove(localDraftKey);
+      safeStorage.remove(submissionHintKey);
+      
+      return resp;
+      
+    } finally {
+      submittingRef.current = false;
     }
-    
-    throw lastError;
-  }, [localDraftKey, saveProgress, submission?.id, svc]);
-
+  }, [answers, localDraftKey, submission?.id, submissionHintKey, svc]);
+  
+  // ============================================================================
+  // PROGRESS CALCULATION
+  // ============================================================================
   const progress = useMemo(() => {
     if (!homework?.questions?.length) return 0;
+    
     const total = homework.questions.length;
-    const answered = homework.questions.filter((question) => {
-      const value = answers[question.id];
-      if (value == null) return false;
-      if (question.question_type === 'TEXT') {
-        return Boolean(value?.trim?.());
+    let answered = 0;
+    
+    for (const q of homework.questions) {
+      const value = answers[q.id];
+      if (value == null) continue;
+      
+      switch (q.question_type) {
+        case 'TEXT':
+        case 'ESSAY':
+          if (value?.trim?.()) answered++;
+          break;
+        case 'SINGLE_CHOICE':
+          if (value) answered++;
+          break;
+        case 'MULTIPLE_CHOICE':
+        case 'MULTI_CHOICE':
+          if (Array.isArray(value) && value.length > 0) answered++;
+          break;
+        case 'LISTENING':
+          if (Object.values(value || {}).some(v => v?.trim?.())) answered++;
+          break;
+        case 'MATCHING':
+          if (Object.keys(value || {}).length === (q.config?.pairs?.length || 0)) answered++;
+          break;
+        case 'DRAG_DROP':
+          if ((value || []).length > 0) answered++;
+          break;
+        case 'FILL_BLANKS':
+          if ((value || []).every(v => v?.trim?.())) answered++;
+          break;
+        case 'HOTSPOT':
+          if (Array.isArray(value) && value.length > 0) answered++;
+          break;
+        case 'CODE':
+          if (value?.code?.trim() && value?.testResults?.length > 0) answered++;
+          break;
+        default:
+          if (value) answered++;
       }
-      if (question.question_type === 'SINGLE_CHOICE') {
-        return Boolean(value);
-      }
-      if (question.question_type === 'MULTIPLE_CHOICE' || question.question_type === 'MULTI_CHOICE') {
-        return Array.isArray(value) && value.length > 0;
-      }
-      if (question.question_type === 'LISTENING') {
-        return Object.values(value || {}).some((answer) => Boolean(answer?.trim?.())) || false;
-      }
-      if (question.question_type === 'MATCHING') {
-        return Object.keys(value || {}).length === (question.config?.pairs?.length || 0);
-      }
-      if (question.question_type === 'DRAG_DROP') {
-        return (value || []).length > 0;
-      }
-      if (question.question_type === 'FILL_BLANKS') {
-        return (value || []).every((answer) => Boolean(answer?.trim?.()));
-      }
-      if (question.question_type === 'HOTSPOT') {
-        return Array.isArray(value) && value.length > 0;
-      }
-      if (question.question_type === 'CODE') {
-        // CODE считается отвеченным если есть код (не пустой) и хотя бы один тест запущен
-        const codeValue = typeof value === 'object' ? value : {};
-        return Boolean(codeValue.code?.trim()) && (codeValue.testResults?.length > 0);
-      }
-      return false;
-    }).length;
+    }
+    
     return Math.round((answered / total) * 100);
   }, [answers, homework]);
-
+  
+  // ============================================================================
+  // RETURN
+  // ============================================================================
   return {
     loading,
     error,

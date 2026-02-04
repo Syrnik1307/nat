@@ -251,6 +251,8 @@ git pull origin main &&
 cd frontend && 
 npm install --silent && 
 umask 022 && npm run build && 
+sudo chown -R www-data:www-data build && 
+sudo chmod -R 755 build && 
 sudo systemctl restart nginx
 "@
     

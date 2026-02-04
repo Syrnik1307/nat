@@ -70,7 +70,7 @@ const Modal = ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 9999, // Fixed high z-index for iOS compatibility
+    zIndex: 50000, // Must be higher than fixed footer (15000) and SupportWidget (12000)
     padding: 'var(--space-lg, 16px)',
     animation: 'backdropFadeIn var(--duration-slow, 400ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1))',
     // iOS Safari fixes

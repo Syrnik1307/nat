@@ -107,41 +107,56 @@ export const buildHomeworkPayload = (meta, questions) => {
   return payload;
 };
 
+// ============================================================================
+// MOBILE-OPTIMIZED HOMEWORK SERVICE
+// Увеличенные таймауты и лучшая обработка для iOS/мобильных сетей
+// ============================================================================
+
 export const homeworkService = {
   buildHomeworkPayload,
+  
   async create(meta, questions) {
     const payload = buildHomeworkPayload(meta, questions);
     const response = await createHomework(payload);
     return response?.data;
   },
+  
   async update(id, meta, questions) {
     const payload = buildHomeworkPayload(meta, questions);
     const response = await updateHomework(id, payload);
     return response?.data;
   },
+  
   async fetchHomework(homeworkId) {
-    const response = await getHomework(homeworkId);
-    return response.data;
+    // Таймаут 45 сек для медленных мобильных сетей
+    const response = await apiClient.get(`homework/${homeworkId}/`, { timeout: 45000 });
+    return response;
   },
+  
   async fetchSubmissions(params) {
     const { getSubmissions } = require('../../../apiService');
     return getSubmissions(params);
   },
+  
   async fetchSubmission(submissionId) {
     const { getSubmission } = require('../../../apiService');
     return getSubmission(submissionId);
   },
+  
   async startSubmission(homeworkId) {
-    const response = await createSubmission({ homework: homeworkId });
-    return response.data;
+    // Таймаут 30 сек
+    const response = await apiClient.post('submissions/', { homework: homeworkId }, { timeout: 30000 });
+    return response;
   },
+  
   async saveProgress(submissionId, answers) {
-    // Увеличенный таймаут для мобильных сетей (iOS)
-    return apiClient.patch(`submissions/${submissionId}/answer/`, { answers }, { timeout: 30000 });
+    // Увеличенный таймаут 45 сек для мобильных сетей
+    return apiClient.patch(`submissions/${submissionId}/answer/`, { answers }, { timeout: 45000 });
   },
+  
   async submit(submissionId) {
-    // Увеличенный таймаут для надёжности на iOS/мобильных сетях
-    return apiClient.post(`submissions/${submissionId}/submit/`, {}, { timeout: 60000 });
+    // Максимальный таймаут 90 сек для критической операции
+    return apiClient.post(`submissions/${submissionId}/submit/`, {}, { timeout: 90000 });
   },
 };
 

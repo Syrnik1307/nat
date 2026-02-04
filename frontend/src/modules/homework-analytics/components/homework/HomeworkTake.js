@@ -525,13 +525,26 @@ const HomeworkTake = () => {
                   Посмотреть результаты
                 </Button>
               ) : (
-                <Button
-                  onClick={handleSubmit}
+                /* Кастомная кнопка для мобильных - без Button компонента */
+                <button
+                  type="button"
+                  className="ht-submit-btn-native"
                   disabled={submitting}
-                  className="ht-submit-btn"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSubmit();
+                  }}
+                  onTouchEnd={(e) => {
+                    // Для iOS - предотвращаем ghost click
+                    e.preventDefault();
+                    if (!submitting && !isLocked) {
+                      handleSubmit();
+                    }
+                  }}
                 >
                   {submitting ? 'Отправка...' : 'Завершить и отправить'}
-                </Button>
+                </button>
               )}
             </div>
           </footer>

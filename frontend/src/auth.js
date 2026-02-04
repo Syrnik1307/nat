@@ -250,6 +250,26 @@ export const AuthProvider = ({ children }) => {
 
     // 7. Загружаем профиль (роль может уточниться)
     try { await loadUser(); } catch (e) { console.warn('Не удалось загрузить профиль после регистрации:', e); }
+    
+    // 8. Устанавливаем флаг для показа онбординг-тура (только при регистрации!)
+    try {
+      // Получаем userId из JWT токена
+      const token = localStorage.getItem('tp_access_token');
+      if (token) {
+        const part = token.split('.')[1];
+        if (part) {
+          const base64 = part.replace(/-/g, '+').replace(/_/g, '/');
+          const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+          const payload = JSON.parse(atob(padded));
+          if (payload.user_id) {
+            localStorage.setItem(`lectio_show_tour_${payload.user_id}`, 'true');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Не удалось установить флаг тура:', e);
+    }
+    
     return userRole;
   }, [loadUser]);
 

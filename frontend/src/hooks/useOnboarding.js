@@ -32,6 +32,31 @@ const getStorageKey = (tourName, userId) => {
 };
 
 /**
+ * Проверка, нужно ли показать тур (только после регистрации)
+ * Возвращает true только если пользователь только что зарегистрировался
+ */
+const shouldShowTour = (userId) => {
+  if (!userId) return false;
+  try {
+    return localStorage.getItem(`lectio_show_tour_${userId}`) === 'true';
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Сбрасывает флаг "нужен тур" после его показа
+ */
+const clearShowTourFlag = (userId) => {
+  if (!userId) return;
+  try {
+    localStorage.removeItem(`lectio_show_tour_${userId}`);
+  } catch {
+    // ignore
+  }
+};
+
+/**
  * Проверка существования элемента в DOM
  */
 const elementExists = (selector) => {
@@ -168,7 +193,7 @@ export const useOnboarding = (tourName, userId, steps, options = {}) => {
     driverRef.current.drive();
   }, [steps, tourName, markCompleted, onComplete]);
 
-  // Автозапуск при монтировании
+  // Автозапуск при монтировании - ТОЛЬКО после регистрации
   useEffect(() => {
     if (!autoStart) return;
     if (!userId) return;
@@ -176,6 +201,10 @@ export const useOnboarding = (tourName, userId, steps, options = {}) => {
     if (hasTriggeredRef.current) return;
     if (sessionTriggered.has(sessionKey)) return;
     if (isCompleted()) return;
+    
+    // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: тур показывается только если пользователь только что зарегистрировался
+    // Флаг lectio_show_tour_{userId} устанавливается в auth.js при регистрации
+    if (!shouldShowTour(userId)) return;
 
     hasTriggeredRef.current = true;
     sessionTriggered.add(sessionKey);
@@ -183,6 +212,9 @@ export const useOnboarding = (tourName, userId, steps, options = {}) => {
     const timer = setTimeout(() => {
       // Проверяем ещё раз после задержки
       if (isCompleted()) return;
+      
+      // Сбрасываем флаг "нужен тур" чтобы не показывать повторно
+      clearShowTourFlag(userId);
       
       startTour();
     }, delay);

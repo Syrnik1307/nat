@@ -490,6 +490,51 @@
   gap: 0.75rem;
 }
 
+/* Кастомная кнопка отправки - нативный HTML для максимальной совместимости */
+.ht-submit-btn-native {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  min-height: 48px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #F8FAFC;
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  /* Mobile touch fixes */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  /* Prevent zoom on double tap */
+  touch-action: manipulation;
+}
+
+.ht-submit-btn-native:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.45);
+}
+
+.ht-submit-btn-native:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
+
+.ht-submit-btn-native:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .ht-submit-message {
   color: #047857;
   font-weight: 600;
@@ -612,7 +657,7 @@
   .ht-footer-actions .btn,
   .ht-footer-actions button {
     width: 100%;
-    min-height: 52px; /* Увеличенный iOS tap target */
+    min-height: 56px; /* Увеличенный iOS tap target */
     font-size: 1rem;
     /* Fix for iOS touch - критически важно */
     -webkit-tap-highlight-color: transparent;
@@ -624,10 +669,22 @@
     -webkit-touch-callout: none;
   }
   
-  /* Специфичные стили для кнопки отправки */
-  .ht-footer-actions .ht-submit-btn {
-    font-weight: 600;
-    font-size: 1.05rem;
+  /* Нативная кнопка отправки на мобильных */
+  .ht-submit-btn-native {
+    width: 100%;
+    min-height: 56px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 16px 24px;
+    border-radius: 14px;
+    /* Яркий градиент для видимости */
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+  }
+  
+  .ht-submit-btn-native:active:not(:disabled) {
+    transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
   }
 
   .ht-controls {

@@ -241,6 +241,9 @@ if ($frontendChanged) {
             Rollback-Changes
             exit 1
         }
+        # КРИТИЧНО: Исправляем права после сборки (npm создаёт с root owner)
+        Write-Host "  -> Исправление прав доступа..." -ForegroundColor Gray
+        ssh tp "sudo chown -R www-data:www-data /var/www/teaching_panel/frontend/build && sudo chmod -R 755 /var/www/teaching_panel/frontend/build"
         Write-OK "Frontend пересобран"
     }
 } else {
