@@ -78,7 +78,7 @@ function RecordingCard({ recording, onPlay, onDelete, onRename, showDelete, show
         : []);
 
   return (
-    <div className="recording-card">
+    <div className="recording-card" data-tour="rec-card-item">
       {/* Превью */}
       <div className="recording-thumbnail">
         {recording.thumbnail_url ? (
@@ -148,6 +148,7 @@ function RecordingCard({ recording, onPlay, onDelete, onRename, showDelete, show
                 className="title-edit-button"
                 onClick={handleStartEdit}
                 title="Редактировать название"
+                data-tour="rec-card-rename"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -237,6 +238,7 @@ function RecordingCard({ recording, onPlay, onDelete, onRename, showDelete, show
           className="watch-button"
           onClick={() => onPlay(recording)}
           disabled={recording.status !== 'ready'}
+          data-tour="rec-card-play"
         >
           {recording.status === 'ready' ? (
             <>
@@ -265,6 +267,7 @@ function RecordingCard({ recording, onPlay, onDelete, onRename, showDelete, show
               onDelete(recording.id);
             }}
             title="Удалить запись"
+            data-tour="rec-card-delete"
           >
             <span className="button-icon"></span>
             Удалить

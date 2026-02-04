@@ -136,10 +136,12 @@ export const homeworkService = {
     return response.data;
   },
   async saveProgress(submissionId, answers) {
-    return apiClient.patch(`submissions/${submissionId}/answer/`, { answers });
+    // Увеличенный таймаут для мобильных сетей (iOS)
+    return apiClient.patch(`submissions/${submissionId}/answer/`, { answers }, { timeout: 30000 });
   },
   async submit(submissionId) {
-    return apiClient.post(`submissions/${submissionId}/submit/`);
+    // Увеличенный таймаут для надёжности на iOS/мобильных сетях
+    return apiClient.post(`submissions/${submissionId}/submit/`, {}, { timeout: 60000 });
   },
 };
 

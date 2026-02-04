@@ -36,7 +36,7 @@ const SingleChoiceQuestion = ({ question, onChange }) => {
     <div className="hc-question-editor">
       <div className="form-group">
         <label className="form-label">Варианты ответов</label>
-        <div className="hc-question-options">
+        <div className="hc-question-options" data-tour="q-single-options">
           {options.map((option, index) => (
             <div key={option.id} className="hc-option-row">
               <label className="hc-option-radio">
@@ -66,7 +66,7 @@ const SingleChoiceQuestion = ({ question, onChange }) => {
             </div>
           ))}
         </div>
-        <button type="button" className="gm-btn-surface" onClick={addOption}>
+        <button type="button" className="gm-btn-surface" onClick={addOption} data-tour="q-single-add">
           + Добавить вариант
         </button>
       </div>

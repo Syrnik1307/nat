@@ -1,5 +1,6 @@
 """Celery tasks for subscription maintenance and notifications."""
 from datetime import timedelta
+import logging
 
 from celery import shared_task
 from django.utils import timezone
@@ -7,8 +8,48 @@ from django.utils import timezone
 from .models import Subscription, NotificationLog, NotificationSettings
 from .notifications import send_telegram_notification
 
+logger = logging.getLogger(__name__)
+
 REMINDER_DAYS = 3
 REMINDER_COOLDOWN_HOURS = 24
+
+
+@shared_task(name='accounts.tasks.send_verification_email_task', bind=True, max_retries=3)
+def send_verification_email_task(self, email: str, code: str, token: str):
+    """
+    Celery task для отправки email верификации.
+    
+    Args:
+        email: Email адрес получателя
+        code: 6-значный код верификации
+        token: UUID токен для ссылки верификации
+    """
+    from .email_service import email_service
+    
+    try:
+        logger.info(f'[Celery] Sending verification email to {email}')
+        
+        # Отправляем синхронно (внутри Celery worker это нормально)
+        result = email_service.send_verification_email(
+            email=email,
+            code=code,
+            token=token,
+            async_send=False  # Синхронно, т.к. мы уже в фоновой задаче
+        )
+        
+        if result['success']:
+            logger.info(f'[Celery] Verification email sent successfully to {email}')
+        else:
+            logger.warning(f'[Celery] Failed to send verification email to {email}: {result["message"]}')
+            # Повторяем при неудаче
+            raise Exception(result['message'])
+            
+        return result
+        
+    except Exception as exc:
+        logger.exception(f'[Celery] Error sending verification email to {email}: {exc}')
+        # Повторяем с экспоненциальной задержкой
+        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
 
 
 @shared_task(name='accounts.tasks.check_expiring_subscriptions')

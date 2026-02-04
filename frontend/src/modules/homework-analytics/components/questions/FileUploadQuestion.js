@@ -36,7 +36,7 @@ const FileUploadQuestion = ({ question, onChange }) => {
     <div className="hc-question-editor">
       <div className="form-group">
         <label className="form-label">Разрешенные типы файлов</label>
-        <div className="gm-checkbox-group" style={{ display: 'flex', gap: '16px' }}>
+        <div className="gm-checkbox-group" data-tour="q-file-types" style={{ display: 'flex', gap: '16px' }}>
           <label className="gm-checkbox-label">
             <input
               type="checkbox"
@@ -60,6 +60,7 @@ const FileUploadQuestion = ({ question, onChange }) => {
         <label className="form-label">Максимальное количество файлов</label>
         <select
           className="form-select"
+          data-tour="q-file-max-count"
           value={maxFiles}
           onChange={(e) => updateConfig({ maxFiles: parseInt(e.target.value, 10) })}
         >
@@ -74,6 +75,7 @@ const FileUploadQuestion = ({ question, onChange }) => {
         <label className="form-label">Максимальный размер файла (MB)</label>
         <select
           className="form-select"
+          data-tour="q-file-max-size"
           value={maxSizeMB}
           onChange={(e) => updateConfig({ maxSizeMB: parseInt(e.target.value, 10) })}
         >
@@ -84,7 +86,7 @@ const FileUploadQuestion = ({ question, onChange }) => {
         </select>
       </div>
 
-      <div className="form-group">
+      <div className="form-group" data-tour="q-file-instructions">
         <label className="form-label">Инструкции для ученика</label>
         <textarea
           className="form-textarea"

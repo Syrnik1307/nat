@@ -249,6 +249,7 @@ const FileUploadRenderer = ({ question, answer, onChange, disabled = false, home
           tabIndex={0}
           role="button"
           aria-label="Зона загрузки файла"
+          data-tour="q-file-dropzone"
         >
           <input
             ref={fileInputRef}
@@ -310,7 +311,7 @@ const FileUploadRenderer = ({ question, answer, onChange, disabled = false, home
 
       {/* Загруженные файлы */}
       {files.length > 0 && (
-        <div className="file-upload-files">
+        <div className="file-upload-files" data-tour="q-file-list">
           {files.map((file, index) => (
             <div key={file.file_id || index} className="file-upload-file">
               {file.mime_type?.startsWith('image/') ? (
@@ -332,6 +333,7 @@ const FileUploadRenderer = ({ question, answer, onChange, disabled = false, home
                   className="file-upload-remove-btn"
                   onClick={() => handleRemove(index)}
                   aria-label="Удалить файл"
+                  data-tour="q-file-remove"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="18" y1="6" x2="6" y2="18" />

@@ -782,7 +782,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
           <span className="hc-stats-badge">{questionCount} вопрос{questionCount === 1 ? '' : questionCount >= 2 && questionCount <= 4 ? 'а' : 'ов'}</span>
           {assignmentMeta.title && <span className="hc-stats-badge hc-stats-title">{assignmentMeta.title.slice(0, 30)}{assignmentMeta.title.length > 30 ? '...' : ''}</span>}
         </div>
-        <div className="hc-sticky-actions-right">
+        <div className="hc-sticky-actions-right" data-tour="hw-actions">
           {isEditMode && isPublished ? (
             // Для опубликованного ДЗ показываем кнопку "Сохранить"
             <button
@@ -814,7 +814,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
             <div className="hc-section-title">Параметры</div>
             
             <form className="gm-form hc-compact-form" onSubmit={(event) => event.preventDefault()}>
-              <div className="form-group">
+              <div className="form-group" data-tour="hw-title">
                 <label className="form-label">Название задания</label>
                 <input
                   className="form-input hc-input-large"
@@ -824,7 +824,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                 />
               </div>
 
-              <div className="form-group">
+              <div className="form-group" data-tour="hw-description">
                 <label className="form-label">Описание (опционально)</label>
                 <textarea
                   className="form-textarea"
@@ -858,7 +858,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                 <span className="hc-checkbox-hint">Отключите для контрольных работ, чтобы ученики не могли делиться ответами</span>
               </div>
 
-              <div className="hc-params-row hc-params-row--picker">
+              <div className="hc-params-row hc-params-row--picker" data-tour="hw-group-selector">
                 <div className="hc-params-row-fill">
                   <StudentPicker
                     value={assignmentMeta.groupAssignments}
@@ -870,13 +870,13 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
               </div>
 
               <div className="hc-params-row">
-                <div className="form-group" style={{ flex: 1 }}>
+                <div className="form-group" style={{ flex: 1 }} data-tour="hw-deadline">
                   <DateTimePicker
                     value={assignmentMeta.deadline}
                     onChange={(nextValue) => handleMetaChange('deadline', nextValue)}
                   />
                 </div>
-                <div className="form-group hc-score-field">
+                <div className="form-group hc-score-field" data-tour="hw-max-score">
                   <label className="form-label">Макс. балл</label>
                   <div className="hc-score-input-wrap">
                     <input
@@ -919,20 +919,21 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
         {/* Правая колонка — вопросы */}
         <div className="hc-questions-area">
 
-      <div className="hc-card">
+      <div className="hc-card" data-tour="hw-questions-panel">
         <div className="hc-section-title">
           <span>Вопросы ({questionCount})</span>
           <button
             type="button"
             className="hc-add-button"
             onClick={() => setShowTypeMenu((value) => !value)}
+            data-tour="hw-add-question"
           >
             {showTypeMenu ? 'Скрыть' : '+ Добавить'}
           </button>
         </div>
 
         {showTypeMenu && (
-          <div className="hc-type-menu">
+          <div className="hc-type-menu" data-tour="hw-type-menu">
             {QUESTION_TYPES.map((type) => (
               <button key={type.value} type="button" onClick={() => handleAddQuestion(type.value)} className="hc-type-btn">
                 {type.label}
@@ -1016,7 +1017,7 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                           </div>
 
                           {/* Секция загрузки файлов (изображения + документы) */}
-                          <div className="hc-attachment-section">
+                          <div className="hc-attachment-section" data-tour="hw-question-attachments">
                             {/* Изображение */}
                             {!question.config?.imageUrl ? (
                               <div className="hc-attachment-actions">

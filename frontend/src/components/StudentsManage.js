@@ -334,13 +334,14 @@ const StudentsManage = ({ onClose }) => {
               </div>
             )}
 
-            <div className="sm-filters">
+            <div className="sm-filters" data-tour="students-filters">
               <div className="sm-filter-row">
                 <input
                   className="sm-search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Поиск: ФИО / email"
+                  data-tour="students-search"
                 />
                 <select className="sm-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                   <option value="active">Активные</option>
@@ -389,7 +390,7 @@ const StudentsManage = ({ onClose }) => {
               </div>
             </div>
 
-            <div className="sm-table-wrap">
+            <div className="sm-table-wrap" data-tour="students-table">
               <table className="sm-table">
                 <thead>
                   <tr>
@@ -464,7 +465,7 @@ const StudentsManage = ({ onClose }) => {
             </div>
           </div>
 
-          <div className="sm-right-panel">
+          <div className="sm-right-panel" data-tour="students-card">
             {!selectedStudent ? (
               <div className="sm-empty-detail">Выберите ученика слева</div>
             ) : (
@@ -510,7 +511,7 @@ const StudentsManage = ({ onClose }) => {
                   </div>
                 </div>
 
-                <form className="sm-form" onSubmit={handleUpdateStudent}>
+                <form className="sm-form" onSubmit={handleUpdateStudent} data-tour="students-edit">
                   <div className="sm-section-title">Редактирование ФИО</div>
                   <div className="sm-form-row">
                     <label>Фамилия</label>
@@ -525,7 +526,7 @@ const StudentsManage = ({ onClose }) => {
                     <input className="sm-input" value={editForm.middle_name} onChange={(e) => setEditForm({ ...editForm, middle_name: e.target.value })} />
                   </div>
 
-                  <div className="sm-detail-actions">
+                  <div className="sm-detail-actions" data-tour="students-archive">
                     <button className="sm-btn" type="submit" disabled={actionLoading}>Сохранить</button>
                     <button className={`sm-btn ${selectedStudent.is_active ? 'danger' : ''}`} type="button" disabled={actionLoading} onClick={handleToggleArchive}>
                       {selectedStudent.is_active ? 'Архивировать' : 'Восстановить'}

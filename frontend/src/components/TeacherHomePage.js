@@ -7,6 +7,7 @@ import TelegramReminderToast from './TelegramReminderToast';
 import { Select, TeacherDashboardSkeleton } from '../shared/components';
 import { useAuth } from '../auth';
 import SupportWidget from './SupportWidget';
+import { useDashboardTour } from '../hooks/useOnboarding';
 import './TeacherHomePage.css';
 
 /* =====================================================
@@ -199,6 +200,10 @@ const IconCode = ({ size = 24, className = '' }) => (
 
 const TeacherHomePage = () => {
   const { user } = useAuth();
+  
+  // Автозапуск онбординг-тура при первом входе
+  useDashboardTour('teacher', user?.id);
+  
   const [stats, setStats] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -589,6 +594,7 @@ const TeacherHomePage = () => {
     <div className="dashboard-container">
       <style>{globalStyles}</style>
 
+      {/* Онбординг тур - автозапуск при первом входе */}
       <TelegramReminderToast />
       
       {/* Subscription Banner */}
@@ -869,7 +875,7 @@ const TeacherHomePage = () => {
         {/* LEFT COLUMN */}
         <div className="dashboard-left">
           {/* Hero: Start Lesson */}
-          <div className="hero-card">
+          <div className="hero-card" data-tour="teacher-quick-start">
             <div className="hero-glow"></div>
             <div className="hero-pattern">
               <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -899,7 +905,7 @@ const TeacherHomePage = () => {
           </div>
 
           {/* Schedule Section */}
-          <div className="section-card">
+          <div className="section-card" data-tour="teacher-schedule">
             <div className="section-header">
               <div className="section-title-group">
                 <div className="section-icon-wrapper">
@@ -1028,7 +1034,7 @@ const TeacherHomePage = () => {
           </div>
 
           {/* Students & Groups Section */}
-          <div className="section-card students-section">
+          <div className="section-card students-section" data-tour="teacher-students">
             <div className="section-header">
               <div className="section-title-group">
                 <div className="section-icon-wrapper">
@@ -1086,7 +1092,7 @@ const TeacherHomePage = () => {
         {/* RIGHT COLUMN - Extended Stats */}
         <div className="dashboard-right">
           {/* Statistics Card - Extended */}
-          <div className="stats-card stats-card-extended">
+          <div className="stats-card stats-card-extended" data-tour="teacher-stats">
             <div className="stats-header">
               <div className="stats-icon-wrapper">
                 <IconBarChart size={20} />

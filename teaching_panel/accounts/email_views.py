@@ -9,7 +9,6 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import timedelta
 from .models import EmailVerification, CustomUser
-from .email_service import email_service
 from .recaptcha_utils import verify_recaptcha, get_client_ip
 import logging
 
@@ -71,24 +70,23 @@ def send_verification_email(request):
     # Создаем новую верификацию
     verification = EmailVerification.objects.create(email=email)
     
-    # Отправляем email
-    result = email_service.send_verification_email(
+    # Отправляем email асинхронно через Celery
+    from .tasks import send_verification_email_task
+    
+    send_verification_email_task.delay(
         email=email,
         code=verification.code,
         token=str(verification.token)
     )
     
-    if result['success']:
-        return Response({
-            'success': True,
-            'message': 'Email отправлен успешно',
-            'expires_at': verification.expires_at.isoformat()
-        }, status=status.HTTP_200_OK)
-    else:
-        return Response({
-            'success': False,
-            'message': result['message']
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    logger.info(f'Verification email task queued for {email}')
+    
+    # Сразу возвращаем успех - email отправится в фоне
+    return Response({
+        'success': True,
+        'message': 'Email отправлен успешно',
+        'expires_at': verification.expires_at.isoformat()
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
@@ -138,24 +136,23 @@ def resend_verification_email(request):
     # Создаем новую
     verification = EmailVerification.objects.create(email=email)
     
-    # Отправляем email
-    result = email_service.send_verification_email(
+    # Отправляем email асинхронно через Celery
+    from .tasks import send_verification_email_task
+    
+    send_verification_email_task.delay(
         email=email,
         code=verification.code,
         token=str(verification.token)
     )
     
-    if result['success']:
-        return Response({
-            'success': True,
-            'message': 'Email отправлен повторно',
-            'expires_at': verification.expires_at.isoformat()
-        }, status=status.HTTP_200_OK)
-    else:
-        return Response({
-            'success': False,
-            'message': result['message']
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    logger.info(f'Verification email task queued (resend) for {email}')
+    
+    # Сразу возвращаем успех - email отправится в фоне
+    return Response({
+        'success': True,
+        'message': 'Email отправлен повторно',
+        'expires_at': verification.expires_at.isoformat()
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])

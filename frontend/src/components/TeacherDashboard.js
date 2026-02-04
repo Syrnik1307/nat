@@ -108,14 +108,14 @@ const TeacherDashboard = () => {
       </div>
       {error && <div style={{ color:'red' }}>{error}</div>}
       {stats && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:'1rem', marginBottom:'2rem' }}>
+        <div data-tour="teacher-stats" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:'1rem', marginBottom:'2rem' }}>
           <StatCard label="Всего уроков" value={stats.total_lessons} />
           <StatCard label="Средняя длит. (сек)" value={stats.average_duration_seconds ?? '—'} />
           <StatCard label="Записано" value={`${stats.recorded_lessons} (${stats.recording_ratio_percent}%)`} />
           <StatCard label="Учеников" value={stats.total_students} />
         </div>
       )}
-      <section style={{ marginBottom:'2rem' }}>
+      <section data-tour="teacher-groups" style={{ marginBottom:'2rem' }}>
         <h3>Группы <span style={{fontSize:'0.75rem', fontWeight:400}}>| <a href="/groups/manage" style={{color:'#2563eb', textDecoration:'none'}}>Управление →</a></span></h3>
         <div style={{ display:'flex', flexWrap:'wrap', gap:'0.75rem' }}>
           {groups.map(g => (
@@ -130,8 +130,8 @@ const TeacherDashboard = () => {
       <section>
         <h3>Уроки <span style={{fontSize:'0.8rem', fontWeight:400}}>| <a href="/homework/manage" style={{color:'#2563eb', textDecoration:'none'}}>Домашние задания →</a> | <a href="/recurring-lessons/manage" style={{color:'#2563eb', textDecoration:'none'}}>Регулярные уроки →</a></span></h3>
         <div style={{ marginBottom:'0.75rem' }}>
-          <button onClick={()=>setShowNewLesson(s=>!s)} style={{ background:'#10b981', color:'#fff', border:'none', padding:'0.45rem 0.9rem', borderRadius:6 }}>
-            {showNewLesson ? 'Отмена' : '➕ Новый урок'}
+          <button data-tour="teacher-new-lesson" onClick={()=>setShowNewLesson(s=>!s)} style={{ background:'#10b981', color:'#fff', border:'none', padding:'0.45rem 0.9rem', borderRadius:6 }}>
+            {showNewLesson ? 'Отмена' : 'Новый урок'}
           </button>
         </div>
         {showNewLesson && (
@@ -168,7 +168,7 @@ const TeacherDashboard = () => {
             </div>
           </form>
         )}
-        <table style={{ width:'100%', borderCollapse:'collapse' }}>
+        <table data-tour="teacher-lessons" style={{ width:'100%', borderCollapse:'collapse' }}>
           <thead>
             <tr style={{ textAlign:'left', borderBottom:'1px solid #ddd' }}>
               <th>Название</th>

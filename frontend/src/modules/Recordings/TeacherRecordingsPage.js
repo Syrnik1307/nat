@@ -525,13 +525,14 @@ function TeacherRecordingsPage() {
         <button 
           className="teacher-upload-btn"
           onClick={() => setShowUploadModal(true)}
+          data-tour="rec-upload"
         >
           Загрузить видео
         </button>
       </div>
 
       {/* Статистика */}
-      <div className="teacher-stats-grid">
+      <div className="teacher-stats-grid" data-tour="rec-stats">
         <div className="teacher-stat-card">
           <div className="teacher-stat-icon"></div>
           <div className="teacher-stat-info">
@@ -563,7 +564,7 @@ function TeacherRecordingsPage() {
       </div>
 
       {/* Фильтры */}
-      <div className="teacher-recordings-filters">
+      <div className="teacher-recordings-filters" data-tour="rec-filters">
         <div className="teacher-search-box">
           <input
             type="text"
@@ -627,7 +628,7 @@ function TeacherRecordingsPage() {
           <div className="teacher-recordings-count">
             Найдено записей: <strong>{filteredRecordings.length}</strong>
           </div>
-          <div className="teacher-recordings-grid">
+          <div className="teacher-recordings-grid" data-tour="rec-card">
             {filteredRecordings.map(recording => (
               <RecordingCard
                 key={recording.id}
@@ -753,7 +754,7 @@ function TeacherRecordingsPage() {
                 </div>
               </div>
 
-              <div className="teacher-upload-field">
+              <div className="teacher-upload-field" data-tour="rec-privacy">
                 <label>Приватность *</label>
                 <div className="teacher-privacy-tabs">
                   <button

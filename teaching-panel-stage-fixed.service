@@ -1,0 +1,24 @@
+[Unit]
+Description=Teaching Panel Staging (ISOLATED)
+After=network.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/teaching-panel-stage/teaching_panel
+Environment="PATH=/var/www/teaching-panel-stage/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=/var/www/teaching-panel-stage/venv/lib/python3.8/site-packages"
+Environment="DJANGO_SETTINGS_MODULE=teaching_panel.settings"
+EnvironmentFile=/var/www/teaching-panel-stage/.env.staging
+ExecStart=/var/www/teaching-panel-stage/venv/bin/gunicorn \
+    --workers 2 \
+    --bind 127.0.0.1:8001 \
+    --access-logfile /var/log/teaching-panel-stage-access.log \
+    --error-logfile /var/log/teaching-panel-stage-error.log \
+    teaching_panel.wsgi:application
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

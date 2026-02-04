@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../auth';
 import { getTeacherStatsSummary } from '../../../apiService';
 import { getCached } from '../../../utils/dataCache';
+import { HomeworkOnboarding } from '../../../components/Onboarding';
 import './HomeworkPage.css';
 
 // Ленивая загрузка вкладок для ускорения переключений
@@ -24,7 +25,7 @@ const MyHomeworksList = lazy(loadMyHomeworksList);
  * 4. Проверенные ДЗ - архив проверенных работ
  */
 const HomeworkPage = () => {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -123,17 +124,21 @@ const HomeworkPage = () => {
 
   return (
     <div className="homework-page">
+      {/* Онбординг для страницы домашних заданий */}
+      <HomeworkOnboarding userId={user?.id} />
+      
       <div className="homework-header">
         <h1 className="homework-title">Домашние задания</h1>
         <p className="homework-subtitle">Создавайте, назначайте и проверяйте работы учеников</p>
       </div>
 
       {/* Навигация по вкладкам */}
-      <div className="homework-tabs">
+      <div className="homework-tabs" data-tour="homework-tabs">
         <button
           className={`homework-tab ${activeTab === 'constructor' ? 'active' : ''}`}
           onClick={() => handleTabChange('constructor')}
           onMouseEnter={() => schedulePreload(loadHomeworkConstructor)}
+          data-tour="homework-tab-constructor"
         >
           <span className="tab-label">Конструктор</span>
         </button>
@@ -141,6 +146,7 @@ const HomeworkPage = () => {
           className={`homework-tab ${activeTab === 'my' ? 'active' : ''}`}
           onClick={() => handleTabChange('my')}
           onMouseEnter={() => schedulePreload(loadMyHomeworksList)}
+          data-tour="homework-tab-my"
         >
           <span className="tab-label">Мои ДЗ</span>
         </button>
@@ -148,6 +154,7 @@ const HomeworkPage = () => {
           className={`homework-tab ${activeTab === 'review' ? 'active' : ''}`}
           onClick={() => handleTabChange('review')}
           onMouseEnter={() => schedulePreload(loadSubmissionsList)}
+          data-tour="homework-tab-review"
         >
           <span className="tab-label">На проверку</span>
           {pendingReviewCount > 0 && (
@@ -158,6 +165,7 @@ const HomeworkPage = () => {
           className={`homework-tab ${activeTab === 'graded' ? 'active' : ''}`}
           onClick={() => handleTabChange('graded')}
           onMouseEnter={() => schedulePreload(loadGradedSubmissionsList)}
+          data-tour="homework-tab-graded"
         >
           <span className="tab-label">Проверенные</span>
         </button>

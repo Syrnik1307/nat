@@ -191,6 +191,7 @@ const FileUploader = ({ fileType = 'image', onUploadSuccess, currentUrl, accept 
           onClick={handleClick}
           tabIndex={0}
           onPaste={handlePaste}
+          data-tour="q-upload-dropzone"
         >
           <input
             ref={fileInputRef}

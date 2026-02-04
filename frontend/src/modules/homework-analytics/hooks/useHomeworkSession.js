@@ -130,11 +130,14 @@ const useHomeworkSession = (homeworkId, injectedService) => {
   const [homework, setHomework] = useState(null);
   const [submission, setSubmission] = useState(null);
   const [answers, setAnswers] = useState(() => {
-    if (localDraftKey) {
+    // Безопасная проверка localStorage для iOS Private Mode
+    if (localDraftKey && typeof localStorage !== 'undefined') {
       try {
         const saved = localStorage.getItem(localDraftKey);
         if (saved) return JSON.parse(saved);
-      } catch {}
+      } catch (storageErr) {
+        // localStorage недоступен в Safari Private Mode - продолжаем без черновика
+      }
     }
     return {};
   });
@@ -163,12 +166,14 @@ const useHomeworkSession = (homeworkId, injectedService) => {
       const homeworkPromise = svc.fetchHomework(homeworkId);
 
       let hintedSubmissionId = null;
-      if (submissionHintKey) {
+      if (submissionHintKey && typeof localStorage !== 'undefined') {
         try {
           const raw = localStorage.getItem(submissionHintKey);
           const parsed = raw ? Number(raw) : null;
           if (Number.isFinite(parsed) && parsed > 0) hintedSubmissionId = parsed;
-        } catch {}
+        } catch {
+          // localStorage недоступен в Safari Private Mode
+        }
       }
       const hintedSubmissionPromise = hintedSubmissionId
         ? svc.fetchSubmission(hintedSubmissionId).catch(() => null)
@@ -185,11 +190,13 @@ const useHomeworkSession = (homeworkId, injectedService) => {
 
       // Восстановить черновик из localStorage, если есть
       let initialAnswers = buildInitialAnswers(homeworkData);
-      if (localDraftKey) {
+      if (localDraftKey && typeof localStorage !== 'undefined') {
         try {
           const saved = localStorage.getItem(localDraftKey);
           if (saved) initialAnswers = { ...initialAnswers, ...JSON.parse(saved) };
-        } catch {}
+        } catch {
+          // localStorage недоступен в Safari Private Mode
+        }
       }
       
       setError(null);
@@ -226,11 +233,13 @@ const useHomeworkSession = (homeworkId, injectedService) => {
         submissionData = rawSubmission && rawSubmission.data ? rawSubmission.data : rawSubmission;
       }
 
-      // Сохраняем подсказку для следующего входа
-      if (submissionHintKey && submissionData?.id) {
+      // Сохраняем подсказку для следующего входа (безопасно для iOS Private Mode)
+      if (submissionHintKey && submissionData?.id && typeof localStorage !== 'undefined') {
         try {
           localStorage.setItem(submissionHintKey, String(submissionData.id));
-        } catch {}
+        } catch {
+          // localStorage недоступен - игнорируем
+        }
       }
       
       setAnswers(initialAnswers);
@@ -254,8 +263,14 @@ const useHomeworkSession = (homeworkId, injectedService) => {
       const next = { ...previous, [questionId]: value };
       if (localDraftKey) {
         try {
-          localStorage.setItem(localDraftKey, JSON.stringify(next));
-        } catch {}
+          // Безопасная проверка доступности localStorage для iOS Private Mode
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(localDraftKey, JSON.stringify(next));
+          }
+        } catch (storageErr) {
+          // localStorage недоступен в Safari Private Mode - игнорируем
+          // Черновик не сохранится локально, но ответы всё равно отправятся на сервер
+        }
       }
       return next;
     });
@@ -271,9 +286,13 @@ const useHomeworkSession = (homeworkId, injectedService) => {
       await svc.saveProgress(submission.id, answers);
       dirtyRef.current = false;
       setSavingState({ status: 'saved', timestamp: Date.now() });
-      // После успешного сохранения — удалить локальный черновик
-      if (localDraftKey) {
-        try { localStorage.removeItem(localDraftKey); } catch {}
+      // После успешного сохранения — удалить локальный черновик (безопасно для iOS)
+      if (localDraftKey && typeof localStorage !== 'undefined') {
+        try { 
+          localStorage.removeItem(localDraftKey); 
+        } catch {
+          // localStorage недоступен в Safari Private Mode
+        }
       }
     } catch (saveError) {
       console.error('[useHomeworkSession] save failed:', saveError);
@@ -291,15 +310,60 @@ const useHomeworkSession = (homeworkId, injectedService) => {
 
   const submitHomework = useCallback(async () => {
     if (!submission?.id) return;
-    await saveProgress();
-    const resp = await svc.submit(submission.id);
-    const data = resp && resp.data ? resp.data : resp;
-    setSubmission(data);
-    // После отправки удалим локальный черновик
-    if (localDraftKey) {
-      try { localStorage.removeItem(localDraftKey); } catch {}
+    
+    // Сохраняем прогресс перед отправкой (с retry для iOS)
+    try {
+      await saveProgress();
+    } catch (saveErr) {
+      console.warn('[useHomeworkSession] saveProgress failed before submit, continuing:', saveErr);
+      // Продолжаем отправку даже если сохранение не удалось
     }
-    return resp;
+    
+    // Retry логика для iOS/мобильных сетей
+    const MAX_RETRIES = 3;
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const resp = await svc.submit(submission.id);
+        const data = resp && resp.data ? resp.data : resp;
+        setSubmission(data);
+        
+        // После отправки удалим локальный черновик (с безопасной обработкой для iOS Private Mode)
+        if (localDraftKey) {
+          try { 
+            localStorage.removeItem(localDraftKey); 
+          } catch (storageErr) {
+            // localStorage может быть недоступен в Safari Private Mode
+            console.warn('[useHomeworkSession] localStorage cleanup failed:', storageErr);
+          }
+        }
+        
+        return resp;
+      } catch (submitErr) {
+        lastError = submitErr;
+        const isNetworkError = !submitErr.response && (submitErr.code === 'ECONNABORTED' || submitErr.message?.includes('Network'));
+        const isTimeout = submitErr.code === 'ECONNABORTED';
+        
+        console.warn(`[useHomeworkSession] submit attempt ${attempt}/${MAX_RETRIES} failed:`, submitErr.message);
+        
+        // Если это 400/403 - не повторяем (валидационная ошибка)
+        if (submitErr.response?.status === 400 || submitErr.response?.status === 403) {
+          throw submitErr;
+        }
+        
+        // Повторяем только при сетевых ошибках и таймаутах
+        if ((isNetworkError || isTimeout) && attempt < MAX_RETRIES) {
+          // Экспоненциальная задержка: 1с, 2с, 4с
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+          continue;
+        }
+        
+        throw submitErr;
+      }
+    }
+    
+    throw lastError;
   }, [localDraftKey, saveProgress, submission?.id, svc]);
 
   const progress = useMemo(() => {

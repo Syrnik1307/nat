@@ -29,7 +29,7 @@ const TextQuestion = ({ question, onChange }) => {
     <div className="hc-question-editor">
       <div className="form-group">
         <label className="form-label">Формат ответа</label>
-        <div className="gm-tab-switch">
+        <div className="gm-tab-switch" data-tour="q-text-format">
           <button
             type="button"
             className={`gm-tab-button ${config.answerLength !== 'long' ? 'active' : ''}`}
@@ -47,7 +47,7 @@ const TextQuestion = ({ question, onChange }) => {
         </div>
       </div>
 
-      <div className="form-group">
+      <div className="form-group" data-tour="q-text-answer">
         <label className="form-label">Правильный ответ (опционально)</label>
         <textarea
           className="form-textarea"

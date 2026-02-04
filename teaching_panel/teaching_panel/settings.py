@@ -857,8 +857,8 @@ YOOKASSA_WEBHOOK_SECRET = os.environ.get('YOOKASSA_WEBHOOK_SECRET', '')
 TBANK_TERMINAL_KEY = os.environ.get('TBANK_TERMINAL_KEY', '')
 # Password для подписи запросов (Token) - из личного кабинета
 TBANK_PASSWORD = os.environ.get('TBANK_PASSWORD', '')
-# Какой провайдер использовать по умолчанию: 'yookassa' или 'tbank'
-DEFAULT_PAYMENT_PROVIDER = os.environ.get('DEFAULT_PAYMENT_PROVIDER', 'yookassa')
+# Какой провайдер использовать по умолчанию: 'tbank' (YooKassa не используется)
+DEFAULT_PAYMENT_PROVIDER = os.environ.get('DEFAULT_PAYMENT_PROVIDER', 'tbank')
 
 # Frontend URL для return_url после оплаты
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')

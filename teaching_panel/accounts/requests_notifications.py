@@ -3,8 +3,9 @@
 Python 3.8 compatible.
 """
 import logging
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 from django.conf import settings
+from django.contrib.auth import get_user_model
 
 import requests
 
@@ -16,6 +17,25 @@ def _get_bot_config() -> Tuple[str, str]:
     token = getattr(settings, 'TELEGRAM_REQUESTS_BOT_TOKEN', '')
     chat_id = getattr(settings, 'TELEGRAM_REQUESTS_CHAT_ID', '')
     return token, chat_id
+
+
+def _get_fallback_staff_chat_ids() -> List[str]:
+    """Возвращает список chat_id для staff пользователей с привязанным Telegram."""
+    User = get_user_model()
+    chat_ids = list(
+        User.objects.filter(is_staff=True, telegram_chat_id__isnull=False)
+        .exclude(telegram_chat_id='')
+        .values_list('telegram_chat_id', flat=True)
+    )
+    # Удаляем дубликаты с сохранением порядка
+    seen = set()
+    unique = []
+    for cid in chat_ids:
+        if cid in seen:
+            continue
+        seen.add(cid)
+        unique.append(cid)
+    return unique
 
 
 def notify_new_registration(
@@ -36,8 +56,8 @@ def notify_new_registration(
     """
     token, chat_id = _get_bot_config()
     
-    if not token or not chat_id:
-        logger.debug('TELEGRAM_REQUESTS_BOT not configured, skipping registration notification')
+    if not token:
+        logger.warning('TELEGRAM_REQUESTS_BOT_TOKEN not configured, skipping registration notification')
         return False
     
     # Форматируем имя
@@ -75,20 +95,37 @@ def notify_new_registration(
         f"Источник: {source_info}"
     )
     
+    target_chat_ids = [chat_id] if chat_id else []
+    if not target_chat_ids:
+        try:
+            target_chat_ids = _get_fallback_staff_chat_ids()
+        except Exception as exc:
+            logger.warning('Failed to resolve staff chat ids for registration alerts: %s', exc)
+            target_chat_ids = []
+
+    if not target_chat_ids:
+        logger.warning('No Telegram chat_id configured for registration notifications')
+        return False
+
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        'chat_id': chat_id,
+    payload_base = {
         'text': message,
         'disable_web_page_preview': True,
     }
-    
-    try:
-        response = requests.post(url, json=payload, timeout=10)
-        if response.ok:
-            logger.info(f'Registration notification sent for user {user_id}')
-            return True
-        logger.warning(f'Failed to send registration notification: {response.status_code}')
-        return False
-    except requests.RequestException as exc:
-        logger.warning(f'Failed to send registration notification: {exc}')
-        return False
+
+    sent_any = False
+    for target_chat_id in target_chat_ids:
+        payload = {**payload_base, 'chat_id': target_chat_id}
+        try:
+            response = requests.post(url, json=payload, timeout=10)
+            if response.ok:
+                sent_any = True
+            else:
+                logger.warning('Failed to send registration notification: %s %s', response.status_code, response.text)
+        except requests.RequestException as exc:
+            logger.warning('Failed to send registration notification: %s', exc)
+
+    if sent_any:
+        logger.info('Registration notification sent for user %s', user_id)
+        return True
+    return False

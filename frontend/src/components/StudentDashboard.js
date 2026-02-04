@@ -129,7 +129,7 @@ const StudentDashboard = () => {
 
         {error && <div className="student-stats-error">{error}</div>}
 
-        <div className="dashboard-grid">
+        <div data-tour="student-stats" className="dashboard-grid">
           {overallCards.map((c) => (
             <div key={c.label} className="stats-card">
               <div className="stats-card-header">
@@ -144,8 +144,8 @@ const StudentDashboard = () => {
           ))}
         </div>
 
-        <section className="dashboard-section">
-          <h2 className="dashboard-section-title">📚 Группы</h2>
+        <section data-tour="student-groups" className="dashboard-section">
+          <h2 className="dashboard-section-title">Группы</h2>
           {!loading && !hasGroups && (
             <div className="student-stats-empty">
               <p className="student-stats-empty-title">У вас пока нет групп</p>

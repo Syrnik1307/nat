@@ -148,7 +148,7 @@ const CodeQuestion = ({ question, onChange }) => {
   return (
     <div className="hc-question-editor">
       {/* Язык программирования */}
-      <div className="form-group">
+      <div className="form-group" data-tour="q-code-language">
         <label className="form-label">Язык программирования</label>
         <div className="gm-tab-switch">
           <button
@@ -169,7 +169,7 @@ const CodeQuestion = ({ question, onChange }) => {
       </div>
 
       {/* Начальный код (шаблон для ученика) */}
-      <div className="form-group">
+      <div className="form-group" data-tour="q-code-starter">
         <label className="form-label">Начальный код (шаблон для ученика)</label>
         <textarea
           className="form-textarea code-textarea"
@@ -187,9 +187,9 @@ const CodeQuestion = ({ question, onChange }) => {
       </div>
 
       {/* Эталонное решение с терминалом */}
-      <div className="form-group">
+      <div className="form-group" data-tour="q-code-solution">
         <label className="form-label">Эталонное решение (для проверки тестов)</label>
-        <div className="code-editor-container">
+        <div className="code-editor-container" data-tour="q-code-terminal">
           {/* Заголовок с языком и кнопками */}
           <div className="code-editor-header">
             <span className="code-language-badge">
@@ -202,6 +202,7 @@ const CodeQuestion = ({ question, onChange }) => {
                 onClick={handleRunSolution}
                 disabled={isRunning || !solutionCode.trim()}
                 title="Запустить эталонное решение"
+                data-tour="q-code-run"
               >
                 {isRunning ? 'Выполняется...' : 'Запустить'}
               </button>
@@ -212,6 +213,7 @@ const CodeQuestion = ({ question, onChange }) => {
                   onClick={handleRunTests}
                   disabled={isRunning || !solutionCode.trim()}
                   title="Проверить эталонное решение на тестах"
+                    data-tour="q-code-run-tests"
                 >
                   {isRunning ? '...' : 'Тесты'}
                 </button>
@@ -329,7 +331,7 @@ const CodeQuestion = ({ question, onChange }) => {
       </div>
 
       {/* Тест-кейсы */}
-      <div className="form-group">
+      <div className="form-group" data-tour="q-code-tests">
         <label className="form-label">Тест-кейсы для автопроверки</label>
         <div className="code-test-cases">
           {testCases.map((tc, index) => (
@@ -378,6 +380,7 @@ const CodeQuestion = ({ question, onChange }) => {
           className="gm-btn-surface"
           onClick={addTestCase}
           style={{ marginTop: '0.75rem' }}
+          data-tour="q-code-add-test"
         >
           + Добавить тест
         </button>

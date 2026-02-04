@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth';
 import { getLessons, getGroups, joinLesson } from '../apiService';
 import { getCached, invalidateCache } from '../utils/dataCache';
 import JoinGroupModal from './JoinGroupModal';
 import SupportWidget from './SupportWidget';
 import TelegramReminderToast from './TelegramReminderToast';
 import { Button, StudentDashboardSkeleton } from '../shared/components';
+import { useDashboardTour } from '../hooks/useOnboarding';
 import '../styles/StudentHome.css';
 
 // Calendar SVG Icon
@@ -21,6 +23,11 @@ const IconCalendar = ({ size = 16, className = '' }) => (
 const StudentHomePage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // Автозапуск онбординг-тура при первом входе
+  useDashboardTour('student', user?.id);
+  
   const [lessons, setLessons] = useState([]);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [groups, setGroups] = useState([]);
@@ -273,6 +280,7 @@ const StudentHomePage = () => {
 
   return (
     <div className="student-home">
+      {/* Онбординг тур - автозапуск при первом входе */}
       <TelegramReminderToast />
       <main className="student-main-content animate-page-enter">
         <div className="student-container">
@@ -288,7 +296,7 @@ const StudentHomePage = () => {
               <h1 className="student-page-title">Мои курсы</h1>
 
               {/* Today's status - compact */}
-              <div className="student-today-banner">
+              <div className="student-today-banner" data-tour="student-next-lesson">
                 <span className="student-today-date">
                   <IconCalendar size={16} className="student-today-icon" />
                   {formatTodayDate()}
@@ -339,10 +347,10 @@ const StudentHomePage = () => {
               )}
 
               {/* Course List */}
-              <div className="student-courses-section">
+              <div className="student-courses-section" data-tour="student-groups">
                 <div className="student-section-header">
                   <h2>Список курсов</h2>
-                  <button type="button" onClick={() => setShowJoinModal(true)} className="student-link-button">
+                  <button type="button" onClick={() => setShowJoinModal(true)} className="student-link-button" data-tour="student-join-group">
                     Есть промокод?
                   </button>
                 </div>

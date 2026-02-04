@@ -3,6 +3,7 @@ import { apiClient } from '../apiService';
 import { useAuth } from '../auth';
 import Modal from '../shared/components/Modal';
 import Button from '../shared/components/Button';
+import { SubscriptionOnboarding } from './Onboarding';
 import './SubscriptionPage.css';
 
 const SubscriptionPage = ({ embedded = false }) => {
@@ -278,6 +279,9 @@ const SubscriptionPage = ({ embedded = false }) => {
 
   return (
     <div className={containerClassName}>
+      {/* Онбординг для страницы подписки */}
+      {!embedded && <SubscriptionOnboarding />}
+      
       <header className={`sub-header${embedded ? ' sub-header-embedded' : ''}`}>
         <h1>Подписка</h1>
       </header>
@@ -302,7 +306,7 @@ const SubscriptionPage = ({ embedded = false }) => {
       )}
 
       {/* Текущая подписка */}
-      <section className="current-subscription">
+      <section className="current-subscription" data-tour="subscription-status">
         <h2>Статус</h2>
         <div className="sub-card">
           <div className="sub-status">
@@ -354,7 +358,7 @@ const SubscriptionPage = ({ embedded = false }) => {
 
           {/* Прогресс-бар использования хранилища */}
           {(storageStats || subData) && (
-            <div className="storage-usage-bar">
+            <div className="storage-usage-bar" data-tour="subscription-storage-bar">
               <div className="storage-bar-container">
                 <div
                   className={`storage-bar-fill ${getStorageClass(storageStats?.usage_percent || 0)}`}
@@ -379,7 +383,7 @@ const SubscriptionPage = ({ embedded = false }) => {
 
           {/* Минималистичный прогресс-бар оставшихся дней */}
           {daysLeft != null && (
-            <div className="cycle-progress">
+            <div className="cycle-progress" data-tour="subscription-cycle">
               <div className="progress-bar">
                 <div
                   className="progress-fill"
@@ -397,6 +401,7 @@ const SubscriptionPage = ({ embedded = false }) => {
               className={`pay-btn ${processing ? 'is-loading' : ''}`}
               onClick={handlePayCycle}
               disabled={processing}
+              data-tour="subscription-pay-btn"
             >
               Оплатить 28 дней
             </button>
@@ -404,6 +409,7 @@ const SubscriptionPage = ({ embedded = false }) => {
               className={`toggle-renew-btn ${subData?.auto_renew ? 'renew-enabled' : 'renew-disabled'}`}
               onClick={handleToggleAutoRenew}
               disabled={processing}
+              data-tour="subscription-autorenew"
             >
               {subData?.auto_renew ? 'Отключить автопродление' : 'Подключить автопродление'}
             </button>
@@ -412,7 +418,7 @@ const SubscriptionPage = ({ embedded = false }) => {
       </section>
 
       {/* Дополнительное хранилище */}
-      <section className="storage-section">
+      <section className="storage-section" data-tour="subscription-extra-storage">
         <h2>Дополнительное хранилище</h2>
         <div className="storage-card">
           <p>Нужно больше места для записей уроков? Докупите дополнительные гигабайты.</p>

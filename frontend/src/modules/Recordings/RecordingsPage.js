@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../../auth';
 import api, { withScheduleApiBase } from '../../apiService';
 import { getCached } from '../../utils/dataCache';
 import RecordingCard from './RecordingCard';
 import FastVideoModal from './FastVideoModal';
+import { RecordingsOnboarding } from '../../components/Onboarding';
 import './RecordingsPage.css';
 
 function RecordingsPage() {
+  const { user } = useAuth();
   const [recordings, setRecordings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -171,7 +174,10 @@ function RecordingsPage() {
 
   return (
     <div className="recordings-page">
-      <div className="recordings-header">
+      {/* Онбординг для страницы записей */}
+      <RecordingsOnboarding userId={user?.id} />
+      
+      <div className="recordings-header" data-tour="recordings-header">
         <h1>Записи уроков</h1>
         <p className="subtitle">Все записи ваших занятий в одном месте</p>
       </div>
@@ -185,7 +191,7 @@ function RecordingsPage() {
 
       {/* Фильтры и поиск */}
       <div className="recordings-filters">
-        <div className="search-box">
+        <div className="search-box" data-tour="recordings-search">
           <input
             type="text"
             placeholder="Поиск по названию или предмету..."
@@ -195,7 +201,7 @@ function RecordingsPage() {
           />
         </div>
 
-        <div className="filter-group" ref={filterRef}>
+        <div className="filter-group" ref={filterRef} data-tour="recordings-filter">
           <label>Группа:</label>
           <button
             type="button"
@@ -256,7 +262,7 @@ function RecordingsPage() {
             )}
           </div>
 
-          <div className="recordings-grid">
+          <div className="recordings-grid" data-tour="recordings-card">
             {filteredRecordings.map(recording => (
               <RecordingCard
                 key={recording.id}

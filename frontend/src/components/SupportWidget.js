@@ -4,6 +4,9 @@ import { useAuth } from '../auth';
 import { getAccessToken } from '../apiService';
 import './SupportWidget.css';
 
+const SUGGEST_IMPROVEMENTS_TG_USER_ID = process.env.REACT_APP_SUGGEST_IMPROVEMENTS_TG_USER_ID || '';
+const SUPPORT_BOT_FALLBACK_URL = 'https://t.me/help_lectio_space_bot';
+
 // Категории проблем
 const CATEGORIES = [
   { value: 'login', label: 'Вход/Регистрация' },
@@ -38,6 +41,7 @@ const SupportWidget = () => {
   const { accessTokenValid } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('menu'); // menu | form | telegram | success
+  const [telegramAction, setTelegramAction] = useState('support'); // support | improvements
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [supportUrl, setSupportUrl] = useState('');
@@ -92,6 +96,25 @@ const SupportWidget = () => {
     if (supportUrl) {
       window.open(supportUrl, '_blank', 'noopener,noreferrer');
     }
+  };
+
+  const openSuggestImprovements = async () => {
+    if (SUGGEST_IMPROVEMENTS_TG_USER_ID) {
+      const deepLink = `tg://user?id=${SUGGEST_IMPROVEMENTS_TG_USER_ID}`;
+      // Для кастомных схем надёжнее использовать location
+      window.location.href = deepLink;
+      return;
+    }
+
+    // Заглушка до получения ID: используем существующий чат поддержки
+    if (supportUrl) {
+      window.open(supportUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    await loadSupportLink();
+    const url = supportUrl || SUPPORT_BOT_FALLBACK_URL;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const handleInputChange = (field, value) => {
@@ -184,7 +207,11 @@ const SupportWidget = () => {
       
       <button 
         className="support-menu-item"
-        onClick={() => setView('form')}
+        onClick={() => {
+          setTelegramAction('improvements');
+          setView('telegram');
+          openSuggestImprovements();
+        }}
       >
         <span className="support-menu-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -204,6 +231,7 @@ const SupportWidget = () => {
       <button 
         className="support-menu-item"
         onClick={() => {
+          setTelegramAction('support');
           setView('telegram');
           openTelegram();
         }}
@@ -338,7 +366,7 @@ const SupportWidget = () => {
       <p>Telegram должен был открыться в новом окне.</p>
       <button 
         className="support-telegram-retry"
-        onClick={openTelegram}
+        onClick={telegramAction === 'improvements' ? openSuggestImprovements : openTelegram}
         disabled={loading}
       >
         Открыть снова

@@ -19,6 +19,7 @@ import SubscriptionPage from './SubscriptionPage';
 import PlatformsSection from './PlatformsSection';
 import { MarketSection } from '../modules/market';
 import { NotificationsOnboarding, PlatformsOnboarding } from './Onboarding';
+import { Select, SearchableSelect } from '../shared/components';
 import './ProfilePage.css';
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
@@ -88,6 +89,19 @@ const ProfilePage = () => {
   // Данные для селектов в модалке
   const [teacherGroups, setTeacherGroups] = useState([]);
   const [teacherStudents, setTeacherStudents] = useState([]);
+
+  const groupOptions = useMemo(
+    () => teacherGroups.map(group => ({ value: group.id, label: group.name })),
+    [teacherGroups],
+  );
+
+  const studentOptions = useMemo(
+    () => teacherStudents.map(student => ({
+      value: student.id,
+      label: `${student.name}${student.groupName ? ` (${student.groupName})` : ''}`.trim(),
+    })),
+    [teacherStudents],
+  );
 
   const resolveInitialTab = () => {
     const params = new URLSearchParams(location.search);
@@ -1616,35 +1630,28 @@ const ProfilePage = () => {
 
                 {muteForm.mute_type === 'group' && (
                   <div className="form-group">
-                    <label htmlFor="mute-group-select">Выберите группу</label>
-                    <select
-                      id="mute-group-select"
+                    <Select
+                      label="Выберите группу"
                       value={muteForm.group}
                       onChange={e => setMuteForm(prev => ({ ...prev, group: e.target.value }))}
-                    >
-                      <option value="">-- Выберите группу --</option>
-                      {teacherGroups.map(g => (
-                        <option key={g.id} value={g.id}>{g.name}</option>
-                      ))}
-                    </select>
+                      options={groupOptions}
+                      placeholder="-- Выберите группу --"
+                      disabled={!groupOptions.length}
+                    />
                   </div>
                 )}
 
                 {muteForm.mute_type === 'student' && (
                   <div className="form-group">
-                    <label htmlFor="mute-student-select">Выберите ученика</label>
-                    <select
-                      id="mute-student-select"
+                    <SearchableSelect
+                      label="Выберите ученика"
                       value={muteForm.student}
                       onChange={e => setMuteForm(prev => ({ ...prev, student: e.target.value }))}
-                    >
-                      <option value="">-- Выберите ученика --</option>
-                      {teacherStudents.map(s => (
-                        <option key={s.id} value={s.id}>
-                          {s.name} ({s.groupName})
-                        </option>
-                      ))}
-                    </select>
+                      options={studentOptions}
+                      placeholder="-- Выберите ученика --"
+                      searchPlaceholder="Поиск ученика"
+                      disabled={!studentOptions.length}
+                    />
                   </div>
                 )}
 

@@ -18,11 +18,12 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 # ==================== КОНФИГУРАЦИЯ ====================
-SITE_URL="https://lectiospace.ru"
-API_URL="https://lectiospace.ru/api/health/"
-FRONTEND_BUILD="/var/www/teaching_panel/frontend/build"
-BACKEND_SERVICE="teaching_panel"
-NGINX_SERVICE="nginx"
+# Используем значения из config.env если заданы, иначе defaults
+SITE_URL="${SITE_URL:-https://lectiospace.ru}"
+API_URL="${API_URL:-https://lectiospace.ru/api/health/}"
+FRONTEND_BUILD="${FRONTEND_BUILD:-/var/www/teaching-panel/frontend/build}"
+BACKEND_SERVICE="${BACKEND_SERVICE:-teaching_panel}"
+NGINX_SERVICE="${NGINX_SERVICE:-nginx}"
 LOG_FILE="/var/log/lectio-monitor/health.log"
 ALERT_LOG="/var/log/lectio-monitor/alerts.log"
 STATE_FILE="/var/run/lectio-monitor/state"
@@ -175,7 +176,8 @@ check_http_status() {
     local timeout="${3:-10}"
     
     local response
-    response=$(curl -s -o /dev/null -w "%{http_code}:%{time_total}" \
+    # -L follows redirects (301/302)
+    response=$(curl -sL -o /dev/null -w "%{http_code}:%{time_total}" \
         --max-time "$timeout" \
         --connect-timeout 5 \
         "$url" 2>/dev/null) || response="000:0"
@@ -280,6 +282,52 @@ cursor.execute('SELECT 1')
 
 # ==================== RECOVERY ACTIONS ====================
 
+# Восстановление build из бэкапа при несоответствии хешей
+restore_build_from_backup() {
+    log_info "Попытка восстановления build из бэкапа..."
+    
+    local frontend_dir=$(dirname "$FRONTEND_BUILD")
+    local backup_dirs=("build_old" "build_backup" "build_tmp_"*)
+    
+    for backup in "${backup_dirs[@]}"; do
+        local backup_path="$frontend_dir/$backup"
+        
+        # Пропускаем если не существует
+        [[ ! -d "$backup_path" ]] && continue
+        
+        # Проверяем консистентность бэкапа
+        local backup_index="$backup_path/index.html"
+        [[ ! -f "$backup_index" ]] && continue
+        
+        local backup_js
+        backup_js=$(grep -oE 'main\.[a-f0-9]+\.js' "$backup_index" | head -1 || true)
+        [[ -z "$backup_js" ]] && continue
+        
+        local backup_js_file="$backup_path/static/js/$backup_js"
+        if [[ -f "$backup_js_file" ]]; then
+            log_info "Найден консистентный бэкап: $backup"
+            
+            # Сохраняем текущий сломанный build
+            local broken_path="$frontend_dir/build_broken_$(date +%s)"
+            mv "$FRONTEND_BUILD" "$broken_path" 2>/dev/null || true
+            
+            # Восстанавливаем из бэкапа
+            cp -r "$backup_path" "$FRONTEND_BUILD"
+            chown -R www-data:www-data "$FRONTEND_BUILD"
+            chmod -R 755 "$FRONTEND_BUILD"
+            
+            # Перезагружаем nginx
+            systemctl reload nginx
+            
+            log_success "Build восстановлен из $backup"
+            return 0
+        fi
+    done
+    
+    log_error "Не найден подходящий бэкап для восстановления"
+    return 1
+}
+
 fix_frontend_permissions() {
     log_info "Восстановление прав доступа frontend..."
     
@@ -316,6 +364,20 @@ full_recovery() {
     
     local success=true
     
+    # 0. КРИТИЧНО: Проверяем консистентность билда и восстанавливаем если нужно
+    local index_file="$FRONTEND_BUILD/index.html"
+    if [[ -f "$index_file" ]]; then
+        local expected_js
+        expected_js=$(grep -oE 'main\.[a-f0-9]+\.js' "$index_file" | head -1 || true)
+        if [[ -n "$expected_js" ]]; then
+            local js_file="$FRONTEND_BUILD/static/js/$expected_js"
+            if [[ ! -f "$js_file" ]]; then
+                log_error "Билд некорректен: $expected_js не существует!"
+                restore_build_from_backup || success=false
+            fi
+        fi
+    fi
+    
     # 1. Права доступа
     fix_frontend_permissions || success=false
     
@@ -325,13 +387,29 @@ full_recovery() {
     # 3. Перезапуск nginx
     restart_service "$NGINX_SERVICE" || success=false
     
-    # 4. Финальная проверка
+    # 4. Финальная проверка - проверяем реальную доступность JS
     sleep 5
     local result
     result=$(check_http_status "$SITE_URL")
     local code="${result%%:*}"
     
     if [[ "$code" == "200" ]]; then
+        # Дополнительно проверяем что JS доступен
+        local final_index="$FRONTEND_BUILD/index.html"
+        local final_js
+        final_js=$(grep -oE 'main\.[a-f0-9]+\.js' "$final_index" | head -1 || true)
+        if [[ -n "$final_js" ]]; then
+            local js_check
+            js_check=$(check_http_status "${SITE_URL}/static/js/${final_js}" "" 5 || true)
+            local js_code="${js_check%%:*}"
+            if [[ "$js_code" == "200" ]]; then
+                log_success "Полное восстановление успешно завершено (JS проверен)"
+                return 0
+            else
+                log_error "HTTP OK но JS недоступен (код $js_code)"
+                return 1
+            fi
+        fi
         log_success "Полное восстановление успешно завершено"
         return 0
     else
@@ -427,15 +505,70 @@ run_health_check() {
         issues+=("Медленный ответ: ${response_time}s")
     fi
     
-    # 2.5 КРИТИЧНО: Проверка static файлов через HTTP (именно они падают с 403!)
-    # Проверяем доступность static директории через HTTP
-    local static_result
-    static_result=$(check_http_status "${SITE_URL}/static/js/" "" 5)
-    local static_code="${static_result%%:*}"
-    
-    # 403 = проблема с правами, 404 = OK (listing отключен), 200 = OK
-    if [[ "$static_code" == "403" ]]; then
-        issues+=("Static файлы недоступны (403 Forbidden) - проблема с правами!")
+    # 2.5 КРИТИЧНО: Проверка КОНСИСТЕНТНОСТИ билда!
+    # Извлекаем КОНКРЕТНЫЕ файлы из index.html и проверяем их существование
+    local index_file="$FRONTEND_BUILD/index.html"
+    if [[ -f "$index_file" ]]; then
+        # Извлечь main.*.js из index.html
+        local expected_js
+        expected_js=$(grep -oE 'main\.[a-f0-9]+\.js' "$index_file" | head -1 || true)
+        
+        # Извлечь main.*.css из index.html
+        local expected_css
+        expected_css=$(grep -oE 'main\.[a-f0-9]+\.css' "$index_file" | head -1 || true)
+        
+        # Проверяем что JS файл реально существует на диске
+        if [[ -n "$expected_js" ]]; then
+            local js_file="$FRONTEND_BUILD/static/js/$expected_js"
+            if [[ ! -f "$js_file" ]]; then
+                issues+=("КРИТИЧНО: JS файл отсутствует! index.html ссылается на $expected_js но файл не существует!")
+                critical=true
+                log_error "BUILD INCONSISTENCY: $js_file NOT FOUND!"
+            else
+                # Проверяем через HTTP что файл доступен
+                local js_http_result
+                js_http_result=$(check_http_status "${SITE_URL}/static/js/${expected_js}" "" 5 || true)
+                local js_http_code="${js_http_result%%:*}"
+                if [[ "$js_http_code" != "200" ]]; then
+                    issues+=("JS файл недоступен через HTTP (код $js_http_code): $expected_js")
+                    critical=true
+                fi
+            fi
+        else
+            issues+=("КРИТИЧНО: Не удалось найти main.*.js в index.html!")
+            critical=true
+        fi
+        
+        # Проверяем что CSS файл реально существует на диске
+        if [[ -n "$expected_css" ]]; then
+            local css_file="$FRONTEND_BUILD/static/css/$expected_css"
+            if [[ ! -f "$css_file" ]]; then
+                issues+=("КРИТИЧНО: CSS файл отсутствует! index.html ссылается на $expected_css но файл не существует!")
+                critical=true
+                log_error "BUILD INCONSISTENCY: $css_file NOT FOUND!"
+            else
+                # Проверяем через HTTP что файл доступен
+                local css_http_result
+                css_http_result=$(check_http_status "${SITE_URL}/static/css/${expected_css}" "" 5 || true)
+                local css_http_code="${css_http_result%%:*}"
+                if [[ "$css_http_code" != "200" ]]; then
+                    issues+=("CSS файл недоступен через HTTP (код $css_http_code): $expected_css")
+                    critical=true
+                fi
+            fi
+        fi
+        
+        # Проверяем существование папок static/js и static/css
+        if [[ ! -d "$FRONTEND_BUILD/static/js" ]]; then
+            issues+=("КРИТИЧНО: Папка static/js отсутствует!")
+            critical=true
+        fi
+        if [[ ! -d "$FRONTEND_BUILD/static/css" ]]; then
+            issues+=("КРИТИЧНО: Папка static/css отсутствует!")
+            critical=true
+        fi
+    else
+        issues+=("КРИТИЧНО: index.html не найден в $FRONTEND_BUILD!")
         critical=true
     fi
     

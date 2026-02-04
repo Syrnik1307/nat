@@ -12,6 +12,35 @@ Teaching Panel - это full-stack LMS (Learning Management System) для уп�
 - **Task Queue**: Celery + Redis
 - **External APIs**: Zoom API (Server-to-Server OAuth), Telegram Bot API, Google Drive API, YooKassa API
 
+## CRITICAL: DATABASE SAFETY RULES
+
+**НИКОГДА НЕ ДЕЛАЙ МИГРАЦИИ С ПОТЕРЕЙ ДАННЫХ БЕЗ БЭКАПА!**
+
+Миграции Django с `DROP COLUMN`, `DROP TABLE`, `ALTER COLUMN` **НЕОБРАТИМЫ** - откат кода НЕ вернёт данные!
+
+**Перед ЛЮБОЙ миграцией на production:**
+1. **Бэкап**: `ssh tp 'cd /var/www/teaching_panel && sudo cp db.sqlite3 /tmp/backup_$(date +%Y%m%d_%H%M%S).sqlite3'`
+2. **Проверка**: `ssh tp 'sqlite3 /tmp/backup_*.sqlite3 "PRAGMA integrity_check;"'` должен вернуть "ok"
+3. **Только потом**: `python manage.py migrate`
+
+**При создании миграций - ИЗБЕГАЙ:**
+- `RemoveField` / `DeleteModel` - удаляет данные навсегда
+- `AlterField` с уменьшением размера (например VARCHAR(255) → VARCHAR(100)) - обрезает данные
+- `RunSQL` с `DROP` / `TRUNCATE` / `DELETE`
+
+**Безопасные паттерны:**
+- Добавление nullable полей (`null=True`) - безопасно
+- Добавление полей с default - безопасно
+- Создание новых таблиц - безопасно
+- Переименование (если поддерживается) - относительно безопасно
+
+**Деплой скрипт**: `.\deploy_to_production.ps1` автоматически создаёт бэкап `/tmp/deploy_*.sqlite3` и требует ввести "MIGRATE" для подтверждения миграций.
+
+**Восстановление из бэкапа:**
+```bash
+ssh tp 'cd /var/www/teaching_panel && sudo cp /tmp/deploy_YYYYMMDD_HHMMSS.sqlite3 db.sqlite3 && sudo chown www-data:www-data db.sqlite3 && sudo systemctl restart teaching-panel'
+```
+
 ## CRITICAL UI RULES
 
 **НЕ ИСПОЛЬЗОВАТЬ ЭМОДЗИ/СМАЙЛИКИ В UI!**

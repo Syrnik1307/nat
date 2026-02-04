@@ -30,7 +30,7 @@ const ListeningQuestion = React.memo(({ question, onChange }) => {
 
   return (
     <div className="hc-question-editor">
-      <div className="form-group">
+      <div className="form-group" data-tour="q-listening-audio">
         <label className="form-label">Аудиофайл</label>
         <FileUploader
           fileType="audio"
@@ -45,14 +45,14 @@ const ListeningQuestion = React.memo(({ question, onChange }) => {
       </div>
 
       {config.audioUrl && (
-        <div className="hc-audio-preview">
+        <div className="hc-audio-preview" data-tour="q-listening-player">
           <audio controls src={config.audioUrl}>
             Ваш браузер не поддерживает аудио.
           </audio>
         </div>
       )}
 
-      <div className="form-group">
+      <div className="form-group" data-tour="q-listening-prompt">
         <label className="form-label">Инструкция для учеников</label>
         <textarea
           className="form-textarea"
@@ -63,10 +63,10 @@ const ListeningQuestion = React.memo(({ question, onChange }) => {
         />
       </div>
 
-      <div className="hc-subsection">
+      <div className="hc-subsection" data-tour="q-listening-subquestions">
         <div className="hc-subsection-header">
           <span>Подвопросы ({subQuestions.length})</span>
-          <button type="button" className="gm-btn-surface" onClick={addSubQuestion}>
+          <button type="button" className="gm-btn-surface" onClick={addSubQuestion} data-tour="q-listening-add">
             + Добавить подвопрос
           </button>
         </div>

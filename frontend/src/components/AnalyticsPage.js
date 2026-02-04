@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth';
+// useAuth provides user object with id
 import { apiClient, getTeacherEarlyWarnings, getTeacherMonthlyDynamics, getTeacherSlaDetails, getTeacherStudentRisks, getTeacherWeeklyDynamics } from '../apiService';
 import { Link, useSearchParams } from 'react-router-dom';
 import StudentDetailAnalytics from './StudentDetailAnalytics';
 import GroupDetailAnalytics from './GroupDetailAnalytics';
+import { AnalyticsOnboarding } from './Onboarding';
 import './AnalyticsPage.css';
 
 // SVG Icons - чистые иконки без эмодзи
@@ -92,7 +94,7 @@ const TABS = [
 ];
 
 const AnalyticsPage = () => {
-    const { role } = useAuth();
+    const { role, user } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
     const [groups, setGroups] = useState([]);
@@ -234,7 +236,7 @@ const AnalyticsPage = () => {
 
     const renderOverviewTab = () => (
         <div className="analytics-overview">
-            <div className="stats-row">
+            <div className="stats-row" data-tour="analytics-stats-row">
                 <div className="stat-card">
                     <div className="stat-card-header">
                         <span className="stat-card-icon stat-card-icon--primary">
@@ -787,7 +789,7 @@ const AnalyticsPage = () => {
     };
 
     const renderAlertsTab = () => (
-        <div className="alerts-view">
+        <div className="alerts-view" data-tour="analytics-alerts">
             <div className="section-header">
                 <h2>Оповещения</h2>
                 {alerts.length > 0 && (
@@ -856,12 +858,15 @@ const AnalyticsPage = () => {
 
     return (
         <div className="analytics-page">
+            {/* Онбординг для страницы аналитики */}
+            <AnalyticsOnboarding userId={user?.id} />
+            
             <div className="analytics-layout">
                 <aside className="analytics-sidebar">
                     <div className="sidebar-header">
                         <h1>Аналитика</h1>
                     </div>
-                    <nav className="sidebar-nav">
+                    <nav className="sidebar-nav" data-tour="analytics-tabs">
                         {TABS.map(tab => (
                             <button
                                 key={tab.id}

@@ -149,7 +149,7 @@ const StudentNavBar = () => {
   };
 
   return (
-    <nav className="student-navbar">
+    <nav className="student-navbar" data-tour="student-navbar">
       <div className="student-navbar-content">
         <div className="student-navbar-left">
           <NavLink to="/student" className="student-navbar-logo" aria-label="Lectio Space">

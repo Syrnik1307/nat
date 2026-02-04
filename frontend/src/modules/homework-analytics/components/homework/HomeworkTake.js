@@ -153,7 +153,26 @@ const HomeworkTake = () => {
       setSubmitMessage('Задание отправлено!');
     } catch (submitError) {
       console.error('[HomeworkTake] submit error:', submitError);
-      setSubmitMessage('Не удалось отправить задание. Попробуйте снова.');
+      
+      // Детальное сообщение об ошибке для iOS/мобильных устройств
+      let errorMessage = 'Не удалось отправить задание. ';
+      
+      if (!submitError.response && submitError.message?.includes('Network')) {
+        errorMessage += 'Проверьте подключение к интернету и попробуйте снова.';
+      } else if (submitError.code === 'ECONNABORTED') {
+        errorMessage += 'Превышено время ожидания. Проверьте интернет-соединение.';
+      } else if (submitError.response?.status === 400) {
+        const detail = submitError.response?.data?.error || submitError.response?.data?.detail;
+        errorMessage = detail || 'Работа уже отправлена или произошла ошибка валидации.';
+      } else if (submitError.response?.status === 401) {
+        errorMessage = 'Сессия истекла. Пожалуйста, войдите заново.';
+      } else if (submitError.response?.status === 403) {
+        errorMessage = submitError.response?.data?.error || 'Доступ запрещён.';
+      } else {
+        errorMessage += 'Попробуйте снова через несколько секунд.';
+      }
+      
+      setSubmitMessage(errorMessage);
     } finally {
       setSubmitting(false);
     }

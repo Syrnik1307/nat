@@ -4,9 +4,11 @@
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '../../auth';
 import { apiClient } from '../../apiService';
 import { getCached, TTL } from '../../utils/dataCache';
 import ZoomPurchaseModal from './ZoomPurchaseModal';
+import { MarketOnboarding } from '../../components/Onboarding';
 import './MarketSection.css';
 
 // Zoom icon component (no emojis per project rules)
@@ -43,6 +45,7 @@ const ShoppingBagIcon = () => (
 
 const MarketSection = () => {
   const location = useLocation();
+  const { user } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -128,6 +131,9 @@ const MarketSection = () => {
 
   return (
     <div className="market-section">
+      {/* Онбординг для маркета */}
+      <MarketOnboarding userId={user?.id} />
+      
       {/* Payment Status Banner */}
       {paymentStatus && (
         <div className={`payment-status-banner ${paymentStatus}`}>
@@ -145,13 +151,13 @@ const MarketSection = () => {
         </div>
       )}
 
-      <div className="market-header">
+      <div className="market-header" data-tour="market-header">
         <h2>Маркет</h2>
         <p>Цифровые услуги для вашего обучения</p>
       </div>
 
       {/* Custom Services Banner */}
-      <div className="market-custom-banner">
+      <div className="market-custom-banner" data-tour="market-custom-banner">
         <div className="custom-banner-row">
           <div className="custom-banner-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -179,12 +185,13 @@ const MarketSection = () => {
 
       {/* Products Grid */}
       {products.length > 0 ? (
-        <div className="market-products">
+        <div className="market-products" data-tour="market-products">
           {products.map((product) => (
             <div
               key={product.id}
               className="market-product-card"
               onClick={() => handleBuyClick(product)}
+              data-tour="market-product-card"
             >
               <div className="product-icon">
                 {product.product_type === 'zoom' ? <ZoomIcon /> : <ShoppingBagIcon />}

@@ -51,7 +51,7 @@ const HotspotQuestion = React.memo(({ question, onChange }) => {
 
   return (
     <div className="hc-question-editor">
-      <div className="form-group">
+      <div className="form-group" data-tour="q-hotspot-image">
         <label className="form-label">Изображение для задания</label>
         <FileUploader
           fileType="image"
@@ -66,12 +66,12 @@ const HotspotQuestion = React.memo(({ question, onChange }) => {
       </div>
 
       {config.imageUrl && (
-        <div className="hc-image-preview">
+        <div className="hc-image-preview" data-tour="q-hotspot-image-preview">
           <img src={config.imageUrl} alt="Предпросмотр задания" />
         </div>
       )}
 
-      <div className="form-group">
+      <div className="form-group" data-tour="q-hotspot-attempts">
         <label className="form-label">Попыток на ответ</label>
         <input
           className="form-input"
@@ -82,10 +82,10 @@ const HotspotQuestion = React.memo(({ question, onChange }) => {
         />
       </div>
 
-      <div className="hc-subsection">
+      <div className="hc-subsection" data-tour="q-hotspot-areas">
         <div className="hc-subsection-header">
           <span>Области ({hotspots.length})</span>
-          <button type="button" className="gm-btn-surface" onClick={addHotspot}>
+          <button type="button" className="gm-btn-surface" onClick={addHotspot} data-tour="q-hotspot-add">
             + Добавить область
           </button>
         </div>
@@ -94,7 +94,7 @@ const HotspotQuestion = React.memo(({ question, onChange }) => {
         ) : (
           <div className="hc-sublist">
             {hotspots.map((hotspot, index) => (
-              <div key={hotspot.id} className="hc-subitem">
+              <div key={hotspot.id} className="hc-subitem" data-tour="q-hotspot-area-item">
                 <div className="hc-subitem-header">
                   <strong>{hotspot.label || `Область ${index + 1}`}</strong>
                   <div className="hc-inline-actions">

@@ -625,6 +625,60 @@ def _get_payments_bot_token() -> str:
     return token
 
 
+def _get_admin_alert_bot_token() -> str:
+    """Получить токен для админских алертов с резервными вариантами."""
+    token = _get_payments_bot_token()
+    if token:
+        return token
+
+    for fallback_name in ('PROCESS_ALERTS_BOT_TOKEN', 'ERRORS_BOT_TOKEN', 'TELEGRAM_BOT_TOKEN'):
+        candidate = getattr(settings, fallback_name, '')
+        if candidate and candidate != 'YOUR_BOT_TOKEN_HERE':
+            logger.warning('Using %s as fallback bot token for admin alerts', fallback_name)
+            return candidate
+    return ''
+
+
+def _get_admin_alert_chat_ids() -> list:
+    """Получить список chat_id для админских алертов с резервами."""
+    admin_chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', '')
+    if admin_chat_id:
+        return [admin_chat_id]
+
+    process_chat_id = getattr(settings, 'PROCESS_ALERTS_CHAT_ID', '')
+    if process_chat_id:
+        logger.warning('Using PROCESS_ALERTS_CHAT_ID as fallback for admin alerts')
+        return [process_chat_id]
+
+    errors_chat_id = getattr(settings, 'ERRORS_CHAT_ID', '')
+    if errors_chat_id:
+        logger.warning('Using ERRORS_CHAT_ID as fallback for admin alerts')
+        return [errors_chat_id]
+
+    try:
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        chat_ids = list(
+            User.objects.filter(is_staff=True, telegram_chat_id__isnull=False)
+            .exclude(telegram_chat_id='')
+            .values_list('telegram_chat_id', flat=True)
+        )
+        # Удаляем дубликаты с сохранением порядка
+        seen = set()
+        unique = []
+        for cid in chat_ids:
+            if cid in seen:
+                continue
+            seen.add(cid)
+            unique.append(cid)
+        if unique:
+            logger.warning('Using staff telegram_chat_id as fallback for admin alerts')
+        return unique
+    except Exception as exc:
+        logger.warning('Failed to resolve staff chat ids for admin alerts: %s', exc)
+        return []
+
+
 def _send_payments_bot_message(text: str) -> bool:
     """
     Отправить сообщение через бота платежей в админский чат.
@@ -635,27 +689,29 @@ def _send_payments_bot_message(text: str) -> bool:
     Returns:
         bool: True если успешно
     """
-    token = _get_payments_bot_token()
-    chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', '')
-    
-    if not token or not chat_id:
-        logger.warning('Payments bot token or chat ID not configured')
+    token = _get_admin_alert_bot_token()
+    chat_ids = _get_admin_alert_chat_ids()
+
+    if not token or not chat_ids:
+        logger.warning('Payments bot token or admin chat IDs not configured')
         return False
-    
+
     url = f'https://api.telegram.org/bot{token}/sendMessage'
-    try:
-        response = requests.post(url, json={
-            'chat_id': chat_id,
-            'text': text,
-            'parse_mode': 'HTML',
-        }, timeout=10)
-        if response.status_code == 200:
-            return True
-        logger.warning('Failed to send payments bot message: %s %s', response.status_code, response.text)
-        return False
-    except requests.RequestException as exc:
-        logger.exception('Failed to send payments bot message: %s', exc)
-        return False
+    sent_any = False
+    for chat_id in chat_ids:
+        try:
+            response = requests.post(url, json={
+                'chat_id': chat_id,
+                'text': text,
+                'parse_mode': 'HTML',
+            }, timeout=10)
+            if response.status_code == 200:
+                sent_any = True
+            else:
+                logger.warning('Failed to send payments bot message: %s %s', response.status_code, response.text)
+        except requests.RequestException as exc:
+            logger.exception('Failed to send payments bot message: %s', exc)
+    return sent_any
 
 
 def notify_admin_payment(
@@ -686,16 +742,14 @@ def notify_admin_payment(
         logger.debug(f'Admin notification already sent for payment {payment.payment_id} at {payment.admin_notified_at}')
         return False
     
-    # Chat ID админа для уведомлений о платежах
-    admin_chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', None)
-    if not admin_chat_id:
-        logger.debug('ADMIN_PAYMENT_TELEGRAM_CHAT_ID not configured, skipping admin notification')
+    admin_chat_ids = _get_admin_alert_chat_ids()
+    if not admin_chat_ids:
+        logger.debug('Admin chat IDs not configured, skipping admin notification')
         return False
-    
-    # Используем отдельного бота для уведомлений о платежах
-    token = _get_payments_bot_token()
+
+    token = _get_admin_alert_bot_token()
     if not token:
-        logger.warning('TELEGRAM_PAYMENTS_BOT_TOKEN not configured, cannot notify admin about payment')
+        logger.warning('Admin alert bot token not configured, cannot notify admin about payment')
         return False
     
     user = subscription.user
@@ -722,28 +776,32 @@ def notify_admin_payment(
     )
     
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        'chat_id': admin_chat_id,
+    payload_base = {
         'text': message,
         'disable_web_page_preview': True,
     }
-    
-    try:
-        response = requests.post(url, json=payload, timeout=10)
-        if response.ok:
-            # СРАЗУ помечаем как отправленное, чтобы избежать дублей при повторных webhook
-            try:
-                payment.admin_notified_at = timezone.now()
-                payment.save(update_fields=['admin_notified_at'])
-            except Exception as e:
-                logger.warning(f'Failed to mark payment as notified: {e}')
-            logger.info(f'Admin payment notification sent for payment {payment.payment_id}')
-            return True
-        logger.warning(f'Failed to send admin payment notification: {response.status_code} {response.text}')
-        return False
-    except requests.RequestException as exc:
-        logger.exception(f'Failed to send admin payment notification: {exc}')
-        return False
+
+    sent_any = False
+    for admin_chat_id in admin_chat_ids:
+        payload = {**payload_base, 'chat_id': admin_chat_id}
+        try:
+            response = requests.post(url, json=payload, timeout=10)
+            if response.ok:
+                sent_any = True
+            else:
+                logger.warning('Failed to send admin payment notification: %s %s', response.status_code, response.text)
+        except requests.RequestException as exc:
+            logger.exception('Failed to send admin payment notification: %s', exc)
+
+    if sent_any:
+        try:
+            payment.admin_notified_at = timezone.now()
+            payment.save(update_fields=['admin_notified_at'])
+        except Exception as e:
+            logger.warning('Failed to mark payment as notified: %s', e)
+        logger.info('Admin payment notification sent for payment %s', payment.payment_id)
+        return True
+    return False
 
 
 def notify_payment_failed(
@@ -754,14 +812,14 @@ def notify_payment_failed(
     zoom_addon: bool = False,
 ) -> bool:
     """Уведомить админа о неуспешной оплате."""
-    admin_chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', None)
-    if not admin_chat_id:
-        logger.debug('ADMIN_PAYMENT_TELEGRAM_CHAT_ID not configured, skipping payment-failed notification')
+    admin_chat_ids = _get_admin_alert_chat_ids()
+    if not admin_chat_ids:
+        logger.debug('Admin chat IDs not configured, skipping payment-failed notification')
         return False
 
-    token = _get_payments_bot_token()
+    token = _get_admin_alert_bot_token()
     if not token:
-        logger.warning('TELEGRAM_PAYMENTS_BOT_TOKEN not configured, cannot notify admin about failed payment')
+        logger.warning('Admin alert bot token not configured, cannot notify admin about failed payment')
         return False
 
     user = subscription.user
@@ -781,22 +839,27 @@ def notify_payment_failed(
     )
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        'chat_id': admin_chat_id,
+    payload_base = {
         'text': message,
         'disable_web_page_preview': True,
     }
 
-    try:
-        response = requests.post(url, json=payload, timeout=10)
-        if response.ok:
-            logger.info('Admin payment-failed notification sent for payment %s', getattr(payment, 'payment_id', None))
-            return True
-        logger.warning('Failed to send admin payment-failed notification: %s %s', response.status_code, response.text)
-        return False
-    except requests.RequestException as exc:
-        logger.exception('Failed to send admin payment-failed notification: %s', exc)
-        return False
+    sent_any = False
+    for admin_chat_id in admin_chat_ids:
+        payload = {**payload_base, 'chat_id': admin_chat_id}
+        try:
+            response = requests.post(url, json=payload, timeout=10)
+            if response.ok:
+                sent_any = True
+            else:
+                logger.warning('Failed to send admin payment-failed notification: %s %s', response.status_code, response.text)
+        except requests.RequestException as exc:
+            logger.exception('Failed to send admin payment-failed notification: %s', exc)
+
+    if sent_any:
+        logger.info('Admin payment-failed notification sent for payment %s', getattr(payment, 'payment_id', None))
+        return True
+    return False
 
 
 def notify_payment_refunded(
@@ -807,14 +870,14 @@ def notify_payment_refunded(
     zoom_addon: bool = False,
 ) -> bool:
     """Уведомить админа о возврате платежа."""
-    admin_chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', None)
-    if not admin_chat_id:
-        logger.debug('ADMIN_PAYMENT_TELEGRAM_CHAT_ID not configured, skipping refunded notification')
+    admin_chat_ids = _get_admin_alert_chat_ids()
+    if not admin_chat_ids:
+        logger.debug('Admin chat IDs not configured, skipping refunded notification')
         return False
 
-    token = _get_payments_bot_token()
+    token = _get_admin_alert_bot_token()
     if not token:
-        logger.warning('TELEGRAM_PAYMENTS_BOT_TOKEN not configured, cannot notify admin about refund')
+        logger.warning('Admin alert bot token not configured, cannot notify admin about refund')
         return False
 
     user = subscription.user
@@ -833,22 +896,27 @@ def notify_payment_refunded(
     )
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        'chat_id': admin_chat_id,
+    payload_base = {
         'text': message,
         'disable_web_page_preview': True,
     }
 
-    try:
-        response = requests.post(url, json=payload, timeout=10)
-        if response.ok:
-            logger.info('Admin refunded notification sent for payment %s', getattr(payment, 'payment_id', None))
-            return True
-        logger.warning('Failed to send admin refunded notification: %s %s', response.status_code, response.text)
-        return False
-    except requests.RequestException as exc:
-        logger.exception('Failed to send admin refunded notification: %s', exc)
-        return False
+    sent_any = False
+    for admin_chat_id in admin_chat_ids:
+        payload = {**payload_base, 'chat_id': admin_chat_id}
+        try:
+            response = requests.post(url, json=payload, timeout=10)
+            if response.ok:
+                sent_any = True
+            else:
+                logger.warning('Failed to send admin refunded notification: %s %s', response.status_code, response.text)
+        except requests.RequestException as exc:
+            logger.exception('Failed to send admin refunded notification: %s', exc)
+
+    if sent_any:
+        logger.info('Admin refunded notification sent for payment %s', getattr(payment, 'payment_id', None))
+        return True
+    return False
 
 
 def notify_auto_renewal_success(subscription, user, renewal_type: str) -> bool:
@@ -1067,13 +1135,6 @@ def send_weekly_revenue_report() -> bool:
     from decimal import Decimal
     from .models import Payment
     
-    token = _get_payments_bot_token()
-    chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', '')
-    
-    if not token or not chat_id:
-        logger.warning('Payments bot token or chat ID not configured')
-        return False
-    
     now = timezone.now()
     
     # Текущая неделя (последние 7 дней)
@@ -1161,33 +1222,38 @@ def send_telegram_admin_alert(message: str) -> bool:
     Returns:
         bool: True if sent successfully
     """
-    admin_chat_id = getattr(settings, 'ADMIN_PAYMENT_TELEGRAM_CHAT_ID', None)
-    if not admin_chat_id:
-        logger.debug('ADMIN_PAYMENT_TELEGRAM_CHAT_ID not configured, skipping admin alert')
+    admin_chat_ids = _get_admin_alert_chat_ids()
+    if not admin_chat_ids:
+        logger.debug('Admin chat IDs not configured, skipping admin alert')
         return False
-    
-    token = _get_payments_bot_token()
+
+    token = _get_admin_alert_bot_token()
     if not token:
-        logger.warning('TELEGRAM_PAYMENTS_BOT_TOKEN not configured, cannot send admin alert')
+        logger.warning('Admin alert bot token not configured, cannot send admin alert')
         return False
-    
+
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        'chat_id': admin_chat_id,
+    payload_base = {
         'text': message,
         'parse_mode': 'HTML',
     }
-    
-    try:
-        response = requests.post(url, json=payload, timeout=10)
-        if response.status_code == 200:
-            logger.info('Admin alert sent successfully')
-            return True
-        logger.warning('Failed to send admin alert: %s %s', response.status_code, response.text)
-        return False
-    except requests.RequestException as exc:
-        logger.exception('Failed to send admin alert: %s', exc)
-        return False
+
+    sent_any = False
+    for admin_chat_id in admin_chat_ids:
+        payload = {**payload_base, 'chat_id': admin_chat_id}
+        try:
+            response = requests.post(url, json=payload, timeout=10)
+            if response.status_code == 200:
+                sent_any = True
+            else:
+                logger.warning('Failed to send admin alert: %s %s', response.status_code, response.text)
+        except requests.RequestException as exc:
+            logger.exception('Failed to send admin alert: %s', exc)
+
+    if sent_any:
+        logger.info('Admin alert sent successfully')
+        return True
+    return False
 
 
 

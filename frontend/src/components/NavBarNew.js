@@ -374,6 +374,7 @@ const NavBar = () => {
             onClick={() => setShowMobileMenu(false)}
             onMouseEnter={prefetchHomework}
             onFocus={prefetchHomework}
+            data-tour="nav-homework"
           >
             <span className="nav-icon"></span>
             <span>ДЗ</span>
@@ -403,6 +404,7 @@ const NavBar = () => {
             to="/teacher/recordings" 
             className="nav-link"
             onClick={() => setShowMobileMenu(false)}
+            data-tour="nav-recordings"
           >
             <span className="nav-icon"></span>
             <span>Записи</span>
@@ -414,6 +416,7 @@ const NavBar = () => {
             onClick={() => setShowMobileMenu(false)}
             onMouseEnter={prefetchAnalytics}
             onFocus={prefetchAnalytics}
+            data-tour="nav-analytics"
           >
             <span className="nav-icon"></span>
             <span>Аналитика</span>
@@ -428,6 +431,7 @@ const NavBar = () => {
             to="/student" 
             className="nav-link"
             onClick={() => setShowMobileMenu(false)}
+            data-tour="student-navbar"
           >
             <span className="nav-icon"></span>
             <span>Мои курсы</span>
@@ -437,6 +441,7 @@ const NavBar = () => {
             to="/homework" 
             className="nav-link"
             onClick={() => setShowMobileMenu(false)}
+            data-tour="nav-homework-student"
           >
             <span className="nav-icon"></span>
             <span>Домашние задания</span>
@@ -446,6 +451,7 @@ const NavBar = () => {
             to="/calendar" 
             className="nav-link"
             onClick={() => setShowMobileMenu(false)}
+            data-tour="nav-calendar-student"
           >
             <span className="nav-icon"></span>
             <span>Календарь</span>
@@ -582,7 +588,7 @@ const NavBar = () => {
           )
         )
       )}
-      <nav className="navbar">
+      <nav className="navbar" data-tour="teacher-navbar">
         <div className="navbar-container">
         {/* Логотип */}
         <Link to={homePath} className="navbar-logo" aria-label="Lectio Space">
