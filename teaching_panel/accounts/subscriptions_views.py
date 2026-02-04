@@ -251,12 +251,12 @@ class SubscriptionCreateZoomAddonPaymentView(APIView):
 
 
 class SubscriptionZoomAddonSetupView(APIView):
-    """Настройка Zoom после оплаты Zoom-аддона.
+    """Настройка Zoom credentials учителя.
 
     POST /api/subscription/zoom/setup/
     body:
-            {"mode": "pool", "email": "...", "random_email": true/false}  -> выделить учителю аккаунт платформы (preferred_teachers)
       {"mode": "personal", "accountId": "...", "clientId": "...", "clientSecret": "...", "userId": "me"}
+      -> учитель вводит свои Zoom credentials (бесплатно)
     """
     permission_classes = [IsAuthenticated]
 
@@ -264,66 +264,28 @@ class SubscriptionZoomAddonSetupView(APIView):
         if request.user.role != 'teacher':
             return Response({'detail': 'Только для учителей'}, status=status.HTTP_403_FORBIDDEN)
 
-        sub = get_subscription(request.user)
-        if not getattr(sub, 'is_zoom_addon_active', None) or not sub.is_zoom_addon_active():
-            return Response({'detail': 'Zoom-подписка не активна'}, status=status.HTTP_403_FORBIDDEN)
-
         mode = str(request.data.get('mode', '')).lower().strip()
-        if mode not in ('pool', 'personal'):
-            return Response({'detail': 'mode: pool или personal'}, status=status.HTTP_400_BAD_REQUEST)
+        if mode != 'personal':
+            return Response({'detail': 'Поддерживается только mode: personal'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if mode == 'personal':
-            account_id = str(request.data.get('accountId', '')).strip()
-            client_id = str(request.data.get('clientId', '')).strip()
-            client_secret = str(request.data.get('clientSecret', '')).strip()
-            user_id = str(request.data.get('userId', '')).strip() or 'me'
+        account_id = str(request.data.get('accountId', '')).strip()
+        client_id = str(request.data.get('clientId', '')).strip()
+        client_secret = str(request.data.get('clientSecret', '')).strip()
+        user_id = str(request.data.get('userId', '')).strip() or 'me'
 
-            if not (account_id and client_id and client_secret):
-                return Response({'detail': 'Заполните Account ID, Client ID и Client Secret'}, status=status.HTTP_400_BAD_REQUEST)
+        if not (account_id and client_id and client_secret):
+            return Response({'detail': 'Заполните Account ID, Client ID и Client Secret'}, status=status.HTTP_400_BAD_REQUEST)
 
-            request.user.zoom_account_id = account_id
-            request.user.zoom_client_id = client_id
-            request.user.zoom_client_secret = client_secret
-            request.user.zoom_user_id = user_id
-            request.user.save(update_fields=['zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_user_id', 'updated_at'])
+        request.user.zoom_account_id = account_id
+        request.user.zoom_client_id = client_id
+        request.user.zoom_client_secret = client_secret
+        request.user.zoom_user_id = user_id
+        request.user.save(update_fields=['zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_user_id', 'updated_at'])
 
-            return Response({
-                'ok': True,
-                'mode': 'personal',
-                'subscription': SubscriptionSerializer(sub).data,
-            })
-
-        # mode == pool
-        try:
-            from zoom_pool.models import ZoomAccount
-        except Exception:
-            return Response({'detail': 'Zoom pool не доступен'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        random_email = _parse_bool(request.data.get('random_email'))
-        requested_email = str(request.data.get('email', '')).strip()
-
-        if requested_email and not random_email:
-            account = ZoomAccount.objects.filter(is_active=True, email__iexact=requested_email).first()
-            if not account:
-                return Response({'detail': 'Аккаунт с указанной почтой не найден в пуле'}, status=status.HTTP_409_CONFLICT)
-        else:
-            # Выбираем аккаунт платформы с минимальной "нагрузкой" по предпочтениям.
-            # Это не создаёт новый Zoom аккаунт в Zoom, а назначает выделенный из пула.
-            account = (
-                ZoomAccount.objects.filter(is_active=True)
-                .annotate(preferred_count=Count('preferred_teachers'))
-                .order_by('preferred_count', 'current_meetings', '-last_used_at')
-                .first()
-            )
-        if not account:
-            return Response({'detail': 'Нет доступных Zoom аккаунтов в пуле'}, status=status.HTTP_409_CONFLICT)
-
-        account.preferred_teachers.add(request.user)
         return Response({
             'ok': True,
-            'mode': 'pool',
-            'assigned_zoom_email': account.email,
-            'subscription': SubscriptionSerializer(sub).data,
+            'mode': 'personal',
+            'message': 'Zoom credentials сохранены успешно',
         })
 
 
