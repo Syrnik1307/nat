@@ -547,22 +547,94 @@ async def reply_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка обычных сообщений (быстрый ответ на последний просмотренный тикет)"""
+    """Обработка обычных сообщений (быстрый ответ на последний просмотренный тикет или создание тикета)"""
     telegram_id = update.effective_user.id
+    message_text = update.message.text
+    
+    # Логируем входящее сообщение для отладки
+    logger.info(f"[MSG] telegram_id={telegram_id}, text={message_text[:50]}...")
     
     try:
         user = await get_user_by_telegram_id(telegram_id)
-        if not user.is_staff:
-            return
     except CustomUser.DoesNotExist:
+        # Незарегистрированный пользователь - сохраняем сообщение для восстановления
+        logger.warning(f"[MSG] Unknown user telegram_id={telegram_id}, message not saved to DB")
+        await update.message.reply_text(
+            "Для связи с поддержкой необходимо зарегистрироваться.\n\n"
+            "1. Откройте Teaching Panel на платформе\n"
+            "2. Зайдите в Профиль → Безопасность\n"
+            "3. Добавьте ваш Telegram ID\n"
+            "4. Вернитесь и отправьте /start"
+        )
         return
     
     # Проверяем, есть ли активный контекст
     ctx = user_context.get(telegram_id, {})
     mode = ctx.get('mode')
     
+    # Для преподавателей/студентов (создание тикета)
+    if mode == 'user':
+        creating = ctx.get('creating_ticket')
+        
+        if creating:
+            step = creating.get('step')
+            
+            if step == 'subject':
+                # Собираем тему обращения
+                creating['subject'] = message_text
+                creating['step'] = 'message'
+                await update.message.reply_text(
+                    "Опишите вашу проблему или вопрос:"
+                )
+                return
+            
+            elif step == 'message':
+                # Создаём тикет
+                category = creating.get('category', 'other')
+                subject = creating.get('subject', 'Обращение из Telegram')
+                
+                ticket = await create_ticket(
+                    user=user,
+                    subject=subject,
+                    description=message_text,
+                    category=category,
+                    priority='normal',
+                    status='new'
+                )
+                
+                # Очищаем контекст
+                user_context[telegram_id] = {'mode': 'user'}
+                
+                logger.info(f"[MSG] Ticket #{ticket.id} created by user {user.id} from Telegram")
+                
+                await update.message.reply_text(
+                    f"Ваше обращение #{ticket.id} создано!\n\n"
+                    f"Администраторы ответят вам в ближайшее время.\n"
+                    f"Вы получите уведомление об ответе."
+                )
+                return
+        
+        # Если нет активного создания тикета, создаём быстрый тикет из сообщения
+        ticket = await create_ticket(
+            user=user,
+            subject=f"Сообщение из Telegram: {message_text[:50]}",
+            description=message_text,
+            category='other',
+            priority='normal',
+            status='new'
+        )
+        
+        logger.info(f"[MSG] Quick ticket #{ticket.id} created by user {user.id} from Telegram")
+        
+        await update.message.reply_text(
+            f"Ваше обращение #{ticket.id} создано!\n\n"
+            f"Администраторы ответят вам в ближайшее время.\n"
+            f"Используйте /my_tickets для просмотра статуса."
+        )
+        return
+    
     # Для администраторов
-    if mode == 'admin':
+    if mode == 'admin' or (user and user.is_staff):
         if telegram_id not in user_context or 'ticket_id' not in ctx:
             await update.message.reply_text(
                 "💡 Сначала откройте тикет через /view_<id>\n"
@@ -594,54 +666,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await save_ticket(ticket)
         
         await update.message.reply_text(
-            f"✅ Ответ отправлен на тикет #{ticket_id}"
+            f"Ответ отправлен на тикет #{ticket_id}"
         )
-    
-    # Для преподавателей (создание тикета)
-    elif mode == 'user':
-        creating = ctx.get('creating_ticket')
-        
-        if not creating:
-            return
-        
-        step = creating.get('step')
-        
-        if step == 'subject':
-            # Собираем тему обращения
-            creating['subject'] = update.message.text
-            creating['step'] = 'message'
-            await update.message.reply_text(
-                "Опишите вашу проблему или вопрос:"
-            )
-        
-        elif step == 'message':
-            # Создаём тикет
-            description = update.message.text
-            category = creating.get('category', 'other')
-            subject = creating.get('subject', 'Обращение из Telegram')
-            
-            ticket = await create_ticket(
-                user=user,
-                subject=subject,
-                description=description,
-                category=category,
-                priority='normal',
-                status='new'
-            )
-            
-            # Очищаем контекст
-            user_context[telegram_id] = {'mode': 'user'}
-            
-            await update.message.reply_text(
-                f"✅ Ваше обращение #{ticket.id} создано!\\n\\n"
-                f"Администраторы ответят вам в ближайшее время.\\n"
-                f"Вы получите уведомление об ответе."
-            )
-        
         return
     
-    # Если контекста нет, игнорируем
-    return
+    # Если контекста нет и пользователь обычный - создаём тикет из сообщения
+    if user and not user.is_staff:
+        ticket = await create_ticket(
+            user=user,
+            subject=f"Сообщение из Telegram: {message_text[:50]}",
+            description=message_text,
+            category='other',
+            priority='normal',
+            status='new'
+        )
+        
+        logger.info(f"[MSG] Fallback ticket #{ticket.id} created by user {user.id} from Telegram")
+        
+        await update.message.reply_text(
+            f"Ваше обращение #{ticket.id} создано!\n\n"
+            f"Администраторы ответят вам в ближайшее время.\n"
+            f"Используйте /my_tickets для просмотра статуса."
+        )
 
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -675,8 +721,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cat_name = dict(SupportTicket.CATEGORY_CHOICES).get(category, category)
         
         await query.edit_message_text(
-            f"Вы выбрали категорию: *{cat_name}*\\n\\n"
-            f"Напишите тему вашего обращения:"
+            f"Вы выбрали категорию: *{cat_name}*\n\n"
+            f"Напишите тему вашего обращения:",
+            parse_mode='Markdown'
         )
         return
     
