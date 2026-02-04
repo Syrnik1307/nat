@@ -83,7 +83,7 @@ def create_support_message(ticket, author, message, is_staff_reply=False):
 
 
 @sync_to_async
-def create_ticket(user, subject, description, category, email=None, page_url=None, priority='normal', status='new'):
+def create_ticket(user, subject, description, category, email=None, page_url='', priority='normal', status='new'):
     """Создать новый тикет (async-safe)"""
     return SupportTicket.objects.create(
         user=user,
@@ -91,7 +91,7 @@ def create_ticket(user, subject, description, category, email=None, page_url=Non
         description=description,
         category=category,
         email=email or (user.email if user else None),
-        page_url=page_url,
+        page_url=page_url or '',  # Убедиться что не None
         priority=priority,
         status=status
     )
