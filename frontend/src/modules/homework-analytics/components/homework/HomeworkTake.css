@@ -516,6 +516,7 @@
 @media (max-width: 768px) {
   .ht-container {
     padding: 1rem;
+    padding-bottom: 140px; /* Отступ для фиксированного футера */
     gap: 1rem;
   }
 
@@ -586,14 +587,21 @@
 
   .ht-footer {
     padding: 1rem 1.25rem;
-    border-radius: 14px;
+    border-radius: 14px 14px 0 0;
     flex-direction: column;
     gap: 1rem;
-    /* iOS sticky footer fix */
-    position: sticky;
+    /* Mobile: фиксированный футер внизу экрана */
+    position: fixed;
+    left: 0;
+    right: 0;
     bottom: 0;
     background: var(--bg-paper, #fff);
-    z-index: 100;
+    /* z-index выше SupportWidget (12000) на случай если он есть */
+    z-index: 15000;
+    /* Тень для визуального отделения */
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    /* Safe area для iPhone с вырезом */
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   }
 
   .ht-footer-actions {
@@ -604,11 +612,22 @@
   .ht-footer-actions .btn,
   .ht-footer-actions button {
     width: 100%;
-    min-height: 48px; /* iOS tap target */
+    min-height: 52px; /* Увеличенный iOS tap target */
     font-size: 1rem;
-    /* Fix for iOS touch */
+    /* Fix for iOS touch - критически важно */
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    /* Отключаем user-select для предотвращения проблем с touch */
+    user-select: none;
+    -webkit-user-select: none;
+    /* Убираем задержку касания на iOS */
+    -webkit-touch-callout: none;
+  }
+  
+  /* Специфичные стили для кнопки отправки */
+  .ht-footer-actions .ht-submit-btn {
+    font-weight: 600;
+    font-size: 1.05rem;
   }
 
   .ht-controls {
@@ -623,6 +642,7 @@
 @media (max-width: 480px) {
   .ht-container {
     padding: 0.75rem;
+    padding-bottom: 150px; /* Высота футера + запас для мелких экранов */
   }
 
   .ht-header {

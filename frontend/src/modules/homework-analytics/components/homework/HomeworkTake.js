@@ -135,7 +135,19 @@ const HomeworkTake = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [savingState.status]);
 
+  // ============================================================================
+  // SUBMIT HANDLER - оптимизирован для мобильных устройств
+  // ============================================================================
   const handleSubmit = async () => {
+    // Предотвращаем двойной клик
+    if (submitting) {
+      return;
+    }
+    
+    if (isLocked) {
+      return;
+    }
+    
     const confirmed = await showConfirm({
       title: 'Отправить домашнее задание?',
       message: 'После отправки редактирование будет недоступно.',
@@ -143,33 +155,71 @@ const HomeworkTake = () => {
       confirmText: 'Отправить',
       cancelText: 'Отмена'
     });
+    
     if (!confirmed) return;
+    
     try {
       setSubmitting(true);
-      setSubmitMessage(null);
+      setSubmitMessage('Отправляем...');
+      
       const result = await submitHomework();
-      setResultData(result?.data || null);
+      
+      // Проверяем что результат валидный
+      if (result === null) {
+        // submitHomework вернул null = уже идёт отправка, игнорируем
+        return;
+      }
+      
+      setResultData(result?.data || result || null);
       setShowResult(true);
-      setSubmitMessage('Задание отправлено!');
+      setSubmitMessage('Задание успешно отправлено!');
+      
     } catch (submitError) {
       console.error('[HomeworkTake] submit error:', submitError);
       
-      // Детальное сообщение об ошибке для iOS/мобильных устройств
-      let errorMessage = 'Не удалось отправить задание. ';
+      // Детальные сообщения для разных типов ошибок
+      let errorMessage;
       
-      if (!submitError.response && submitError.message?.includes('Network')) {
-        errorMessage += 'Проверьте подключение к интернету и попробуйте снова.';
-      } else if (submitError.code === 'ECONNABORTED') {
-        errorMessage += 'Превышено время ожидания. Проверьте интернет-соединение.';
-      } else if (submitError.response?.status === 400) {
-        const detail = submitError.response?.data?.error || submitError.response?.data?.detail;
-        errorMessage = detail || 'Работа уже отправлена или произошла ошибка валидации.';
-      } else if (submitError.response?.status === 401) {
-        errorMessage = 'Сессия истекла. Пожалуйста, войдите заново.';
-      } else if (submitError.response?.status === 403) {
-        errorMessage = submitError.response?.data?.error || 'Доступ запрещён.';
-      } else {
-        errorMessage += 'Попробуйте снова через несколько секунд.';
+      // Сетевые ошибки (нет response)
+      if (!submitError.response) {
+        if (submitError.code === 'ECONNABORTED') {
+          errorMessage = 'Время ожидания истекло. Проверьте интернет и попробуйте снова.';
+        } else if (submitError.message?.toLowerCase().includes('network')) {
+          errorMessage = 'Нет подключения к интернету. Проверьте сеть и попробуйте снова.';
+        } else {
+          errorMessage = 'Не удалось связаться с сервером. Проверьте интернет-соединение.';
+        }
+      }
+      // HTTP ошибки
+      else {
+        const status = submitError.response.status;
+        const serverError = submitError.response.data?.error || submitError.response.data?.detail;
+        
+        switch (status) {
+          case 400:
+            errorMessage = serverError || 'Работа уже была отправлена ранее.';
+            break;
+          case 401:
+            errorMessage = 'Сессия истекла. Обновите страницу и войдите снова.';
+            break;
+          case 403:
+            errorMessage = serverError || 'Нет доступа к этому заданию.';
+            break;
+          case 404:
+            errorMessage = 'Задание не найдено. Возможно, оно было удалено.';
+            break;
+          case 429:
+            errorMessage = 'Слишком много запросов. Подождите минуту и попробуйте снова.';
+            break;
+          case 500:
+          case 502:
+          case 503:
+          case 504:
+            errorMessage = 'Ошибка сервера. Попробуйте через несколько минут.';
+            break;
+          default:
+            errorMessage = serverError || 'Произошла ошибка. Попробуйте снова.';
+        }
       }
       
       setSubmitMessage(errorMessage);
@@ -221,6 +271,7 @@ const HomeworkTake = () => {
 
   return (
     <div className="ht-container">
+      
       {showResult && resultData?.status === 'graded' && resultPercent >= 90 && <Confetti />}
       <Modal
         isOpen={showResult}
@@ -447,6 +498,16 @@ const HomeworkTake = () => {
           <footer className="ht-footer">
             <div className="ht-footer-info">
               {submitMessage && <span className="ht-submit-message">{submitMessage}</span>}
+              {isLocked && submission?.status === 'submitted' && (
+                <span className="ht-submit-message ht-locked-info">
+                  Работа уже отправлена и ожидает проверки
+                </span>
+              )}
+              {isLocked && submission?.status === 'graded' && (
+                <span className="ht-submit-message ht-locked-info">
+                  Работа проверена. Посмотрите результаты ниже
+                </span>
+              )}
             </div>
             <div className="ht-footer-actions">
               <Button
@@ -456,12 +517,22 @@ const HomeworkTake = () => {
               >
                 Назад к списку
               </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={submitting || isLocked}
-              >
-                {submitting ? 'Отправка...' : 'Завершить и отправить'}
-              </Button>
+              {isLocked ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate(`/homework/${id}/result`)}
+                >
+                  Посмотреть результаты
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="ht-submit-btn"
+                >
+                  {submitting ? 'Отправка...' : 'Завершить и отправить'}
+                </Button>
+              )}
             </div>
           </footer>
         </main>
