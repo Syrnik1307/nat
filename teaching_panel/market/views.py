@@ -218,7 +218,7 @@ class MarketWebhookView(APIView):
     
     def _handle_payment_confirmed(self, order: MarketOrder):
         """
-        Handle confirmed payment: update status and notify admin.
+        Handle confirmed payment: update status, activate zoom addon, notify admin.
         IDEMPOTENT: If order is already PAID or beyond, skip processing.
         """
         # IDEMPOTENCY CHECK: Already processed?
@@ -232,8 +232,38 @@ class MarketWebhookView(APIView):
         
         logger.info(f"Market order #{order.id} PAID")
         
+        # Activate Zoom Addon for Zoom product purchases
+        if order.product.product_type == Product.TYPE_ZOOM:
+            self._activate_zoom_addon(order.user)
+        
         # Send admin notification via Telegram
         self._send_admin_notification(order)
+    
+    def _activate_zoom_addon(self, user):
+        """Activate zoom_addon_expires_at for 30 days after Market Zoom purchase."""
+        from accounts.subscriptions_utils import get_subscription
+        from datetime import timedelta
+        
+        try:
+            sub = get_subscription(user)
+            now = timezone.now()
+            
+            # Check if zoom_addon_expires_at field exists
+            if not hasattr(sub, 'zoom_addon_expires_at'):
+                logger.warning(f"zoom_addon_expires_at field not available for user {user.email}")
+                return
+            
+            # Extend from current expiry if still active, else from now
+            current_expiry = getattr(sub, 'zoom_addon_expires_at', None)
+            base_dt = current_expiry if current_expiry and current_expiry > now else now
+            new_expiry = base_dt + timedelta(days=30)
+            
+            sub.zoom_addon_expires_at = new_expiry
+            sub.save(update_fields=['zoom_addon_expires_at', 'updated_at'])
+            
+            logger.info(f"Market: Zoom addon activated for user {user.email} until {new_expiry}")
+        except Exception as e:
+            logger.error(f"Failed to activate zoom addon for user {user.email}: {e}")
     
     def _send_admin_notification(self, order: MarketOrder):
         """Send Telegram notification to admin about new paid order."""

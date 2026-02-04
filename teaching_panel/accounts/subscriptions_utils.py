@@ -91,26 +91,52 @@ def is_subscription_active(user) -> bool:
 
 
 def require_active_subscription(user):
-    """Проверяет что у пользователя есть активная оплаченная подписка.
+    """Проверяет что у пользователя есть активная оплаченная подписка ИЛИ активный Zoom Addon.
     
-    Вызывает PermissionDenied если подписка не активна или не оплачена.
+    Доступ разрешён если:
+    - Основная подписка активна (status='active' и expires_at > now), ИЛИ
+    - Zoom Addon активен (zoom_addon_expires_at > now)
+    
+    Вызывает PermissionDenied если ни одно условие не выполнено.
     """
     sub = get_subscription(user)
-    if not sub.is_active():
-        logger.warning(
-            "Subscription blocked access user=%s status=%s expires=%s now=%s",
+    
+    # Проверяем основную подписку
+    if sub.is_active():
+        return sub
+    
+    # Проверяем Zoom Addon как альтернативу (если поле существует)
+    zoom_addon_active = False
+    if hasattr(sub, 'is_zoom_addon_active'):
+        try:
+            zoom_addon_active = sub.is_zoom_addon_active()
+        except Exception:
+            pass  # Поле может не существовать в БД
+    
+    if zoom_addon_active:
+        logger.info(
+            "Access granted via Zoom Addon: user=%s zoom_addon_expires=%s",
             getattr(user, 'email', user.id),
-            sub.status,
-            sub.expires_at,
-            timezone.now()
+            getattr(sub, 'zoom_addon_expires_at', None)
         )
-        # Разные сообщения в зависимости от статуса подписки
-        if sub.status == Subscription.STATUS_PENDING:
-            raise PermissionDenied(detail='Для запуска занятий необходимо оплатить подписку.')
-        elif sub.status == Subscription.STATUS_EXPIRED:
-            raise PermissionDenied(detail='Подписка истекла. Продлите подписку чтобы продолжить.')
-        elif sub.status == Subscription.STATUS_CANCELLED:
-            raise PermissionDenied(detail='Подписка отменена. Оформите новую подписку чтобы продолжить.')
-        else:
-            raise PermissionDenied(detail='Подписка не активна. Оплатите чтобы продолжить.')
+        return sub
+    
+    # Ни основная подписка, ни Zoom Addon не активны
+    logger.warning(
+        "Subscription blocked access user=%s status=%s expires=%s zoom_addon=%s now=%s",
+        getattr(user, 'email', user.id),
+        sub.status,
+        sub.expires_at,
+        getattr(sub, 'zoom_addon_expires_at', None),
+        timezone.now()
+    )
+    # Разные сообщения в зависимости от статуса подписки
+    if sub.status == Subscription.STATUS_PENDING:
+        raise PermissionDenied(detail='Для запуска занятий необходимо оплатить подписку.')
+    elif sub.status == Subscription.STATUS_EXPIRED:
+        raise PermissionDenied(detail='Подписка истекла. Продлите подписку чтобы продолжить.')
+    elif sub.status == Subscription.STATUS_CANCELLED:
+        raise PermissionDenied(detail='Подписка отменена. Оформите новую подписку чтобы продолжить.')
+    else:
+        raise PermissionDenied(detail='Подписка не активна. Оплатите чтобы продолжить.')
     return sub
