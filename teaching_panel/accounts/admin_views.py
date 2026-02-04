@@ -1840,6 +1840,127 @@ class AdminChurnRetentionView(APIView):
         })
 
 
+class AdminCohortRetentionView(APIView):
+    """Weekly cohort retention heatmap data.
+    
+    Groups teachers by registration week and tracks lesson activity
+    in subsequent weeks. Returns a heatmap-ready matrix.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'admin':
+            return Response({'error': 'Доступ запрещен'}, status=status.HTTP_403_FORBIDDEN)
+
+        now = timezone.now()
+        weeks_count = int(request.query_params.get('weeks', 12))  # Last N weeks
+        max_retention_weeks = int(request.query_params.get('retention_weeks', 8))
+        
+        # Build cohorts (by registration week)
+        cohorts = []
+        
+        for weeks_ago in range(weeks_count - 1, -1, -1):  # From oldest to newest
+            # Week boundaries (Monday to Sunday)
+            week_end = now - timedelta(weeks=weeks_ago)
+            week_start = week_end - timedelta(days=7)
+            
+            # Align to Monday
+            days_since_monday = week_start.weekday()
+            cohort_start = (week_start - timedelta(days=days_since_monday)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            cohort_end = cohort_start + timedelta(days=7)
+            
+            # Teachers registered this week
+            cohort_teachers = list(User.objects.filter(
+                role='teacher',
+                created_at__gte=cohort_start,
+                created_at__lt=cohort_end
+            ).values_list('id', flat=True))
+            
+            cohort_size = len(cohort_teachers)
+            if cohort_size == 0:
+                continue
+            
+            # Week label
+            week_label = cohort_start.strftime('%d.%m')
+            
+            # Calculate retention for each subsequent week
+            retention_data = []
+            
+            for week_offset in range(max_retention_weeks):
+                retention_week_start = cohort_start + timedelta(weeks=week_offset)
+                retention_week_end = retention_week_start + timedelta(days=7)
+                
+                # Skip future weeks
+                if retention_week_start > now:
+                    retention_data.append(None)
+                    continue
+                
+                # Count teachers who conducted at least one lesson this week
+                active_count = Lesson.objects.filter(
+                    teacher_id__in=cohort_teachers,
+                    start_time__gte=retention_week_start,
+                    start_time__lt=retention_week_end
+                ).values('teacher_id').distinct().count()
+                
+                retention_percent = round((active_count / cohort_size) * 100, 1) if cohort_size > 0 else 0
+                
+                retention_data.append({
+                    'week': week_offset,
+                    'active': active_count,
+                    'percent': retention_percent
+                })
+            
+            cohorts.append({
+                'cohort_week': cohort_start.strftime('%Y-%m-%d'),
+                'label': f'Неделя {week_label}',
+                'cohort_size': cohort_size,
+                'retention': retention_data
+            })
+        
+        # Summary metrics
+        # Average retention by week offset
+        avg_retention = []
+        for week_offset in range(max_retention_weeks):
+            values = []
+            for cohort in cohorts:
+                if week_offset < len(cohort['retention']) and cohort['retention'][week_offset] is not None:
+                    values.append(cohort['retention'][week_offset]['percent'])
+            avg_retention.append({
+                'week': week_offset,
+                'label': f'W+{week_offset}' if week_offset > 0 else 'W0',
+                'avg_percent': round(sum(values) / len(values), 1) if values else 0,
+                'cohorts_counted': len(values)
+            })
+        
+        # Calculate week-over-week retention drop
+        retention_drops = []
+        for i in range(1, len(avg_retention)):
+            if avg_retention[i-1]['avg_percent'] > 0:
+                drop = avg_retention[i-1]['avg_percent'] - avg_retention[i]['avg_percent']
+                retention_drops.append({
+                    'from_week': i - 1,
+                    'to_week': i,
+                    'drop_percent': round(drop, 1)
+                })
+        
+        return Response({
+            'cohorts': cohorts,
+            'summary': {
+                'avg_retention_by_week': avg_retention,
+                'retention_drops': retention_drops,
+                'total_cohorts': len(cohorts),
+                'weeks_analyzed': weeks_count,
+            },
+            'config': {
+                'weeks': weeks_count,
+                'retention_weeks': max_retention_weeks
+            }
+        })
+
+
 class AdminTeachersActivityView(APIView):
     """Детальная таблица активности учителей."""
 

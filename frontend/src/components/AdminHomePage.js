@@ -11,6 +11,7 @@ import SystemErrorsModal from '../modules/Admin/SystemErrorsModal';
 import StorageStats from './StorageStats';
 import AdminReferrals from '../modules/Admin/AdminReferrals';
 import BusinessMetricsDashboard from '../modules/Admin/BusinessMetricsDashboard';
+import CohortRetentionHeatmap from '../modules/Admin/CohortRetentionHeatmap';
 import AdminDashboardWidget from '../modules/Admin/AdminDashboardWidget';
 import '../styles/AdminPanel.css';
 
@@ -133,6 +134,7 @@ const AdminHomePage = () => {
   const [showStorageStats, setShowStorageStats] = useState(false);
   const [showReferrals, setShowReferrals] = useState(false);
   const [showBusinessMetrics, setShowBusinessMetrics] = useState(false);
+  const [showCohortRetention, setShowCohortRetention] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const profileRef = useRef(null);
@@ -300,6 +302,10 @@ const AdminHomePage = () => {
           <a className="admin-nav-item" onClick={() => setShowBusinessMetrics(true)}>
             <span className="admin-nav-icon">{Icons.metrics}</span>
             Метрики
+          </a>
+          <a className="admin-nav-item" onClick={() => setShowCohortRetention(true)}>
+            <span className="admin-nav-icon">{Icons.analytics}</span>
+            Удержание
           </a>
           <a className="admin-nav-item" onClick={() => setShowErrors(true)}>
             <span className="admin-nav-icon">{Icons.errors}</span>
@@ -607,6 +613,11 @@ const AdminHomePage = () => {
       {/* Business Metrics Dashboard */}
       {showBusinessMetrics && (
         <BusinessMetricsDashboard onClose={() => setShowBusinessMetrics(false)} />
+      )}
+
+      {/* Cohort Retention Heatmap */}
+      {showCohortRetention && (
+        <CohortRetentionHeatmap onClose={() => setShowCohortRetention(false)} />
       )}
 
       {/* System Errors Modal */}
