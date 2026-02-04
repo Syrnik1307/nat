@@ -1214,105 +1214,29 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     def _start_zoom_via_pool(self, lesson, user, request):
         """
-        Создать Zoom встречу.
-        Приоритет:
-        1) персональные credentials учителя
-        2) глобальные Zoom credentials (settings.ZOOM_*)
+        Создать Zoom встречу используя личные credentials учителя.
+        Если credentials не настроены - возвращаем ошибку.
         """
-        from .zoom_client import ZoomAPIClient
-        from accounts.error_tracker import track_error
-        from django.conf import settings
-
-        # 1) Персональные credentials учителя
-        if user.zoom_account_id and user.zoom_client_id and user.zoom_client_secret:
-            logger.info(f"Using personal Zoom credentials for teacher {user.email}")
-            payload, error_response = self._start_zoom_with_teacher_credentials(lesson, user, request)
-            if payload:
-                return payload, None
-            # Если персональные credentials не сработали - пробуем глобальные
-            logger.warning(f"Personal Zoom credentials failed for {user.email}, trying global credentials")
-
-        # 2) Глобальные Zoom credentials
-        logger.info(f"Using global Zoom credentials for teacher {user.email}")
-
-        global_account_id = getattr(settings, 'ZOOM_ACCOUNT_ID', '')
-        global_client_id = getattr(settings, 'ZOOM_CLIENT_ID', '')
-        global_client_secret = getattr(settings, 'ZOOM_CLIENT_SECRET', '')
-        if not all([global_account_id, global_client_id, global_client_secret]):
-            logger.info("Global Zoom credentials not configured, user needs personal integration")
+        # Проверяем наличие личных Zoom credentials у учителя
+        if not user.zoom_account_id or not user.zoom_client_id or not user.zoom_client_secret:
+            logger.info(f"Teacher {user.email} has no Zoom credentials configured")
             return None, Response(
                 {
                     'code': 'no_zoom_configured',
-                    'detail': 'Для проведения уроков подключите свой Zoom аккаунт или используйте Google Meet.',
+                    'detail': 'У вас не настроен Zoom аккаунт. Подключите свой Zoom в настройках профиля или используйте Google Meet.',
                     'action_required': 'connect_zoom_or_meet'
                 },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            zoom_client = ZoomAPIClient(
-                account_id=global_account_id,
-                client_id=global_client_id,
-                client_secret=global_client_secret
-            )
-
-            meeting_data = zoom_client.create_meeting(
-                user_id='me',
-                topic=f"{lesson.group.name} - {lesson.title}",
-                start_time=lesson.start_time,
-                duration=lesson.duration(),
-                auto_record=lesson.record_lesson
-            )
-
-            lesson.zoom_meeting_id = meeting_data['id']
-            lesson.zoom_join_url = meeting_data['join_url']
-            lesson.zoom_start_url = meeting_data['start_url']
-            lesson.zoom_password = meeting_data.get('password', '')
-            lesson.zoom_account = None  # Глобальные credentials, не из пула
-            lesson.save()
-
-            log_audit(
-                user=user,
-                action='lesson_start',
-                resource_type='Lesson',
-                resource_id=lesson.id,
-                request=request,
-                details={
-                    'lesson_title': lesson.title,
-                    'group_name': lesson.group.name,
-                    'zoom_meeting_id': meeting_data['id'],
-                    'start_time': lesson.start_time.isoformat(),
-                    'using_global_credentials': True,
-                }
-            )
-
-            payload = {
-                'zoom_join_url': lesson.zoom_join_url,
-                'zoom_start_url': lesson.zoom_start_url,
-                'zoom_meeting_id': lesson.zoom_meeting_id,
-                'zoom_password': lesson.zoom_password,
-                'account_email': 'Zoom (глобальный)',
-            }
+        # Используем личные credentials учителя
+        logger.info(f"Using personal Zoom credentials for teacher {user.email}")
+        payload, error_response = self._start_zoom_with_teacher_credentials(lesson, user, request)
+        if payload:
             return payload, None
-
-        except Exception as e:
-            logger.exception(f"Failed to create Zoom meeting with global credentials for lesson {lesson.id}: {e}")
-            track_error(
-                code='ZOOM_GLOBAL_MEETING_FAILED',
-                message=f'Ошибка создания Zoom встречи: {str(e)[:200]}',
-                severity='critical',
-                teacher=user,
-                request=request,
-                details={
-                    'lesson_id': lesson.id,
-                    'lesson_title': lesson.title,
-                },
-                exc=e
-            )
-            return None, Response(
-                {'detail': f'Ошибка при создании встречи: {e}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        
+        # Если не получилось - возвращаем ошибку
+        return None, error_response
     
     @action(detail=True, methods=['post'])
     def mark_attendance(self, request, pk=None):
