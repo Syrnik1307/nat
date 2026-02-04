@@ -62,7 +62,7 @@ def get_user_by_telegram_id(telegram_id: int):
 @sync_to_async
 def get_ticket_by_id(ticket_id: int):
     """Получить тикет по ID (async-safe)"""
-    return SupportTicket.objects.get(id=ticket_id)
+    return SupportTicket.objects.select_related('user', 'assigned_to').get(id=ticket_id)
 
 
 @sync_to_async
@@ -133,6 +133,12 @@ def get_ticket_messages(ticket, limit=5):
 def mark_messages_read(ticket):
     """Отметить сообщения как прочитанные (async-safe)"""
     ticket.messages.filter(is_staff_reply=False, read_by_staff=False).update(read_by_staff=True)
+
+
+@sync_to_async
+def get_unread_messages_count(ticket):
+    """Получить количество непрочитанных сообщений (async-safe)"""
+    return ticket.messages.filter(is_staff_reply=False, read_by_staff=False).count()
 
 
 @sync_to_async
@@ -333,7 +339,7 @@ async def tickets(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         assigned = f"👤 {ticket.assigned_to.first_name}" if ticket.assigned_to else "👥 Не назначен"
         
-        unread = ticket.messages.filter(is_staff_reply=False, read_by_staff=False).count()
+        unread = await get_unread_messages_count(ticket)
         unread_badge = f" 💬 {unread}" if unread > 0 else ""
         
         message += (
@@ -375,7 +381,7 @@ async def my_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'waiting_user': '⏳'
         }.get(ticket.status, '❓')
         
-        unread = ticket.messages.filter(is_staff_reply=False, read_by_staff=False).count()
+        unread = await get_unread_messages_count(ticket)
         unread_badge = f" 💬 {unread}" if unread > 0 else ""
         
         message += (
