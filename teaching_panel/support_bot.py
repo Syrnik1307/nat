@@ -124,6 +124,37 @@ def get_assigned_tickets(user, limit=20):
 
 
 @sync_to_async
+def get_user_last_open_ticket(user):
+    """Получить последний открытый тикет пользователя для продолжения диалога (async-safe)"""
+    return SupportTicket.objects.filter(
+        user=user,
+        status__in=['new', 'in_progress', 'waiting_user']
+    ).order_by('-updated_at').first()
+
+
+@sync_to_async
+def add_message_to_ticket(ticket, user, message_text, is_staff_reply=False):
+    """Добавить сообщение к существующему тикету (async-safe)"""
+    from .support.models import SupportMessage
+    msg = SupportMessage.objects.create(
+        ticket=ticket,
+        author=user,
+        message=message_text,
+        is_staff_reply=is_staff_reply,
+        read_by_staff=is_staff_reply,
+        read_by_user=not is_staff_reply
+    )
+    # Обновляем статус тикета
+    if is_staff_reply:
+        ticket.status = 'waiting_user'
+    else:
+        if ticket.status == 'waiting_user':
+            ticket.status = 'in_progress'
+    ticket.save()
+    return msg
+
+
+@sync_to_async
 def get_ticket_messages(ticket, limit=5):
     """Получить сообщения тикета (async-safe)"""
     return list(ticket.messages.order_by('-created_at')[:limit])
@@ -614,23 +645,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return
         
-        # Если нет активного создания тикета, создаём быстрый тикет из сообщения
-        ticket = await create_ticket(
-            user=user,
-            subject=f"Сообщение из Telegram: {message_text[:50]}",
-            description=message_text,
-            category='other',
-            priority='normal',
-            status='new'
-        )
+        # Если нет активного создания тикета - проверяем есть ли открытый тикет
+        existing_ticket = await get_user_last_open_ticket(user)
         
-        logger.info(f"[MSG] Quick ticket #{ticket.id} created by user {user.id} from Telegram")
-        
-        await update.message.reply_text(
-            f"Ваше обращение #{ticket.id} создано!\n\n"
-            f"Администраторы ответят вам в ближайшее время.\n"
-            f"Используйте /my_tickets для просмотра статуса."
-        )
+        if existing_ticket:
+            # Добавляем сообщение к существующему тикету
+            await add_message_to_ticket(existing_ticket, user, message_text, is_staff_reply=False)
+            
+            logger.info(f"[MSG] Message added to ticket #{existing_ticket.id} by user {user.id}")
+            
+            await update.message.reply_text(
+                f"Сообщение добавлено к обращению #{existing_ticket.id}\n\n"
+                f"Используйте /new_ticket для создания нового обращения."
+            )
+        else:
+            # Создаём новый тикет
+            ticket = await create_ticket(
+                user=user,
+                subject=f"Сообщение из Telegram: {message_text[:50]}",
+                description=message_text,
+                category='other',
+                priority='normal',
+                status='new'
+            )
+            
+            logger.info(f"[MSG] New ticket #{ticket.id} created by user {user.id} from Telegram")
+            
+            await update.message.reply_text(
+                f"Ваше обращение #{ticket.id} создано!\n\n"
+                f"Администраторы ответят вам в ближайшее время.\n"
+                f"Используйте /my_tickets для просмотра статуса."
+            )
         return
     
     # Для администраторов
@@ -670,23 +715,36 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-    # Если контекста нет и пользователь обычный - создаём тикет из сообщения
+    # Если контекста нет и пользователь обычный - добавляем к существующему или создаём новый
     if user and not user.is_staff:
-        ticket = await create_ticket(
-            user=user,
-            subject=f"Сообщение из Telegram: {message_text[:50]}",
-            description=message_text,
-            category='other',
-            priority='normal',
-            status='new'
-        )
+        existing_ticket = await get_user_last_open_ticket(user)
         
-        logger.info(f"[MSG] Fallback ticket #{ticket.id} created by user {user.id} from Telegram")
-        
-        await update.message.reply_text(
-            f"Ваше обращение #{ticket.id} создано!\n\n"
-            f"Администраторы ответят вам в ближайшее время.\n"
-            f"Используйте /my_tickets для просмотра статуса."
+        if existing_ticket:
+            # Добавляем сообщение к существующему тикету
+            await add_message_to_ticket(existing_ticket, user, message_text, is_staff_reply=False)
+            
+            logger.info(f"[MSG] Fallback: Message added to ticket #{existing_ticket.id} by user {user.id}")
+            
+            await update.message.reply_text(
+                f"Сообщение добавлено к обращению #{existing_ticket.id}\n\n"
+                f"Используйте /new_ticket для создания нового обращения."
+            )
+        else:
+            ticket = await create_ticket(
+                user=user,
+                subject=f"Сообщение из Telegram: {message_text[:50]}",
+                description=message_text,
+                category='other',
+                priority='normal',
+                status='new'
+            )
+            
+            logger.info(f"[MSG] Fallback ticket #{ticket.id} created by user {user.id} from Telegram")
+            
+            await update.message.reply_text(
+                f"Ваше обращение #{ticket.id} создано!\n\n"
+                f"Администраторы ответят вам в ближайшее время.\n"
+                f"Используйте /my_tickets для просмотра статуса."
         )
 
 
@@ -1141,6 +1199,7 @@ def main():
     application.add_handler(CommandHandler("tickets", tickets))
     application.add_handler(CommandHandler("my", my_tickets))
     application.add_handler(CommandHandler("support_request", support_request))
+    application.add_handler(CommandHandler("new_ticket", support_request))  # Алиас для /support_request
     application.add_handler(CommandHandler("my_tickets", my_tickets))
     application.add_handler(CommandHandler("stats", stats))
     application.add_handler(CommandHandler("help", help_command))

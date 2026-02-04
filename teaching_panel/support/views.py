@@ -35,11 +35,11 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return SupportTicket.objects.none()
         
-        # Админы и учителя видят все тикеты
-        if user.role in ['admin', 'teacher']:
+        # Только админы видят все тикеты (они - поддержка)
+        if user.role == 'admin':
             return SupportTicket.objects.all().order_by('-created_at')
         
-        # Обычные пользователи видят только свои
+        # Все остальные (учителя, студенты) видят только свои тикеты
         return SupportTicket.objects.filter(user=user).order_by('-created_at')
     
     @action(detail=True, methods=['post'])
@@ -55,7 +55,8 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
             )
         
         # Определяем, это ответ от поддержки или от пользователя
-        is_staff_reply = request.user.role in ['admin', 'teacher']
+        # Только admin является поддержкой
+        is_staff_reply = request.user.role == 'admin'
         
         message = SupportMessage.objects.create(
             ticket=ticket,
@@ -86,7 +87,7 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
     def mark_read(self, request, pk=None):
         """Пометить все сообщения как прочитанные"""
         ticket = self.get_object()
-        is_staff = request.user.role in ['admin', 'teacher']
+        is_staff = request.user.role == 'admin'
         
         if is_staff:
             ticket.messages.filter(read_by_staff=False).update(read_by_staff=True)
@@ -100,8 +101,8 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         """Пометить тикет как решённый"""
         ticket = self.get_object()
         
-        # Только поддержка может закрывать тикеты
-        if request.user.role not in ['admin', 'teacher']:
+        # Только админ-поддержка может закрывать тикеты
+        if request.user.role != 'admin':
             return Response(
                 {'detail': 'Недостаточно прав'},
                 status=status.HTTP_403_FORBIDDEN
@@ -128,7 +129,7 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 def get_quick_responses(request):
     """Получить список быстрых ответов"""
-    if request.user.role not in ['admin', 'teacher']:
+    if request.user.role != 'admin':
         return Response(
             {'detail': 'Доступно только для поддержки'},
             status=status.HTTP_403_FORBIDDEN
@@ -145,8 +146,8 @@ def get_unread_count(request):
     """Получить количество непрочитанных сообщений поддержки"""
     user = request.user
     
-    if user.role in ['admin', 'teacher']:
-        # Для админов - новые тикеты и непрочитанные сообщения
+    if user.role == 'admin':
+        # Для админов-поддержки - новые тикеты и непрочитанные сообщения
         new_tickets = SupportTicket.objects.filter(status='new').count()
         unread_messages = SupportMessage.objects.filter(
             is_staff_reply=False,
@@ -287,7 +288,7 @@ def health_check(request):
 @permission_classes([IsAuthenticated])
 def support_stats(request):
     """Статистика поддержки для админов"""
-    if request.user.role not in ['admin', 'teacher']:
+    if request.user.role != 'admin':
         return Response({'detail': 'Доступ запрещён'}, status=status.HTTP_403_FORBIDDEN)
     
     from django.db.models import Count, Avg, F
