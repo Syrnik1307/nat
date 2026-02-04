@@ -1217,13 +1217,10 @@ class LessonViewSet(viewsets.ModelViewSet):
         Создать Zoom встречу.
         Приоритет:
         1) персональные credentials учителя
-        2) Zoom pool (fallback) с глобальными credentials
+        2) глобальные Zoom credentials (settings.ZOOM_*)
         """
         from .zoom_client import ZoomAPIClient
-        from zoom_pool.models import ZoomAccount
         from accounts.error_tracker import track_error
-        from django.db import transaction
-        from django.db.models import F
         from django.conf import settings
 
         # 1) Персональные credentials учителя
@@ -1232,11 +1229,11 @@ class LessonViewSet(viewsets.ModelViewSet):
             payload, error_response = self._start_zoom_with_teacher_credentials(lesson, user, request)
             if payload:
                 return payload, None
-            # Если персональные credentials не сработали - пробуем пул
-            logger.warning(f"Personal Zoom credentials failed for {user.email}, trying Zoom pool as fallback")
+            # Если персональные credentials не сработали - пробуем глобальные
+            logger.warning(f"Personal Zoom credentials failed for {user.email}, trying global credentials")
 
-        # 2) Fallback: Zoom pool
-        logger.info(f"Using Zoom pool for teacher {user.email} (no personal credentials)")
+        # 2) Глобальные Zoom credentials
+        logger.info(f"Using global Zoom credentials for teacher {user.email}")
 
         global_account_id = getattr(settings, 'ZOOM_ACCOUNT_ID', '')
         global_client_id = getattr(settings, 'ZOOM_CLIENT_ID', '')
@@ -1252,136 +1249,63 @@ class LessonViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
 
-        zoom_account = None
         try:
-            with transaction.atomic():
-                # Исключаем mock аккаунты в production
-                base_filter = {
-                    'is_active': True,
-                    'current_meetings__lt': F('max_concurrent_meetings'),
+            zoom_client = ZoomAPIClient(
+                account_id=global_account_id,
+                client_id=global_client_id,
+                client_secret=global_client_secret
+            )
+
+            meeting_data = zoom_client.create_meeting(
+                user_id='me',
+                topic=f"{lesson.group.name} - {lesson.title}",
+                start_time=lesson.start_time,
+                duration=lesson.duration(),
+                auto_record=lesson.record_lesson
+            )
+
+            lesson.zoom_meeting_id = meeting_data['id']
+            lesson.zoom_join_url = meeting_data['join_url']
+            lesson.zoom_start_url = meeting_data['start_url']
+            lesson.zoom_password = meeting_data.get('password', '')
+            lesson.zoom_account = None  # Глобальные credentials, не из пула
+            lesson.save()
+
+            log_audit(
+                user=user,
+                action='lesson_start',
+                resource_type='Lesson',
+                resource_id=lesson.id,
+                request=request,
+                details={
+                    'lesson_title': lesson.title,
+                    'group_name': lesson.group.name,
+                    'zoom_meeting_id': meeting_data['id'],
+                    'start_time': lesson.start_time.isoformat(),
+                    'using_global_credentials': True,
                 }
-                
-                # В production фильтруем mock аккаунты
-                from zoom_pool.models import ZoomAccount as ZA
-                if not settings.DEBUG:
-                    # Исключаем аккаунты с невалидными credentials
-                    invalid_creds = ZA.INVALID_CREDENTIALS
-                    base_qs = ZoomAccount.objects.select_for_update().filter(**base_filter).exclude(
-                        zoom_account_id__in=invalid_creds
-                    ).exclude(zoom_account_id='').exclude(zoom_account_id__isnull=True)
-                else:
-                    base_qs = ZoomAccount.objects.select_for_update().filter(**base_filter)
-                
-                preferred_account = (
-                    base_qs.filter(preferred_teachers=user)
-                    .order_by('current_meetings', '-last_used_at')
-                    .first()
-                )
-
-                zoom_account = preferred_account or (
-                    base_qs.order_by('current_meetings', '-last_used_at')
-                    .first()
-                )
-
-                if not zoom_account:
-                    return None, Response(
-                        {
-                            'code': 'no_zoom_available',
-                            'detail': 'Нет доступных Zoom аккаунтов. Подключите свой аккаунт Zoom или используйте Google Meet.',
-                            'action_required': 'connect_zoom_or_meet'
-                        },
-                        status=status.HTTP_503_SERVICE_UNAVAILABLE
-                    )
-
-                zoom_account.acquire()
-
-                account_id = zoom_account.zoom_account_id or global_account_id
-                client_id = zoom_account.api_key or global_client_id
-                client_secret = zoom_account.api_secret or global_client_secret
-
-                zoom_client = ZoomAPIClient(
-                    account_id=account_id,
-                    client_id=client_id,
-                    client_secret=client_secret
-                )
-
-                zoom_user_id = zoom_account.zoom_user_id or 'me'
-                meeting_data = zoom_client.create_meeting(
-                    user_id=zoom_user_id,
-                    topic=f"{lesson.group.name} - {lesson.title}",
-                    start_time=lesson.start_time,
-                    duration=lesson.duration(),
-                    auto_record=lesson.record_lesson
-                )
-
-                lesson.zoom_meeting_id = meeting_data['id']
-                lesson.zoom_join_url = meeting_data['join_url']
-                lesson.zoom_start_url = meeting_data['start_url']
-                lesson.zoom_password = meeting_data.get('password', '')
-                lesson.zoom_account = zoom_account
-                lesson.save()
-
-                log_audit(
-                    user=user,
-                    action='lesson_start',
-                    resource_type='Lesson',
-                    resource_id=lesson.id,
-                    request=request,
-                    details={
-                        'lesson_title': lesson.title,
-                        'group_name': lesson.group.name,
-                        'zoom_account_email': zoom_account.email,
-                        'zoom_meeting_id': meeting_data['id'],
-                        'start_time': lesson.start_time.isoformat(),
-                        'using_pool': True,
-                    }
-                )
+            )
 
             payload = {
                 'zoom_join_url': lesson.zoom_join_url,
                 'zoom_start_url': lesson.zoom_start_url,
                 'zoom_meeting_id': lesson.zoom_meeting_id,
                 'zoom_password': lesson.zoom_password,
-                'account_email': zoom_account.email,
+                'account_email': 'Zoom (глобальный)',
             }
             return payload, None
 
-        except ValueError as e:
-            # Mock credentials или другие validation ошибки
-            error_msg = str(e)
-            if 'PRODUCTION SAFETY' in error_msg or 'mock' in error_msg.lower():
-                logger.warning(f"Mock Zoom account blocked in production: {e}")
-                return None, Response(
-                    {
-                        'code': 'no_zoom_configured',
-                        'detail': 'Для проведения уроков подключите свой Zoom аккаунт или используйте Google Meet.',
-                        'action_required': 'connect_zoom_or_meet'
-                    },
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE
-                )
-            # Другие ValueError
-            logger.exception(f"Zoom pool validation error for lesson {lesson.id}: {e}")
-            return None, Response(
-                {'detail': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
         except Exception as e:
-            logger.exception(f"Failed to create Zoom meeting via pool for lesson {lesson.id}: {e}")
-            if zoom_account:
-                try:
-                    zoom_account.release()
-                except Exception:
-                    logger.exception('Failed to release Zoom account after error')
+            logger.exception(f"Failed to create Zoom meeting with global credentials for lesson {lesson.id}: {e}")
             track_error(
-                code='ZOOM_POOL_MEETING_FAILED',
-                message=f'Ошибка создания Zoom встречи через пул: {str(e)[:200]}',
+                code='ZOOM_GLOBAL_MEETING_FAILED',
+                message=f'Ошибка создания Zoom встречи: {str(e)[:200]}',
                 severity='critical',
                 teacher=user,
                 request=request,
                 details={
                     'lesson_id': lesson.id,
                     'lesson_title': lesson.title,
-                    'group_name': lesson.group.name,
                 },
                 exc=e
             )
