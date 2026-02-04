@@ -98,17 +98,17 @@ const NavBar = () => {
             <Link className="navbar-link" to="/">Главная</Link>
             {accessTokenValid && role === 'teacher' && (
               <>
-                <Link className="navbar-link" to="/groups/manage">Занятия</Link>
-                <Link className="navbar-link" to="/homework/manage">
+                <Link className="navbar-link" to="/groups/manage" data-tour="nav-groups">Занятия</Link>
+                <Link className="navbar-link" to="/homework/manage" data-tour="nav-homework">
                   ДЗ
                   {pendingHomeworkCount > 0 && (
                     <span className="navbar-link-badge">{pendingHomeworkCount}</span>
                   )}
                 </Link>
-                <Link className="navbar-link" to="/recurring-lessons/manage">Расписание</Link>
-                <Link className="navbar-link" to="/calendar">Календарь</Link>
-                <Link className="navbar-link" to="/teacher-recordings">Записи</Link>
-                <Link className="navbar-link" to="/analytics">Аналитика</Link>
+                <Link className="navbar-link" to="/recurring-lessons/manage" data-tour="nav-schedule">Расписание</Link>
+                <Link className="navbar-link" to="/calendar" data-tour="nav-calendar">Календарь</Link>
+                <Link className="navbar-link" to="/teacher-recordings" data-tour="nav-recordings">Записи</Link>
+                <Link className="navbar-link" to="/analytics" data-tour="nav-analytics">Аналитика</Link>
               </>
             )}
             {accessTokenValid && role === 'student' && (

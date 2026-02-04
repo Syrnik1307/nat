@@ -161,8 +161,8 @@ const PlatformsSection = ({ user, onRefresh }) => {
   };
 
   return (
-    <section className="platforms-section">
-      <div className="platforms-header">
+    <section className="platforms-section" data-tour="platforms-section">
+      <div className="platforms-header" data-tour="platforms-header">
         <h3>Платформы для уроков</h3>
         <p className="platforms-subtitle">Подключите аккаунты для проведения онлайн-уроков</p>
       </div>
@@ -170,9 +170,9 @@ const PlatformsSection = ({ user, onRefresh }) => {
       {error && <div className="platforms-message error">{error}</div>}
       {success && <div className="platforms-message success">{success}</div>}
 
-      <div className="platforms-list">
+      <div className="platforms-list" data-tour="platforms-list">
         {/* Zoom */}
-        <div className={`platform-row ${zoomConnected ? 'connected' : ''}`}>
+        <div className={`platform-row ${zoomConnected ? 'connected' : ''}`} data-tour="platform-zoom">
           <div className="platform-icon zoom">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M4.585 11.828V16a2 2 0 002 2h7.829a2 2 0 002-2v-4.172a2 2 0 00-2-2H6.585a2 2 0 00-2 2zm13.243 4.415l2.829 2.122a.75.75 0 001.193-.607V10.071a.75.75 0 00-1.193-.607l-2.829 2.122v4.657z"/>
@@ -212,7 +212,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
         </div>
 
         {/* Google Meet */}
-        <div className={`platform-row ${googleMeetConnected ? 'connected' : ''}`}>
+        <div className={`platform-row ${googleMeetConnected ? 'connected' : ''}`} data-tour="platform-google-meet">
           <div className="platform-icon google">
             <svg viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
@@ -255,7 +255,7 @@ const PlatformsSection = ({ user, onRefresh }) => {
       </div>
 
       {/* Справка */}
-      <div className="platforms-help">
+      <div className="platforms-help" data-tour="platforms-help">
         <p className="platforms-help-title">Как это работает?</p>
         <ol>
           <li>Нажмите «Подключить» → просмотрите инструкцию → подключите аккаунт</li>

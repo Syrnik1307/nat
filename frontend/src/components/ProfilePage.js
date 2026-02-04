@@ -18,6 +18,7 @@ import {
 import SubscriptionPage from './SubscriptionPage';
 import PlatformsSection from './PlatformsSection';
 import { MarketSection } from '../modules/market';
+import { NotificationsOnboarding, PlatformsOnboarding } from './Onboarding';
 import './ProfilePage.css';
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
@@ -654,12 +655,13 @@ const ProfilePage = () => {
         </header>
 
         {/* Tabs - для всех пользователей */}
-        <div className="profile-tabs">
+        <div className="profile-tabs" data-tour="profile-tabs">
           {tabConfig.map((tab) => (
             <button
               key={tab.key}
               className={`profile-tab ${activeTab === tab.key ? 'active' : ''}`}
               onClick={() => handleTabChange(tab.key)}
+              data-tour={`profile-tab-${tab.key}`}
             >
               {tab.label}
             </button>
@@ -672,7 +674,7 @@ const ProfilePage = () => {
           onSubmit={handleSubmit}
           style={{ display: activeTab === 'profile' ? 'block' : 'none' }}
         >
-          <section className="profile-avatar">
+          <section className="profile-avatar" data-tour="profile-avatar">
             <div className={`avatar-preview ${avatarPreview ? 'with-image' : ''}`}>
               {avatarPreview ? (
                 <img src={avatarPreview} alt="Аватар" />
@@ -695,7 +697,7 @@ const ProfilePage = () => {
             <p className="avatar-hint">PNG или JPG до 2 МБ</p>
           </section>
 
-          <section className="profile-form">
+          <section className="profile-form" data-tour="profile-name">
             <div className="field-group">
               <label htmlFor="lastName">Фамилия</label>
               <input
@@ -761,7 +763,7 @@ const ProfilePage = () => {
           className="profile-content"
           style={{ display: activeTab === 'security' ? 'block' : 'none' }}
         >
-            <section className="profile-password">
+            <section className="profile-password" data-tour="profile-security">
               <div className="password-header">
                 <div>
                   <h3>Безопасность</h3>
@@ -922,7 +924,8 @@ const ProfilePage = () => {
           className="profile-content telegram-tab"
           style={{ display: activeTab === 'telegram' ? 'block' : 'none' }}
         >
-            <section className="telegram-section">
+            {activeTab === 'telegram' && <NotificationsOnboarding userId={user?.id} />}
+            <section className="telegram-section" data-tour="profile-telegram">
               <div className="telegram-header">
                 <div>
                   <h3>Telegram бот</h3>
@@ -955,6 +958,7 @@ const ProfilePage = () => {
                         className="primary"
                         onClick={handleGenerateTelegramCode}
                         disabled={codeLoading}
+                        data-tour="profile-telegram-connect-btn"
                       >
                         {codeLoading ? 'Создание кода...' : telegramLinked ? 'Обновить код' : 'Получить код'}
                       </button>
@@ -975,7 +979,7 @@ const ProfilePage = () => {
                     </ul>
                   </div>
 
-                  <div className="telegram-card code-card">
+                  <div className="telegram-card code-card" data-tour="profile-tg-code">
                     <h4>Код подтверждения</h4>
                     {codeInfo ? (
                       <>
@@ -1043,7 +1047,7 @@ const ProfilePage = () => {
               )}
             </section>
 
-            <section className="telegram-section notifications-section">
+            <section className="telegram-section notifications-section" data-tour="profile-notifications">
               <div className="telegram-header">
                 <div>
                   <h3>Настройки уведомлений</h3>
@@ -1072,7 +1076,7 @@ const ProfilePage = () => {
               ) : notificationSettings ? (
                 <div className="notifications-unified">
                   {/* Главный переключатель */}
-                  <div className="notifications-master-toggle">
+                  <div className="notifications-master-toggle" data-tour="profile-notifications-master">
                     <label className="notification-toggle-switch">
                       <input
                         type="checkbox"
@@ -1551,21 +1555,22 @@ const ProfilePage = () => {
 
         {/* Platforms Tab (Teachers only) */}
         {activeTab === 'platforms' && user.role === 'teacher' && (
-          <div className="profile-content platforms-tab">
+          <div className="profile-content platforms-tab" data-tour="profile-platforms">
+            <PlatformsOnboarding userId={user?.id} />
             <PlatformsSection user={user} onRefresh={refreshUser} />
           </div>
         )}
 
         {/* Market Tab */}
         {activeTab === 'market' && (user.role === 'teacher' || user.role === 'student') && (
-          <div className="profile-content market-tab">
+          <div className="profile-content market-tab" data-tour="profile-market">
             <MarketSection />
           </div>
         )}
 
         {/* Subscription Tab */}
         {activeTab === 'subscription' && user.role === 'teacher' && (
-          <div className="profile-content subscription-tab">
+          <div className="profile-content subscription-tab" data-tour="profile-subscription">
             <SubscriptionPage embedded />
           </div>
         )}

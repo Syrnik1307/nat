@@ -589,6 +589,148 @@ export const studentRecordingsTourSteps = [
   },
 ];
 
+// =====================================================
+// NOTIFICATIONS TAB TOUR (вкладка Уведомления в профиле)
+// =====================================================
+export const notificationsTourSteps = [
+  {
+    popover: {
+      title: 'Настройка уведомлений',
+      description: 'Подключите Telegram и настройте какие уведомления получать. Все важные события будут приходить мгновенно.',
+    },
+  },
+  {
+    element: '[data-tour="profile-telegram"]',
+    popover: {
+      title: 'Telegram бот',
+      description: 'Подключите Telegram для получения уведомлений. Напоминания о занятиях, новые ДЗ, оценки — всё в одном месте.',
+      side: 'bottom',
+    },
+  },
+  {
+    element: '[data-tour="profile-telegram-connect-btn"]',
+    popover: {
+      title: 'Получить код',
+      description: 'Нажмите, чтобы сгенерировать код привязки. Затем отправьте его боту @LectioSpaceBot в Telegram.',
+      side: 'right',
+    },
+  },
+  {
+    element: '[data-tour="profile-tg-code"]',
+    popover: {
+      title: 'Код подтверждения',
+      description: 'Здесь появится код. Скопируйте его и отправьте боту. Можно также отсканировать QR-код.',
+      side: 'left',
+    },
+  },
+  {
+    element: '[data-tour="profile-notifications"]',
+    popover: {
+      title: 'Какие уведомления получать',
+      description: 'Настройте типы уведомлений: занятия, домашние задания, оценки. Можно отключить ненужные.',
+      side: 'top',
+    },
+  },
+  {
+    element: '[data-tour="profile-notifications-master"]',
+    popover: {
+      title: 'Главный выключатель',
+      description: 'Одним кликом включите или выключите все Telegram-уведомления.',
+      side: 'right',
+    },
+  },
+  {
+    popover: {
+      title: 'Готово!',
+      description: 'Теперь вы не пропустите ни одного важного события. Уведомления настроены.',
+    },
+  },
+];
+
+// =====================================================
+// PLATFORMS TAB TOUR (вкладка Платформы в профиле)
+// =====================================================
+export const platformsTourSteps = [
+  {
+    popover: {
+      title: 'Платформы для уроков',
+      description: 'Подключите Zoom или Google Meet для проведения онлайн-занятий. Ваш личный аккаунт = полный контроль над записями.',
+    },
+  },
+  {
+    element: '[data-tour="platforms-header"]',
+    popover: {
+      title: 'Ваши платформы',
+      description: 'Здесь отображаются подключённые платформы видеоконференций.',
+      side: 'bottom',
+    },
+  },
+  {
+    element: '[data-tour="platforms-list"]',
+    popover: {
+      title: 'Список платформ',
+      description: 'Выберите платформу для подключения. Можно использовать обе одновременно.',
+      side: 'top',
+    },
+  },
+  {
+    element: '[data-tour="platform-zoom"]',
+    popover: {
+      title: 'Zoom',
+      description: 'Подключите личный Zoom аккаунт. Записи уроков будут сохраняться автоматически в облако.',
+      side: 'right',
+    },
+  },
+  {
+    element: '[data-tour="platform-google-meet"]',
+    popover: {
+      title: 'Google Meet',
+      description: 'Альтернатива Zoom. Работает через Google аккаунт. Ученикам тоже нужен Google аккаунт.',
+      side: 'right',
+    },
+  },
+  {
+    element: '[data-tour="platforms-help"]',
+    popover: {
+      title: 'Как это работает',
+      description: 'Инструкция по подключению и использованию платформ.',
+      side: 'top',
+    },
+  },
+  {
+    popover: {
+      title: 'Всё просто!',
+      description: 'Подключите платформу один раз — и начинайте уроки в один клик с главной страницы.',
+    },
+  },
+];
+
+// =====================================================
+// NAV ANALYTICS TOUR (Аналитика в навбаре)
+// =====================================================
+export const navAnalyticsTourSteps = [
+  {
+    popover: {
+      title: 'Аналитика',
+      description: 'Раздел аналитики поможет отслеживать прогресс учеников, выявлять проблемы и улучшать качество обучения.',
+    },
+  },
+  {
+    element: '[data-tour="nav-analytics"]',
+    popover: {
+      title: 'Раздел Аналитика',
+      description: 'Нажмите для перехода в раздел аналитики. Здесь статистика по ученикам, группам и занятиям.',
+      side: 'bottom',
+    },
+  },
+  {
+    popover: {
+      title: 'Попробуйте!',
+      description: 'Перейдите в раздел Аналитика, чтобы увидеть детальную статистику вашего обучения.',
+    },
+  },
+];
+
 export default { 
   teacherTourSteps, 
   studentTourSteps, 
@@ -600,4 +742,7 @@ export default {
   marketTourSteps,
   studentHomeworkTourSteps,
   studentRecordingsTourSteps,
+  notificationsTourSteps,
+  platformsTourSteps,
+  navAnalyticsTourSteps,
 };

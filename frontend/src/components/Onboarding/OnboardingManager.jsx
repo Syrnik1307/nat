@@ -11,6 +11,9 @@ import {
   marketTourSteps,
   studentHomeworkTourSteps,
   studentRecordingsTourSteps,
+  notificationsTourSteps,
+  platformsTourSteps,
+  navAnalyticsTourSteps,
 } from './tourConfig';
 import {
   homeworkConstructorDetailedSteps,
@@ -257,6 +260,46 @@ export const OnboardingTrigger = ({ tourKey, children, autoStart = false }) => {
   });
 };
 
+// =====================================================
+// ТУРЫ ДЛЯ ПРОФИЛЯ И НАВИГАЦИИ
+// =====================================================
+
+/**
+ * Онбординг для раздела "Уведомления" в профиле
+ */
+export const NotificationsOnboarding = ({ onComplete, userId }) => {
+  const filteredSteps = React.useMemo(() => {
+    return filterExistingSteps(notificationsTourSteps);
+  }, []);
+  
+  useOnboarding('notifications', filteredSteps, { onComplete, userId });
+  return null;
+};
+
+/**
+ * Онбординг для раздела "Платформы" (подключение Zoom/Google Meet)
+ */
+export const PlatformsOnboarding = ({ onComplete, userId }) => {
+  const filteredSteps = React.useMemo(() => {
+    return filterExistingSteps(platformsTourSteps);
+  }, []);
+  
+  useOnboarding('platforms', filteredSteps, { onComplete, userId });
+  return null;
+};
+
+/**
+ * Онбординг для навигации к разделу Аналитика
+ */
+export const NavAnalyticsOnboarding = ({ onComplete, userId }) => {
+  const filteredSteps = React.useMemo(() => {
+    return filterExistingSteps(navAnalyticsTourSteps);
+  }, []);
+  
+  useOnboarding('nav-analytics', filteredSteps, { onComplete, userId });
+  return null;
+};
+
 export default { 
   // Базовые туры
   TeacherOnboarding, 
@@ -276,6 +319,11 @@ export default {
   GradedSubmissionsListOnboarding,
   HomeworkTakeOnboarding,
   StudentAIReportsOnboarding,
+  
+  // Туры для профиля и навигации
+  NotificationsOnboarding,
+  PlatformsOnboarding,
+  NavAnalyticsOnboarding,
   
   // Утилиты
   OnboardingTrigger,

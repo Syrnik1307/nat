@@ -1082,7 +1082,272 @@ export const calendarSteps = [
 ];
 
 // =====================================================
-// РАЗДЕЛ 10: PROFILE & SETTINGS (Профиль)
+// РАЗДЕЛ 10: NOTIFICATIONS TAB (Уведомления)
+// =====================================================
+export const notificationsTourSteps = [
+  // INTRO
+  {
+    popover: {
+      title: 'Настройка уведомлений',
+      description: 'Подключите Telegram и настройте какие уведомления получать. Все важные события будут приходить мгновенно.',
+    },
+  },
+
+  // TELEGRAM BOT
+  {
+    element: '[data-tour="profile-telegram"]',
+    popover: {
+      title: 'Telegram бот',
+      description: 'Подключите Telegram для получения уведомлений. Напоминания о занятиях, новые ДЗ, оценки — всё в одном месте.',
+      side: 'bottom',
+    },
+  },
+
+  // CONNECT BUTTON
+  {
+    element: '[data-tour="profile-telegram-connect-btn"]',
+    popover: {
+      title: 'Получить код',
+      description: 'Нажмите, чтобы сгенерировать код привязки. Затем отправьте его боту @LectioSpaceBot в Telegram.',
+      side: 'right',
+    },
+  },
+
+  // CODE CARD
+  {
+    element: '[data-tour="profile-tg-code"]',
+    popover: {
+      title: 'Код подтверждения',
+      description: 'Здесь появится код. Скопируйте его и отправьте боту. Можно также отсканировать QR-код.',
+      side: 'left',
+    },
+  },
+
+  // NOTIFICATION SETTINGS
+  {
+    element: '[data-tour="profile-notifications"]',
+    popover: {
+      title: 'Какие уведомления получать',
+      description: 'Настройте типы уведомлений: занятия, домашние задания, оценки. Можно отключить ненужные.',
+      side: 'top',
+    },
+  },
+
+  // MASTER TOGGLE
+  {
+    element: '[data-tour="profile-notifications-master"]',
+    popover: {
+      title: 'Главный выключатель',
+      description: 'Одним кликом включите или выключите все Telegram-уведомления.',
+      side: 'right',
+    },
+  },
+
+  // OUTRO
+  {
+    popover: {
+      title: 'Готово!',
+      description: 'Теперь вы не пропустите ни одного важного события. Уведомления настроены.',
+    },
+  },
+];
+
+// =====================================================
+// РАЗДЕЛ 10.1: PLATFORMS TAB (Платформы)
+// =====================================================
+export const platformsTourSteps = [
+  // INTRO
+  {
+    popover: {
+      title: 'Платформы для уроков',
+      description: 'Подключите Zoom или Google Meet для проведения онлайн-занятий. Ваш личный аккаунт = полный контроль над записями.',
+    },
+  },
+
+  // HEADER
+  {
+    element: '[data-tour="platforms-header"]',
+    popover: {
+      title: 'Ваши платформы',
+      description: 'Здесь отображаются подключённые платформы видеоконференций.',
+      side: 'bottom',
+    },
+  },
+
+  // PLATFORMS LIST
+  {
+    element: '[data-tour="platforms-list"]',
+    popover: {
+      title: 'Список платформ',
+      description: 'Выберите платформу для подключения. Можно использовать обе одновременно.',
+      side: 'top',
+    },
+  },
+
+  // ZOOM
+  {
+    element: '[data-tour="platform-zoom"]',
+    popover: {
+      title: 'Zoom',
+      description: 'Подключите личный Zoom аккаунт. Записи уроков будут сохраняться автоматически в облако.',
+      side: 'right',
+    },
+  },
+
+  // GOOGLE MEET
+  {
+    element: '[data-tour="platform-google-meet"]',
+    popover: {
+      title: 'Google Meet',
+      description: 'Альтернатива Zoom. Работает через Google аккаунт. Ученикам тоже нужен Google аккаунт.',
+      side: 'right',
+    },
+  },
+
+  // HELP
+  {
+    element: '[data-tour="platforms-help"]',
+    popover: {
+      title: 'Как это работает',
+      description: 'Инструкция по подключению и использованию платформ.',
+      side: 'top',
+    },
+  },
+
+  // OUTRO
+  {
+    popover: {
+      title: 'Всё просто!',
+      description: 'Подключите платформу один раз — и начинайте уроки в один клик с главной страницы.',
+    },
+  },
+];
+
+// =====================================================
+// РАЗДЕЛ 10.2: SUBSCRIPTION TAB (Подписка)
+// =====================================================
+export const subscriptionTourSteps = [
+  // INTRO
+  {
+    popover: {
+      title: 'Управление подпиской',
+      description: 'Здесь вы управляете своей подпиской, хранилищем и Zoom-аккаунтом. Давайте разберёмся!',
+    },
+  },
+
+  // STATUS
+  {
+    element: '[data-tour="subscription-status"]',
+    popover: {
+      title: 'Статус подписки',
+      description: 'Текущий статус, когда начата и когда истекает подписка. Красный бейдж = требуется оплата.',
+      side: 'bottom',
+      align: 'start',
+    },
+  },
+
+  // STORAGE BAR
+  {
+    element: '[data-tour="subscription-storage-bar"]',
+    popover: {
+      title: 'Использование хранилища',
+      description: 'Прогресс-бар показывает сколько из вашего лимита занято записями уроков. Жёлтый = близко к лимиту.',
+      side: 'top',
+    },
+  },
+
+  // CYCLE
+  {
+    element: '[data-tour="subscription-cycle"]',
+    popover: {
+      title: 'Оставшиеся дни',
+      description: 'Сколько дней осталось до окончания текущего цикла подписки (28 дней).',
+      side: 'top',
+    },
+  },
+
+  // PAY BUTTON
+  {
+    element: '[data-tour="subscription-pay-btn"]',
+    popover: {
+      title: 'Оплата подписки',
+      description: 'Нажмите для оплаты. Перейдёте на страницу T-Bank для безопасной оплаты картой.',
+      side: 'left',
+    },
+  },
+
+  // AUTORENEW
+  {
+    element: '[data-tour="subscription-autorenew"]',
+    popover: {
+      title: 'Автопродление',
+      description: 'Включите, чтобы подписка продлевалась автоматически. Отключить можно в любой момент.',
+      side: 'left',
+    },
+  },
+
+  // EXTRA STORAGE
+  {
+    element: '[data-tour="subscription-extra-storage"]',
+    popover: {
+      title: 'Дополнительное хранилище',
+      description: 'Нужно больше места для записей? Докупите гигабайты. 20₽/GB — без срока действия.',
+      side: 'top',
+    },
+  },
+
+  // ZOOM
+  {
+    element: '[data-tour="subscription-zoom"]',
+    popover: {
+      title: 'Zoom-аккаунт',
+      description: 'Используйте общий пул Zoom-аккаунтов (бесплатно) или подключите свой личный аккаунт.',
+      side: 'top',
+    },
+  },
+
+  // OUTRO
+  {
+    popover: {
+      title: 'Готово!',
+      description: 'Теперь вы знаете все возможности страницы подписки. При вопросах — напишите в поддержку.',
+    },
+  },
+];
+
+// =====================================================
+// РАЗДЕЛ 10.3: NAV ANALYTICS (Аналитика в навбаре)
+// =====================================================
+export const navAnalyticsTourSteps = [
+  // INTRO
+  {
+    popover: {
+      title: 'Аналитика',
+      description: 'Раздел аналитики поможет отслеживать прогресс учеников, выявлять проблемы и улучшать качество обучения.',
+    },
+  },
+
+  // NAV LINK
+  {
+    element: '[data-tour="nav-analytics"]',
+    popover: {
+      title: 'Раздел Аналитика',
+      description: 'Нажмите для перехода в раздел аналитики. Здесь статистика по ученикам, группам и занятиям.',
+      side: 'bottom',
+    },
+  },
+
+  // OUTRO
+  {
+    popover: {
+      title: 'Попробуйте!',
+      description: 'Перейдите в раздел Аналитика, чтобы увидеть детальную статистику вашего обучения.',
+    },
+  },
+];
+
+// =====================================================
+// РАЗДЕЛ 11: PROFILE & SETTINGS (Профиль - общий)
 // =====================================================
 export const profileSteps = [
   // INTRO
@@ -1404,6 +1669,12 @@ export default {
   analytics: analyticsSteps,
   submissionReview: submissionReviewSteps,
   studentHomework: studentHomeworkSteps,
+  
+  // Новые туры для разделов профиля
+  notifications: notificationsTourSteps,
+  platforms: platformsTourSteps,
+  subscription: subscriptionTourSteps,
+  navAnalytics: navAnalyticsTourSteps,
   
   // По типам вопросов
   questionText: textQuestionSteps,

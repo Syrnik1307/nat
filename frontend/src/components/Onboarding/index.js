@@ -25,6 +25,11 @@ export {
   HomeworkTakeOnboarding,
   StudentAIReportsOnboarding,
   
+  // Туры для профиля и навигации
+  NotificationsOnboarding,
+  PlatformsOnboarding,
+  NavAnalyticsOnboarding,
+  
   // Утилиты
   OnboardingTrigger,
 } from './OnboardingManager';
@@ -43,6 +48,9 @@ export {
   marketTourSteps,
   studentHomeworkTourSteps,
   studentRecordingsTourSteps,
+  notificationsTourSteps,
+  platformsTourSteps,
+  navAnalyticsTourSteps,
 } from './tourConfig';
 
 // Детальные конфигурации для домашних заданий
