@@ -201,7 +201,9 @@ const QuickLessonButton = ({ onSuccess, className = '' }) => {
       setSelectedStudents([]);
     } catch (err) {
       if (err.response?.status === 503) {
-        setError('Все Zoom аккаунты заняты. Попробуйте позже.');
+        // Показываем сообщение от сервера (там понятный текст про подключение Zoom/Meet)
+        const serverMessage = err.response.data?.detail;
+        setError(serverMessage || 'Подключите Zoom или Google Meet в настройках интеграций.');
       } else if (err.response?.status === 400 || err.response?.status === 403) {
         setError(err.response.data?.detail || 'Ошибка создания встречи');
       } else {
