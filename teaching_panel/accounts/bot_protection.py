@@ -71,7 +71,7 @@ BOT_DETECTION_CONFIG = {
     'min_form_fill_time': 1.0,  # Было 2.0 - слишком долго для быстрого ввода
     
     # Максимальное количество регистраций с одного fingerprint
-    'max_registrations_per_fingerprint': 10,  # Было 3 - слишком мало
+    'max_registrations_per_fingerprint': 50,  # Увеличено с 10 - при тестировании легко превысить
     'registration_window_hours': 24,
     
     # Максимальное количество неудачных логинов
