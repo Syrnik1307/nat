@@ -149,7 +149,11 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "`n📝 View logs:" -ForegroundColor Gray
     Write-Host "   ssh nat@lectiospace.ru 'tail -f $($env.Path)/logs/error.log'" -ForegroundColor Gray
     
-    $open = Read-Host "`nOpen in browser? (yes/no)"
+    if ($Target -eq 'russia-stage') {
+        $open = 'no'
+    } else {
+        $open = Read-Host "`nOpen in browser? (yes/no)"
+    }
     if ($open -eq 'yes') {
         Start-Process "https://$($env.Domain)"
     }
