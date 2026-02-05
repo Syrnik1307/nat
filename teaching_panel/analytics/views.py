@@ -3256,3 +3256,448 @@ class StudentActivityHeatmapViewSet(viewsets.ViewSet):
             return 3
         else:
             return 4
+
+
+class TeacherActivityHeatmapViewSet(viewsets.ViewSet):
+    """
+    Admin Dashboard: Heatmap активности преподавателей.
+    Сравнительный вид всех учителей по неделям.
+    
+    Оптимизирован для 1000+ учителей:
+    - Пагинация
+    - Агрегация на уровне БД
+    - Кэширование (TODO)
+    """
+    permission_classes = [IsAuthenticated]
+    
+    # Веса событий для подсчёта баллов
+    EVENT_WEIGHTS = {
+        'login': 1,
+        'lesson_conducted': 10,
+        'homework_created': 5,
+        'homework_graded': 3,
+        'recording_uploaded': 5,
+        'student_feedback': 2,
+        'material_created': 3,
+        'session_time': 1,
+    }
+    
+    def _check_admin_access(self, request):
+        """Проверяет что пользователь - админ."""
+        if request.user.role != 'admin':
+            return False
+        return True
+    
+    @action(detail=False, methods=['get'], url_path='teachers')
+    def teachers_list(self, request):
+        """
+        GET /api/teacher-heatmap/teachers/
+        
+        Сравнительная таблица всех учителей с мини-heatmap по неделям.
+        Оптимизировано для 1000+ учителей.
+        
+        Query params:
+        - period: 30 | 90 (дней, по умолчанию 30)
+        - page: номер страницы (по умолчанию 1)
+        - page_size: размер страницы (по умолчанию 50, max 100)
+        - search: поиск по имени/email
+        - sort: total_score | lessons | homeworks | name (по умолчанию total_score)
+        - order: asc | desc (по умолчанию desc)
+        """
+        if not self._check_admin_access(request):
+            return Response({'detail': 'Admin access required'}, status=403)
+        
+        from accounts.models import TeacherActivityLog
+        from django.db.models.functions import TruncWeek, TruncDate
+        from django.core.paginator import Paginator
+        from datetime import timedelta
+        
+        # Параметры
+        period = int(request.query_params.get('period', 30))
+        page = int(request.query_params.get('page', 1))
+        page_size = min(int(request.query_params.get('page_size', 50)), 100)
+        search = request.query_params.get('search', '').strip()
+        sort_by = request.query_params.get('sort', 'total_score')
+        order = request.query_params.get('order', 'desc')
+        
+        today = timezone.now().date()
+        start_date = today - timedelta(days=period)
+        
+        # Базовый queryset учителей
+        teachers_qs = CustomUser.objects.filter(role='teacher', is_active=True)
+        
+        if search:
+            teachers_qs = teachers_qs.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(email__icontains=search)
+            )
+        
+        # Агрегируем данные по каждому учителю
+        # Используем подзапрос для эффективности
+        from django.db.models import OuterRef, Subquery
+        
+        # Получаем агрегированные метрики
+        teacher_stats = {}
+        
+        # Агрегация всех событий по учителям за период
+        activity_agg = (
+            TeacherActivityLog.objects
+            .filter(created_at__date__gte=start_date)
+            .values('teacher_id', 'action_type')
+            .annotate(count=Count('id'))
+        )
+        
+        for row in activity_agg:
+            tid = row['teacher_id']
+            if tid not in teacher_stats:
+                teacher_stats[tid] = {
+                    'total_score': 0,
+                    'lessons': 0,
+                    'homeworks_created': 0,
+                    'homeworks_graded': 0,
+                    'logins': 0,
+                    'session_minutes': 0,
+                }
+            
+            action = row['action_type']
+            count = row['count']
+            weight = self.EVENT_WEIGHTS.get(action, 1)
+            
+            teacher_stats[tid]['total_score'] += count * weight
+            
+            if action == 'lesson_conducted':
+                teacher_stats[tid]['lessons'] = count
+            elif action == 'homework_created':
+                teacher_stats[tid]['homeworks_created'] = count
+            elif action == 'homework_graded':
+                teacher_stats[tid]['homeworks_graded'] = count
+            elif action == 'login':
+                teacher_stats[tid]['logins'] = count
+        
+        # Получаем время сессий отдельно (сумма минут)
+        from accounts.models import TeacherSession
+        session_agg = (
+            TeacherSession.objects
+            .filter(started_at__date__gte=start_date, is_active=False)
+            .values('teacher_id')
+            .annotate(total_minutes=Sum('duration_minutes'))
+        )
+        
+        for row in session_agg:
+            tid = row['teacher_id']
+            if tid in teacher_stats:
+                teacher_stats[tid]['session_minutes'] = row['total_minutes'] or 0
+        
+        # Агрегация по неделям для мини-heatmap
+        weekly_data = {}
+        weekly_agg = (
+            TeacherActivityLog.objects
+            .filter(created_at__date__gte=start_date)
+            .annotate(week=TruncWeek('created_at'))
+            .values('teacher_id', 'week', 'action_type')
+            .annotate(count=Count('id'))
+        )
+        
+        for row in weekly_agg:
+            tid = row['teacher_id']
+            week = row['week'].date().isoformat() if row['week'] else None
+            if not week:
+                continue
+            
+            if tid not in weekly_data:
+                weekly_data[tid] = {}
+            if week not in weekly_data[tid]:
+                weekly_data[tid][week] = 0
+            
+            weight = self.EVENT_WEIGHTS.get(row['action_type'], 1)
+            weekly_data[tid][week] += row['count'] * weight
+        
+        # Формируем список учителей с данными
+        teachers_list = []
+        for teacher in teachers_qs:
+            stats = teacher_stats.get(teacher.id, {
+                'total_score': 0,
+                'lessons': 0,
+                'homeworks_created': 0,
+                'homeworks_graded': 0,
+                'logins': 0,
+                'session_minutes': 0,
+            })
+            
+            # Мини-heatmap по неделям
+            weeks = weekly_data.get(teacher.id, {})
+            
+            teachers_list.append({
+                'id': teacher.id,
+                'name': teacher.get_full_name() or teacher.email,
+                'email': teacher.email,
+                'avatar': teacher.avatar if hasattr(teacher, 'avatar') else None,
+                'stats': stats,
+                'weekly_scores': weeks,
+            })
+        
+        # Сортировка
+        reverse = order == 'desc'
+        if sort_by == 'name':
+            teachers_list.sort(key=lambda x: x['name'].lower(), reverse=reverse)
+        elif sort_by == 'lessons':
+            teachers_list.sort(key=lambda x: x['stats']['lessons'], reverse=reverse)
+        elif sort_by == 'homeworks':
+            teachers_list.sort(key=lambda x: x['stats']['homeworks_graded'], reverse=reverse)
+        else:  # total_score
+            teachers_list.sort(key=lambda x: x['stats']['total_score'], reverse=reverse)
+        
+        # Пагинация
+        paginator = Paginator(teachers_list, page_size)
+        page_obj = paginator.get_page(page)
+        
+        # Генерируем список недель для заголовков
+        weeks_list = []
+        current = start_date
+        while current <= today:
+            # Начало недели (понедельник)
+            week_start = current - timedelta(days=current.weekday())
+            if week_start.isoformat() not in [w['date'] for w in weeks_list]:
+                weeks_list.append({
+                    'date': week_start.isoformat(),
+                    'label': week_start.strftime('%d.%m'),
+                })
+            current += timedelta(days=7)
+        
+        # Вычисляем max score для нормализации цветов
+        max_weekly_score = 1
+        for teacher in page_obj:
+            for score in teacher['weekly_scores'].values():
+                max_weekly_score = max(max_weekly_score, score)
+        
+        return Response({
+            'teachers': list(page_obj),
+            'weeks': weeks_list,
+            'max_weekly_score': max_weekly_score,
+            'pagination': {
+                'page': page,
+                'page_size': page_size,
+                'total_pages': paginator.num_pages,
+                'total_count': paginator.count,
+            },
+            'period': period,
+        })
+    
+    @action(detail=False, methods=['get'], url_path='teacher/(?P<teacher_id>[^/.]+)')
+    def teacher_detail(self, request, teacher_id=None):
+        """
+        GET /api/teacher-heatmap/teacher/{teacher_id}/
+        
+        Детальный heatmap конкретного учителя (как GitHub).
+        
+        Query params:
+        - period: 30 | 90 (дней, по умолчанию 90)
+        """
+        if not self._check_admin_access(request):
+            return Response({'detail': 'Admin access required'}, status=403)
+        
+        from accounts.models import TeacherActivityLog, TeacherSession
+        from django.db.models.functions import TruncDate
+        from datetime import timedelta
+        
+        teacher = get_object_or_404(CustomUser, id=teacher_id, role='teacher')
+        
+        period = int(request.query_params.get('period', 90))
+        today = timezone.now().date()
+        start_date = today - timedelta(days=period)
+        
+        # Агрегация по дням
+        daily_agg = (
+            TeacherActivityLog.objects
+            .filter(teacher=teacher, created_at__date__gte=start_date)
+            .annotate(date=TruncDate('created_at'))
+            .values('date', 'action_type')
+            .annotate(count=Count('id'))
+        )
+        
+        # Подсчёт баллов по дням
+        score_map = {}
+        event_counts = {}
+        
+        for row in daily_agg:
+            date = row['date']
+            action = row['action_type']
+            count = row['count']
+            weight = self.EVENT_WEIGHTS.get(action, 1)
+            
+            if date not in score_map:
+                score_map[date] = 0
+                event_counts[date] = {}
+            
+            score_map[date] += count * weight
+            event_counts[date][action] = count
+        
+        # Заполнение heatmap данными
+        heatmap_data = []
+        current_streak = 0
+        longest_streak = 0
+        temp_streak = 0
+        total_contributions = 0
+        
+        current_date = start_date
+        while current_date <= today:
+            score = score_map.get(current_date, 0)
+            level = self._calculate_level(score)
+            
+            heatmap_data.append({
+                'date': current_date.isoformat(),
+                'count': score,
+                'level': level,
+                'events': event_counts.get(current_date, {}),
+            })
+            
+            total_contributions += score
+            
+            if score > 0:
+                temp_streak += 1
+                longest_streak = max(longest_streak, temp_streak)
+            else:
+                temp_streak = 0
+            
+            current_date += timedelta(days=1)
+        
+        # Current streak
+        for entry in reversed(heatmap_data):
+            if entry['count'] > 0:
+                current_streak += 1
+            else:
+                break
+        
+        # Статистика по типам событий
+        event_breakdown = (
+            TeacherActivityLog.objects
+            .filter(teacher=teacher, created_at__date__gte=start_date)
+            .values('action_type')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+        
+        ACTION_LABELS = {
+            'login': 'Вход в систему',
+            'lesson_conducted': 'Проведено занятий',
+            'homework_created': 'Создано ДЗ',
+            'homework_graded': 'Проверено ДЗ',
+            'recording_uploaded': 'Загружено записей',
+            'student_feedback': 'Комментариев студентам',
+            'material_created': 'Создано материалов',
+            'session_time': 'Сессий',
+        }
+        
+        breakdown = []
+        for item in event_breakdown:
+            action = item['action_type']
+            count = item['count']
+            weight = self.EVENT_WEIGHTS.get(action, 1)
+            breakdown.append({
+                'action_type': action,
+                'label': ACTION_LABELS.get(action, action),
+                'count': count,
+                'weight': weight,
+                'total_score': count * weight,
+            })
+        
+        # Время на платформе
+        total_session_minutes = TeacherSession.objects.filter(
+            teacher=teacher,
+            started_at__date__gte=start_date,
+            is_active=False
+        ).aggregate(total=Sum('duration_minutes'))['total'] or 0
+        
+        return Response({
+            'teacher_id': teacher.id,
+            'teacher_name': teacher.get_full_name() or teacher.email,
+            'teacher_email': teacher.email,
+            'stats': {
+                'total_contributions': total_contributions,
+                'current_streak': current_streak,
+                'longest_streak': longest_streak,
+                'days_active': len([d for d in heatmap_data if d['count'] > 0]),
+                'avg_daily_score': round(total_contributions / period, 2) if total_contributions else 0,
+                'total_session_hours': round(total_session_minutes / 60, 1),
+            },
+            'event_breakdown': breakdown,
+            'heatmap_data': heatmap_data,
+            'period': period,
+        })
+    
+    @action(detail=False, methods=['get'], url_path='summary')
+    def summary(self, request):
+        """
+        GET /api/teacher-heatmap/summary/
+        
+        Общая статистика по всем учителям для дашборда.
+        """
+        if not self._check_admin_access(request):
+            return Response({'detail': 'Admin access required'}, status=403)
+        
+        from accounts.models import TeacherActivityLog
+        from datetime import timedelta
+        
+        today = timezone.now().date()
+        period_30 = today - timedelta(days=30)
+        period_7 = today - timedelta(days=7)
+        
+        total_teachers = CustomUser.objects.filter(role='teacher', is_active=True).count()
+        
+        # Активные учителя за период
+        active_30 = TeacherActivityLog.objects.filter(
+            created_at__date__gte=period_30
+        ).values('teacher_id').distinct().count()
+        
+        active_7 = TeacherActivityLog.objects.filter(
+            created_at__date__gte=period_7
+        ).values('teacher_id').distinct().count()
+        
+        # Неактивные учителя (не заходили 7+ дней)
+        inactive_teachers = total_teachers - active_7
+        
+        # Топ-5 по активности за 30 дней
+        top_teachers = (
+            TeacherActivityLog.objects
+            .filter(created_at__date__gte=period_30)
+            .values('teacher_id')
+            .annotate(
+                total_events=Count('id'),
+            )
+            .order_by('-total_events')[:5]
+        )
+        
+        top_list = []
+        for item in top_teachers:
+            teacher = CustomUser.objects.filter(id=item['teacher_id']).first()
+            if teacher:
+                top_list.append({
+                    'id': teacher.id,
+                    'name': teacher.get_full_name() or teacher.email,
+                    'events': item['total_events'],
+                })
+        
+        return Response({
+            'total_teachers': total_teachers,
+            'active_last_30_days': active_30,
+            'active_last_7_days': active_7,
+            'inactive_count': inactive_teachers,
+            'top_teachers': top_list,
+        })
+    
+    def _calculate_level(self, count: int) -> int:
+        """
+        Преобразует счёт в уровень (0-4) для визуализации.
+        Для учителей пороги выше чем для студентов.
+        """
+        if count == 0:
+            return 0
+        elif count <= 5:
+            return 1
+        elif count <= 15:
+            return 2
+        elif count <= 30:
+            return 3
+        else:
+            return 4

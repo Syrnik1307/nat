@@ -1796,6 +1796,117 @@ class StudentActivityLog(models.Model):
         super().save(*args, **kwargs)
 
 
+# =============================================================================
+# TEACHER ACTIVITY LOG - Лог активности преподавателя для Admin Heatmap
+# =============================================================================
+
+class TeacherActivityLog(models.Model):
+    """
+    Лог активности преподавателя для построения хитмапа активности.
+    Используется админом для мониторинга активности учителей.
+    
+    Оптимизирован для 1000+ учителей:
+    - Индексы для быстрой агрегации по дням
+    - Минимальный набор полей
+    """
+    ACTION_TYPES = (
+        ('login', 'Вход в систему'),
+        ('lesson_conducted', 'Провёл занятие'),
+        ('homework_created', 'Создал ДЗ'),
+        ('homework_graded', 'Проверил ДЗ'),
+        ('recording_uploaded', 'Загрузил запись'),
+        ('student_feedback', 'Комментарий студенту'),
+        ('material_created', 'Создал материал'),
+        ('session_time', 'Время сессии'),  # Хранит минуты в details.minutes
+    )
+    
+    teacher = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='teacher_activity_logs',
+        limit_choices_to={'role': 'teacher'},
+        verbose_name=_('преподаватель')
+    )
+    action_type = models.CharField(
+        _('тип действия'),
+        max_length=30,
+        choices=ACTION_TYPES,
+        db_index=True
+    )
+    
+    # Детали действия (минимальный JSON)
+    details = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='{"lesson_id": 123, "minutes": 45, "weight": 10}'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    class Meta:
+        verbose_name = _('лог активности преподавателя')
+        verbose_name_plural = _('логи активности преподавателей')
+        ordering = ['-created_at']
+        indexes = [
+            # Основной индекс для агрегации heatmap
+            models.Index(fields=['teacher', 'created_at'], name='teacher_activity_main_idx'),
+            # Индекс для фильтрации по типу
+            models.Index(fields=['action_type', 'created_at'], name='teacher_activity_type_idx'),
+            # Составной индекс для быстрой агрегации по дате
+            models.Index(fields=['teacher', 'action_type', 'created_at'], name='teacher_activity_agg_idx'),
+        ]
+    
+    def __str__(self):
+        return f"{self.teacher.email} - {self.get_action_type_display()} @ {self.created_at}"
+
+
+class TeacherSession(models.Model):
+    """
+    Отслеживание сессий преподавателя для подсчёта времени на платформе.
+    Создаётся при входе, обновляется при активности, закрывается при выходе/таймауте.
+    """
+    teacher = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='sessions',
+        limit_choices_to={'role': 'teacher'},
+        verbose_name=_('преподаватель')
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    last_activity = models.DateTimeField(auto_now=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    
+    # Общая длительность в минутах (вычисляется при закрытии)
+    duration_minutes = models.PositiveIntegerField(default=0)
+    
+    is_active = models.BooleanField(default=True, db_index=True)
+    
+    class Meta:
+        verbose_name = _('сессия преподавателя')
+        verbose_name_plural = _('сессии преподавателей')
+        ordering = ['-started_at']
+        indexes = [
+            models.Index(fields=['teacher', 'is_active'], name='teacher_session_active_idx'),
+            models.Index(fields=['started_at'], name='teacher_session_date_idx'),
+        ]
+    
+    def close_session(self):
+        """Закрывает сессию и вычисляет длительность."""
+        from django.utils import timezone
+        if self.is_active:
+            self.ended_at = timezone.now()
+            self.duration_minutes = int((self.ended_at - self.started_at).total_seconds() / 60)
+            self.is_active = False
+            self.save()
+            
+            # Логируем session_time
+            TeacherActivityLog.objects.create(
+                teacher=self.teacher,
+                action_type='session_time',
+                details={'minutes': self.duration_minutes, 'session_id': self.id}
+            )
+
+
 class ChatAnalyticsSummary(models.Model):
     """
     Агрегированная статистика активности ученика в чатах группы.

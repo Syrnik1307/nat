@@ -74,6 +74,7 @@ const PageLoader = () => {
 const teacherHomeImport = () => import('./components/TeacherHomePage');
 const studentHomeImport = () => import('./components/StudentHomePage');
 const analyticsImport = () => import('./components/AnalyticsPage');
+const financeImport = () => import('./components/FinancePage');
 const profileImport = () => import('./components/ProfilePage');
 const groupsManageImport = () => import('./components/GroupsManage');
 const homeworkPageImport = () => import('./modules/homework-analytics/components/HomeworkPage');
@@ -110,6 +111,7 @@ const RecurringLessonsManage = lazy(() => import('./components/RecurringLessonsM
 const GroupsManage = lazy(groupsManageImport);
 const StudentAIReports = lazy(() => import('./components/StudentAIReports'));
 const CalendarIntegrationPage = lazy(() => import('./components/CalendarIntegrationSimple'));
+const FinancePage = lazy(financeImport);
 
 // Student pages - используем уже созданные импорты
 const StudentHomePage = lazy(studentHomeImport);
@@ -122,6 +124,8 @@ const HomeworkAnswersView = lazy(homeworkAnswersImport);
 
 // Admin pages
 const AdminHomePage = lazy(() => import('./components/AdminHomePage'));
+const TeacherHeatmapTable = lazy(() => import('./components/admin/TeacherHeatmapTable'));
+const TeacherHeatmapDetail = lazy(() => import('./components/admin/TeacherHeatmapDetail'));
 
 // Common pages - используем уже созданный импорт
 const Calendar = lazy(calendarImport);
@@ -142,6 +146,7 @@ const preloadPages = (role) => {
   if (role === 'teacher') {
     scheduleLoad(teacherHomeImport);
     scheduleLoad(analyticsImport);
+    scheduleLoad(financeImport);
     scheduleLoad(groupsManageImport);
     scheduleLoad(homeworkPageImport);
     scheduleLoad(profileImport);
@@ -252,6 +257,7 @@ const AppRoutes = () => {
           <Route path="/recurring-lessons/manage" element={<Protected allowRoles={['teacher']}><RecurringLessonsManage /></Protected>} />
           <Route path="/groups/manage" element={<Protected allowRoles={['teacher']}><GroupsManage /></Protected>} />
           <Route path="/analytics" element={<Protected allowRoles={['teacher', 'admin']}><AnalyticsPage /></Protected>} />
+          <Route path="/finance" element={<Protected allowRoles={['teacher', 'admin']}><FinancePage /></Protected>} />
           <Route path="/teacher/ai-reports" element={<Protected allowRoles={['teacher']}><StudentAIReports /></Protected>} />
           <Route path="/calendar/settings" element={<Protected allowRoles={['teacher', 'student']}><CalendarIntegrationPage /></Protected>} />
           
@@ -268,6 +274,8 @@ const AppRoutes = () => {
           {/* Admin */}
           <Route path="/admin" element={<Navigate to="/admin-home" replace />} />
           <Route path="/admin-home" element={<Protected allowRoles={['admin']}><AdminHomePage /></Protected>} />
+          <Route path="/admin/teacher-heatmap" element={<Protected allowRoles={['admin']}><TeacherHeatmapTable /></Protected>} />
+          <Route path="/admin/teacher-heatmap/:teacherId" element={<Protected allowRoles={['admin']}><TeacherHeatmapDetail /></Protected>} />
           
           {/* Common */}
           <Route path="/calendar" element={<Protected allowRoles={['teacher', 'student']}><Calendar /></Protected>} />

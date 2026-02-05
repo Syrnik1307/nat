@@ -7,4 +7,5 @@ class AnalyticsConfig(AppConfig):
     
     def ready(self):
         """Подключаем сигналы при запуске приложения."""
-        import analytics.signals  # noqa: F401
+        import analytics.signals  # noqa: F401 - Student activity signals
+        import analytics.teacher_signals  # noqa: F401 - Teacher activity signals

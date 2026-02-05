@@ -14,6 +14,7 @@ from .views import (
     StudentDetailAnalyticsViewSet,
     GroupDetailAnalyticsViewSet,
     StudentActivityHeatmapViewSet,
+    TeacherActivityHeatmapViewSet,
 )
 
 router = DefaultRouter()
@@ -30,6 +31,7 @@ router.register(r'student-questions', StudentQuestionViewSet, basename='student-
 router.register(r'student-detail', StudentDetailAnalyticsViewSet, basename='student-detail')
 router.register(r'group-detail', GroupDetailAnalyticsViewSet, basename='group-detail')
 router.register(r'heatmap', StudentActivityHeatmapViewSet, basename='heatmap')
+router.register(r'teacher-heatmap', TeacherActivityHeatmapViewSet, basename='teacher-heatmap')
 
 urlpatterns = [
     path('', include(router.urls)),

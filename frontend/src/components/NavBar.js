@@ -109,6 +109,7 @@ const NavBar = () => {
                 <Link className="navbar-link" to="/calendar" data-tour="nav-calendar">Календарь</Link>
                 <Link className="navbar-link" to="/teacher-recordings" data-tour="nav-recordings">Записи</Link>
                 <Link className="navbar-link" to="/analytics" data-tour="nav-analytics">Аналитика</Link>
+                <Link className="navbar-link" to="/finance" data-tour="nav-finance">Финансы</Link>
               </>
             )}
             {accessTokenValid && role === 'student' && (

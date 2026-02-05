@@ -163,6 +163,9 @@ urlpatterns = [
     # Market API (digital products: Zoom accounts, etc.)
     path('api/market/', include('market.urls')),
     
+    # Finance API (student lesson balances)
+    path('api/finance/', include('finance.urls')),
+    
     # Analytics API
     path('api/', include('analytics.urls')),
     

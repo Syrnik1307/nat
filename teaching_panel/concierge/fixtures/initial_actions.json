@@ -1,0 +1,97 @@
+[
+  {
+    "model": "concierge.actiondefinition",
+    "pk": 1,
+    "fields": {
+      "name": "check_zoom_status",
+      "display_name": "Проверить статус Zoom",
+      "display_name_en": "Check Zoom Status",
+      "description": "Проверяет доступность Zoom-интеграции, количество свободных аккаунтов и статус текущих встреч. Используй когда пользователь жалуется на проблемы с видеосвязью, не может подключиться к уроку или спрашивает о Zoom.",
+      "category": "diagnostic",
+      "handler_path": "concierge.actions.check_zoom",
+      "trigger_keywords": ["zoom", "видео", "видеосвязь", "конференция", "урок не работает", "не могу подключиться", "video", "meeting", "connection"],
+      "trigger_categories": ["zoom", "lesson"],
+      "required_params": [],
+      "is_read_only": true,
+      "requires_confirmation": false,
+      "max_daily_runs_per_user": 20,
+      "is_active": true
+    }
+  },
+  {
+    "model": "concierge.actiondefinition",
+    "pk": 2,
+    "fields": {
+      "name": "check_subscription",
+      "display_name": "Проверить подписку",
+      "display_name_en": "Check Subscription",
+      "description": "Проверяет статус подписки пользователя: активна ли, когда истекает, сколько места на диске использовано. Используй когда пользователь спрашивает об оплате, подписке, тарифе или хранилище.",
+      "category": "info",
+      "handler_path": "concierge.actions.check_subscription",
+      "trigger_keywords": ["подписка", "оплата", "тариф", "хранилище", "место", "диск", "subscription", "payment", "storage", "plan"],
+      "trigger_categories": ["payment", "subscription"],
+      "required_params": [],
+      "is_read_only": true,
+      "requires_confirmation": false,
+      "max_daily_runs_per_user": 10,
+      "is_active": true
+    }
+  },
+  {
+    "model": "concierge.actiondefinition",
+    "pk": 3,
+    "fields": {
+      "name": "check_recordings",
+      "display_name": "Проверить записи уроков",
+      "display_name_en": "Check Lesson Recordings",
+      "description": "Проверяет статус записей уроков пользователя: сколько готово, сколько обрабатывается, есть ли ошибки. Используй когда пользователь жалуется на проблемы с записями или спрашивает о их статусе.",
+      "category": "diagnostic",
+      "handler_path": "concierge.actions.check_recordings",
+      "trigger_keywords": ["запись", "записи", "видео урока", "не могу посмотреть", "recording", "recordings", "lesson video"],
+      "trigger_categories": ["recording"],
+      "required_params": [],
+      "is_read_only": true,
+      "requires_confirmation": false,
+      "max_daily_runs_per_user": 15,
+      "is_active": true
+    }
+  },
+  {
+    "model": "concierge.actiondefinition",
+    "pk": 4,
+    "fields": {
+      "name": "check_system_status",
+      "display_name": "Проверить статус системы",
+      "display_name_en": "Check System Status",
+      "description": "Проверяет общий статус платформы: работает ли всё нормально, есть ли инциденты или плановые работы. Используй когда пользователь спрашивает о доступности сервиса или жалуется что ничего не работает.",
+      "category": "diagnostic",
+      "handler_path": "concierge.actions.check_system_status",
+      "trigger_keywords": ["статус", "работает", "сбой", "ошибка везде", "не работает ничего", "status", "outage", "down"],
+      "trigger_categories": ["system"],
+      "required_params": [],
+      "is_read_only": true,
+      "requires_confirmation": false,
+      "max_daily_runs_per_user": 20,
+      "is_active": true
+    }
+  },
+  {
+    "model": "concierge.actiondefinition",
+    "pk": 5,
+    "fields": {
+      "name": "check_lesson",
+      "display_name": "Проверить урок",
+      "display_name_en": "Check Lesson Status",
+      "description": "Проверяет статус конкретного урока: запланирован, идёт, завершён, есть ли Zoom-ссылка. Требует lesson_id. Используй когда пользователь спрашивает о конкретном уроке.",
+      "category": "diagnostic",
+      "handler_path": "concierge.actions.check_lesson",
+      "trigger_keywords": ["урок", "занятие", "ссылка на урок", "lesson", "class"],
+      "trigger_categories": ["lesson"],
+      "required_params": ["lesson_id"],
+      "is_read_only": true,
+      "requires_confirmation": false,
+      "max_daily_runs_per_user": 30,
+      "is_active": true
+    }
+  }
+]
