@@ -587,6 +587,15 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'accounts.tasks.send_weekly_revenue_report_task',
         'schedule': crontab(day_of_week='monday', hour='10', minute='0'),  # каждый понедельник в 10:00
     },
+    # --- Rate Limiting Monitoring & Auto-Recovery ---
+    'monitor-rate-limiting': {
+        'task': 'accounts.tasks.monitor_rate_limiting',
+        'schedule': 900.0,  # каждые 15 минут - мониторинг блокировок
+    },
+    'cleanup-old-rate-limits': {
+        'task': 'accounts.tasks.cleanup_old_rate_limits',
+        'schedule': crontab(hour='4', minute='0'),  # ежедневно в 4:00 - очистка старых записей
+    },
     # --- Telegram Bot Tasks ---
     'process-scheduled-messages': {
         'task': 'bot.tasks.process_scheduled_messages',

@@ -1416,3 +1416,116 @@ def send_weekly_revenue_report_task():
     except Exception as e:
         logger.exception(f"[Celery] Failed to send weekly revenue report: {e}")
         return {'status': 'error', 'error': str(e), 'timestamp': timezone.now().isoformat()}
+
+
+# ==========================================================================
+# Rate Limiting Auto-Recovery
+# ==========================================================================
+
+@shared_task(name='accounts.tasks.monitor_rate_limiting')
+def monitor_rate_limiting():
+    """
+    Мониторит состояние rate limiting и отправляет алерты при проблемах.
+    
+    Запускается каждые 15 минут.
+    - Проверяет количество активных блокировок
+    - Отправляет алерт если блокировок слишком много
+    - Автоматически сбрасывает лимиты при критическом количестве
+    """
+    from .bot_protection import get_rate_limit_stats, clear_all_rate_limits
+    
+    try:
+        stats = get_rate_limit_stats()
+        
+        if not stats.get('success'):
+            logger.warning(f"[Celery] monitor_rate_limiting: failed to get stats: {stats.get('error')}")
+            return stats
+        
+        rate_stats = stats.get('stats', {})
+        total_blocks = sum(rate_stats.values())
+        
+        logger.info(f"[Celery] Rate limiting stats: {rate_stats}")
+        
+        # Критический порог - слишком много блокировок
+        CRITICAL_THRESHOLD = 100
+        
+        if total_blocks >= CRITICAL_THRESHOLD:
+            logger.warning(f"[Celery] CRITICAL: {total_blocks} rate limit blocks detected!")
+            
+            # Отправляем алерт
+            try:
+                from support.telegram_utils import send_admin_notification
+                send_admin_notification(
+                    f"🚨 CRITICAL Rate Limiting Alert\n\n"
+                    f"Обнаружено {total_blocks} активных блокировок!\n"
+                    f"Статистика:\n"
+                    f"- Регистрации: {rate_stats.get('registration_blocks', 0)}\n"
+                    f"- Логины: {rate_stats.get('login_blocks', 0)}\n"
+                    f"- Баны: {rate_stats.get('bans', 0)}\n"
+                    f"- Throttle login: {rate_stats.get('throttle_login', 0)}\n"
+                    f"- Throttle anon: {rate_stats.get('throttle_anon', 0)}\n\n"
+                    f"Автоматический сброс запущен..."
+                )
+            except Exception as e:
+                logger.warning(f"[Celery] Failed to send critical alert: {e}")
+            
+            # Автоматический сброс при критическом количестве
+            clear_result = clear_all_rate_limits()
+            logger.info(f"[Celery] Auto-cleared rate limits: {clear_result}")
+            
+            return {
+                'status': 'critical_auto_cleared',
+                'stats': rate_stats,
+                'clear_result': clear_result,
+                'timestamp': timezone.now().isoformat(),
+            }
+        
+        return {
+            'status': 'ok',
+            'stats': rate_stats,
+            'total_blocks': total_blocks,
+            'timestamp': timezone.now().isoformat(),
+        }
+        
+    except Exception as e:
+        logger.exception(f"[Celery] monitor_rate_limiting error: {e}")
+        return {'status': 'error', 'error': str(e)}
+
+
+@shared_task(name='accounts.tasks.cleanup_old_rate_limits')
+def cleanup_old_rate_limits():
+    """
+    Очищает устаревшие rate limit записи из Redis.
+    
+    Запускается раз в день в 4:00 ночи.
+    Redis TTL должен автоматически удалять ключи, но это страховка.
+    """
+    from .bot_protection import get_rate_limit_stats
+    
+    try:
+        # Получаем статистику до очистки
+        before_stats = get_rate_limit_stats()
+        
+        # Redis TTL автоматически удаляет ключи, но проверим
+        # Если ключей слишком много (более 500), делаем принудительную очистку
+        if before_stats.get('success'):
+            total = sum(before_stats.get('stats', {}).values())
+            if total > 500:
+                from .bot_protection import clear_all_rate_limits
+                clear_result = clear_all_rate_limits()
+                logger.info(f"[Celery] Forced cleanup of {total} rate limit keys: {clear_result}")
+                return {
+                    'status': 'force_cleared',
+                    'before': before_stats.get('stats'),
+                    'cleared': clear_result.get('deleted', 0),
+                }
+        
+        logger.info(f"[Celery] Rate limit cleanup check complete: {before_stats.get('stats', {})}")
+        return {
+            'status': 'ok',
+            'stats': before_stats.get('stats', {}),
+        }
+        
+    except Exception as e:
+        logger.exception(f"[Celery] cleanup_old_rate_limits error: {e}")
+        return {'status': 'error', 'error': str(e)}

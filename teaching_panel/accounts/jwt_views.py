@@ -21,6 +21,7 @@ from .bot_protection import (
     check_failed_login_limit,
     record_failed_login,
     reset_failed_logins,
+    record_block_event,
     BOT_DETECTION_CONFIG,
 )
 from .requests_notifications import notify_new_registration
@@ -262,6 +263,7 @@ class RegisterView(APIView):
         is_banned, ban_reason = is_fingerprint_banned(fingerprint)
         if is_banned:
             logger.warning(f"[RegisterView] Banned device: {fingerprint[:8]}..., ip={client_ip}")
+            record_block_event(fingerprint, client_ip, 'device_banned', 'register')
             return Response(
                 {'detail': 'Доступ с этого устройства заблокирован', 'error': 'device_banned'},
                 status=status.HTTP_403_FORBIDDEN
@@ -275,6 +277,7 @@ class RegisterView(APIView):
         if honeypot_value:
             logger.warning(f"[RegisterView] Honeypot triggered: ip={client_ip}")
             ban_fingerprint(fingerprint, 'honeypot_triggered')
+            record_block_event(fingerprint, client_ip, 'honeypot', 'register')
             return Response(
                 {'detail': 'Подозрительная активность обнаружена'},
                 status=status.HTTP_403_FORBIDDEN
@@ -286,6 +289,7 @@ class RegisterView(APIView):
         if bot_score >= BOT_DETECTION_CONFIG['bot_score_threshold']:
             logger.warning(f"[RegisterView] Bot detected: score={bot_score}, ip={client_ip}")
             ban_fingerprint(fingerprint, f'bot_score_{bot_score}')
+            record_block_event(fingerprint, client_ip, 'bot_detected', 'register')
             return Response(
                 {'detail': 'Подозрительная активность обнаружена', 'error': 'bot_detected'},
                 status=status.HTTP_403_FORBIDDEN
@@ -294,6 +298,7 @@ class RegisterView(APIView):
         # Проверяем лимит регистраций с этого устройства
         if not check_registration_limit(fingerprint):
             logger.warning(f"[RegisterView] Registration limit exceeded: {fingerprint[:8]}...")
+            record_block_event(fingerprint, client_ip, 'registration_limit', 'register')
             return Response(
                 {'detail': 'Превышен лимит регистраций с этого устройства. Попробуйте позже.', 'error': 'rate_limit'},
                 status=status.HTTP_429_TOO_MANY_REQUESTS

@@ -537,3 +537,150 @@ def get_suspicious_activity_log(limit: int = 100) -> list:
     # В production нужно использовать отдельное хранилище логов
     # (Elasticsearch, PostgreSQL, etc.)
     return []
+
+
+# ============================================================================
+# AUTO-RECOVERY SYSTEM
+# ============================================================================
+
+# Ключи для отслеживания блокировок
+BLOCK_EVENTS_KEY = f'{CACHE_PREFIX}block_events'  # Список недавних блокировок
+BLOCK_ALERT_SENT_KEY = f'{CACHE_PREFIX}block_alert_sent'  # Флаг что алерт уже отправлен
+
+
+def record_block_event(fingerprint: str, ip: str, reason: str, endpoint: str = 'register'):
+    """
+    Записывает событие блокировки для мониторинга.
+    Отправляет алерт в Telegram если блокировок слишком много.
+    """
+    event = {
+        'fingerprint': fingerprint[:16] if fingerprint else 'unknown',
+        'ip': ip,
+        'reason': reason,
+        'endpoint': endpoint,
+        'timestamp': timezone.now().isoformat(),
+    }
+    
+    # Логируем событие
+    logger.warning(f"[BotProtection] Block event: {event}")
+    
+    # Сохраняем в Redis для анализа (хранимкак отдельные ключи с TTL)
+    event_key = f'{CACHE_PREFIX}block_event:{int(time.time() * 1000)}'
+    _cache_set(event_key, event, timeout=3600)  # Хранить 1 час
+    
+    # Проверяем нужно ли отправить алерт
+    _maybe_send_block_alert(fingerprint, ip, reason)
+
+
+def _maybe_send_block_alert(fingerprint: str, ip: str, reason: str):
+    """Отправляет алерт в Telegram если блокировка выглядит как ложное срабатывание."""
+    # Не спамим алертами - максимум 1 раз в 30 минут
+    alert_cooldown_key = f'{BLOCK_ALERT_SENT_KEY}:{reason}'
+    if _cache_get(alert_cooldown_key):
+        return
+    
+    # Причины которые могут быть ложными срабатываниями
+    false_positive_reasons = ['rate_limit', 'registration_limit']
+    
+    if reason not in false_positive_reasons:
+        return
+    
+    try:
+        from support.telegram_utils import send_admin_notification
+        
+        message = (
+            f"Rate Limiting Alert\n\n"
+            f"Пользователь заблокирован:\n"
+            f"- Причина: {reason}\n"
+            f"- IP: {ip}\n"
+            f"- Fingerprint: {fingerprint[:16]}...\n\n"
+            f"Если это ложное срабатывание, выполните:\n"
+            f"`ssh tp 'redis-cli -n 1 KEYS *bot_protection* | xargs redis-cli -n 1 DEL'`"
+        )
+        
+        send_admin_notification(message)
+        logger.info(f"[BotProtection] Sent block alert to admin")
+        
+        # Cooldown на 30 минут
+        _cache_set(alert_cooldown_key, True, timeout=1800)
+        
+    except Exception as e:
+        logger.warning(f"[BotProtection] Failed to send block alert: {e}")
+
+
+def clear_all_rate_limits() -> Dict:
+    """
+    Сбрасывает все rate limits (для аварийного восстановления).
+    Возвращает количество очищенных ключей.
+    """
+    try:
+        from django_redis import get_redis_connection
+        redis_conn = get_redis_connection("default")
+        
+        # Паттерны для очистки
+        patterns = [
+            '*bot_protection:fp_regs:*',
+            '*bot_protection:fp_fails:*',
+            '*throttle_login_*',
+            '*throttle_anon_*',
+        ]
+        
+        total_deleted = 0
+        for pattern in patterns:
+            keys = redis_conn.keys(pattern)
+            if keys:
+                deleted = redis_conn.delete(*keys)
+                total_deleted += deleted
+                logger.info(f"[BotProtection] Cleared {deleted} keys matching {pattern}")
+        
+        logger.info(f"[BotProtection] Total cleared: {total_deleted} rate limit keys")
+        return {'success': True, 'deleted': total_deleted}
+        
+    except Exception as e:
+        logger.error(f"[BotProtection] Failed to clear rate limits: {e}")
+        return {'success': False, 'error': str(e)}
+
+
+def clear_fingerprint_limits(fingerprint: str) -> Dict:
+    """Сбрасывает rate limits для конкретного fingerprint."""
+    try:
+        keys_to_delete = [
+            f'{FP_REGISTRATIONS_KEY}{fingerprint}',
+            f'{FP_FAILED_LOGINS_KEY}{fingerprint}',
+            f'{FP_BAN_KEY}{fingerprint}',
+            f'{FP_VIOLATIONS_KEY}{fingerprint}',
+        ]
+        
+        deleted = 0
+        for key in keys_to_delete:
+            if _cache_get(key) is not None:
+                _cache_delete(key)
+                deleted += 1
+        
+        logger.info(f"[BotProtection] Cleared {deleted} keys for fingerprint {fingerprint[:16]}...")
+        return {'success': True, 'deleted': deleted}
+        
+    except Exception as e:
+        logger.error(f"[BotProtection] Failed to clear fingerprint limits: {e}")
+        return {'success': False, 'error': str(e)}
+
+
+def get_rate_limit_stats() -> Dict:
+    """Возвращает статистику rate limiting из Redis."""
+    try:
+        from django_redis import get_redis_connection
+        redis_conn = get_redis_connection("default")
+        
+        stats = {
+            'registration_blocks': len(redis_conn.keys('*bot_protection:fp_regs:*')),
+            'login_blocks': len(redis_conn.keys('*bot_protection:fp_fails:*')),
+            'bans': len(redis_conn.keys('*bot_protection:fp_ban:*')),
+            'throttle_login': len(redis_conn.keys('*throttle_login_*')),
+            'throttle_anon': len(redis_conn.keys('*throttle_anon_*')),
+        }
+        
+        return {'success': True, 'stats': stats}
+        
+    except Exception as e:
+        logger.error(f"[BotProtection] Failed to get stats: {e}")
+        return {'success': False, 'error': str(e)}

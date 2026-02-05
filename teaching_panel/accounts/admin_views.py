@@ -3103,3 +3103,65 @@ class AdminTeacherAnalyticsView(APIView):
             'growth': growth,
             'finance': finance,
         })
+
+
+# =============================================================================
+# RATE LIMITING ADMIN VIEWS
+# =============================================================================
+
+class AdminRateLimitingStatsView(APIView):
+    """
+    GET /api/admin/rate-limiting/stats/
+    
+    Возвращает статистику rate limiting.
+    Только для админов.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        if user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            from .bot_protection import get_rate_limit_stats
+            stats = get_rate_limit_stats()
+            return Response(stats)
+        except Exception as e:
+            logger.exception(f"[Admin] Failed to get rate limiting stats: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AdminRateLimitingClearView(APIView):
+    """
+    POST /api/admin/rate-limiting/clear/
+    
+    Сбрасывает все rate limits.
+    Только для админов.
+    
+    Body (optional):
+    - fingerprint: конкретный fingerprint для очистки
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        user = request.user
+        if user.role != 'admin':
+            return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        
+        fingerprint = request.data.get('fingerprint')
+        
+        try:
+            if fingerprint:
+                from .bot_protection import clear_fingerprint_limits
+                result = clear_fingerprint_limits(fingerprint)
+                logger.info(f"[Admin] Rate limits cleared for fingerprint {fingerprint[:16]}... by {user.email}")
+            else:
+                from .bot_protection import clear_all_rate_limits
+                result = clear_all_rate_limits()
+                logger.info(f"[Admin] All rate limits cleared by {user.email}")
+            
+            return Response(result)
+        except Exception as e:
+            logger.exception(f"[Admin] Failed to clear rate limits: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

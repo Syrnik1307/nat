@@ -33,6 +33,8 @@ from .admin_views import (
     AdminSystemErrorsCountsView,
     AdminDashboardDataView,
     AdminTeacherAnalyticsView,
+    AdminRateLimitingStatsView,
+    AdminRateLimitingClearView,
 )
 from .chat_views import ChatViewSet, MessageViewSet, UserSearchViewSet
 from .email_views import (
@@ -127,6 +129,10 @@ urlpatterns = [
     path('api/admin/quick-actions/', AdminQuickActionsView.as_view(), name='admin_quick_actions'),
     path('api/admin/business-metrics/', AdminBusinessMetricsView.as_view(), name='admin_business_metrics'),
     path('api/admin/dashboard-data/', AdminDashboardDataView.as_view(), name='admin_dashboard_data'),
+    
+    # Rate Limiting Admin API
+    path('api/admin/rate-limiting/stats/', AdminRateLimitingStatsView.as_view(), name='admin_rate_limiting_stats'),
+    path('api/admin/rate-limiting/clear/', AdminRateLimitingClearView.as_view(), name='admin_rate_limiting_clear'),
     
     # API для получения сообщений (для всех пользователей)
     path('api/status-messages/', AdminStatusMessagesView.as_view(), name='status_messages'),
