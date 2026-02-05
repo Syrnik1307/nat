@@ -77,7 +77,7 @@ function ActivityHeatmap({ studentId, isOwnProfile = false }) {
             
             let url = '/analytics/heatmap/my/';
             if (studentId && !isOwnProfile) {
-                url = `/analytics/heatmap/${studentId}/student/`;
+                url = `/analytics/heatmap/student/${studentId}/`;
             }
             
             const res = await apiClient.get(url);

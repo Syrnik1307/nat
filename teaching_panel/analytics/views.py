@@ -3083,10 +3083,10 @@ class StudentActivityHeatmapViewSet(viewsets.ViewSet):
         
         return self._generate_heatmap_response(student)
     
-    @action(detail=True, methods=['get'], url_path='student')
-    def student_heatmap(self, request, pk=None):
+    @action(detail=False, methods=['get'], url_path='student/(?P<student_id>[^/.]+)')
+    def student_heatmap(self, request, student_id=None):
         """
-        GET /api/analytics/heatmap/{student_id}/student/
+        GET /api/analytics/heatmap/student/{student_id}/
         Возвращает тепловую карту для конкретного студента (для учителей/админов).
         """
         user = request.user
@@ -3094,7 +3094,7 @@ class StudentActivityHeatmapViewSet(viewsets.ViewSet):
         if user.role not in ['teacher', 'admin']:
             return Response({'detail': 'Not allowed'}, status=403)
         
-        student = get_object_or_404(CustomUser, id=pk, role='student')
+        student = get_object_or_404(CustomUser, id=student_id, role='student')
         return self._generate_heatmap_response(student)
     
     def _generate_heatmap_response(self, student):
