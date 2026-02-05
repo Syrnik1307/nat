@@ -28,6 +28,28 @@ from rest_framework.exceptions import Throttled, PermissionDenied
 
 logger = logging.getLogger(__name__)
 
+
+def _cache_get(key, default=None):
+    try:
+        return cache.get(key, default)
+    except Exception as exc:
+        logger.warning("Cache get failed: %s", exc)
+        return default
+
+
+def _cache_set(key, value, timeout=None):
+    try:
+        cache.set(key, value, timeout=timeout)
+    except Exception as exc:
+        logger.warning("Cache set failed: %s", exc)
+
+
+def _cache_delete(key):
+    try:
+        cache.delete(key)
+    except Exception as exc:
+        logger.warning("Cache delete failed: %s", exc)
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
@@ -271,7 +293,7 @@ def is_fingerprint_banned(fingerprint: str) -> Tuple[bool, Optional[str]]:
     Проверяет, забанен ли fingerprint.
     Возвращает (is_banned, reason).
     """
-    ban_info = cache.get(f'{FP_BAN_KEY}{fingerprint}')
+    ban_info = _cache_get(f'{FP_BAN_KEY}{fingerprint}')
     if ban_info:
         return True, ban_info.get('reason', 'banned')
     return False, None
@@ -284,8 +306,8 @@ def ban_fingerprint(fingerprint: str, reason: str, duration_hours: int = None):
     
     # Увеличиваем счётчик нарушений
     violations_key = f'{FP_VIOLATIONS_KEY}{fingerprint}'
-    violations = cache.get(violations_key, 0) + 1
-    cache.set(violations_key, violations, timeout=30 * 24 * 3600)  # 30 дней
+    violations = _cache_get(violations_key, 0) + 1
+    _cache_set(violations_key, violations, timeout=30 * 24 * 3600)  # 30 дней
     
     # Перманентный бан после многократных нарушений
     if violations >= BOT_DETECTION_CONFIG['permanent_ban_after_violations']:
@@ -299,13 +321,13 @@ def ban_fingerprint(fingerprint: str, reason: str, duration_hours: int = None):
         'violations': violations,
     }
     
-    cache.set(f'{FP_BAN_KEY}{fingerprint}', ban_info, timeout=duration_hours * 3600)
+    _cache_set(f'{FP_BAN_KEY}{fingerprint}', ban_info, timeout=duration_hours * 3600)
     logger.warning(f"Fingerprint banned: {fingerprint[:8]}..., reason={reason}, duration={duration_hours}h")
 
 
 def unban_fingerprint(fingerprint: str):
     """Разбанивает fingerprint (для админки)."""
-    cache.delete(f'{FP_BAN_KEY}{fingerprint}')
+    _cache_delete(f'{FP_BAN_KEY}{fingerprint}')
     logger.info(f"Fingerprint unbanned: {fingerprint[:8]}...")
 
 
@@ -322,7 +344,7 @@ def check_registration_limit(fingerprint: str) -> bool:
     window = BOT_DETECTION_CONFIG['registration_window_hours'] * 3600
     max_regs = BOT_DETECTION_CONFIG['max_registrations_per_fingerprint']
     
-    count = cache.get(key, 0)
+    count = _cache_get(key, 0)
     if count >= max_regs:
         return False
     return True
@@ -333,8 +355,8 @@ def record_registration(fingerprint: str):
     key = f'{FP_REGISTRATIONS_KEY}{fingerprint}'
     window = BOT_DETECTION_CONFIG['registration_window_hours'] * 3600
     
-    count = cache.get(key, 0)
-    cache.set(key, count + 1, timeout=window)
+    count = _cache_get(key, 0)
+    _cache_set(key, count + 1, timeout=window)
 
 
 def check_failed_login_limit(fingerprint: str) -> bool:
@@ -346,7 +368,7 @@ def check_failed_login_limit(fingerprint: str) -> bool:
     window = BOT_DETECTION_CONFIG['failed_login_window_hours'] * 3600
     max_fails = BOT_DETECTION_CONFIG['max_failed_logins_per_fingerprint']
     
-    count = cache.get(key, 0)
+    count = _cache_get(key, 0)
     if count >= max_fails:
         return False
     return True
@@ -357,13 +379,13 @@ def record_failed_login(fingerprint: str):
     key = f'{FP_FAILED_LOGINS_KEY}{fingerprint}'
     window = BOT_DETECTION_CONFIG['failed_login_window_hours'] * 3600
     
-    count = cache.get(key, 0)
-    cache.set(key, count + 1, timeout=window)
+    count = _cache_get(key, 0)
+    _cache_set(key, count + 1, timeout=window)
 
 
 def reset_failed_logins(fingerprint: str):
     """Сбрасывает счётчик неудачных логинов (после успешного входа)."""
-    cache.delete(f'{FP_FAILED_LOGINS_KEY}{fingerprint}')
+    _cache_delete(f'{FP_FAILED_LOGINS_KEY}{fingerprint}')
 
 
 # ============================================================================
