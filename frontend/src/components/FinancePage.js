@@ -409,7 +409,6 @@ const TransactionHistoryModal = ({ isOpen, onClose, wallet }) => {
             loadTransactions();
         }
     }, [isOpen, wallet]);
-    };
     
     const getTypeLabel = (type) => {
         const labels = {
