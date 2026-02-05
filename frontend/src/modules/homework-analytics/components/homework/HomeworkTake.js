@@ -484,7 +484,6 @@ const HomeworkTake = () => {
                     recordPaste(currentQuestion.id);
                   }
                 }}
-                }}
                 disabled={isLocked}
                 homeworkId={id}
               />
