@@ -96,7 +96,7 @@ const RegisterPage = () => {
     try {
       console.log('🔐 Начало процесса регистрации...');
       // reCAPTCHA отключена
-      const recaptchaToken = null;
+      // const recaptchaToken = null;
 
       console.log('📤 Регистрация через auth.register...');
       const resolvedRole = await register({

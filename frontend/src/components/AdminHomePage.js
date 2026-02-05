@@ -279,52 +279,52 @@ const AdminHomePage = () => {
           </h2>
         </div>
         <nav className="admin-sidebar-nav">
-          <a className="admin-nav-item active">
+          <button type="button" className="admin-nav-item active">
             <span className="admin-nav-icon">{Icons.dashboard}</span>
             Dashboard
-          </a>
-          <a className="admin-nav-item" onClick={() => setShowTeachersManage(true)}>
+          </button>
+          <button type="button" className="admin-nav-item" onClick={() => setShowTeachersManage(true)}>
             <span className="admin-nav-icon">{Icons.teachers}</span>
             Учителя
-          </a>
-          <a className="admin-nav-item" onClick={() => setShowStudentsManage(true)}>
+          </button>
+          <button type="button" className="admin-nav-item" onClick={() => setShowStudentsManage(true)}>
             <span className="admin-nav-icon">{Icons.students}</span>
             Ученики
-          </a>
-          <a className="admin-nav-item" onClick={() => setShowStorageModal(true)}>
+          </button>
+          <button type="button" className="admin-nav-item" onClick={() => setShowStorageModal(true)}>
             <span className="admin-nav-icon">{Icons.storage}</span>
             Хранилище
-          </a>
-          <a className="admin-nav-item" onClick={() => setShowReferrals(true)}>
+          </button>
+          <button type="button" className="admin-nav-item" onClick={() => setShowReferrals(true)}>
             <span className="admin-nav-icon">{Icons.referrals}</span>
             Рефералы
-          </a>
-          <a className="admin-nav-item" onClick={() => setShowBusinessMetrics(true)}>
+          </button>
+          <button type="button" className="admin-nav-item" onClick={() => setShowBusinessMetrics(true)}>
             <span className="admin-nav-icon">{Icons.metrics}</span>
             Метрики
-          </a>
-          <a className="admin-nav-item" onClick={() => setShowCohortRetention(true)}>
+          </button>
+          <button type="button" className="admin-nav-item" onClick={() => setShowCohortRetention(true)}>
             <span className="admin-nav-icon">{Icons.analytics}</span>
             Удержание
-          </a>
-          <a className="admin-nav-item" onClick={() => setShowErrors(true)}>
+          </button>
+          <button type="button" className="admin-nav-item" onClick={() => setShowErrors(true)}>
             <span className="admin-nav-icon">{Icons.errors}</span>
             Ошибки
-          </a>
-          <a className="admin-nav-item" onClick={() => setShowStatusMessages(true)}>
+          </button>
+          <button type="button" className="admin-nav-item" onClick={() => setShowStatusMessages(true)}>
             <span className="admin-nav-icon">{Icons.messages}</span>
             Сообщения
-          </a>
-          <a className="admin-nav-item" onClick={() => setShowSystemSettings(true)}>
+          </button>
+          <button type="button" className="admin-nav-item" onClick={() => setShowSystemSettings(true)}>
             <span className="admin-nav-icon">{Icons.settings}</span>
             Настройки
-          </a>
+          </button>
         </nav>
         <div className="admin-sidebar-footer">
-          <a className="admin-nav-item logout" onClick={handleLogout}>
+          <button type="button" className="admin-nav-item logout" onClick={handleLogout}>
             <span className="admin-nav-icon">{Icons.logout}</span>
             Выйти
-          </a>
+          </button>
         </div>
       </aside>
 

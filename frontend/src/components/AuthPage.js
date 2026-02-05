@@ -147,7 +147,7 @@ const AuthPage = () => {
     // Поддержка СНГ: +7 (РФ/Казахстан), +380 (Украина), +375 (Беларусь), 
     // +998 (Узбекистан), +996 (Кыргызстан), +992 (Таджикистан), +994 (Азербайджан),
     // +995 (Грузия), +374 (Армения), +373 (Молдова), +993 (Туркменистан)
-    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+    const cleaned = phone.replace(/[\s\-()]/g, '');
     const phoneRegex = /^(\+7|8|7|\+380|\+375|\+998|\+996|\+992|\+994|\+995|\+374|\+373|\+993)[0-9]{9,10}$/;
     if (!phoneRegex.test(cleaned)) return 'Неверный формат телефона';
     return '';
@@ -277,7 +277,7 @@ const AuthPage = () => {
       }
       
       // reCAPTCHA отключена
-      const recaptchaToken = null;
+      // const recaptchaToken = null;
 
       const resolvedRole = await login({
         email: formData.email?.trim().toLowerCase(),
@@ -485,6 +485,7 @@ const AuthPage = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const openTelegramResetFlow = () => {
     if (loading || blocked) {
       return;
