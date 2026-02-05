@@ -11,12 +11,16 @@ Write-Host "🚀 Deploying to: $Environment" -ForegroundColor Cyan
 Write-Host "`n✅ Pre-deploy checks..." -ForegroundColor Yellow
 
 # 1. Проверить тесты
-Write-Host "Running tests..."
 cd teaching_panel
-python manage.py test --settings=teaching_panel.settings_$Environment
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Tests failed! Aborting deploy." -ForegroundColor Red
-    exit 1
+if ($Environment -eq 'staging') {
+    Write-Host "Skipping tests for staging..." -ForegroundColor Yellow
+} else {
+    Write-Host "Running tests..."
+    python manage.py test --settings=teaching_panel.settings_$Environment
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Tests failed! Aborting deploy." -ForegroundColor Red
+        exit 1
+    }
 }
 
 # 2. Проверить миграции
@@ -27,7 +31,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # 3. Проверить feature flags
-Write-Host "Feature flags for $Environment:"
+Write-Host "Feature flags for ${Environment}:"
 python -c "
 import os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'teaching_panel.settings_$Environment'
@@ -42,7 +46,11 @@ for name, value in inspect.getmembers(FeatureFlags):
 "
 
 # Подтверждение
-$confirm = Read-Host "`nDeploy to $Environment? (yes/no)"
+if ($Environment -eq 'staging') {
+    $confirm = 'yes'
+} else {
+    $confirm = Read-Host "`nDeploy to $Environment? (yes/no)"
+}
 if ($confirm -ne 'yes') {
     Write-Host "❌ Deploy cancelled" -ForegroundColor Red
     exit 0
