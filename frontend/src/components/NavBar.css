@@ -1103,6 +1103,41 @@ a.nav-link.active {
     visibility: visible !important;
     opacity: 1 !important;
   }
+
+  /* Профильный dropdown на мобильных - увеличенные тач-зоны */
+  .profile-dropdown {
+    min-width: min(280px, calc(100vw - 32px)) !important;
+    right: 16px !important;
+    border-radius: 16px;
+    padding: 0.75rem;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  }
+
+  .profile-dropdown .dropdown-item {
+    padding: 0.9rem 1rem !important;
+    font-size: 1rem !important;
+    border-radius: 12px;
+    min-height: 48px; /* Минимальная высота для тач-зон */
+  }
+
+  .profile-dropdown .dropdown-header {
+    padding: 0.75rem 1rem 0.5rem;
+  }
+
+  .profile-dropdown .user-name {
+    font-size: 1.1rem;
+  }
+
+  /* Аватарка на мобильных - увеличенная тач-зона */
+  .profile-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .profile-button .avatar {
+    width: 38px;
+    height: 38px;
+  }
 }
 
 

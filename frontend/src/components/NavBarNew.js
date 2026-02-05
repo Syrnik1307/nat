@@ -80,6 +80,7 @@ const NavBar = () => {
   const [messages, setMessages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const profileButtonRef = useRef(null);
+  const profileDropdownRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
   const lessonsDropdownRef = useRef(null);
   const lessonsButtonRef = useRef(null);
@@ -531,7 +532,25 @@ const NavBar = () => {
     window.addEventListener('scroll', updateProfileMenuPosition);
     window.addEventListener('resize', updateProfileMenuPosition);
 
+    // Закрытие при клике снаружи
+    const handleClickOutside = (event) => {
+      const target = event.target;
+      const clickInsideButton = profileButtonRef.current && profileButtonRef.current.contains(target);
+      const clickInsideDropdown = profileDropdownRef.current && profileDropdownRef.current.contains(target);
+      
+      if (!clickInsideButton && !clickInsideDropdown) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    // Небольшая задержка чтобы не закрыть сразу
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 10);
+
     return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleClickOutside);
       window.removeEventListener('scroll', updateProfileMenuPosition);
       window.removeEventListener('resize', updateProfileMenuPosition);
     };
@@ -667,6 +686,7 @@ const NavBar = () => {
 
               {showProfileMenu && createPortal(
                 <div
+                  ref={profileDropdownRef}
                   className="profile-dropdown tp-allow-fixed"
                   style={{ position: 'fixed', top: menuPosition.top, right: menuPosition.right, zIndex: 99999, backgroundColor: '#fff' }}
                   onMouseDown={(e) => e.stopPropagation()}
