@@ -166,11 +166,12 @@ if os.environ.get('DATABASE_URL') and HAS_DJ_DATABASE_URL:
         )
     }
     
-    # Add PostgreSQL-specific options for connection stability
-    DATABASES['default']['OPTIONS'] = {
-        'connect_timeout': 10,  # 10 seconds to establish connection
-        'options': '-c statement_timeout=30000',  # 30 seconds max query time
-    }
+    # Add PostgreSQL-specific options for connection stability (only for PostgreSQL)
+    if DATABASES['default'].get('ENGINE', '').endswith('postgresql'):
+        DATABASES['default']['OPTIONS'] = {
+            'connect_timeout': 10,  # 10 seconds to establish connection
+            'options': '-c statement_timeout=30000',  # 30 seconds max query time
+        }
 else:
     # Development: Use SQLite
     DATABASES = {
