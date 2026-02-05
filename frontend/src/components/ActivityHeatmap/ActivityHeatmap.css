@@ -1,0 +1,781 @@
+/*
+ * ✨ ACTIVITY HEATMAP - GitHub-style Activity Visualization
+ * Минималистичный дизайн с плавными анимациями
+ * Следует FRONTEND_SMOOTHNESS_RULES.md
+ */
+
+/* ========================================
+   📦 КОНТЕЙНЕР
+   ======================================== */
+
+.activity-heatmap {
+  width: 100%;
+  padding: 0;
+}
+
+.activity-heatmap__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.activity-heatmap__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.activity-heatmap__period-selector {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-surface);
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.activity-heatmap__period-btn {
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--transition-hover);
+}
+
+.activity-heatmap__period-btn:hover {
+  color: var(--text-main);
+  background: var(--bg-hover);
+}
+
+.activity-heatmap__period-btn--active {
+  background: var(--bg-paper);
+  color: var(--color-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* ========================================
+   📊 GRID КАРТЫ
+   ======================================== */
+
+.heatmap-container {
+  overflow-x: auto;
+  padding: 8px 0;
+  margin: 0 -4px;
+  /* Скрываем скроллбар на десктопе, но оставляем функциональность */
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-surface) transparent;
+}
+
+.heatmap-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.heatmap-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.heatmap-container::-webkit-scrollbar-thumb {
+  background: var(--bg-surface);
+  border-radius: 3px;
+}
+
+.heatmap-grid-wrapper {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  min-width: max-content;
+}
+
+.heatmap-months {
+  display: flex;
+  margin-bottom: 4px;
+  margin-left: 32px;
+  font-size: 0.6875rem;
+  color: var(--text-light);
+  gap: 0;
+}
+
+.heatmap-month-label {
+  text-align: left;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.heatmap-body {
+  display: flex;
+  gap: 2px;
+}
+
+.heatmap-weekdays {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: 4px;
+  width: 24px;
+}
+
+.heatmap-weekday-label {
+  font-size: 0.625rem;
+  color: var(--text-light);
+  height: 11px;
+  line-height: 11px;
+  text-align: right;
+  font-weight: 500;
+}
+
+.heatmap-columns {
+  display: flex;
+  gap: 3px;
+}
+
+.heatmap-column {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ========================================
+   🟩 КВАДРАТИКИ (CELLS)
+   ======================================== */
+
+.heatmap-cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  
+  /* Performance: используем transform + opacity для GPU */
+  transition: 
+    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.15s ease-out,
+    z-index 0s;
+  will-change: transform;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.3);
+  z-index: 10;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.heatmap-cell:active {
+  transform: scale(1.1);
+}
+
+/* Уровни интенсивности - используем бренд цвета (Indigo) */
+.heatmap-cell--level-0 {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+}
+
+.heatmap-cell--level-1 {
+  background-color: var(--primary-100);
+  border: 1px solid var(--primary-200);
+}
+
+.heatmap-cell--level-2 {
+  background-color: var(--primary-200);
+  border: 1px solid var(--primary-300);
+}
+
+.heatmap-cell--level-3 {
+  background-color: var(--primary-400);
+  border: 1px solid var(--primary-500);
+}
+
+.heatmap-cell--level-4 {
+  background-color: var(--primary-600);
+  border: 1px solid var(--primary-700);
+}
+
+/* Пустая ячейка (будущие даты) */
+.heatmap-cell--empty {
+  background-color: transparent;
+  border: none;
+  cursor: default;
+}
+
+.heatmap-cell--empty:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Сегодняшний день */
+.heatmap-cell--today {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+/* Выбранный день */
+.heatmap-cell--selected {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  animation: pulse-selected 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-selected {
+  0%, 100% { outline-color: var(--color-primary); }
+  50% { outline-color: var(--primary-300); }
+}
+
+/* ========================================
+   📜 ЛЕГЕНДА
+   ======================================== */
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 0.6875rem;
+  color: var(--text-light);
+}
+
+.heatmap-legend-label {
+  margin-right: 4px;
+}
+
+.heatmap-legend-cells {
+  display: flex;
+  gap: 2px;
+}
+
+.heatmap-legend-cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+}
+
+/* ========================================
+   📈 СТАТИСТИКА (КАРТОЧКИ)
+   ======================================== */
+
+.heatmap-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.heatmap-stat-card {
+  background: var(--bg-paper);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all var(--transition-hover);
+}
+
+.heatmap-stat-card:hover {
+  border-color: var(--primary-200);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.08);
+}
+
+.heatmap-stat-card__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.heatmap-stat-card__icon--streak {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #b45309;
+}
+
+.heatmap-stat-card__icon--total {
+  background: linear-gradient(135deg, var(--primary-100) 0%, var(--primary-200) 100%);
+  color: var(--primary-600);
+}
+
+.heatmap-stat-card__icon--days {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #16a34a;
+}
+
+.heatmap-stat-card__icon--avg {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  color: #4f46e5;
+}
+
+.heatmap-stat-card__value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.heatmap-stat-card__label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.heatmap-stat-card__sublabel {
+  font-size: 0.75rem;
+  color: var(--text-light);
+}
+
+/* ========================================
+   📊 BREAKDOWN ПО ТИПАМ СОБЫТИЙ
+   ======================================== */
+
+.heatmap-breakdown {
+  margin-top: 24px;
+  background: var(--bg-paper);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.heatmap-breakdown__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 16px 0;
+}
+
+.heatmap-breakdown__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.heatmap-breakdown__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.heatmap-breakdown__bar-wrapper {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-surface);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.heatmap-breakdown__bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-400) 0%, var(--primary-600) 100%);
+  border-radius: 4px;
+  transition: width 0.5s var(--ease-out-soft);
+}
+
+.heatmap-breakdown__label {
+  font-size: 0.8125rem;
+  color: var(--text-main);
+  font-weight: 500;
+  min-width: 140px;
+}
+
+.heatmap-breakdown__value {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  min-width: 60px;
+  text-align: right;
+}
+
+/* ========================================
+   🎭 SKELETON LOADER
+   ======================================== */
+
+.heatmap-skeleton {
+  /* Имитируем структуру heatmap */
+}
+
+.heatmap-skeleton__grid {
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+}
+
+.heatmap-skeleton__column {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.heatmap-skeleton__cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 0%,
+    var(--bg-hover) 50%,
+    var(--bg-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.heatmap-skeleton__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.heatmap-skeleton__stat-card {
+  background: var(--bg-paper);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 16px;
+  height: 100px;
+}
+
+.heatmap-skeleton__stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 0%,
+    var(--bg-hover) 50%,
+    var(--bg-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  margin-bottom: 12px;
+}
+
+.heatmap-skeleton__stat-value {
+  width: 60%;
+  height: 24px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 0%,
+    var(--bg-hover) 50%,
+    var(--bg-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  margin-bottom: 8px;
+}
+
+.heatmap-skeleton__stat-label {
+  width: 80%;
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 0%,
+    var(--bg-hover) 50%,
+    var(--bg-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ========================================
+   🎬 ENTRANCE ANIMATION
+   ======================================== */
+
+.heatmap-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.heatmap-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: 
+    opacity 0.4s var(--ease-out-soft),
+    transform 0.4s var(--ease-out-soft);
+}
+
+/* ========================================
+   📱 MOBILE RESPONSIVE
+   ======================================== */
+
+@media (max-width: 768px) {
+  .activity-heatmap__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .heatmap-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .heatmap-legend {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .heatmap-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .heatmap-stat-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .heatmap-stat-card__icon {
+    margin-bottom: 0;
+  }
+  
+  .heatmap-stat-card__content {
+    flex: 1;
+  }
+}
+
+/* ========================================
+   🖼️ MODAL ДЕТАЛИ ДНЯ
+   ======================================== */
+
+.day-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: 
+    opacity 0.2s var(--ease-out-soft),
+    visibility 0.2s;
+}
+
+.day-modal-overlay--visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.day-modal {
+  background: var(--bg-paper);
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 400px;
+  width: 100%;
+  max-height: 80vh;
+  overflow: hidden;
+  transform: scale(0.95) translateY(10px);
+  transition: transform 0.3s var(--ease-spring);
+}
+
+.day-modal-overlay--visible .day-modal {
+  transform: scale(1) translateY(0);
+}
+
+.day-modal__header {
+  padding: 20px;
+  border-bottom: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.day-modal__date {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.day-modal__score {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.day-modal__close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bg-surface);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: all var(--transition-hover);
+}
+
+.day-modal__close:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.day-modal__content {
+  padding: 20px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.day-modal__section {
+  margin-bottom: 20px;
+}
+
+.day-modal__section:last-child {
+  margin-bottom: 0;
+}
+
+.day-modal__section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.day-modal__activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.day-modal__activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-surface);
+  border-radius: 10px;
+}
+
+.day-modal__activity-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.day-modal__activity-icon--lesson {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #2563eb;
+}
+
+.day-modal__activity-icon--homework {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #16a34a;
+}
+
+.day-modal__activity-icon--login {
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+  color: #9333ea;
+}
+
+.day-modal__activity-icon--recording {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #d97706;
+}
+
+.day-modal__activity-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.day-modal__activity-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: 2px;
+}
+
+.day-modal__activity-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.day-modal__activity-score {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.day-modal__empty {
+  text-align: center;
+  padding: 32px 20px;
+  color: var(--text-muted);
+}
+
+.day-modal__empty-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  opacity: 0.5;
+}
+
+/* ========================================
+   🔘 FILTER BUTTONS
+   ======================================== */
+
+.heatmap-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.heatmap-filter-btn {
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-paper);
+  color: var(--text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition-hover);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.heatmap-filter-btn:hover {
+  border-color: var(--primary-200);
+  color: var(--text-main);
+}
+
+.heatmap-filter-btn--active {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+  color: var(--color-primary);
+}
+
+.heatmap-filter-btn__count {
+  background: var(--bg-surface);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.heatmap-filter-btn--active .heatmap-filter-btn__count {
+  background: var(--primary-100);
+}

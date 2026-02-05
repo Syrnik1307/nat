@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from schedule.models import Lesson, Group
 
+
 class ControlPoint(models.Model):
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='control_points', limit_choices_to={'role': 'teacher'})
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='control_points')

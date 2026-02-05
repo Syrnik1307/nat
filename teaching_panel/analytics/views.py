@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 from .models import ControlPoint, ControlPointResult, StudentAIReport, StudentBehaviorReport
+from accounts.models import StudentActivityLog
 from .serializers import (
     ControlPointSerializer, 
     ControlPointResultSerializer,
@@ -3053,3 +3054,205 @@ class GroupDetailAnalyticsViewSet(viewsets.ViewSet):
             'group_name': group.name,
             'students': result,
         })
+
+
+class StudentActivityHeatmapViewSet(viewsets.ViewSet):
+    """
+    GitHub-style Activity Heatmap для студентов.
+    Визуализирует консистентность учёбы за последние 365 дней.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    @action(detail=False, methods=['get'], url_path='my')
+    def my_heatmap(self, request):
+        """
+        GET /api/analytics/heatmap/my/
+        Возвращает тепловую карту активности текущего студента.
+        """
+        user = request.user
+        
+        # Студенты видят только свою карту, учителя/админы могут запросить ?student_id=
+        student_id = request.query_params.get('student_id')
+        
+        if student_id and user.role in ['teacher', 'admin']:
+            student = get_object_or_404(CustomUser, id=student_id, role='student')
+        elif user.role == 'student':
+            student = user
+        else:
+            return Response({'detail': 'student_id required for non-students'}, status=400)
+        
+        return self._generate_heatmap_response(student)
+    
+    @action(detail=True, methods=['get'], url_path='student')
+    def student_heatmap(self, request, pk=None):
+        """
+        GET /api/analytics/heatmap/{student_id}/student/
+        Возвращает тепловую карту для конкретного студента (для учителей/админов).
+        """
+        user = request.user
+        
+        if user.role not in ['teacher', 'admin']:
+            return Response({'detail': 'Not allowed'}, status=403)
+        
+        student = get_object_or_404(CustomUser, id=pk, role='student')
+        return self._generate_heatmap_response(student)
+    
+    def _generate_heatmap_response(self, student):
+        """
+        Генерирует данные тепловой карты для студента.
+        Использует агрегацию на уровне БД для производительности.
+        
+        Модель StudentActivityLog хранит вес в details.weight JSON.
+        Используем подсчёт событий с учётом типов.
+        """
+        from django.db.models.functions import TruncDate
+        from datetime import timedelta
+        
+        # Маппинг весов для разных типов событий
+        EVENT_WEIGHTS = {
+            'login': 1,
+            'homework_submit': 5,
+            'homework_start': 2,
+            'answer_save': 1,
+            'lesson_join': 10,
+            'recording_watch': 3,
+            'chat_message': 2,
+            'question_ask': 3,
+        }
+        
+        today = timezone.now().date()
+        start_date = today - timedelta(days=365)
+        
+        # === Агрегация на уровне БД ===
+        # Группируем по дате и типу события, считаем количество
+        activity_by_date_type = (
+            StudentActivityLog.objects
+            .filter(student=student, created_at__date__gte=start_date)
+            .annotate(date=TruncDate('created_at'))
+            .values('date', 'action_type')
+            .annotate(event_count=Count('id'))
+            .order_by('date')
+        )
+        
+        # Вычисляем взвешенные очки по датам
+        score_map = {}
+        for entry in activity_by_date_type:
+            date = entry['date']
+            action_type = entry['action_type']
+            count = entry['event_count']
+            weight = EVENT_WEIGHTS.get(action_type, 1)
+            
+            if date not in score_map:
+                score_map[date] = 0
+            score_map[date] += count * weight
+        
+        # === Заполнение нулями + расчёт streaks ===
+        heatmap_data = []
+        current_streak = 0
+        longest_streak = 0
+        temp_streak = 0
+        total_contributions = 0
+        
+        current_date = start_date
+        while current_date <= today:
+            score = score_map.get(current_date, 0)
+            level = self._calculate_level(score)
+            
+            heatmap_data.append({
+                'date': current_date.isoformat(),
+                'count': score,
+                'level': level,
+            })
+            
+            # Подсчёт contributions
+            total_contributions += score
+            
+            # Расчёт streaks
+            if score > 0:
+                temp_streak += 1
+                longest_streak = max(longest_streak, temp_streak)
+            else:
+                temp_streak = 0
+            
+            current_date += timedelta(days=1)
+        
+        # Current streak - последовательность дней с активностью, заканчивающаяся сегодня
+        current_streak = 0
+        for entry in reversed(heatmap_data):
+            if entry['count'] > 0:
+                current_streak += 1
+            else:
+                break
+        
+        # === Статистика по типам событий ===
+        event_breakdown = (
+            StudentActivityLog.objects
+            .filter(student=student, created_at__date__gte=start_date)
+            .values('action_type')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+        
+        # Добавляем веса и читаемые названия
+        event_breakdown_enriched = []
+        ACTION_LABELS = {
+            'login': 'Вход в систему',
+            'homework_submit': 'Сдача ДЗ',
+            'homework_start': 'Начало ДЗ',
+            'answer_save': 'Сохранение ответа',
+            'lesson_join': 'Посещение занятия',
+            'recording_watch': 'Просмотр записи',
+            'chat_message': 'Сообщение в чат',
+            'question_ask': 'Вопрос',
+        }
+        for item in event_breakdown:
+            action = item['action_type']
+            count = item['count']
+            weight = EVENT_WEIGHTS.get(action, 1)
+            event_breakdown_enriched.append({
+                'action_type': action,
+                'label': ACTION_LABELS.get(action, action),
+                'count': count,
+                'weight': weight,
+                'total_score': count * weight,
+            })
+        
+        return Response({
+            'student_id': student.id,
+            'student_name': student.get_full_name(),
+            'stats': {
+                'total_contributions': total_contributions,
+                'current_streak': current_streak,
+                'longest_streak': longest_streak,
+                'days_active': len([d for d in heatmap_data if d['count'] > 0]),
+                'avg_daily_score': round(total_contributions / 365, 2) if total_contributions else 0,
+            },
+            'event_breakdown': event_breakdown_enriched,
+            'heatmap_data': heatmap_data,
+        })
+    
+    def _calculate_level(self, count: int) -> int:
+        """
+        Преобразует счёт в уровень (0-4) для визуализации.
+        Логика основана на весах:
+        - LOGIN = 1
+        - HOMEWORK_SUBMIT = 5
+        - LESSON_ATTENDED = 10
+        
+        Уровни:
+        - 0: нет активности
+        - 1: минимальная (1-3 балла, например 1-3 входа)
+        - 2: низкая (4-9 баллов, например вход + сдача ДЗ)
+        - 3: средняя (10-19 баллов, например посещение занятия)
+        - 4: высокая (20+ баллов, комбинация действий)
+        """
+        if count == 0:
+            return 0
+        elif count <= 3:
+            return 1
+        elif count <= 9:
+            return 2
+        elif count <= 19:
+            return 3
+        else:
+            return 4
