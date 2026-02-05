@@ -25,8 +25,12 @@ from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
 from rest_framework.exceptions import Throttled, PermissionDenied
+import os
 
 logger = logging.getLogger(__name__)
+
+# Флаг для отключения bot protection (для staging/dev)
+BOT_PROTECTION_DISABLED = os.environ.get('DISABLE_BOT_PROTECTION', '').lower() in ('1', 'true', 'yes')
 
 
 def _cache_get(key, default=None):
@@ -293,6 +297,9 @@ def is_fingerprint_banned(fingerprint: str) -> Tuple[bool, Optional[str]]:
     Проверяет, забанен ли fingerprint.
     Возвращает (is_banned, reason).
     """
+    if BOT_PROTECTION_DISABLED:
+        return False, None
+    
     ban_info = _cache_get(f'{FP_BAN_KEY}{fingerprint}')
     if ban_info:
         return True, ban_info.get('reason', 'banned')
@@ -340,6 +347,9 @@ def check_registration_limit(fingerprint: str) -> bool:
     Проверяет лимит регистраций с одного fingerprint.
     Возвращает True если лимит НЕ превышен.
     """
+    if BOT_PROTECTION_DISABLED:
+        return True
+    
     key = f'{FP_REGISTRATIONS_KEY}{fingerprint}'
     window = BOT_DETECTION_CONFIG['registration_window_hours'] * 3600
     max_regs = BOT_DETECTION_CONFIG['max_registrations_per_fingerprint']
@@ -364,6 +374,9 @@ def check_failed_login_limit(fingerprint: str) -> bool:
     Проверяет лимит неудачных попыток входа.
     Возвращает True если лимит НЕ превышен.
     """
+    if BOT_PROTECTION_DISABLED:
+        return True
+    
     key = f'{FP_FAILED_LOGINS_KEY}{fingerprint}'
     window = BOT_DETECTION_CONFIG['failed_login_window_hours'] * 3600
     max_fails = BOT_DETECTION_CONFIG['max_failed_logins_per_fingerprint']
