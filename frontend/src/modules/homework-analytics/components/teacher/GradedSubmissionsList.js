@@ -186,10 +186,17 @@ const GradedSubmissionsList = () => {
               <div className="graded-group-items">
                 {items.map(sub => (
                   <div key={sub.id} className="graded-card">
-                    <div className="graded-card-score">
-                      <span style={{ color: getScoreColor(sub.total_score, sub.max_score) }}>
-                        {sub.total_score ?? '—'} / {sub.max_score}
-                      </span>
+                    <div className="graded-card-header">
+                      <div className="graded-card-score">
+                        <span style={{ color: getScoreColor(sub.total_score, sub.max_score) }}>
+                          {sub.total_score ?? '—'} / {sub.max_score}
+                        </span>
+                      </div>
+                      {(sub.has_paste_flags || sub.total_tab_switches > 5) && (
+                        <span className="graded-card-alert" title={`Вставки: ${sub.paste_count || 0}, переключений: ${sub.total_tab_switches || 0}`}>
+                          !
+                        </span>
+                      )}
                     </div>
                     <div className="graded-card-title">{sub.homework_title}</div>
                     <div className="graded-card-student">{sub.student_name}</div>

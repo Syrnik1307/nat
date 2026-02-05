@@ -66,6 +66,50 @@ class HomeworkAutoScoreTests(TestCase):
         self.assertTrue(ans.needs_manual_review)
         self.assertIsNone(ans.auto_score)
 
+    def test_text_decimal_comma_vs_dot(self):
+        """4,5 и 4.5 должны считаться одинаковыми ответами."""
+        q = Question.objects.create(
+            homework=self.hw, prompt='Чему равно 9/2?', 
+            question_type='TEXT', points=5, order=5,
+            config={'correctAnswer': '4.5'}
+        )
+        submission = StudentSubmission.objects.create(homework=self.hw, student=self.student)
+        # Ученик вводит запятую вместо точки
+        ans = Answer.objects.create(submission=submission, question=q, text_answer='4,5')
+        ans.evaluate()
+        self.assertEqual(ans.auto_score, 5)
+        self.assertFalse(ans.needs_manual_review)
+
+    def test_text_decimal_dot_vs_comma(self):
+        """Учитель указал запятую, ученик ввёл точку."""
+        q = Question.objects.create(
+            homework=self.hw, prompt='Чему равно 7/2?', 
+            question_type='TEXT', points=5, order=6,
+            config={'correctAnswer': '3,5'}
+        )
+        submission = StudentSubmission.objects.create(homework=self.hw, student=self.student)
+        ans = Answer.objects.create(submission=submission, question=q, text_answer='3.5')
+        ans.evaluate()
+        self.assertEqual(ans.auto_score, 5)
+        self.assertFalse(ans.needs_manual_review)
+
+    def test_fill_blanks_decimal_normalization(self):
+        """FILL_BLANKS: 2,5 и 2.5 должны быть эквивалентны."""
+        import json
+        q = Question.objects.create(
+            homework=self.hw, prompt='Заполни пропуски', 
+            question_type='FILL_BLANKS', points=10, order=7,
+            config={'answers': ['2.5', '3,14']}
+        )
+        submission = StudentSubmission.objects.create(homework=self.hw, student=self.student)
+        # Ученик вводит с запятой и с точкой
+        ans = Answer.objects.create(
+            submission=submission, question=q, 
+            text_answer=json.dumps(['2,5', '3.14'])
+        )
+        ans.evaluate()
+        self.assertEqual(ans.auto_score, 10)
+
 
 class SubmissionApiGuardsTests(TestCase):
     def setUp(self):

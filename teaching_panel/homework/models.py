@@ -227,6 +227,22 @@ class StudentSubmission(models.Model):
         return total
 
 
+def normalize_answer_for_comparison(text: str) -> str:
+    """Нормализует текстовый ответ для сравнения.
+    
+    - Приводит к нижнему регистру
+    - Убирает лишние пробелы
+    - Заменяет запятые на точки в числах (4,5 → 4.5)
+    - Нормализует десятичные дроби
+    """
+    import re
+    text = text.strip().lower()
+    # Заменяем запятую на точку в числах (4,5 → 4.5, -3,14 → -3.14)
+    # Паттерн: цифра, запятая, цифра
+    text = re.sub(r'(\d),(\d)', r'\1.\2', text)
+    return text
+
+
 class Answer(models.Model):
     submission = models.ForeignKey(StudentSubmission, on_delete=models.CASCADE, related_name='answers')
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='answers')
@@ -260,6 +276,16 @@ class Answer(models.Model):
         default=0,
         help_text='Сколько раз ученик изменял ответ (самокоррекция)'
     )
+    
+    # === ТЕЛЕМЕТРИЯ ДЛЯ ДЕТЕКТОРА ХАЛТУРЫ ===
+    is_pasted = models.BooleanField(
+        default=False,
+        help_text='Был ли текст вставлен из буфера обмена'
+    )
+    tab_switches = models.IntegerField(
+        default=0,
+        help_text='Количество переключений вкладок во время ответа'
+    )
 
     class Meta:
         verbose_name = 'ответ'
@@ -287,8 +313,8 @@ class Answer(models.Model):
             student_answer = (self.text_answer or '').strip()
             
             if correct_answer:
-                # Есть эталонный ответ - сравниваем (регистронезависимо)
-                if student_answer.lower() == correct_answer.lower():
+                # Есть эталонный ответ - сравниваем (нормализация: регистр + запятая/точка)
+                if normalize_answer_for_comparison(student_answer) == normalize_answer_for_comparison(correct_answer):
                     self.auto_score = q.points
                     self.needs_manual_review = False
                 else:
@@ -366,8 +392,8 @@ class Answer(models.Model):
                 
                 for subq in sub_questions:
                     subq_id = str(subq.get('id', ''))
-                    correct_answer = subq.get('answer', '').strip().lower()
-                    student_answer = student_answers.get(subq_id, '').strip().lower()
+                    correct_answer = normalize_answer_for_comparison(subq.get('answer', ''))
+                    student_answer = normalize_answer_for_comparison(student_answers.get(subq_id, ''))
                     
                     if correct_answer and student_answer == correct_answer:
                         correct_count += 1
@@ -450,8 +476,8 @@ class Answer(models.Model):
                 
                 for i, correct in enumerate(correct_answers):
                     if i < len(student_answers):
-                        student = student_answers[i].strip().lower()
-                        correct_normalized = correct.strip().lower()
+                        student = normalize_answer_for_comparison(student_answers[i])
+                        correct_normalized = normalize_answer_for_comparison(correct)
                         if student == correct_normalized:
                             correct_count += 1
                 

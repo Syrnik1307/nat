@@ -98,6 +98,10 @@ const HomeworkTake = () => {
     savingState,
     progress,
     isLocked,
+    // Telemetry
+    startQuestionTimer,
+    recordPaste,
+    recordTabSwitch,
     submission,
     reload,
   } = useHomeworkSession(id);
@@ -117,6 +121,27 @@ const HomeworkTake = () => {
       preloadAdjacentQuestionImages(questions, currentIndex);
     }
   }, [currentIndex, questions]);
+
+  // Запускаем таймер для текущего вопроса (телеметрия)
+  useEffect(() => {
+    if (currentQuestion?.id && !isLocked) {
+      startQuestionTimer(currentQuestion.id);
+    }
+  }, [currentQuestion?.id, isLocked, startQuestionTimer]);
+
+  // Отслеживаем переключение вкладок (телеметрия)
+  useEffect(() => {
+    if (isLocked) return;
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        recordTabSwitch();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isLocked, recordTabSwitch]);
 
   useEffect(() => {
     if (currentIndex >= questions.length) {
@@ -453,6 +478,12 @@ const HomeworkTake = () => {
                   if (!isLocked) {
                     recordAnswer(currentQuestion.id, value);
                   }
+                }}
+                onPaste={() => {
+                  if (!isLocked && currentQuestion?.id) {
+                    recordPaste(currentQuestion.id);
+                  }
+                }}
                 }}
                 disabled={isLocked}
                 homeworkId={id}

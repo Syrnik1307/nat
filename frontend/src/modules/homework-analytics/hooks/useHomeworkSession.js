@@ -232,10 +232,15 @@ const useHomeworkSession = (homeworkId, injectedService) => {
   const [answers, setAnswers] = useState(() => safeStorage.get(localDraftKey) || {});
   const [savingState, setSavingState] = useState({ status: 'idle', timestamp: null });
   
+  // Telemetry state: { questionId: { time_spent_seconds, is_pasted, tab_switches } }
+  const [telemetry, setTelemetry] = useState({});
+  
   // Refs
   const dirtyRef = useRef(false);
   const mountedRef = useRef(true);
   const submittingRef = useRef(false); // Предотвращаем двойную отправку
+  const questionStartTimeRef = useRef({}); // { questionId: timestamp } - когда начали отвечать
+  const currentQuestionIdRef = useRef(null); // Текущий вопрос для отслеживания времени
   
   useEffect(() => {
     mountedRef.current = true;
@@ -366,6 +371,87 @@ const useHomeworkSession = (homeworkId, injectedService) => {
   }, [localDraftKey]);
   
   // ============================================================================
+  // TELEMETRY FUNCTIONS
+  // ============================================================================
+  
+  /**
+   * Вызывать при переключении на вопрос (начинает отсчёт времени)
+   */
+  const startQuestionTimer = useCallback((questionId) => {
+    // Финализируем время предыдущего вопроса
+    const prevQid = currentQuestionIdRef.current;
+    if (prevQid && prevQid !== questionId && questionStartTimeRef.current[prevQid]) {
+      const elapsed = Math.round((Date.now() - questionStartTimeRef.current[prevQid]) / 1000);
+      if (elapsed > 0) {
+        setTelemetry(prev => ({
+          ...prev,
+          [prevQid]: {
+            ...prev[prevQid],
+            time_spent_seconds: (prev[prevQid]?.time_spent_seconds || 0) + elapsed,
+          }
+        }));
+      }
+      delete questionStartTimeRef.current[prevQid];
+    }
+    
+    // Начинаем таймер для нового вопроса
+    currentQuestionIdRef.current = questionId;
+    questionStartTimeRef.current[questionId] = Date.now();
+  }, []);
+  
+  /**
+   * Финализировать время для текущего вопроса (при submit)
+   */
+  const finalizeCurrentQuestionTime = useCallback(() => {
+    const qid = currentQuestionIdRef.current;
+    if (qid && questionStartTimeRef.current[qid]) {
+      const elapsed = Math.round((Date.now() - questionStartTimeRef.current[qid]) / 1000);
+      if (elapsed > 0) {
+        setTelemetry(prev => ({
+          ...prev,
+          [qid]: {
+            ...prev[qid],
+            time_spent_seconds: (prev[qid]?.time_spent_seconds || 0) + elapsed,
+          }
+        }));
+      }
+      delete questionStartTimeRef.current[qid];
+      currentQuestionIdRef.current = null;
+    }
+  }, []);
+  
+  /**
+   * Записать событие paste для вопроса
+   */
+  const recordPaste = useCallback((questionId) => {
+    setTelemetry(prev => ({
+      ...prev,
+      [questionId]: {
+        ...prev[questionId],
+        is_pasted: true,
+      }
+    }));
+    dirtyRef.current = true;
+  }, []);
+  
+  /**
+   * Записать переключение вкладки для текущего вопроса
+   */
+  const recordTabSwitch = useCallback(() => {
+    const qid = currentQuestionIdRef.current;
+    if (qid) {
+      setTelemetry(prev => ({
+        ...prev,
+        [qid]: {
+          ...prev[qid],
+          tab_switches: (prev[qid]?.tab_switches || 0) + 1,
+        }
+      }));
+      dirtyRef.current = true;
+    }
+  }, []);
+  
+  // ============================================================================
   // SAVE PROGRESS (автосохранение на сервер)
   // ============================================================================
   const saveProgress = useCallback(async () => {
@@ -377,8 +463,18 @@ const useHomeworkSession = (homeworkId, injectedService) => {
     try {
       setSavingState({ status: 'saving', timestamp: Date.now() });
       
-      await withRetry(() => svc.saveProgress(submission.id, answers), { maxRetries: 2, baseDelay: 2000 });
+      // Объединяем answers с telemetry (формат: "123_telemetry": {...})
+      const payloadWithTelemetry = { ...answers };
+      Object.entries(telemetry).forEach(([qid, data]) => {
+        if (data && Object.keys(data).length > 0) {
+          payloadWithTelemetry[`${qid}_telemetry`] = data;
+        }
+      });
       
+      await withRetry(() => svc.saveProgress(submission.id, payloadWithTelemetry), { maxRetries: 2, baseDelay: 2000 });
+      
+      // После успешной отправки очищаем отправленную телеметрию
+      setTelemetry({});
       dirtyRef.current = false;
       
       if (mountedRef.current) {
@@ -395,7 +491,7 @@ const useHomeworkSession = (homeworkId, injectedService) => {
       }
       throw err; // Пробрасываем для обработки в submitHomework
     }
-  }, [answers, localDraftKey, submission?.id, submission?.status, svc]);
+  }, [answers, telemetry, localDraftKey, submission?.id, submission?.status, svc]);
   
   // Автосохранение каждые 30 сек
   useEffect(() => {
@@ -426,10 +522,21 @@ const useHomeworkSession = (homeworkId, injectedService) => {
     submittingRef.current = true;
     
     try {
-      // 1) Сначала сохраняем ответы (с retry)
+      // 0) Финализируем время текущего вопроса
+      finalizeCurrentQuestionTime();
+      
+      // 1) Сначала сохраняем ответы с телеметрией (с retry)
       if (dirtyRef.current) {
         try {
-          await withRetry(() => svc.saveProgress(submission.id, answers), { maxRetries: 2 });
+          // Объединяем answers с телеметрией
+          const payloadWithTelemetry = { ...answers };
+          Object.entries(telemetry).forEach(([qid, data]) => {
+            if (data && Object.keys(data).length > 0) {
+              payloadWithTelemetry[`${qid}_telemetry`] = data;
+            }
+          });
+          
+          await withRetry(() => svc.saveProgress(submission.id, payloadWithTelemetry), { maxRetries: 2 });
           dirtyRef.current = false;
         } catch (saveErr) {
           console.warn('[useHomeworkSession] Pre-submit save failed, continuing anyway:', saveErr);
@@ -458,7 +565,7 @@ const useHomeworkSession = (homeworkId, injectedService) => {
     } finally {
       submittingRef.current = false;
     }
-  }, [answers, localDraftKey, submission?.id, submissionHintKey, svc]);
+  }, [answers, telemetry, finalizeCurrentQuestionTime, localDraftKey, submission?.id, submissionHintKey, svc]);
   
   // ============================================================================
   // PROGRESS CALCULATION
@@ -527,6 +634,10 @@ const useHomeworkSession = (homeworkId, injectedService) => {
     progress,
     isLocked: submission?.status && submission.status !== 'in_progress',
     reload: loadHomework,
+    // Telemetry functions
+    startQuestionTimer,
+    recordPaste,
+    recordTabSwitch,
   };
 };
 

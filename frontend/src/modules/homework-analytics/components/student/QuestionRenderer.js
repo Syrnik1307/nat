@@ -3,12 +3,16 @@ import MediaPreview from '../shared/MediaPreview';
 import CodeQuestionRenderer from './CodeQuestionRenderer';
 import FileUploadRenderer from './FileUploadRenderer';
 
-const QuestionRenderer = ({ question, answer, onChange, disabled = false, homeworkId = null }) => {
+const QuestionRenderer = ({ question, answer, onChange, onPaste, disabled = false, homeworkId = null }) => {
   if (!question) return null;
 
   const { question_type: type, config = {} } = question;
 
   const handleTextChange = (event) => onChange(event.target.value);
+  
+  const handlePaste = () => {
+    if (onPaste) onPaste();
+  };
 
   const handleSingleChoice = (optionId) => onChange(optionId);
 
@@ -71,8 +75,9 @@ const QuestionRenderer = ({ question, answer, onChange, disabled = false, homewo
           rows={4}
           value={answer || ''}
           onChange={handleTextChange}
+          onPaste={handlePaste}
           placeholder="Введите ответ"
-            disabled={disabled}
+          disabled={disabled}
         />
       );
     }
@@ -81,8 +86,9 @@ const QuestionRenderer = ({ question, answer, onChange, disabled = false, homewo
         className="form-input"
         value={answer || ''}
         onChange={handleTextChange}
+        onPaste={handlePaste}
         placeholder="Введите ответ"
-          disabled={disabled}
+        disabled={disabled}
       />
     );
   }
@@ -147,8 +153,9 @@ const QuestionRenderer = ({ question, answer, onChange, disabled = false, homewo
                 rows={2}
                 value={answer?.[subQuestion.id] || ''}
                 onChange={(event) => handleListeningAnswer(subQuestion.id, event.target.value)}
+                onPaste={handlePaste}
                 placeholder="Ответ ученика"
-                  disabled={disabled}
+                disabled={disabled}
               />
             </div>
           ))}
@@ -248,7 +255,8 @@ const QuestionRenderer = ({ question, answer, onChange, disabled = false, homewo
             className="form-input ht-inline-input"
             value={answersList[index] || ''}
             onChange={(event) => handleFillBlank(index, event.target.value)}
-              disabled={disabled}
+            onPaste={handlePaste}
+            disabled={disabled}
           />
         );
       }

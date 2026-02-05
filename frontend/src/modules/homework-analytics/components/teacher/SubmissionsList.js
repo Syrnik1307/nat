@@ -182,6 +182,7 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
                       <th>Задание</th>
                       <th>Статус</th>
                       <th>Отправлено</th>
+                      <th>Инфо</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -196,6 +197,16 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
                           </span>
                         </td>
                         <td className="sl-date">{sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString('ru-RU') : '—'}</td>
+                        <td className="sl-telemetry-cell">
+                          {(sub.has_paste_flags || sub.total_tab_switches > 5) && (
+                            <span 
+                              className="sl-telemetry-alert" 
+                              title={`${sub.paste_count ? `Вставок: ${sub.paste_count}` : ''}${sub.paste_count && sub.total_tab_switches > 5 ? ', ' : ''}${sub.total_tab_switches > 5 ? `Перекл. вкладок: ${sub.total_tab_switches}` : ''}`}
+                            >
+                              !
+                            </span>
+                          )}
+                        </td>
                         <td>
                           <button 
                             className="sl-btn-view"

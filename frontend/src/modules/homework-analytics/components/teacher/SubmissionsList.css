@@ -225,3 +225,24 @@
   background: var(--color-primary);
 }
 
+/* Telemetry alert indicator */
+.sl-telemetry-cell {
+  text-align: center;
+  width: 50px;
+}
+
+.sl-telemetry-alert {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: help;
+}
+

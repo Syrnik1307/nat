@@ -386,8 +386,9 @@ class AnswerSerializer(serializers.ModelSerializer):
         model = Answer
         fields = ['id', 'question', 'question_text', 'question_type', 'question_points', 
                   'text_answer', 'selected_choices', 'auto_score', 'teacher_score', 
-                  'teacher_feedback', 'needs_manual_review', 'attachments']
-        read_only_fields = ['auto_score', 'needs_manual_review']
+                  'teacher_feedback', 'needs_manual_review', 'attachments',
+                  'time_spent_seconds', 'is_pasted', 'tab_switches']
+        read_only_fields = ['auto_score', 'needs_manual_review', 'time_spent_seconds', 'is_pasted', 'tab_switches']
 
 
 class StudentSubmissionSerializer(serializers.ModelSerializer):
@@ -402,13 +403,19 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
     time_spent_seconds = serializers.SerializerMethodField()
     questions = serializers.SerializerMethodField()
     showAnswers = serializers.SerializerMethodField()
+    
+    # Агрегированная телеметрия для списка
+    has_paste_flags = serializers.SerializerMethodField()
+    total_tab_switches = serializers.SerializerMethodField()
+    paste_count = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentSubmission
         fields = ['id', 'homework', 'homework_title', 'student', 'student_email', 'student_name',
               'status', 'total_score', 'max_score', 'group_id', 'group_name', 'is_individual',
               'answers', 'questions', 'time_spent_seconds', 'teacher_feedback_summary', 
-              'created_at', 'submitted_at', 'graded_at', 'showAnswers']
+              'created_at', 'submitted_at', 'graded_at', 'showAnswers',
+              'has_paste_flags', 'total_tab_switches', 'paste_count']
         # Статус и даты жизненного цикла управляются сервером через отдельные endpoints
         # (answer/saveProgress, submit, feedback) и не должны приходить от клиента.
         read_only_fields = [
@@ -503,6 +510,20 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
                 return False
 
         return True
+    
+    def get_has_paste_flags(self, obj):
+        """Есть ли хотя бы один ответ с is_pasted=True."""
+        return obj.answers.filter(is_pasted=True).exists()
+    
+    def get_paste_count(self, obj):
+        """Количество ответов с вставкой из буфера."""
+        return obj.answers.filter(is_pasted=True).count()
+    
+    def get_total_tab_switches(self, obj):
+        """Суммарное количество переключений вкладок."""
+        from django.db.models import Sum
+        result = obj.answers.aggregate(total=Sum('tab_switches'))
+        return result['total'] or 0
 
     def create(self, validated_data):
         answers_data = validated_data.pop('answers', [])

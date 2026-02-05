@@ -1277,10 +1277,22 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
                     attachments_map[qid] = value if isinstance(value, list) else []
                 except (TypeError, ValueError):
                     continue
+        
+        # Собираем telemetry отдельно (ключи вида "123_telemetry")
+        # Формат: { time_spent_seconds: int, is_pasted: bool, tab_switches: int }
+        telemetry_map = {}
+        for key, value in answers_payload.items():
+            if isinstance(key, str) and key.endswith('_telemetry'):
+                try:
+                    qid = int(key.replace('_telemetry', ''))
+                    if isinstance(value, dict):
+                        telemetry_map[qid] = value
+                except (TypeError, ValueError):
+                    continue
 
         for question_id, raw_value in answers_payload.items():
-            # Пропускаем ключи attachments - они обрабатываются отдельно
-            if isinstance(question_id, str) and question_id.endswith('_attachments'):
+            # Пропускаем ключи attachments и telemetry - они обрабатываются отдельно
+            if isinstance(question_id, str) and (question_id.endswith('_attachments') or question_id.endswith('_telemetry')):
                 continue
                 
             try:
@@ -1349,6 +1361,23 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
                     answer_obj.text_answer = json.dumps(raw_value)
                 except TypeError:
                     answer_obj.text_answer = ''
+
+            # Применяем telemetry если есть
+            if qid in telemetry_map:
+                telem = telemetry_map[qid]
+                # time_spent_seconds - накапливаем (суммируем)
+                new_time = telem.get('time_spent_seconds')
+                if isinstance(new_time, (int, float)) and new_time > 0:
+                    current_time = answer_obj.time_spent_seconds or 0
+                    answer_obj.time_spent_seconds = current_time + int(new_time)
+                # is_pasted - устанавливаем в True если было хоть раз
+                if telem.get('is_pasted'):
+                    answer_obj.is_pasted = True
+                # tab_switches - накапливаем
+                new_switches = telem.get('tab_switches')
+                if isinstance(new_switches, (int, float)) and new_switches > 0:
+                    current_switches = answer_obj.tab_switches or 0
+                    answer_obj.tab_switches = current_switches + int(new_switches)
 
             answer_obj.evaluate(use_ai=use_ai)
             answer_obj.save()

@@ -148,9 +148,29 @@
   gap: 0.75rem;
 }
 
+.graded-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .graded-card-score {
   font-size: 1.25rem;
   font-weight: 700;
+}
+
+.graded-card-alert {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: #f8d7da;
+  color: #991b1b;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-radius: 50%;
+  cursor: help;
 }
 
 .graded-card-title {

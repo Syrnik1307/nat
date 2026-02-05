@@ -348,6 +348,10 @@ const SubmissionReview = () => {
         attachments: answer?.attachments || [],
         hasAnswer: !!answer,
         index,
+        // Telemetry data
+        time_spent_seconds: answer?.time_spent_seconds ?? null,
+        is_pasted: answer?.is_pasted ?? false,
+        tab_switches: answer?.tab_switches ?? 0,
       };
     });
   };
@@ -393,6 +397,28 @@ const SubmissionReview = () => {
     );
   }
 
+  // Расчёт агрегированной телеметрии
+  const getTelemetrySummary = () => {
+    const items = getReviewItems();
+    let totalTime = 0;
+    let pasteCount = 0;
+    let tabSwitches = 0;
+    let answersWithTelemetry = 0;
+    
+    items.forEach(item => {
+      if (item.time_spent_seconds) {
+        totalTime += item.time_spent_seconds;
+        answersWithTelemetry++;
+      }
+      if (item.is_pasted) pasteCount++;
+      if (item.tab_switches) tabSwitches += item.tab_switches;
+    });
+    
+    return { totalTime, pasteCount, tabSwitches, answersWithTelemetry, totalAnswers: items.length };
+  };
+
+  const telemetrySummary = getTelemetrySummary();
+
   return (
     <div className="sr-container">
       <div className="sr-header">
@@ -420,6 +446,30 @@ const SubmissionReview = () => {
           </div>
         </div>
       </div>
+
+      {/* Сводка телеметрии */}
+      {(telemetrySummary.totalTime > 0 || telemetrySummary.pasteCount > 0 || telemetrySummary.tabSwitches > 0) && (
+        <div className="sr-telemetry-summary">
+          <span className="sr-telemetry-summary-label">Аналитика работы:</span>
+          <div className="sr-telemetry-summary-items">
+            {telemetrySummary.totalTime > 0 && (
+              <span className="sr-telemetry-summary-item">
+                Суммарное время: {formatTimeSpent(telemetrySummary.totalTime)}
+              </span>
+            )}
+            {telemetrySummary.pasteCount > 0 && (
+              <span className="sr-telemetry-summary-item">
+                Вставок: {telemetrySummary.pasteCount} из {telemetrySummary.totalAnswers}
+              </span>
+            )}
+            {telemetrySummary.tabSwitches > 0 && (
+              <span className="sr-telemetry-summary-item">
+                Переключений вкладок: {telemetrySummary.tabSwitches}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="sr-answers-list">
         {(() => {
@@ -518,6 +568,30 @@ const SubmissionReview = () => {
               {item.auto_score !== null && (
                 <div className="sr-auto-score-info">
                   Автоматическая оценка: {item.auto_score} баллов
+                </div>
+              )}
+
+              {/* Телеметрия ответа */}
+              {item.hasAnswer && (item.time_spent_seconds || item.is_pasted || item.tab_switches > 0) && (
+                <div className="sr-telemetry">
+                  <span className="sr-telemetry-label">Аналитика:</span>
+                  <div className="sr-telemetry-items">
+                    {item.time_spent_seconds > 0 && (
+                      <span className="sr-telemetry-item">
+                        {formatTimeSpent(item.time_spent_seconds)}
+                      </span>
+                    )}
+                    {item.is_pasted && (
+                      <span className="sr-telemetry-item">
+                        Вставка
+                      </span>
+                    )}
+                    {item.tab_switches > 0 && (
+                      <span className="sr-telemetry-item">
+                        {item.tab_switches} перекл.
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
 
