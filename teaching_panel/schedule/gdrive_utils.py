@@ -614,11 +614,26 @@ class GoogleDriveManager:
                     raise
             except Exception as e:
                 error_str = str(e).lower()
-                if ('timeout' in error_str or 'connection' in error_str) and retries < MAX_RETRIES:
+                # Retry on network errors, redirects without location, and other transient issues
+                retryable_errors = (
+                    'timeout' in error_str or 
+                    'connection' in error_str or
+                    'redirect' in error_str or  # httplib2.error.RedirectMissingLocation
+                    'location' in error_str or  # Missing Location header
+                    'broken pipe' in error_str or
+                    'reset by peer' in error_str
+                )
+                if retryable_errors and retries < MAX_RETRIES:
                     retries += 1
                     delay = min(RETRY_DELAY_BASE * (2 ** retries), RETRY_DELAY_MAX)
-                    logger.warning(f"Network error during upload (attempt {retries}): {e}. Retrying in {delay}s...")
+                    logger.warning(f"Network/redirect error during upload (attempt {retries}): {e}. Retrying in {delay}s...")
                     time.sleep(delay)
+                    # Recreate request for fresh resumable upload session
+                    request = self.service.files().create(
+                        body=file_metadata,
+                        media_body=media,
+                        fields='id, name, size, webViewLink, webContentLink'
+                    )
                 else:
                     raise
         
