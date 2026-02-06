@@ -36,7 +36,7 @@ function Rollback-Changes {
     }
     
     Write-Host "Перезапускаем сервисы..." -ForegroundColor Yellow
-    ssh tp "sudo systemctl restart teaching-panel celery-worker celery-beat"
+    ssh tp "sudo systemctl restart nginx redis-server 2>/dev/null || true; (sudo systemctl restart teaching_panel 2>/dev/null || sudo systemctl restart teaching-panel 2>/dev/null || true); (sudo systemctl restart celery-worker 2>/dev/null || true); (sudo systemctl restart celery_worker 2>/dev/null || true); (sudo systemctl restart celery-beat 2>/dev/null || true)"
     Start-Sleep -Seconds 5
     
     $check = ssh tp "curl -s -o /dev/null -w '%{http_code}' https://lectiospace.ru/api/health/ 2>/dev/null || echo 'fail'"
@@ -83,7 +83,8 @@ if ($prodBefore -ne "200") {
 Write-OK "Production работает (код $prodBefore)"
 
 # Проверка места на диске
-$diskSpace = ssh tp "df /var/www | tail -1 | awk '{print \$5}' | sed 's/%//'"
+# ВАЖНО: избегаем awk '$5' внутри PowerShell строки (PowerShell интерпретирует `$5` как переменную)
+$diskSpace = ssh tp "df -P --output=pcent /var/www | tail -n 1 | tr -dc '0-9'"
 if ([int]$diskSpace -gt 90) {
     Write-Fail "Мало места на диске: ${diskSpace}%"
     exit 1
@@ -116,13 +117,22 @@ $script:backupName = "deploy_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 
 if (-not $DryRun) {
     # Бэкап SQLite файла (быстро и надежно)
-    $sqliteBackup = ssh tp "cd /var/www/teaching_panel && sudo cp db.sqlite3 /tmp/$script:backupName.sqlite3 2>&1 && ls -lh /tmp/$script:backupName.sqlite3 | awk '{print \$5}'"
+    $sqliteBackup = ssh tp "cd /var/www/teaching_panel && sudo cp db.sqlite3 /tmp/$script:backupName.sqlite3 2>&1 && (stat -c '%s' /tmp/$script:backupName.sqlite3 2>/dev/null || echo 0)"
     
     if (-not $sqliteBackup -or $sqliteBackup -match "No such file") {
         Write-Fail "Не удалось создать бэкап SQLite!"
         exit 1
     }
-    Write-OK "SQLite бэкап: /tmp/$script:backupName.sqlite3 ($sqliteBackup)"
+
+    $sqliteBackupBytes = 0
+    [void][int]::TryParse(($sqliteBackup | Select-Object -First 1), [ref]$sqliteBackupBytes)
+    if ($sqliteBackupBytes -le 0) {
+        Write-Fail "Бэкап SQLite выглядит пустым (0 bytes) — останавливаем деплой"
+        exit 1
+    }
+
+    $sqliteBackupHuman = ssh tp "numfmt --to=iec-i --suffix=B $sqliteBackupBytes 2>/dev/null || echo '${sqliteBackupBytes} bytes'"
+    Write-OK "SQLite бэкап: /tmp/$script:backupName.sqlite3 ($sqliteBackupHuman)"
     
     # Проверка целостности бэкапа
     $integrityCheck = ssh tp "sqlite3 /tmp/$script:backupName.sqlite3 'PRAGMA integrity_check;' 2>&1"

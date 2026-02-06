@@ -21,6 +21,9 @@ fi
 SITE_URL="${SITE_URL:-https://lectiospace.ru}"
 API_URL="${API_URL:-https://lectiospace.ru/api/health/}"
 BACKEND_SERVICE="${BACKEND_SERVICE:-teaching_panel}"
+CELERY_WORKER_SERVICES="${CELERY_WORKER_SERVICES:-celery-worker celery_worker}"
+CELERY_BEAT_SERVICE="${CELERY_BEAT_SERVICE:-celery-beat}"
+REDIS_SERVICE="${REDIS_SERVICE:-redis-server}"
 LOG_FILE="/var/log/lectio-monitor/unified.log"
 STATE_DIR="/var/run/lectio-monitor"
 
@@ -252,20 +255,42 @@ check_redis() {
 
 # 8. Celery workers alive?
 check_celery() {
-    local celery_pids=$(pgrep -c -f "celery.*worker" 2>/dev/null || echo 0)
-    
-    if [[ $celery_pids -lt 1 ]]; then
+    local worker_ok=0
+    for svc in $CELERY_WORKER_SERVICES; do
+        if systemctl is-active --quiet "$svc" 2>/dev/null; then
+            worker_ok=1
+            break
+        fi
+    done
+
+    # Fallback: если сервисы не настроены как systemd units
+    if [[ $worker_ok -eq 0 ]]; then
+        local celery_pids=$(pgrep -c -f "celery.*worker" 2>/dev/null || echo 0)
+        if [[ $celery_pids -ge 1 ]]; then
+            worker_ok=1
+        fi
+    fi
+
+    if [[ $worker_ok -eq 0 ]]; then
         echo "CRITICAL:Celery workers не запущены"
         return
     fi
-    
-    # Check celery beat
-    local beat_pids=$(pgrep -c -f "celery.*beat" 2>/dev/null || echo 0)
-    if [[ $beat_pids -lt 1 ]]; then
+
+    local beat_ok=0
+    if systemctl is-active --quiet "$CELERY_BEAT_SERVICE" 2>/dev/null; then
+        beat_ok=1
+    else
+        local beat_pids=$(pgrep -c -f "celery.*beat" 2>/dev/null || echo 0)
+        if [[ $beat_pids -ge 1 ]]; then
+            beat_ok=1
+        fi
+    fi
+
+    if [[ $beat_ok -eq 0 ]]; then
         echo "WARN:Celery beat не запущен"
         return
     fi
-    
+
     echo "OK"
 }
 
@@ -327,11 +352,24 @@ try_auto_recovery() {
     # Celery workers не запущены - рестарт
     if [[ "$issue" == *"Celery workers"* ]]; then
         log "AUTO-RECOVERY: Перезапускаю celery workers..."
-        systemctl restart celery-default 2>/dev/null
-        systemctl restart celery-heavy 2>/dev/null
+        for svc in $CELERY_WORKER_SERVICES; do
+            systemctl restart "$svc" 2>/dev/null || true
+        done
         sleep 3
-        local celery_count=$(pgrep -c -f "celery.*worker" 2>/dev/null || echo 0)
-        if [[ $celery_count -ge 1 ]]; then
+        local celery_ok=0
+        for svc in $CELERY_WORKER_SERVICES; do
+            if systemctl is-active --quiet "$svc" 2>/dev/null; then
+                celery_ok=1
+                break
+            fi
+        done
+        if [[ $celery_ok -eq 0 ]]; then
+            local celery_count=$(pgrep -c -f "celery.*worker" 2>/dev/null || echo 0)
+            if [[ $celery_count -ge 1 ]]; then
+                celery_ok=1
+            fi
+        fi
+        if [[ $celery_ok -eq 1 ]]; then
             recovered=1
         fi
     fi
@@ -339,7 +377,7 @@ try_auto_recovery() {
     # Celery beat не запущен - рестарт
     if [[ "$issue" == *"Celery beat"* ]]; then
         log "AUTO-RECOVERY: Перезапускаю celery beat..."
-        systemctl restart celery-beat 2>/dev/null
+        systemctl restart "$CELERY_BEAT_SERVICE" 2>/dev/null || true
         sleep 2
         if pgrep -f "celery.*beat" &>/dev/null; then
             recovered=1
@@ -349,7 +387,7 @@ try_auto_recovery() {
     # Redis недоступен - рестарт
     if [[ "$issue" == *"Redis"* ]]; then
         log "AUTO-RECOVERY: Перезапускаю Redis..."
-        systemctl restart redis-server 2>/dev/null || systemctl restart redis 2>/dev/null
+        systemctl restart "$REDIS_SERVICE" 2>/dev/null || systemctl restart redis-server 2>/dev/null || systemctl restart redis 2>/dev/null
         sleep 2
         if redis-cli ping 2>/dev/null | grep -q PONG; then
             recovered=1
