@@ -3166,3 +3166,26 @@ class AdminRateLimitingClearView(APIView):
         except Exception as e:
             logger.exception(f"[Admin] Failed to clear rate limits: {e}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class StatusMessagesPublicView(APIView):
+    """Публичное API для чтения статус-сообщений (для всех авторизованных пользователей)"""
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user_role = 'teachers' if request.user.role == 'teacher' else 'students'
+        messages = StatusBarMessage.objects.filter(
+            Q(target=user_role) | Q(target='all'),
+            is_active=True
+        ).order_by('-created_at')[:10]
+        
+        data = [{
+            'id': msg.id,
+            'message': msg.message,
+            'target': msg.target,
+            'is_active': msg.is_active,
+            'created_at': msg.created_at,
+        } for msg in messages]
+        
+        return Response(data)

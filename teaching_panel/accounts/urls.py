@@ -20,6 +20,7 @@ from .admin_views import (
     AdminDeleteStudentView,
     AdminChangeStudentPasswordView,
     AdminStatusMessagesView,
+    StatusMessagesPublicView,
     SystemSettingsView,
     AdminAlertsView,
     AdminChurnRetentionView,
@@ -135,7 +136,7 @@ urlpatterns = [
     path('api/admin/rate-limiting/clear/', AdminRateLimitingClearView.as_view(), name='admin_rate_limiting_clear'),
     
     # API для получения сообщений (для всех пользователей)
-    path('api/status-messages/', AdminStatusMessagesView.as_view(), name='status_messages'),
+    path('api/status-messages/', StatusMessagesPublicView.as_view(), name='status_messages'),
     
     # API для Email верификации
     path('api/email/send-verification/', send_verification_email, name='email_send_verification'),
