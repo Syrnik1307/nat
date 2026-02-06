@@ -143,7 +143,7 @@ if (-not $DryRun) {
     Write-OK "Бэкап прошёл integrity check"
     
     # JSON дамп (дополнительно, для отладки)
-    ssh tp "cd /var/www/teaching_panel && sudo -u www-data venv/bin/python manage.py dumpdata --natural-foreign --natural-primary --exclude contenttypes --exclude auth.Permission -o /tmp/$script:backupName.json 2>/dev/null" | Out-Null
+    ssh tp "cd /var/www/teaching_panel && sudo -u www-data venv/bin/python teaching_panel/manage.py dumpdata --natural-foreign --natural-primary --exclude contenttypes --exclude auth.Permission -o /tmp/$script:backupName.json 2>/dev/null" | Out-Null
 } else {
     Write-Host "  [DRY-RUN] Бэкап был бы создан: /tmp/$script:backupName.*" -ForegroundColor Gray
 }
@@ -265,7 +265,7 @@ if ($frontendChanged) {
 # ===================================================================
 Write-Step 6 9 "Проверка миграций БД..."
 
-$migrations = ssh tp "cd /var/www/teaching_panel && sudo -u www-data venv/bin/python manage.py migrate --plan 2>&1"
+$migrations = ssh tp "cd /var/www/teaching_panel && sudo -u www-data venv/bin/python teaching_panel/manage.py migrate --plan 2>&1"
 
 if ($migrations -match "No planned migration operations") {
     Write-OK "Новых миграций нет"
@@ -288,7 +288,7 @@ if ($migrations -match "No planned migration operations") {
             exit 1
         }
         
-        $migrateResult = ssh tp "cd /var/www/teaching_panel && sudo -u www-data venv/bin/python manage.py migrate --noinput 2>&1"
+        $migrateResult = ssh tp "cd /var/www/teaching_panel && sudo -u www-data venv/bin/python teaching_panel/manage.py migrate --noinput 2>&1"
         if ($LASTEXITCODE -ne 0 -or $migrateResult -match "Error|Exception|Traceback") {
             Write-Fail "Миграция завершилась с ошибкой!"
             Write-Host $migrateResult -ForegroundColor Red
@@ -310,7 +310,7 @@ if ($migrations -match "No planned migration operations") {
 Write-Step 7 9 "Обновление статических файлов..."
 
 if (-not $DryRun) {
-    ssh tp "cd /var/www/teaching_panel && sudo -u www-data venv/bin/python manage.py collectstatic --noinput --clear 2>/dev/null" | Out-Null
+    ssh tp "cd /var/www/teaching_panel && sudo -u www-data venv/bin/python teaching_panel/manage.py collectstatic --noinput --clear 2>/dev/null" | Out-Null
     Write-OK "Статические файлы обновлены"
 } else {
     Write-Host "  [DRY-RUN] collectstatic был бы выполнен" -ForegroundColor Gray
