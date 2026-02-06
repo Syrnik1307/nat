@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Load environment variables from .env file
 # Production may have different path depth; search for `.env` upward.
 _settings_path = Path(__file__).resolve()
-for _parent in list(_settings_path.parents)[:6]:
+for _parent in list(_settings_path.parents)[:12]:
     _env_path = _parent / '.env'
     if _env_path.exists():
         load_dotenv(_env_path)
