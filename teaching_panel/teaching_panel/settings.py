@@ -20,13 +20,12 @@ from kombu import Queue
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env file
-# Try to load from project root first, then from BASE_DIR
-for env_path in [
-    Path(__file__).resolve().parent.parent.parent / '.env',  # Project root
-    os.path.join(BASE_DIR, '.env'),  # teaching_panel/.env
-]:
-    if os.path.exists(env_path):
-        load_dotenv(env_path)
+# Production may have different path depth; search for `.env` upward.
+_settings_path = Path(__file__).resolve()
+for _parent in list(_settings_path.parents)[:6]:
+    _env_path = _parent / '.env'
+    if _env_path.exists():
+        load_dotenv(_env_path)
         break
 
 # Quick-start development settings - unsuitable for production
