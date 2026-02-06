@@ -8,10 +8,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent
 PROJECT_SRC = PROJECT_ROOT / 'teaching_panel'
 sys.path = [p for p in sys.path if p not in {str(PROJECT_ROOT), str(PROJECT_SRC)}]
-if PROJECT_SRC.exists():
-    sys.path.append(str(PROJECT_SRC))
 if PROJECT_ROOT.exists():
     sys.path.append(str(PROJECT_ROOT))
+if PROJECT_SRC.exists():
+    sys.path.append(str(PROJECT_SRC))
 
 
 def main():
