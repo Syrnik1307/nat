@@ -873,9 +873,9 @@ class LessonViewSet(viewsets.ModelViewSet):
             lesson=None,
             teacher=request.user,  # Владелец standalone записи
             title=title,
-            play_url=play_url,
-            download_url=download_url,
-            gdrive_file_id=gdrive_file_id,
+            play_url=play_url or '',
+            download_url=download_url or '',
+            gdrive_file_id=gdrive_file_id or '',
             status='ready',
             file_size=video_file.size,
             duration=video_duration,  # Реальная длительность видео
@@ -1546,9 +1546,9 @@ class LessonViewSet(viewsets.ModelViewSet):
         # Создаём запись привязанную к уроку
         recording = LessonRecording.objects.create(
             lesson=lesson,
-            play_url=play_url,
-            download_url=download_url,
-            gdrive_file_id=gdrive_file_id,
+            play_url=play_url or '',
+            download_url=download_url or '',
+            gdrive_file_id=gdrive_file_id or '',
             status='ready',
             file_size=video_file.size,
             storage_provider=storage_provider
