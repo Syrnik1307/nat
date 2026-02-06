@@ -11,6 +11,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 import logging
+from typing import Tuple
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ def _get_rate_limit_key(email: str) -> str:
     return f'password_reset_attempts:{email.lower()}'
 
 
-def _check_rate_limit(email: str) -> tuple[bool, int]:
+def _check_rate_limit(email: str) -> Tuple[bool, int]:
     """
     Check if password reset is rate limited for this email.
     

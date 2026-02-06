@@ -3,7 +3,7 @@
 """
 import logging
 from functools import wraps
-from typing import Optional, Callable, Set
+from typing import Optional, Callable, Set, Tuple
 from telegram import Update
 from telegram.ext import ContextTypes
 from asgiref.sync import sync_to_async
@@ -104,7 +104,7 @@ def require_notification_consent(func: Callable):
     return wrapper
 
 
-async def check_broadcast_permission(user: User) -> tuple[bool, str]:
+async def check_broadcast_permission(user: User) -> Tuple[bool, str]:
     """
     Проверяет, может ли пользователь делать рассылку.
     Возвращает (can_broadcast, reason).
