@@ -52,6 +52,14 @@ class ZoomSaveCredentialsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Проверяем credentials через Zoom API перед сохранением
+        validation_error = self._validate_zoom_credentials(account_id, client_id, client_secret)
+        if validation_error:
+            return Response(
+                {'detail': validation_error},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         user = request.user
         
         # Сохраняем credentials
@@ -60,12 +68,62 @@ class ZoomSaveCredentialsView(APIView):
         user.zoom_client_secret = client_secret
         user.save(update_fields=['zoom_account_id', 'zoom_client_id', 'zoom_client_secret'])
         
-        logger.info(f"User {user.email} saved Zoom S2S credentials")
+        logger.info(f"User {user.email} saved Zoom S2S credentials (validated)")
         
         return Response({
             'success': True,
-            'detail': 'Zoom credentials сохранены'
+            'detail': 'Zoom credentials сохранены и подтверждены'
         })
+    
+    def _validate_zoom_credentials(self, account_id, client_id, client_secret):
+        """
+        Проверить credentials через Zoom OAuth API.
+        Возвращает None если OK, иначе строку с описанием ошибки.
+        """
+        import requests
+        
+        try:
+            response = requests.post(
+                'https://zoom.us/oauth/token',
+                params={
+                    'grant_type': 'account_credentials',
+                    'account_id': account_id
+                },
+                auth=(client_id, client_secret),
+                timeout=(5, 15)
+            )
+            
+            if response.ok:
+                return None  # Credentials валидны
+            
+            # Парсим ошибку Zoom
+            try:
+                error_data = response.json()
+                error_code = error_data.get('error', '')
+                reason = error_data.get('reason', '')
+                
+                if error_code == 'invalid_client':
+                    return (
+                        'Неверные Client ID или Client Secret. '
+                        'Проверьте что вы скопировали правильные значения из Zoom Marketplace.'
+                    )
+                elif error_code == 'invalid_grant':
+                    return (
+                        'Неверный Account ID или приложение не связано с этим аккаунтом. '
+                        'Проверьте что Account ID соответствует вашему Zoom аккаунту.'
+                    )
+                elif reason:
+                    return f'Ошибка Zoom API: {reason}'
+                else:
+                    return f'Zoom вернул ошибку: {error_code or response.status_code}'
+            except Exception:
+                return f'Zoom вернул код {response.status_code}. Проверьте введённые данные.'
+                
+        except requests.exceptions.Timeout:
+            return 'Timeout при подключении к Zoom API. Попробуйте ещё раз.'
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Zoom credentials validation error: {e}")
+            return 'Не удалось подключиться к Zoom API. Попробуйте позже.'
 
 
 class ZoomAuthURLView(APIView):

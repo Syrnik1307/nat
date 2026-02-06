@@ -1200,10 +1200,35 @@ class LessonViewSet(viewsets.ModelViewSet):
             }
             return payload, None
         except Exception as e:
+            error_str = str(e)
             logger.exception(f"Failed to create Zoom meeting with teacher credentials for lesson {lesson.id}: {e}")
+            
+            # Определяем тип ошибки для понятного сообщения пользователю
+            if 'invalid_client' in error_str.lower():
+                user_message = (
+                    'Неверные Zoom credentials. '
+                    'Проверьте Client ID и Client Secret в настройках профиля (Платформы -> Zoom).'
+                )
+                http_status = status.HTTP_400_BAD_REQUEST
+            elif 'authentication failed' in error_str.lower():
+                user_message = (
+                    'Ошибка авторизации Zoom. '
+                    'Переподключите Zoom аккаунт в настройках профиля.'
+                )
+                http_status = status.HTTP_400_BAD_REQUEST
+            elif 'invalid_grant' in error_str.lower():
+                user_message = (
+                    'Account ID не соответствует вашим credentials. '
+                    'Проверьте настройки в профиле.'
+                )
+                http_status = status.HTTP_400_BAD_REQUEST
+            else:
+                user_message = f'Ошибка при создании встречи Zoom: {error_str[:100]}'
+                http_status = status.HTTP_500_INTERNAL_SERVER_ERROR
+            
             track_error(
                 code='ZOOM_MEETING_CREATE_FAILED',
-                message=f'Ошибка создания Zoom встречи: {str(e)[:200]}',
+                message=f'Ошибка создания Zoom встречи: {error_str[:200]}',
                 severity='critical',
                 teacher=user,
                 request=request,
@@ -1215,8 +1240,12 @@ class LessonViewSet(viewsets.ModelViewSet):
                 exc=e
             )
             return None, Response(
-                {'detail': f'Ошибка при создании встречи: {e}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {
+                    'code': 'zoom_auth_error',
+                    'detail': user_message,
+                    'action_required': 'reconnect_zoom'
+                },
+                status=http_status
             )
 
     def _start_zoom_via_pool(self, lesson, user, request):
