@@ -53,7 +53,7 @@ function Rollback-Changes {
         if ($script:backupName) {
             Write-Host ""
             Write-Host "Бэкап БД: /tmp/$script:backupName.sqlite3" -ForegroundColor White
-            Write-Host "Восстановить: sudo cp /tmp/$script:backupName.sqlite3 db.sqlite3" -ForegroundColor White
+                Write-Host "Восстановить: sudo cp /tmp/$script:backupName.sqlite3 teaching_panel/teaching_panel/db.sqlite3" -ForegroundColor White
         }
     }
 }
@@ -117,7 +117,7 @@ $script:backupName = "deploy_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 
 if (-not $DryRun) {
     # Бэкап SQLite файла (быстро и надежно)
-    $sqliteBackup = ssh tp "cd /var/www/teaching_panel && sudo cp db.sqlite3 /tmp/$script:backupName.sqlite3 2>&1 && (stat -c '%s' /tmp/$script:backupName.sqlite3 2>/dev/null || echo 0)"
+        $sqliteBackup = ssh tp "cd /var/www/teaching_panel && sudo cp teaching_panel/db.sqlite3 /tmp/$script:backupName.sqlite3 2>&1 && (stat -c '%s' /tmp/$script:backupName.sqlite3 2>/dev/null || echo 0)"
     
     if (-not $sqliteBackup -or $sqliteBackup -match "No such file") {
         Write-Fail "Не удалось создать бэкап SQLite!"
@@ -294,7 +294,7 @@ if ($migrations -match "No planned migration operations") {
             Write-Host $migrateResult -ForegroundColor Red
             Write-Host ""
             Write-Host "ВОССТАНОВЛЕНИЕ БД:" -ForegroundColor Red
-            Write-Host "ssh tp 'cd /var/www/teaching_panel && sudo cp /tmp/$script:backupName.sqlite3 db.sqlite3 && sudo chown www-data:www-data db.sqlite3'" -ForegroundColor White
+            Write-Host "ssh tp 'cd /var/www/teaching_panel && sudo cp /tmp/$script:backupName.sqlite3 teaching_panel/teaching_panel/db.sqlite3 && sudo chown www-data:www-data teaching_panel/teaching_panel/db.sqlite3'" -ForegroundColor White
             Rollback-Changes
             exit 1
         }
@@ -323,9 +323,9 @@ Write-Step 8 9 "Перезапуск сервиса..."
 
 if (-not $DryRun) {
     # Graceful reload (если поддерживается)
-    ssh tp "sudo systemctl reload teaching-panel 2>/dev/null || sudo systemctl restart teaching-panel"
+    ssh tp "sudo systemctl reload teaching_panel 2>/dev/null || sudo systemctl restart teaching_panel"
     # Перезапуск Celery (чтобы воркеры подхватили новый код)
-    ssh tp "sudo systemctl restart celery-worker celery-beat 2>/dev/null || true"
+    ssh tp "sudo systemctl restart celery-worker 2>/dev/null || true; sudo systemctl restart celery_worker 2>/dev/null || true; sudo systemctl restart celery-beat 2>/dev/null || true"
     
     # Ждём старта
     Start-Sleep -Seconds 5
