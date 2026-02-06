@@ -8,13 +8,13 @@ from telegram.ext import ContextTypes
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 
-from ..utils import (
+from ...utils import (
     require_linked_account,
     require_student,
     format_datetime,
     format_time_remaining,
 )
-from ..keyboards import (
+from ...keyboards import (
     student_homework_keyboard,
     section_keyboard,
 )

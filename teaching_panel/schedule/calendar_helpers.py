@@ -71,20 +71,19 @@ def get_lessons_for_calendar(teacher, start_date, end_date):
                 
                 if recurring.week_type == 'ALL' or recurring.week_type == week_type:
                     # Создаем виртуальное событие (dict, не сохраняется в БД)
+                    # Используем timezone.make_aware() для корректной обработки DST
                     virtual_lesson = {
                         'id': f'recurring_{recurring.id}_{current_date.isoformat()}',
                         'title': recurring.title,
                         'group': recurring.group,
                         'teacher': recurring.teacher,
-                        'start_time': datetime.combine(
-                            current_date,
-                            recurring.start_time,
-                            tzinfo=timezone.get_current_timezone()
+                        'start_time': timezone.make_aware(
+                            datetime.combine(current_date, recurring.start_time),
+                            timezone.get_current_timezone()
                         ),
-                        'end_time': datetime.combine(
-                            current_date,
-                            recurring.end_time,
-                            tzinfo=timezone.get_current_timezone()
+                        'end_time': timezone.make_aware(
+                            datetime.combine(current_date, recurring.end_time),
+                            timezone.get_current_timezone()
                         ),
                         'topics': recurring.topics,
                         'location': recurring.location,
@@ -146,20 +145,19 @@ def get_lessons_for_student(student, start_date, end_date):
                 week_type = get_week_number(current_date, recurring.start_date)
                 
                 if recurring.week_type == 'ALL' or recurring.week_type == week_type:
+                    # Используем timezone.make_aware() для корректной обработки DST
                     virtual_lesson = {
                         'id': f'recurring_{recurring.id}_{current_date.isoformat()}',
                         'title': recurring.title,
                         'group': recurring.group,
                         'teacher': recurring.teacher,
-                        'start_time': datetime.combine(
-                            current_date,
-                            recurring.start_time,
-                            tzinfo=timezone.get_current_timezone()
+                        'start_time': timezone.make_aware(
+                            datetime.combine(current_date, recurring.start_time),
+                            timezone.get_current_timezone()
                         ),
-                        'end_time': datetime.combine(
-                            current_date,
-                            recurring.end_time,
-                            tzinfo=timezone.get_current_timezone()
+                        'end_time': timezone.make_aware(
+                            datetime.combine(current_date, recurring.end_time),
+                            timezone.get_current_timezone()
                         ),
                         'topics': recurring.topics,
                         'location': recurring.location,

@@ -16,8 +16,8 @@ WEBAPP_URL = (
 # Redis для хранения состояний диалогов
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/2')
 
-# TTL для состояний диалогов (5 минут)
-DIALOG_STATE_TTL = 60 * 5
+# TTL для состояний диалогов (15 минут — достаточно для сложных wizard'ов)
+DIALOG_STATE_TTL = 60 * 15
 
 # TTL для кэша данных (1 час)
 CACHE_TTL = 60 * 60

@@ -226,6 +226,49 @@ check_workers() {
     echo "OK"
 }
 
+# 7. Redis available?
+check_redis() {
+    if command -v redis-cli &> /dev/null; then
+        local pong=$(redis-cli ping 2>/dev/null || echo "FAIL")
+        if [[ "$pong" != "PONG" ]]; then
+            echo "CRITICAL:Redis недоступен"
+            return
+        fi
+        
+        # Check memory usage
+        local redis_mem=$(redis-cli info memory 2>/dev/null | grep "used_memory_human:" | cut -d: -f2 | tr -d '[:space:]')
+        local redis_max=$(redis-cli config get maxmemory 2>/dev/null | tail -1)
+        if [[ -n "$redis_max" ]] && [[ "$redis_max" != "0" ]]; then
+            local redis_used=$(redis-cli info memory 2>/dev/null | grep "used_memory:" | cut -d: -f2 | tr -d '[:space:]')
+            local redis_pct=$((redis_used * 100 / redis_max))
+            if [[ $redis_pct -gt 90 ]]; then
+                echo "WARN:Redis memory ${redis_pct}% (${redis_mem})"
+                return
+            fi
+        fi
+    fi
+    echo "OK"
+}
+
+# 8. Celery workers alive?
+check_celery() {
+    local celery_pids=$(pgrep -c -f "celery.*worker" 2>/dev/null || echo 0)
+    
+    if [[ $celery_pids -lt 1 ]]; then
+        echo "CRITICAL:Celery workers не запущены"
+        return
+    fi
+    
+    # Check celery beat
+    local beat_pids=$(pgrep -c -f "celery.*beat" 2>/dev/null || echo 0)
+    if [[ $beat_pids -lt 1 ]]; then
+        echo "WARN:Celery beat не запущен"
+        return
+    fi
+    
+    echo "OK"
+}
+
 # ==================== AUTO-RECOVERY ====================
 # Попытка автоматического восстановления при известных проблемах
 try_auto_recovery() {
@@ -281,6 +324,38 @@ try_auto_recovery() {
         recovered=1
     fi
     
+    # Celery workers не запущены - рестарт
+    if [[ "$issue" == *"Celery workers"* ]]; then
+        log "AUTO-RECOVERY: Перезапускаю celery workers..."
+        systemctl restart celery-default 2>/dev/null
+        systemctl restart celery-heavy 2>/dev/null
+        sleep 3
+        local celery_count=$(pgrep -c -f "celery.*worker" 2>/dev/null || echo 0)
+        if [[ $celery_count -ge 1 ]]; then
+            recovered=1
+        fi
+    fi
+    
+    # Celery beat не запущен - рестарт
+    if [[ "$issue" == *"Celery beat"* ]]; then
+        log "AUTO-RECOVERY: Перезапускаю celery beat..."
+        systemctl restart celery-beat 2>/dev/null
+        sleep 2
+        if pgrep -f "celery.*beat" &>/dev/null; then
+            recovered=1
+        fi
+    fi
+    
+    # Redis недоступен - рестарт
+    if [[ "$issue" == *"Redis"* ]]; then
+        log "AUTO-RECOVERY: Перезапускаю Redis..."
+        systemctl restart redis-server 2>/dev/null || systemctl restart redis 2>/dev/null
+        sleep 2
+        if redis-cli ping 2>/dev/null | grep -q PONG; then
+            recovered=1
+        fi
+    fi
+    
     if [[ $recovered -eq 1 ]]; then
         log "AUTO-RECOVERY: Действие выполнено, проверяю результат..."
         return 0
@@ -334,6 +409,20 @@ main() {
         critical_issues+=("${result#CRITICAL:}")
     fi
     
+    result=$(check_redis)
+    if [[ "$result" == CRITICAL:* ]]; then
+        critical_issues+=("${result#CRITICAL:}")
+    elif [[ "$result" == WARN:* ]]; then
+        warnings+=("${result#WARN:}")
+    fi
+    
+    result=$(check_celery)
+    if [[ "$result" == CRITICAL:* ]]; then
+        critical_issues+=("${result#CRITICAL:}")
+    elif [[ "$result" == WARN:* ]]; then
+        warnings+=("${result#WARN:}")
+    fi
+    
     # ==================== AUTO-RECOVERY ====================
     # Пытаемся автоматически исправить критические проблемы
     if [[ ${#critical_issues[@]} -gt 0 ]]; then
@@ -369,6 +458,16 @@ main() {
             fi
             
             result=$(check_workers)
+            if [[ "$result" == CRITICAL:* ]]; then
+                critical_issues+=("${result#CRITICAL:}")
+            fi
+            
+            result=$(check_redis)
+            if [[ "$result" == CRITICAL:* ]]; then
+                critical_issues+=("${result#CRITICAL:}")
+            fi
+            
+            result=$(check_celery)
             if [[ "$result" == CRITICAL:* ]]; then
                 critical_issues+=("${result#CRITICAL:}")
             fi

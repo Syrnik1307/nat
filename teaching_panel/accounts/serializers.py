@@ -57,7 +57,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'email', 'phone_number', 'role', 'created_at', 'updated_at',
-            'zoom_connected', 'zoom_email', 'google_meet_connected', 'google_meet_email', 'available_platforms'
+            'zoom_connected', 'zoom_email', 'google_meet_connected', 'google_meet_email', 'available_platforms',
+            'telegram_verified',  # SECURITY: Only system can verify Telegram
         ]
         extra_kwargs = {
             'first_name': {'allow_blank': True, 'required': False},

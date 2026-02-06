@@ -179,6 +179,21 @@ class HomeworkViewSet(viewsets.ModelViewSet):
         
         logger = logging.getLogger(__name__)
         
+        # ========== SECURITY FIX: Проверка Content-Length ДО чтения файла ==========
+        # Защита от OOM атаки: Django читает файл в память ДО проверки uploaded_file.size
+        max_size = 50 * 1024 * 1024  # 50 MB
+        content_length = request.META.get('CONTENT_LENGTH')
+        if content_length:
+            try:
+                if int(content_length) > max_size:
+                    return Response(
+                        {'detail': f'Файл слишком большой. Максимальный размер: 50 MB'},
+                        status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+                    )
+            except (ValueError, TypeError):
+                pass  # Если Content-Length некорректный, продолжаем стандартную проверку
+        # ==========================================================================
+        
         # Проверка прав: только учителя
         if not request.user.is_authenticated or getattr(request.user, 'role', None) != 'teacher':
             return Response(
@@ -214,8 +229,7 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Проверка размера файла (макс 50 MB)
-        max_size = 50 * 1024 * 1024
+        # Проверка размера файла (макс 50 MB) - дополнительная проверка после загрузки
         if uploaded_file.size > max_size:
             return Response(
                 {'detail': f'Файл слишком большой. Максимум: 50 MB'},

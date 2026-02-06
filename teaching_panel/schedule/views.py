@@ -464,6 +464,9 @@ class LessonViewSet(viewsets.ModelViewSet):
         """Определяем диапазон дат для разворачивания регулярных уроков."""
         from django.utils.dateparse import parse_date
 
+        # Максимальный диапазон для защиты от DoS (365 дней)
+        MAX_RANGE_DAYS = 365
+
         date_param = request.query_params.get('date')
         if date_param:
             parsed = parse_date(date_param)
@@ -486,6 +489,10 @@ class LessonViewSet(viewsets.ModelViewSet):
         if not start_dt and not end_dt:
             start_dt = timezone.now()
             end_dt = start_dt + timedelta(days=30)
+
+        # Ограничение диапазона для защиты от DoS атак
+        if (end_dt - start_dt).days > MAX_RANGE_DAYS:
+            end_dt = start_dt + timedelta(days=MAX_RANGE_DAYS)
 
         return start_dt, end_dt
 

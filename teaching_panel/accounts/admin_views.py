@@ -16,6 +16,7 @@ from schedule.models import Lesson, Group as ScheduleGroup
 from .serializers import UserProfileSerializer, SystemSettingsSerializer
 from .models import StatusBarMessage, SystemSettings, Subscription, Payment
 from .subscriptions_utils import get_subscription
+from .permissions import IsAdmin  # SECURITY: Role-based access control
 
 # Import for homework counting in teacher analytics
 try:
@@ -140,7 +141,7 @@ def _refresh_storage_usage_if_needed(subscription):
 class AdminStatsView(APIView):
     """Статистика для админ панели"""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def get(self, request):
         # Проверка прав админа
@@ -226,7 +227,7 @@ class AdminStatsView(APIView):
 class AdminSystemErrorsView(APIView):
     """Список ошибок системы/процессов для админа."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         if request.user.role != 'admin':
@@ -304,7 +305,7 @@ class AdminSystemErrorsView(APIView):
 class AdminSystemErrorsCountsView(APIView):
     """Счётчики ошибок по severity для табов."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         if request.user.role != 'admin':
@@ -344,7 +345,7 @@ def _source_expr_for_payment():
 class AdminGrowthOverviewView(APIView):
     """Полная аналитика роста/монетизации для управления бизнесом."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         if request.user.role != 'admin':
@@ -574,7 +575,7 @@ class AdminGrowthOverviewView(APIView):
 class AdminCreateTeacherView(APIView):
     """Создание нового учителя"""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def post(self, request):
         # Проверка прав админа
@@ -651,7 +652,7 @@ class AdminCreateTeacherView(APIView):
 class AdminTeachersListView(APIView):
     """Список всех учителей"""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def get(self, request):
         # Проверка прав админа
@@ -774,7 +775,7 @@ class AdminTeachersListView(APIView):
 class AdminTeacherDetailView(APIView):
     """Детальная информация по преподавателю"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request, teacher_id):
         if request.user.role != 'admin':
@@ -836,7 +837,7 @@ class AdminTeacherDetailView(APIView):
 class AdminTeacherSubscriptionView(APIView):
     """Управление подпиской преподавателя"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def post(self, request, teacher_id):
         if request.user.role != 'admin':
@@ -880,7 +881,7 @@ class AdminTeacherSubscriptionView(APIView):
 class AdminTeacherStorageView(APIView):
     """Просмотр и добавление хранилища преподавателю"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request, teacher_id):
         """Получить реальную статистику использования хранилища с Google Drive"""
@@ -947,7 +948,7 @@ class AdminTeacherStorageView(APIView):
 class AdminUpdateTeacherZoomView(APIView):
     """Обновление Zoom credentials учителя"""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def patch(self, request, teacher_id):
         # Проверка прав админа
@@ -990,7 +991,7 @@ class AdminUpdateTeacherZoomView(APIView):
 class AdminTeachersBulkActionView(APIView):
     """Массовые действия над учителями"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def post(self, request):
         if request.user.role != 'admin':
@@ -1067,7 +1068,7 @@ class AdminTeachersBulkActionView(APIView):
 class AdminDeleteTeacherView(APIView):
     """Удаление учителя"""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def delete(self, request, teacher_id):
         # Проверка прав админа
@@ -1098,7 +1099,7 @@ class AdminDeleteTeacherView(APIView):
 class AdminStudentsListView(APIView):
     """Список всех учеников"""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def get(self, request):
         # Проверка прав админа
@@ -1230,7 +1231,7 @@ class AdminStudentsListView(APIView):
 class AdminUpdateStudentView(APIView):
     """Обновление данных ученика"""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def patch(self, request, student_id):
         # Проверка прав админа
@@ -1272,7 +1273,7 @@ class AdminUpdateStudentView(APIView):
 class AdminDeleteStudentView(APIView):
     """Удаление ученика"""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def delete(self, request, student_id):
         # Проверка прав админа
@@ -1303,7 +1304,7 @@ class AdminDeleteStudentView(APIView):
 class AdminStatusMessagesView(APIView):
     """Управление сообщениями статус-бара"""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def get(self, request):
         """Получить активные сообщения"""
@@ -1393,7 +1394,7 @@ class AdminStatusMessagesView(APIView):
 class SystemSettingsView(APIView):
     """API для управления системными настройками"""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def get(self, request):
         """Получить текущие настройки"""
@@ -1433,7 +1434,7 @@ class SystemSettingsView(APIView):
 class AdminCreateStudentView(APIView):
     """Создание нового ученика администратором"""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def post(self, request):
         # Проверка прав админа
@@ -1502,7 +1503,7 @@ class AdminCreateStudentView(APIView):
 class AdminChangeTeacherPasswordView(APIView):
     """Смена пароля учителя администратором"""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def post(self, request, teacher_id):
         # Проверка прав админа
@@ -1547,7 +1548,7 @@ class AdminChangeTeacherPasswordView(APIView):
 class AdminChangeStudentPasswordView(APIView):
     """Смена пароля ученика администратором"""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def post(self, request, student_id):
         # Проверка прав админа
@@ -1592,7 +1593,7 @@ class AdminChangeStudentPasswordView(APIView):
 class AdminAlertsView(APIView):
     """Алерты и предупреждения для админа."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         if request.user.role != 'admin':
@@ -1734,7 +1735,7 @@ class AdminAlertsView(APIView):
 class AdminChurnRetentionView(APIView):
     """Метрики оттока и удержания."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         if request.user.role != 'admin':
@@ -1847,7 +1848,7 @@ class AdminCohortRetentionView(APIView):
     in subsequent weeks. Returns a heatmap-ready matrix.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         if request.user.role != 'admin':
@@ -1964,7 +1965,7 @@ class AdminCohortRetentionView(APIView):
 class AdminTeachersActivityView(APIView):
     """Детальная таблица активности учителей."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         if request.user.role != 'admin':
@@ -2034,7 +2035,7 @@ class AdminTeachersActivityView(APIView):
 class AdminSystemHealthView(APIView):
     """Проверка здоровья системы."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         if request.user.role != 'admin':
@@ -2144,7 +2145,7 @@ class AdminSystemHealthView(APIView):
 class AdminActivityLogView(APIView):
     """Логи активности пользователей."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         if request.user.role != 'admin':
@@ -2217,7 +2218,7 @@ class AdminActivityLogView(APIView):
 class AdminBusinessMetricsView(APIView):
     """Расширенные бизнес-метрики: воронка активации, MRR waterfall, сегментация."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         if request.user.role != 'admin':
@@ -2525,7 +2526,7 @@ class AdminBusinessMetricsView(APIView):
 class AdminQuickActionsView(APIView):
     """Массовые действия для админа."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def post(self, request):
         if request.user.role != 'admin':
@@ -2607,7 +2608,7 @@ class AdminDashboardDataView(APIView):
     GET /api/admin/dashboard-data/
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         if request.user.role != 'admin':
@@ -2983,7 +2984,7 @@ class AdminTeacherAnalyticsView(APIView):
     Uses Django aggregation (Count/Sum) for efficient DB queries.
     """
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def get(self, request, teacher_id):
         # Admin access check
@@ -3116,7 +3117,7 @@ class AdminRateLimitingStatsView(APIView):
     Возвращает статистику rate limiting.
     Только для админов.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def get(self, request):
         user = request.user
@@ -3142,7 +3143,7 @@ class AdminRateLimitingClearView(APIView):
     Body (optional):
     - fingerprint: конкретный fingerprint для очистки
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     
     def post(self, request):
         user = request.user

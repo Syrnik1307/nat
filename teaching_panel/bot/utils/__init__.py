@@ -9,6 +9,11 @@ from .state import (
     get_cached_data,
     set_cached_data,
     invalidate_cache,
+    # Async-обёртки (для использования в async хендлерах)
+    aget_dialog_state,
+    aset_dialog_state,
+    aupdate_dialog_state,
+    aclear_dialog_state,
 )
 from .permissions import (
     get_user_by_telegram_id,
@@ -44,6 +49,10 @@ __all__ = [
     'get_cached_data',
     'set_cached_data',
     'invalidate_cache',
+    'aget_dialog_state',
+    'aset_dialog_state',
+    'aupdate_dialog_state',
+    'aclear_dialog_state',
     # Permissions
     'get_user_by_telegram_id',
     'require_linked_account',

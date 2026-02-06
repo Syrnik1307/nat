@@ -5,6 +5,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.crypto import get_random_string
+from django.core.cache import cache
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -14,6 +15,38 @@ import logging
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
+# Rate limiting configuration
+PASSWORD_RESET_MAX_ATTEMPTS = 3  # Max requests per email per window
+PASSWORD_RESET_WINDOW_SECONDS = 15 * 60  # 15 minutes
+
+
+def _get_rate_limit_key(email: str) -> str:
+    """Generate cache key for rate limiting password reset requests."""
+    return f'password_reset_attempts:{email.lower()}'
+
+
+def _check_rate_limit(email: str) -> tuple[bool, int]:
+    """
+    Check if password reset is rate limited for this email.
+    
+    Returns:
+        tuple: (is_allowed, remaining_attempts)
+    """
+    key = _get_rate_limit_key(email)
+    attempts = cache.get(key, 0)
+    
+    if attempts >= PASSWORD_RESET_MAX_ATTEMPTS:
+        return False, 0
+    
+    return True, PASSWORD_RESET_MAX_ATTEMPTS - attempts - 1
+
+
+def _record_attempt(email: str) -> None:
+    """Record a password reset attempt for rate limiting."""
+    key = _get_rate_limit_key(email)
+    attempts = cache.get(key, 0)
+    cache.set(key, attempts + 1, PASSWORD_RESET_WINDOW_SECONDS)
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -21,6 +54,8 @@ def password_reset_request(request):
     """
     Запрос на сброс пароля
     Отправляет письмо с ссылкой для сброса пароля
+    
+    SECURITY: Rate limited to 3 requests per email per 15 minutes
     """
     email = request.data.get('email', '').strip().lower()
     
@@ -29,6 +64,18 @@ def password_reset_request(request):
             {'error': 'Email обязателен'},
             status=status.HTTP_400_BAD_REQUEST
         )
+    
+    # SECURITY: Rate limiting check
+    is_allowed, remaining = _check_rate_limit(email)
+    if not is_allowed:
+        logger.warning(f"Password reset rate limited for: {email}")
+        return Response(
+            {'error': 'Слишком много попыток. Попробуйте через 15 минут.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+    
+    # Record the attempt before processing
+    _record_attempt(email)
     
     try:
         user = User.objects.get(email=email)

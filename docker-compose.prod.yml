@@ -42,11 +42,11 @@ services:
         reservations:
           memory: 512M
 
-  celery:
+  celery_default:
     build:
       context: .
       dockerfile: docker/backend/Dockerfile.prod
-    command: celery -A teaching_panel worker -l info --concurrency=4
+    command: celery -A teaching_panel worker -l info --concurrency=2 --queues=default,notifications,periodic --hostname=default@%h --without-gossip --without-mingle --max-memory-per-child=200000 --max-tasks-per-child=100
     restart: always
     env_file:
       - .env.production
@@ -64,10 +64,36 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 600M
         reservations:
           memory: 256M
-      # Для масштабирования: docker compose -f docker-compose.prod.yml up -d --scale celery=4
+      # Масштабирование: docker compose -f docker-compose.prod.yml up -d --scale celery_default=3
+
+  celery_heavy:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile.prod
+    command: celery -A teaching_panel worker -l info --concurrency=1 --queues=heavy --hostname=heavy@%h --without-gossip --without-mingle --max-memory-per-child=400000 --max-tasks-per-child=30
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      DEBUG: "0"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-teaching_panel}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-teaching_panel}"
+      REDIS_URL: "redis://redis:6379/1"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+    volumes:
+      - media_data:/app/teaching_panel/media
+    depends_on:
+      - backend
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 800M
+        reservations:
+          memory: 256M
 
   celery_beat:
     build:

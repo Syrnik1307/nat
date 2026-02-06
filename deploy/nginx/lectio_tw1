@@ -1,3 +1,8 @@
+# Rate limiting zones
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=30r/s;
+limit_req_zone $binary_remote_addr zone=login_limit:10m rate=5r/m;
+limit_conn_zone $binary_remote_addr zone=conn_limit:10m;
+
 server {
     listen 80;
     listen 443 ssl;
@@ -9,13 +14,40 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/lectio.tw1.ru/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:50m;
+
+    # HSTS - enforce HTTPS for 2 years
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
 
     add_header X-Content-Type-Options nosniff always;
     add_header X-Frame-Options DENY always;
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
 
-    client_max_body_size 2G;
+    client_max_body_size 200M;
+
+    # Rate limiting for login/register
+    location = /api/jwt/token/ {
+        limit_req zone=login_limit burst=3 nodelay;
+        proxy_pass http://127.0.0.1:8000/api/jwt/token/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /api/jwt/register/ {
+        limit_req zone=login_limit burst=3 nodelay;
+        proxy_pass http://127.0.0.1:8000/api/jwt/register/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 
     # Zoom webhook
     location /schedule/webhook/zoom/ {
@@ -100,6 +132,9 @@ server {
     }
 
     location /api/ {
+        limit_req zone=api_limit burst=50 nodelay;
+        limit_conn conn_limit 20;
+
         proxy_pass http://127.0.0.1:8000/api/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;

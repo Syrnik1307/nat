@@ -7,6 +7,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from .common import menu_callback
+from ..utils.permissions import get_user_by_telegram_id
 from .teacher import (
     remind_lesson_group_toggle,
     remind_lesson_groups_done,
@@ -44,6 +45,44 @@ async def callback_query_handler(update: Update, context: ContextTypes.DEFAULT_T
     data = query.data
     
     logger.debug(f"Callback: {data}")
+    
+    # === Проверка роли для teacher-only callbacks ===
+    teacher_prefixes = ('rl_', 'rh_', 'check_hw:', 'not_submitted:', 'ping:')
+    teacher_exact = ('ping_send_now',)
+    teacher_actions = ('remind_lesson', 'remind_hw', 'check_hw', 'scheduled')
+    
+    is_teacher_cb = (
+        any(data.startswith(p) for p in teacher_prefixes)
+        or data in teacher_exact
+        or (data.startswith('action:') and data.split(':')[1] in teacher_actions)
+    )
+    
+    if is_teacher_cb:
+        user = context.user_data.get('db_user')
+        if not user:
+            user = await get_user_by_telegram_id(str(update.effective_user.id))
+        if not user or user.role not in ('teacher', 'admin'):
+            await query.answer("Эта функция доступна только преподавателям.", show_alert=True)
+            return
+        context.user_data['db_user'] = user
+    
+    # === Проверка роли для student-only callbacks ===
+    student_prefixes = ('st_lesson:', 'st_hw:')
+    student_exact = ('st_grades',)
+    
+    is_student_cb = (
+        any(data.startswith(p) for p in student_prefixes)
+        or data in student_exact
+    )
+    
+    if is_student_cb:
+        user = context.user_data.get('db_user')
+        if not user:
+            user = await get_user_by_telegram_id(str(update.effective_user.id))
+        if not user or user.role not in ('student',):
+            await query.answer("Эта функция доступна только ученикам.", show_alert=True)
+            return
+        context.user_data['db_user'] = user
     
     # Роутинг по префиксам
     

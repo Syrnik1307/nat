@@ -9,12 +9,12 @@ from telegram.ext import ContextTypes
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 
-from ..utils import (
+from ...utils import (
     require_linked_account,
     require_student,
     format_lesson_card,
 )
-from ..keyboards import (
+from ...keyboards import (
     student_lesson_keyboard,
     section_keyboard,
 )

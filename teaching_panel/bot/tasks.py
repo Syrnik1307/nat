@@ -28,7 +28,7 @@ def process_scheduled_messages():
     messages = ScheduledMessage.objects.filter(
         scheduled_at__lte=now,
         status='pending',
-    ).select_related('teacher')
+    ).select_related('teacher').prefetch_related('target_groups', 'target_students')
     
     if not messages:
         return "No pending messages"
@@ -39,40 +39,44 @@ def process_scheduled_messages():
     
     for msg in messages:
         try:
-            msg.status = 'processing'
+            msg.status = 'sending'
             msg.save(update_fields=['status'])
             
-            # Определяем получателей
-            if msg.target_type == 'groups':
-                group_ids = msg.target_ids or []
-                result = async_to_sync(service.send_to_groups)(
-                    group_ids=group_ids,
-                    text=msg.content,
-                    teacher_id=msg.teacher_id,
-                    message_type=msg.message_type,
-                )
-            elif msg.target_type == 'users':
-                user_ids = msg.target_ids or []
-                result = async_to_sync(service.broadcast_to_users)(
-                    telegram_ids=user_ids,
-                    text=msg.content,
-                    teacher_id=msg.teacher_id,
-                    message_type=msg.message_type,
-                )
-            else:
-                logger.warning(f"Unknown target_type: {msg.target_type}")
-                msg.status = 'failed'
-                msg.error_message = f"Unknown target_type: {msg.target_type}"
-                msg.save()
-                error_count += 1
+            # Собираем получателей из M2M полей (target_groups + target_students)
+            telegram_ids = set()
+            
+            for group in msg.target_groups.all():
+                for student in group.students.filter(
+                    is_active=True,
+                    notification_consent=True,
+                    telegram_id__isnull=False,
+                ).exclude(telegram_id=''):
+                    telegram_ids.add(student.telegram_id)
+            
+            for student in msg.target_students.filter(
+                is_active=True,
+                notification_consent=True,
+                telegram_id__isnull=False,
+            ).exclude(telegram_id=''):
+                telegram_ids.add(student.telegram_id)
+            
+            if not telegram_ids:
+                msg.mark_sent(0, 0)
+                sent_count += 1
                 continue
             
+            msg.recipients_count = len(telegram_ids)
+            msg.save(update_fields=['recipients_count'])
+            
+            result = async_to_sync(service.broadcast_to_users)(
+                telegram_ids=list(telegram_ids),
+                text=msg.content,
+                teacher_id=msg.teacher_id,
+                message_type=msg.message_type,
+            )
+            
             # Обновляем статус
-            msg.status = 'sent'
-            msg.sent_at = timezone.now()
-            msg.sent_count = result.get('sent_count', 0)
-            msg.failed_count = result.get('failed_count', 0)
-            msg.save()
+            msg.mark_sent(result.get('sent_count', 0), result.get('failed_count', 0))
             
             sent_count += 1
             logger.info(f"Sent scheduled message {msg.id}: {result['sent_count']} recipients")
@@ -81,7 +85,7 @@ def process_scheduled_messages():
             logger.error(f"Error processing scheduled message {msg.id}: {e}")
             msg.status = 'failed'
             msg.error_message = str(e)[:500]
-            msg.save()
+            msg.save(update_fields=['status', 'error_message'])
             error_count += 1
     
     return f"Processed: {sent_count} sent, {error_count} errors"
@@ -139,9 +143,9 @@ def cleanup_old_broadcast_logs():
     # Удаляем старые логи
     deleted_logs = BroadcastLog.objects.filter(created_at__lt=cutoff).delete()
     
-    # Удаляем старые rate limit записи
-    rate_cutoff = timezone.now() - timedelta(hours=25)
-    deleted_rates = BroadcastRateLimit.objects.filter(hour_start__lt=rate_cutoff).delete()
+    # Удаляем старые rate limit записи (hour_key - строка формата YYYY-MM-DD-HH)
+    rate_cutoff = (timezone.now() - timedelta(hours=25)).strftime('%Y-%m-%d-%H')
+    deleted_rates = BroadcastRateLimit.objects.filter(hour_key__lt=rate_cutoff).delete()
     
     return f"Deleted {deleted_logs[0]} logs, {deleted_rates[0]} rate limits"
 

@@ -35,8 +35,8 @@ function Rollback-Changes {
         ssh tp "cd /var/www/teaching_panel && sudo git reset --hard $script:currentCommit"
     }
     
-    Write-Host "Перезапускаем сервис..." -ForegroundColor Yellow
-    ssh tp "sudo systemctl restart teaching-panel"
+    Write-Host "Перезапускаем сервисы..." -ForegroundColor Yellow
+    ssh tp "sudo systemctl restart teaching-panel celery-worker celery-beat"
     Start-Sleep -Seconds 5
     
     $check = ssh tp "curl -s -o /dev/null -w '%{http_code}' https://lectiospace.ru/api/health/ 2>/dev/null || echo 'fail'"
@@ -314,6 +314,8 @@ Write-Step 8 9 "Перезапуск сервиса..."
 if (-not $DryRun) {
     # Graceful reload (если поддерживается)
     ssh tp "sudo systemctl reload teaching-panel 2>/dev/null || sudo systemctl restart teaching-panel"
+    # Перезапуск Celery (чтобы воркеры подхватили новый код)
+    ssh tp "sudo systemctl restart celery-worker celery-beat 2>/dev/null || true"
     
     # Ждём старта
     Start-Sleep -Seconds 5

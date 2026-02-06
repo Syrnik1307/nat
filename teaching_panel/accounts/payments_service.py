@@ -336,9 +336,16 @@ class PaymentService:
                 
                 # =========================================================
                 # IDEMPOTENCY CHECK — if already processed, return success
+                # SECURITY FIX: Check paid_at as additional idempotency marker
+                # This prevents double-processing if webhook arrives twice
                 # =========================================================
                 if payment.status == Payment.STATUS_SUCCEEDED:
                     logger.info(f"[WEBHOOK] Payment {payment_id} already succeeded, skipping (idempotent)")
+                    return True
+                
+                # Additional check: if paid_at is set, webhook was already processed
+                if payment.paid_at is not None:
+                    logger.info(f"[WEBHOOK] Payment {payment_id} already has paid_at={payment.paid_at}, skipping (idempotent)")
                     return True
                 
                 if payment.status == Payment.STATUS_FAILED and webhook_status == 'canceled':

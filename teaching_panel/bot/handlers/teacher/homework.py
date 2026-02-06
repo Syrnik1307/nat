@@ -9,7 +9,7 @@ from telegram.ext import ContextTypes
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 
-from ..utils import (
+from ...utils import (
     require_linked_account,
     require_teacher,
     get_dialog_state,
@@ -22,7 +22,7 @@ from ..utils import (
     check_broadcast_permission,
     record_broadcast,
 )
-from ..keyboards import (
+from ...keyboards import (
     homework_selector_keyboard,
     group_selector_keyboard,
     hw_stats_actions_keyboard,
@@ -30,7 +30,7 @@ from ..keyboards import (
     time_selector_keyboard,
     section_keyboard,
 )
-from ..services import BroadcastService, HomeworkService, SchedulerService
+from ...services import BroadcastService, HomeworkService, SchedulerService
 
 logger = logging.getLogger(__name__)
 

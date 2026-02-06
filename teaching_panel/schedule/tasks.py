@@ -107,7 +107,14 @@ def warmup_zoom_oauth_tokens():
     return result
 
 
-@shared_task(name='schedule.tasks.release_stuck_zoom_accounts')
+@shared_task(
+    name='schedule.tasks.release_stuck_zoom_accounts',
+    autoretry_for=(Exception,),
+    retry_backoff=30,
+    max_retries=3,
+    soft_time_limit=60,   # 1 минута мягкий лимит
+    time_limit=120,       # 2 минуты жёсткий лимит
+)
 def release_stuck_zoom_accounts():
     """
     Освобождение зависших Zoom-аккаунтов
@@ -171,7 +178,14 @@ def release_stuck_zoom_accounts():
     }
 
 
-@shared_task(name='schedule.tasks.release_finished_zoom_accounts')
+@shared_task(
+    name='schedule.tasks.release_finished_zoom_accounts',
+    autoretry_for=(Exception,),
+    retry_backoff=30,
+    max_retries=3,
+    soft_time_limit=60,   # 1 минута мягкий лимит
+    time_limit=120,       # 2 минуты жёсткий лимит
+)
 def release_finished_zoom_accounts():
     """Освобождает аккаунты из нового пула zoom_pool, если встречи завершились.
 
@@ -215,7 +229,14 @@ def release_finished_zoom_accounts():
     }
 
 
-@shared_task(name='schedule.tasks.send_lesson_reminder')
+@shared_task(
+    name='schedule.tasks.send_lesson_reminder',
+    autoretry_for=(Exception,),
+    retry_backoff=10,
+    max_retries=2,
+    soft_time_limit=30,   # 30 секунд мягкий лимит
+    time_limit=60,        # 1 минута жёсткий лимит
+)
 def send_lesson_reminder(lesson_id, minutes_before=30):
     """Отправляет телеграм-напоминание ученикам перед занятием."""
     try:
@@ -261,7 +282,11 @@ def send_lesson_reminder(lesson_id, minutes_before=30):
     }
 
 
-@shared_task(name='schedule.tasks.schedule_upcoming_lesson_reminders')
+@shared_task(
+    name='schedule.tasks.schedule_upcoming_lesson_reminders',
+    soft_time_limit=60,   # 1 минута мягкий лимит
+    time_limit=120,       # 2 минуты жёсткий лимит
+)
 def schedule_upcoming_lesson_reminders():
     """Находит уроки, стартующие в ближайшее время, и планирует напоминания."""
     window_minutes = 30
@@ -289,13 +314,24 @@ def schedule_upcoming_lesson_reminders():
     return {'scheduled': scheduled, 'timestamp': now.isoformat()}
 
 
-@shared_task(name='schedule.tasks.send_lesson_reminders')
+@shared_task(
+    name='schedule.tasks.send_lesson_reminders',
+    soft_time_limit=60,
+    time_limit=120,
+)
 def send_lesson_reminders():
     """Совместимость для ручного запуска через celery_metrics."""
     return schedule_upcoming_lesson_reminders()
 
 
-@shared_task(name='schedule.tasks.send_recurring_lesson_reminders')
+@shared_task(
+    name='schedule.tasks.send_recurring_lesson_reminders',
+    autoretry_for=(Exception,),
+    retry_backoff=30,
+    max_retries=2,
+    soft_time_limit=120,  # 2 минуты мягкий лимит
+    time_limit=180,       # 3 минуты жёсткий лимит
+)
 def send_recurring_lesson_reminders():
     """
     Отправляет напоминания о регулярных уроках на основе настроек RecurringLesson.
@@ -412,7 +448,14 @@ def send_recurring_lesson_reminders():
     }
 
 
-@shared_task(name='schedule.tasks.archive_zoom_recordings')
+@shared_task(
+    name='schedule.tasks.archive_zoom_recordings',
+    autoretry_for=(Exception,),
+    retry_backoff=60,
+    max_retries=3,
+    soft_time_limit=600,  # 10 минут мягкий лимит (скачивание файлов)
+    time_limit=900,       # 15 минут жёсткий лимит
+)
 def archive_zoom_recordings():
     """
     Архивирование Zoom записей в постоянное хранилище (S3/Azure Blob)
@@ -715,7 +758,14 @@ def upload_recording_to_gdrive_robust(self, recording_id, file_path=None, downlo
 # НОВЫЕ ЗАДАЧИ ДЛЯ ОБРАБОТКИ ЗАПИСЕЙ УРОКОВ С GOOGLE DRIVE
 # ============================================================================
 
-@shared_task(name='schedule.tasks.process_zoom_recording')
+@shared_task(
+    name='schedule.tasks.process_zoom_recording',
+    autoretry_for=(Exception,),
+    retry_backoff=120,
+    max_retries=3,
+    soft_time_limit=1800,   # 30 минут мягкий лимит (большие файлы)
+    time_limit=2100,        # 35 минут жёсткий лимит
+)
 def process_zoom_recording(recording_id):
     """
     Главная задача: скачать запись с Zoom и загрузить в Google Drive
@@ -1019,7 +1069,14 @@ def process_zoom_recording(recording_id):
             pass
 
 
-@shared_task(name='schedule.tasks.process_zoom_recording_bundle')
+@shared_task(
+    name='schedule.tasks.process_zoom_recording_bundle',
+    autoretry_for=(Exception,),
+    retry_backoff=120,
+    max_retries=3,
+    soft_time_limit=3600,   # 60 минут мягкий лимит (несколько файлов)
+    time_limit=3900,        # 65 минут жёсткий лимит
+)
 def process_zoom_recording_bundle(recording_id, parts):
     """Обрабатывает запись-"bundle" (несколько MP4 частей одного урока).
 
@@ -1810,7 +1867,14 @@ def _notify_students_about_recording(recording):
         logger.exception(f"Error notifying about recording: {e}")
 
 
-@shared_task(name='schedule.tasks.cleanup_old_recordings')
+@shared_task(
+    name='schedule.tasks.cleanup_old_recordings',
+    autoretry_for=(Exception,),
+    retry_backoff=60,
+    max_retries=2,
+    soft_time_limit=300,   # 5 минут мягкий лимит
+    time_limit=600,        # 10 минут жёсткий лимит
+)
 def cleanup_old_recordings():
     """
     Периодическая задача: удаляет старые записи из Google Drive

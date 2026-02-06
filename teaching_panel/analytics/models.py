@@ -4,13 +4,13 @@ from schedule.models import Lesson, Group
 
 
 class ControlPoint(models.Model):
-    teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='control_points', limit_choices_to={'role': 'teacher'})
+    teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='control_points', limit_choices_to={'role': 'teacher'}, db_index=True)
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='control_points')
     lesson = models.ForeignKey(Lesson, on_delete=models.SET_NULL, null=True, blank=True, related_name='control_points')
     title = models.CharField(max_length=255)
     max_points = models.IntegerField(default=100)
-    date = models.DateField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    date = models.DateField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         ordering = ['-date']
@@ -22,9 +22,9 @@ class ControlPoint(models.Model):
 
 class ControlPointResult(models.Model):
     control_point = models.ForeignKey(ControlPoint, on_delete=models.CASCADE, related_name='results')
-    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='control_point_results', limit_choices_to={'role': 'student'})
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='control_point_results', limit_choices_to={'role': 'student'}, db_index=True)
     points = models.IntegerField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         unique_together = ['control_point', 'student']
@@ -49,13 +49,15 @@ class StudentAIReport(models.Model):
         settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE, 
         related_name='ai_reports',
-        limit_choices_to={'role': 'student'}
+        limit_choices_to={'role': 'student'},
+        db_index=True
     )
     teacher = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE, 
         related_name='student_ai_reports',
-        limit_choices_to={'role': 'teacher'}
+        limit_choices_to={'role': 'teacher'},
+        db_index=True
     )
     group = models.ForeignKey(
         Group, 
@@ -142,13 +144,15 @@ class StudentBehaviorReport(models.Model):
         settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE, 
         related_name='behavior_reports',
-        limit_choices_to={'role': 'student'}
+        limit_choices_to={'role': 'student'},
+        db_index=True
     )
     teacher = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE, 
         related_name='student_behavior_reports',
-        limit_choices_to={'role': 'teacher'}
+        limit_choices_to={'role': 'teacher'},
+        db_index=True
     )
     group = models.ForeignKey(
         Group, 

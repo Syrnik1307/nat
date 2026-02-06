@@ -10,15 +10,19 @@ logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=CustomUser)
 def ensure_notification_settings(sender, instance, created, **kwargs):
-    """Гарантируем, что у каждого пользователя есть настройки уведомлений."""
+    """Гарантируем, что у каждого пользователя есть настройки уведомлений.
+    
+    SECURITY FIX: Убрали hasattr() проверку - она не thread-safe и создавала
+    race condition при параллельных запросах. get_or_create() уже атомарен.
+    """
     if not instance:
         return
-    if created:
+    # get_or_create использует SELECT FOR UPDATE внутренне, что предотвращает race conditions
+    try:
         NotificationSettings.objects.get_or_create(user=instance)
-    else:
-        # Для существующих пользователей убеждаемся, что запись тоже присутствует
-        if not hasattr(instance, 'notification_settings'):
-            NotificationSettings.objects.get_or_create(user=instance)
+    except Exception as e:
+        # Логируем ошибку, но не прерываем сохранение пользователя
+        logger.warning(f"Failed to ensure NotificationSettings for user {instance.id}: {e}")
 
 
 @receiver(post_save, sender=CustomUser)

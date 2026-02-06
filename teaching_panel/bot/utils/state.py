@@ -5,8 +5,9 @@ import json
 import logging
 from typing import Optional, Any, Dict
 from django.core.cache import cache
+from asgiref.sync import sync_to_async
 
-from .config import DIALOG_STATE_TTL, CACHE_TTL
+from ..config import DIALOG_STATE_TTL, CACHE_TTL
 
 logger = logging.getLogger(__name__)
 
@@ -96,4 +97,44 @@ def invalidate_cache(prefix: str, *args) -> bool:
         return True
     except Exception as e:
         logger.error(f"Error invalidating cache {key}: {e}")
+        return False
+
+
+# ===== Async-обёртки для использования в async хендлерах бота =====
+# Синхронные cache.get/set блокируют event loop при использовании Redis.
+# Эти обёртки корректно делегируют в thread pool через sync_to_async.
+
+async def aget_dialog_state(telegram_id: int) -> Optional[Dict[str, Any]]:
+    """Async-обёртка для get_dialog_state (безопасна для event loop)"""
+    try:
+        return await sync_to_async(get_dialog_state)(telegram_id)
+    except Exception as e:
+        logger.error(f"Async error getting dialog state for {telegram_id}: {e}")
+        return None
+
+
+async def aset_dialog_state(telegram_id: int, state: Dict[str, Any], ttl: int = None) -> bool:
+    """Async-обёртка для set_dialog_state (безопасна для event loop)"""
+    try:
+        return await sync_to_async(set_dialog_state)(telegram_id, state, ttl)
+    except Exception as e:
+        logger.error(f"Async error setting dialog state for {telegram_id}: {e}")
+        return False
+
+
+async def aupdate_dialog_state(telegram_id: int, **updates) -> bool:
+    """Async-обёртка для update_dialog_state"""
+    try:
+        return await sync_to_async(update_dialog_state)(telegram_id, **updates)
+    except Exception as e:
+        logger.error(f"Async error updating dialog state for {telegram_id}: {e}")
+        return False
+
+
+async def aclear_dialog_state(telegram_id: int) -> bool:
+    """Async-обёртка для clear_dialog_state (безопасна для event loop)"""
+    try:
+        return await sync_to_async(clear_dialog_state)(telegram_id)
+    except Exception as e:
+        logger.error(f"Async error clearing dialog state for {telegram_id}: {e}")
         return False

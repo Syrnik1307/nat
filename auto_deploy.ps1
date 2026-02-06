@@ -184,13 +184,13 @@ function Deploy-Full {
     
     $steps = @(
         @{ Num=1; Total=8; Desc="Обновление кода из Git"; Cmd="cd $REMOTE_DIR && git pull origin main" },
-        @{ Num=2; Total=8; Desc="Удаление Celery файлов"; Cmd="echo '# Celery removed - no longer needed' > $REMOTE_DIR/teaching_panel/teaching_panel/__init__.py && rm -f $REMOTE_DIR/teaching_panel/teaching_panel/celery.py" },
-        @{ Num=3; Total=8; Desc="Обновление Python зависимостей"; Cmd="cd $REMOTE_DIR && source venv/bin/activate && pip install -r teaching_panel/requirements.txt --quiet" },
-        @{ Num=4; Total=8; Desc="Применение миграций БД"; Cmd="cd $REMOTE_DIR && source venv/bin/activate && python teaching_panel/manage.py migrate --noinput" },
-        @{ Num=5; Total=8; Desc="Сборка статики Django"; Cmd="cd $REMOTE_DIR && source venv/bin/activate && python teaching_panel/manage.py collectstatic --noinput --clear" },
-        @{ Num=6; Total=8; Desc="Установка npm пакетов"; Cmd="cd $REMOTE_DIR/frontend && npm install --silent" },
-        @{ Num=7; Total=8; Desc="Сборка React фронтенда"; Cmd="cd $REMOTE_DIR/frontend && umask 022 && npm run build" },
-        @{ Num=8; Total=8; Desc="Перезапуск Django и Nginx"; Cmd="sudo systemctl restart teaching_panel nginx" }
+        @{ Num=2; Total=8; Desc="Обновление Python зависимостей"; Cmd="cd $REMOTE_DIR && source venv/bin/activate && pip install -r teaching_panel/requirements.txt --quiet" },
+        @{ Num=3; Total=8; Desc="Применение миграций БД"; Cmd="cd $REMOTE_DIR && source venv/bin/activate && python teaching_panel/manage.py migrate --noinput" },
+        @{ Num=4; Total=8; Desc="Сборка статики Django"; Cmd="cd $REMOTE_DIR && source venv/bin/activate && python teaching_panel/manage.py collectstatic --noinput --clear" },
+        @{ Num=5; Total=8; Desc="Установка npm пакетов"; Cmd="cd $REMOTE_DIR/frontend && npm install --silent" },
+        @{ Num=6; Total=8; Desc="Сборка React фронтенда"; Cmd="cd $REMOTE_DIR/frontend && umask 022 && npm run build" },
+        @{ Num=7; Total=8; Desc="Перезапуск Django, Celery и Nginx"; Cmd="sudo systemctl restart teaching_panel celery-worker celery-beat nginx" },
+        @{ Num=8; Total=8; Desc="Очистка старых Celery процессов"; Cmd="sudo pkill -f 'celery.*worker.*--logfile=/var/log/celery/worker.log' 2>/dev/null; sudo pkill -f 'celery.*worker.*--queues=default' 2>/dev/null; echo 'Cleanup done'" }
     )
     
     foreach ($step in $steps) {

@@ -309,7 +309,13 @@ class RegisterView(APIView):
         
         email = request.data.get('email')
         password = request.data.get('password')
-        role = request.data.get('role', 'student')
+        # SECURITY: Only allow 'student' or 'teacher' roles during registration
+        # 'admin' role can ONLY be assigned by superusers via admin panel
+        requested_role = request.data.get('role', 'student')
+        if requested_role not in ('student', 'teacher'):
+            logger.warning(f"[RegisterView] Invalid role requested: {requested_role}, defaulting to student")
+            requested_role = 'student'
+        role = requested_role
         first_name = request.data.get('first_name', '')
         last_name = request.data.get('last_name', '')
         middle_name = request.data.get('middle_name', '')

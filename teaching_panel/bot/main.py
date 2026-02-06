@@ -71,7 +71,31 @@ def setup_handlers(application: Application):
         )
     )
     
+    # Глобальный обработчик ошибок — бот не падает молча
+    application.add_error_handler(error_handler)
+    
     logger.info("Bot handlers registered successfully")
+
+
+async def error_handler(update, context):
+    """
+    Глобальный обработчик ошибок бота.
+    Логирует ошибку и уведомляет пользователя вместо молчаливого падения.
+    """
+    logger.error(f"Bot error: {context.error}", exc_info=context.error)
+    
+    try:
+        if update and update.callback_query:
+            await update.callback_query.answer(
+                "Произошла ошибка. Попробуйте /menu.",
+                show_alert=True,
+            )
+        elif update and update.effective_message:
+            await update.effective_message.reply_text(
+                "Произошла ошибка. Попробуйте позже или используйте /menu."
+            )
+    except Exception:
+        pass  # Не можем уведомить — хотя бы залогировали
 
 
 async def text_message_handler(update, context):
