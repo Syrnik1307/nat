@@ -12,6 +12,14 @@ from django.conf import settings
 from django.core.cache import cache
 import google_auth_httplib2
 import httplib2
+
+# Явный импорт RedirectMissingLocation для корректной обработки
+try:
+    from httplib2.error import RedirectMissingLocation
+except ImportError:
+    # Fallback для старых версий httplib2
+    class RedirectMissingLocation(Exception):
+        pass
 import socket
 import os
 import sys
@@ -22,6 +30,7 @@ import tempfile
 import logging
 import json
 import time
+import random
 import functools
 import threading
 
@@ -35,8 +44,10 @@ MAX_RETRIES = 3
 RETRY_DELAY_BASE = 1.0  # секунд
 RETRY_DELAY_MAX = 10.0  # секунд
 REQUEST_TIMEOUT = 30  # секунд для обычных запросов
+FOLDER_TIMEOUT = 60  # секунд для операций с папками (DNS/SSL могут быть медленными)
 CONNECT_TIMEOUT = 10  # секунд для установки соединения
 UPLOAD_TIMEOUT = 300  # секунд для загрузки файлов
+RESUMABLE_MAX_TOTAL_ATTEMPTS = 10  # макс. общее число итераций resumable upload
 CACHE_TTL = 3600  # 1 час кэш папок учителя
 SIMPLE_UPLOAD_THRESHOLD = 5 * 1024 * 1024  # 5 MB - для файлов меньше используем simple upload
 
@@ -113,7 +124,8 @@ def retry_on_error(max_retries=MAX_RETRIES, delay_base=RETRY_DELAY_BASE, timeout
                 except TimeoutError as e:
                     last_error = e
                     delay = min(delay_base * (2 ** attempt), RETRY_DELAY_MAX)
-                    logger.warning(f"Timeout (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
+                    delay += random.uniform(0, delay * 0.3)  # jitter до 30%
+                    logger.warning(f"Timeout (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay:.1f}s...")
                     time.sleep(delay)
                 except HttpError as e:
                     last_error = e
@@ -121,13 +133,15 @@ def retry_on_error(max_retries=MAX_RETRIES, delay_base=RETRY_DELAY_BASE, timeout
                     if e.resp.status < 500 and e.resp.status != 429:
                         raise
                     delay = min(delay_base * (2 ** attempt), RETRY_DELAY_MAX)
-                    logger.warning(f"Google API error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
+                    delay += random.uniform(0, delay * 0.3)
+                    logger.warning(f"Google API error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay:.1f}s...")
                     time.sleep(delay)
                 except (socket.timeout, socket.error, OSError) as e:
                     # Явные сетевые ошибки
                     last_error = e
                     delay = min(delay_base * (2 ** attempt), RETRY_DELAY_MAX)
-                    logger.warning(f"Socket error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
+                    delay += random.uniform(0, delay * 0.3)
+                    logger.warning(f"Socket error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay:.1f}s...")
                     time.sleep(delay)
                 except Exception as e:
                     last_error = e
@@ -135,7 +149,8 @@ def retry_on_error(max_retries=MAX_RETRIES, delay_base=RETRY_DELAY_BASE, timeout
                     # Повторяем только для таймаутов и сетевых ошибок
                     if 'timeout' in error_str or 'connection' in error_str or 'network' in error_str or 'timed out' in error_str:
                         delay = min(delay_base * (2 ** attempt), RETRY_DELAY_MAX)
-                        logger.warning(f"Network error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
+                        delay += random.uniform(0, delay * 0.3)
+                        logger.warning(f"Network error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay:.1f}s...")
                         time.sleep(delay)
                     else:
                         raise
@@ -290,7 +305,7 @@ class GoogleDriveManager:
             logger.error(f"Failed to initialize Google Drive Manager: {e}")
             raise
     
-    @retry_on_error()
+    @retry_on_error(timeout=FOLDER_TIMEOUT)
     def create_folder(self, folder_name, parent_folder_id=None):
         """
         Создать папку в Google Drive
@@ -549,7 +564,23 @@ class GoogleDriveManager:
                 file = self._execute_simple_upload(file_metadata, media, file_name)
             else:
                 # Resumable upload для больших файлов
-                file = self._execute_resumable_upload(file_metadata, media, file_name)
+                try:
+                    file = self._execute_resumable_upload(file_metadata, media, file_name)
+                except (RedirectMissingLocation, Exception) as e:
+                    # Fallback: если resumable upload падает с redirect ошибкой
+                    # и файл достаточно маленький - пробуем simple upload
+                    error_str = str(e).lower()
+                    is_redirect_error = 'redirect' in error_str or isinstance(e, RedirectMissingLocation)
+                    if is_redirect_error and file_size < SIMPLE_UPLOAD_THRESHOLD:
+                        logger.warning(
+                            f"Resumable upload failed with redirect error for {file_name}. "
+                            f"File is {file_size/1024/1024:.2f}MB, trying simple upload fallback..."
+                        )
+                        # Сбросить stream перед fallback
+                        self._reset_media_stream(media)
+                        file = self._execute_simple_upload(file_metadata, media, file_name)
+                    else:
+                        raise
             
             file_id = file.get('id')
             
@@ -590,7 +621,13 @@ class GoogleDriveManager:
         return file
     
     def _execute_resumable_upload(self, file_metadata, media, file_name):
-        """Выполнить resumable upload с retry логикой"""
+        """Выполнить resumable upload с retry логикой.
+        
+        CRITICAL: При retry после RedirectMissingLocation необходимо:
+        1. Сбросить курсор BytesIO media stream в начало
+        2. Пересоздать MediaIoBaseUpload с новым stream
+        3. Ограничить общее число итераций (RESUMABLE_MAX_TOTAL_ATTEMPTS)
+        """
         request = self.service.files().create(
             body=file_metadata,
             media_body=media,
@@ -599,7 +636,14 @@ class GoogleDriveManager:
         
         response = None
         retries = 0
+        total_attempts = 0
         while response is None:
+            total_attempts += 1
+            if total_attempts > RESUMABLE_MAX_TOTAL_ATTEMPTS:
+                raise Exception(
+                    f"Resumable upload for {file_name} exceeded {RESUMABLE_MAX_TOTAL_ATTEMPTS} "
+                    f"total attempts ({retries} retries). Aborting."
+                )
             try:
                 status, response = request.next_chunk()
                 if status:
@@ -608,9 +652,44 @@ class GoogleDriveManager:
                 if e.resp.status in [500, 502, 503, 504] and retries < MAX_RETRIES:
                     retries += 1
                     delay = min(RETRY_DELAY_BASE * (2 ** retries), RETRY_DELAY_MAX)
-                    logger.warning(f"Upload error (attempt {retries}): {e}. Retrying in {delay}s...")
+                    delay += random.uniform(0, delay * 0.3)  # jitter
+                    logger.warning(f"Upload error (attempt {retries}): {e}. Retrying in {delay:.1f}s...")
                     time.sleep(delay)
                 else:
+                    raise
+            except RedirectMissingLocation as e:
+                # CRITICAL: Google API иногда возвращает redirect без Location header
+                # Это транзиентная ошибка, требующая полного пересоздания upload сессии
+                if retries < MAX_RETRIES:
+                    retries += 1
+                    delay = min(RETRY_DELAY_BASE * (2 ** retries), RETRY_DELAY_MAX)
+                    delay += random.uniform(0, delay * 0.3)  # jitter
+                    logger.warning(
+                        f"RedirectMissingLocation for {file_name} "
+                        f"(attempt {retries}/{MAX_RETRIES}). "
+                        f"Resetting stream and creating new upload session in {delay:.1f}s..."
+                    )
+                    time.sleep(delay)
+                    
+                    # Сбросить media stream - критично для повторной попытки
+                    stream_reset_ok = self._reset_media_stream(media)
+                    if not stream_reset_ok:
+                        logger.error(
+                            f"Failed to reset media stream for {file_name}. "
+                            f"Subsequent retry will likely fail."
+                        )
+                    
+                    # Пересоздать request для новой resumable upload сессии
+                    request = self.service.files().create(
+                        body=file_metadata,
+                        media_body=media,
+                        fields='id, name, size, webViewLink, webContentLink'
+                    )
+                else:
+                    logger.error(
+                        f"RedirectMissingLocation persists after {MAX_RETRIES} retries "
+                        f"for {file_name}. This indicates persistent Google API issues."
+                    )
                     raise
             except Exception as e:
                 error_str = str(e).lower()
@@ -626,8 +705,11 @@ class GoogleDriveManager:
                 if retryable_errors and retries < MAX_RETRIES:
                     retries += 1
                     delay = min(RETRY_DELAY_BASE * (2 ** retries), RETRY_DELAY_MAX)
-                    logger.warning(f"Network/redirect error during upload (attempt {retries}): {e}. Retrying in {delay}s...")
+                    delay += random.uniform(0, delay * 0.3)  # jitter
+                    logger.warning(f"Network/redirect error during upload (attempt {retries}): {e}. Retrying in {delay:.1f}s...")
                     time.sleep(delay)
+                    # CRITICAL: сбросить курсор media stream перед пересозданием request
+                    self._reset_media_stream(media)
                     # Recreate request for fresh resumable upload session
                     request = self.service.files().create(
                         body=file_metadata,
@@ -638,6 +720,36 @@ class GoogleDriveManager:
                     raise
         
         return response
+    
+    @staticmethod
+    def _reset_media_stream(media):
+        """Сбросить позицию stream в media upload объекте.
+        
+        Решает RedirectMissingLocation: при retry после ошибки redirect
+        курсор BytesIO уже в конце → пересозданный request отправляет пустые данные.
+        
+        Returns:
+            bool: True если сброс успешен, False если не удалось
+        """
+        try:
+            # MediaIoBaseUpload хранит stream в _fd
+            if hasattr(media, '_fd') and hasattr(media._fd, 'seek'):
+                current_pos = media._fd.tell()
+                media._fd.seek(0)
+                logger.debug(f"Reset media stream cursor: {current_pos} -> 0")
+                return True
+            # MediaFileUpload хранит stream в _file
+            elif hasattr(media, '_file') and hasattr(media._file, 'seek'):
+                current_pos = media._file.tell()
+                media._file.seek(0)
+                logger.debug(f"Reset media file cursor: {current_pos} -> 0")
+                return True
+            else:
+                logger.warning("Could not reset media stream - no seekable attribute found")
+                return False
+        except Exception as e:
+            logger.error(f"Failed to reset media stream: {e}")
+            return False
     
     @retry_on_error()
     def set_file_public(self, file_id):

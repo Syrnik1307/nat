@@ -30,6 +30,11 @@ FILE_MIGRATION_TIMEOUT = 120  # секунд на один файл (включ�
 FOLDER_OPERATION_TIMEOUT = 30  # секунд на операции с папками
 
 
+# Максимальное количество ПОСЛЕДОВАТЕЛЬНЫХ ошибок до остановки batch
+# Если GDrive лежит, нет смысла генерировать сотни событий в Sentry
+CIRCUIT_BREAKER_THRESHOLD = 3
+
+
 class Command(BaseCommand):
     help = 'Мигрировать локальные файлы домашек на Google Drive'
 
@@ -96,25 +101,54 @@ class Command(BaseCommand):
             
             migrated = 0
             failed = 0
+            consecutive_failures = 0
             
             for hw_file in pending_files:
                 try:
                     self._migrate_file(hw_file)
                     migrated += 1
+                    consecutive_failures = 0  # сброс при успехе
                     self.stdout.write(self.style.SUCCESS(f'  [{migrated}/{total}] {hw_file.id}: migrated'))
                 except socket.timeout as e:
                     failed += 1
+                    consecutive_failures += 1
                     self.stdout.write(self.style.ERROR(f'  [{migrated + failed}/{total}] {hw_file.id}: TIMEOUT - {e}'))
                     logger.error(f'migrate_homework_files: timeout migrating {hw_file.id}: {e}')
                 except Exception as e:
                     failed += 1
+                    consecutive_failures += 1
                     error_msg = str(e).lower()
-                    if 'timeout' in error_msg or 'timed out' in error_msg:
+                    
+                    # Классификация ошибок для правильного логирования
+                    if 'redirect' in error_msg and 'location' in error_msg:
+                        # RedirectMissingLocation - транзиентная ошибка Google API
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f'  [{migrated + failed}/{total}] {hw_file.id}: '
+                                f'GDRIVE REDIRECT ERROR (transient) - {e}'
+                            )
+                        )
+                        logger.warning(
+                            f'migrate_homework_files: Google Drive redirect error '
+                            f'for {hw_file.id} (transient API issue): {e}'
+                        )
+                    elif 'timeout' in error_msg or 'timed out' in error_msg:
                         self.stdout.write(self.style.ERROR(f'  [{migrated + failed}/{total}] {hw_file.id}: TIMEOUT - {e}'))
                         logger.error(f'migrate_homework_files: timeout migrating {hw_file.id}: {e}')
                     else:
                         self.stdout.write(self.style.ERROR(f'  [{migrated + failed}/{total}] {hw_file.id}: FAILED - {e}'))
                         logger.error(f'migrate_homework_files: failed to migrate {hw_file.id}: {e}', exc_info=True)
+                
+                # Circuit breaker: если N файлов подряд упали, GDrive скорее всего недоступен
+                if consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD:
+                    msg = (
+                        f'Circuit breaker triggered: {consecutive_failures} consecutive failures. '
+                        f'Google Drive is likely unavailable. Stopping batch. '
+                        f'Migrated: {migrated}, Failed: {failed}'
+                    )
+                    self.stdout.write(self.style.ERROR(f'\n{msg}'))
+                    logger.error(f'migrate_homework_files: {msg}')
+                    break
                 
                 # Rate limiting - задержка между запросами к GDrive API
                 if delay > 0:
