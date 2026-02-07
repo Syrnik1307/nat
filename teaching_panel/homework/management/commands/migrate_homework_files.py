@@ -34,6 +34,15 @@ FOLDER_OPERATION_TIMEOUT = 30  # секунд на операции с папк�
 # Если GDrive лежит, нет смысла генерировать сотни событий в Sentry
 CIRCUIT_BREAKER_THRESHOLD = 3
 
+# Per-file cooldown: сколько раз файл может упасть до пометки как "отравленный"
+FILE_MAX_FAILURES = 5
+# Начальный cooldown для файла после превышения лимита неудач (секунды)
+FILE_COOLDOWN_BASE = 1800  # 30 минут
+# Максимальный cooldown для файла (секунды)
+FILE_COOLDOWN_MAX = 86400  # 24 часа
+# Глобальный cooldown после срабатывания circuit breaker (секунды)
+GLOBAL_COOLDOWN = 600  # 10 минут
+
 
 class Command(BaseCommand):
     help = 'Мигрировать локальные файлы домашек на Google Drive'
@@ -67,6 +76,17 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('USE_GDRIVE_STORAGE is False, nothing to migrate'))
             return
         
+        # Глобальный cooldown после срабатывания circuit breaker
+        global_cooldown_key = 'migrate_homework_files_global_cooldown'
+        cooldown_remaining = cache.get(global_cooldown_key)
+        if cooldown_remaining:
+            self.stdout.write(
+                self.style.WARNING(
+                    f'Global cooldown active (circuit breaker was triggered). Skipping.'
+                )
+            )
+            return
+
         # Используем lock чтобы избежать одновременного запуска
         lock_key = 'migrate_homework_files_lock'
         if cache.get(lock_key):
@@ -78,13 +98,28 @@ class Command(BaseCommand):
             cache.set(lock_key, True, 600)
             
             # Получаем файлы для миграции (самые старые первыми)
-            pending_files = HomeworkFile.objects.filter(
+            all_pending = HomeworkFile.objects.filter(
                 storage=HomeworkFile.STORAGE_LOCAL
             ).exclude(
                 local_path=''
             ).order_by('created_at')[:batch_size]
+
+            # Фильтруем файлы с активным per-file cooldown
+            pending_files = []
+            skipped_cooldown = 0
+            for hf in all_pending:
+                cooldown_key = f'migrate_hw_file_cooldown_{hf.id}'
+                if cache.get(cooldown_key):
+                    skipped_cooldown += 1
+                else:
+                    pending_files.append(hf)
+
+            if skipped_cooldown > 0:
+                self.stdout.write(
+                    self.style.WARNING(f'Skipped {skipped_cooldown} files on cooldown')
+                )
             
-            total = pending_files.count()
+            total = len(pending_files)
             
             if total == 0:
                 self.stdout.write('No files to migrate')
@@ -139,11 +174,39 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.ERROR(f'  [{migrated + failed}/{total}] {hw_file.id}: FAILED - {e}'))
                         logger.error(f'migrate_homework_files: failed to migrate {hw_file.id}: {e}', exc_info=True)
                 
+                # Per-file cooldown: помечаем файл как "отравленный" после N неудач
+                if consecutive_failures > 0:
+                    fail_count_key = f'migrate_hw_file_fails_{hw_file.id}'
+                    fail_count = (cache.get(fail_count_key) or 0) + 1
+                    cache.set(fail_count_key, fail_count, FILE_COOLDOWN_MAX * 2)
+                    
+                    if fail_count >= FILE_MAX_FAILURES:
+                        # Экспоненциальный cooldown: 30 мин, 60 мин, 120 мин... до 24ч
+                        cooldown = min(
+                            FILE_COOLDOWN_BASE * (2 ** (fail_count - FILE_MAX_FAILURES)),
+                            FILE_COOLDOWN_MAX
+                        )
+                        cooldown_key = f'migrate_hw_file_cooldown_{hw_file.id}'
+                        cache.set(cooldown_key, True, int(cooldown))
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f'  File {hw_file.id} failed {fail_count} times, '
+                                f'cooldown {int(cooldown/60)} min'
+                            )
+                        )
+                        logger.warning(
+                            f'migrate_homework_files: file {hw_file.id} put on cooldown '
+                            f'({int(cooldown/60)} min) after {fail_count} failures'
+                        )
+
                 # Circuit breaker: если N файлов подряд упали, GDrive скорее всего недоступен
                 if consecutive_failures >= CIRCUIT_BREAKER_THRESHOLD:
+                    # Устанавливаем глобальный cooldown чтобы cron не спамил
+                    cache.set(global_cooldown_key, True, GLOBAL_COOLDOWN)
                     msg = (
                         f'Circuit breaker triggered: {consecutive_failures} consecutive failures. '
                         f'Google Drive is likely unavailable. Stopping batch. '
+                        f'Global cooldown {GLOBAL_COOLDOWN//60} min set. '
                         f'Migrated: {migrated}, Failed: {failed}'
                     )
                     self.stdout.write(self.style.ERROR(f'\n{msg}'))

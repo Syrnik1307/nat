@@ -136,6 +136,13 @@ def retry_on_error(max_retries=MAX_RETRIES, delay_base=RETRY_DELAY_BASE, timeout
                     delay += random.uniform(0, delay * 0.3)
                     logger.warning(f"Google API error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay:.1f}s...")
                     time.sleep(delay)
+                except RedirectMissingLocation as e:
+                    # Google API redirect без Location header — транзиентная ошибка
+                    last_error = e
+                    delay = min(delay_base * (2 ** attempt), RETRY_DELAY_MAX)
+                    delay += random.uniform(0, delay * 0.3)
+                    logger.warning(f"RedirectMissingLocation (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay:.1f}s...")
+                    time.sleep(delay)
                 except (socket.timeout, socket.error, OSError) as e:
                     # Явные сетевые ошибки
                     last_error = e
@@ -305,6 +312,34 @@ class GoogleDriveManager:
             logger.error(f"Failed to initialize Google Drive Manager: {e}")
             raise
     
+    def _rebuild_service(self):
+        """Пересоздать HTTP-клиент и Drive service.
+        
+        При RedirectMissingLocation httplib2 connection может быть corrupted.
+        Пересоздание service с новым httplib2.Http решает проблему.
+        """
+        try:
+            token_path = getattr(settings, 'GDRIVE_TOKEN_FILE', 'gdrive_token.json')
+            creds = Credentials.from_authorized_user_file(
+                token_path,
+                scopes=['https://www.googleapis.com/auth/drive.file']
+            )
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+                with open(token_path, 'w') as token:
+                    token.write(creds.to_json())
+            http = httplib2.Http(
+                timeout=REQUEST_TIMEOUT,
+                disable_ssl_certificate_validation=False
+            )
+            http.force_exception_to_status_code = False
+            authed_http = google_auth_httplib2.AuthorizedHttp(creds, http=http)
+            self.service = build('drive', 'v3', http=authed_http, cache_discovery=False)
+            logger.info("Rebuilt Google Drive service connection")
+        except Exception as e:
+            logger.error(f"Failed to rebuild service: {e}")
+            # Не перебрасываем — пусть следующий upload попробует на старом service
+
     @retry_on_error(timeout=FOLDER_TIMEOUT)
     def create_folder(self, folder_name, parent_folder_id=None):
         """
@@ -568,16 +603,34 @@ class GoogleDriveManager:
                     file = self._execute_resumable_upload(file_metadata, media, file_name)
                 except (RedirectMissingLocation, Exception) as e:
                     # Fallback: если resumable upload падает с redirect ошибкой
-                    # и файл достаточно маленький - пробуем simple upload
+                    # пробуем simple upload (пересоздав HTTP-соединение)
                     error_str = str(e).lower()
                     is_redirect_error = 'redirect' in error_str or isinstance(e, RedirectMissingLocation)
-                    if is_redirect_error and file_size < SIMPLE_UPLOAD_THRESHOLD:
+                    if is_redirect_error:
                         logger.warning(
                             f"Resumable upload failed with redirect error for {file_name}. "
-                            f"File is {file_size/1024/1024:.2f}MB, trying simple upload fallback..."
+                            f"File is {file_size/1024/1024:.2f}MB, "
+                            f"rebuilding service connection and trying simple upload fallback..."
                         )
-                        # Сбросить stream перед fallback
-                        self._reset_media_stream(media)
+                        # Пересоздаём HTTP-клиент т.к. соединение corrupted
+                        self._rebuild_service()
+                        # Пересоздаём media stream для simple upload (не resumable)
+                        if file_content is not None:
+                            media = MediaIoBaseUpload(
+                                io.BytesIO(file_content),
+                                mimetype=mime_type,
+                                resumable=False
+                            )
+                        elif isinstance(file_path_or_object, str):
+                            with open(file_path_or_object, 'rb') as f:
+                                file_content = f.read()
+                            media = MediaIoBaseUpload(
+                                io.BytesIO(file_content),
+                                mimetype=mime_type,
+                                resumable=False
+                            )
+                        else:
+                            self._reset_media_stream(media)
                         file = self._execute_simple_upload(file_metadata, media, file_name)
                     else:
                         raise
