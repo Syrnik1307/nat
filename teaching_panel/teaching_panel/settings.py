@@ -99,6 +99,7 @@ INSTALLED_APPS = [
     'bot',  # Telegram bot command center
     'market',  # Digital products marketplace (Zoom accounts, etc.)
     'finance',  # Student-teacher financial accounting (lesson balances)
+    'tenants',  # Multi-tenant: онлайн-школы на базе платформы
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'django_celery_beat',
@@ -113,6 +114,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'tenants.middleware.TenantMiddleware',  # Определение школы по поддомену
     'core.middleware.RequestMetricsMiddleware',  # Метрики запросов
     'accounts.bot_protection.BotProtectionMiddleware',  # Защита от ботов по fingerprint
 ]
@@ -531,6 +533,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'accounts.tasks.sync_teacher_storage_usage',
         'schedule': 21600.0,  # каждые 6 часов (4 раза в день)
     },
+    'sync-missing-zoom-recordings': {
+        'task': 'schedule.tasks.sync_missing_zoom_recordings',
+        'schedule': 1800.0,  # каждые 30 минут (fallback если webhook не пришёл)
+    },
     'cleanup-old-recordings': {
         'task': 'schedule.tasks.cleanup_old_recordings',
         'schedule': 86400.0,  # каждые 24 часа (03:00 UTC)
@@ -824,6 +830,26 @@ if SENTRY_DSN:
         from sentry_sdk.integrations.django import DjangoIntegration
         from sentry_sdk.integrations.celery import CeleryIntegration
         from sentry_sdk.integrations.redis import RedisIntegration
+
+        def _sentry_before_send(event, hint):
+            """Filter out errors from management commands (manage.py shell, etc.)"""
+            # Ignore SyntaxError from manage.py shell (manual input errors)
+            if hint and 'exc_info' in hint:
+                exc_type, exc_value, _ = hint['exc_info']
+                if exc_type is SyntaxError:
+                    # Check if it's from manage.py / management command
+                    frames = event.get('exception', {}).get('values', [])
+                    for exc in frames:
+                        stacktrace = exc.get('stacktrace', {})
+                        for frame in stacktrace.get('frames', []):
+                            module = frame.get('module', '')
+                            if 'management/commands/shell' in module or \
+                               'management.commands.shell' in module:
+                                return None  # Drop this event
+                            filename = frame.get('filename', '')
+                            if 'management/commands/shell' in filename:
+                                return None
+            return event
         
         sentry_sdk.init(
             dsn=SENTRY_DSN,
@@ -832,6 +858,7 @@ if SENTRY_DSN:
                 CeleryIntegration(),
                 RedisIntegration(),
             ],
+            before_send=_sentry_before_send,
             # Performance tracing может быть платным/шумным. По умолчанию отключено.
             # Включайте явно через env: SENTRY_TRACES_SAMPLE_RATE=0.1
             traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.0')) if not DEBUG else 0.0,
@@ -952,3 +979,63 @@ LOGGING = {
         'level': os.environ.get('DJANGO_ROOT_LOG_LEVEL', 'INFO'),
     },
 }
+
+# =============================================================================
+# PLATFORM IDENTITY (для будущего multi-tenant)
+# =============================================================================
+# ==========================================
+# Multi-Tenant Feature Flag
+# ==========================================
+# Когда False (по умолчанию): все данные видны всем, как раньше (single-tenant).
+# Когда True: TenantViewSetMixin фильтрует данные по school.
+# Включать ТОЛЬКО когда Phase 1 (FK) + Phase 2 (mixin) завершены.
+TENANT_ISOLATION_ENABLED = os.environ.get('TENANT_ISOLATION_ENABLED', '0') == '1'
+
+# Все брендинг-зависимые настройки собраны здесь.
+# При переходе на multi-tenant:
+#   1. Эти значения станут defaults
+#   2. Каждая School будет иметь свои override в БД
+#   3. TenantMiddleware будет подставлять нужные значения в request.school_config
+#
+PLATFORM_CONFIG = {
+    'name': 'Lectio Space',
+    'short_name': 'Lectio',
+    'description': 'Manage your courses, lessons, and homework',
+    'default_frontend_url': FRONTEND_URL,
+    'default_site_url': SITE_URL,
+    
+    # Дефолтные цены подписок (для новых школ)
+    'default_plans': {
+        'monthly': {'price': 990, 'days': 30, 'storage_gb': 5},
+        'yearly': {'price': 9900, 'days': 365, 'storage_gb': 10},
+    },
+    
+    # Интеграции, которые при multi-tenant станут per-school
+    # Пока читаются из env, потом из School model
+    'integrations': {
+        'yookassa': {
+            'account_id': YOOKASSA_ACCOUNT_ID,
+            'secret_key': YOOKASSA_SECRET_KEY,
+            'webhook_secret': YOOKASSA_WEBHOOK_SECRET,
+        },
+        'tbank': {
+            'terminal_key': TBANK_TERMINAL_KEY,
+            'password': TBANK_PASSWORD,
+        },
+        'telegram': {
+            'bot_token': os.environ.get('TELEGRAM_BOT_TOKEN', ''),
+            'bot_username': os.environ.get('TELEGRAM_BOT_USERNAME', ''),
+        },
+    },
+    
+    # Feature flags (defaults для новых школ)
+    'default_features': {
+        'zoom_enabled': True,
+        'google_meet_enabled': GOOGLE_MEET_ENABLED,
+        'homework_enabled': True,
+        'recordings_enabled': True,
+        'finance_enabled': True,
+        'concierge_enabled': True,
+    },
+}
+
