@@ -178,3 +178,70 @@ class SubmissionNotificationsTests(TestCase):
 
         # Only one actual Telegram send should happen
         self.assertEqual(mock_post.call_count, 1)
+
+
+class StudentFileUploadTests(TestCase):
+    """Tests for student file upload endpoint with expanded file type support."""
+
+    def setUp(self):
+        self.teacher = User.objects.create_user(email='teacher_upload@example.com', password='pass', role='teacher')
+        self.student = User.objects.create_user(email='student_upload@example.com', password='pass', role='student')
+        self.group = Group.objects.create(name='UploadGroup', teacher=self.teacher)
+        self.group.students.add(self.student)
+        start = timezone.now()
+        end = start + timezone.timedelta(hours=1)
+        self.lesson = Lesson.objects.create(title='UploadLesson', group=self.group, teacher=self.teacher, start_time=start, end_time=end)
+        self.hw = Homework.objects.create(teacher=self.teacher, lesson=self.lesson, title='UploadHW')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.student)
+
+    def _make_file(self, name, content_type, size=1024):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        return SimpleUploadedFile(name, b'x' * size, content_type=content_type)
+
+    def test_upload_pdf(self):
+        f = self._make_file('test.pdf', 'application/pdf')
+        resp = self.client.post('/api/homework/upload-student-answer/', {'file': f, 'homework_id': self.hw.id}, format='multipart')
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data['mime_type'], 'application/pdf')
+
+    def test_upload_docx(self):
+        f = self._make_file('doc.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        resp = self.client.post('/api/homework/upload-student-answer/', {'file': f, 'homework_id': self.hw.id}, format='multipart')
+        self.assertEqual(resp.status_code, 201)
+
+    def test_upload_zip(self):
+        f = self._make_file('archive.zip', 'application/zip')
+        resp = self.client.post('/api/homework/upload-student-answer/', {'file': f, 'homework_id': self.hw.id}, format='multipart')
+        self.assertEqual(resp.status_code, 201)
+
+    def test_upload_pptx(self):
+        f = self._make_file('slides.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
+        resp = self.client.post('/api/homework/upload-student-answer/', {'file': f, 'homework_id': self.hw.id}, format='multipart')
+        self.assertEqual(resp.status_code, 201)
+
+    def test_upload_csv(self):
+        f = self._make_file('data.csv', 'text/csv')
+        resp = self.client.post('/api/homework/upload-student-answer/', {'file': f, 'homework_id': self.hw.id}, format='multipart')
+        self.assertEqual(resp.status_code, 201)
+
+    def test_upload_image(self):
+        f = self._make_file('photo.png', 'image/png')
+        resp = self.client.post('/api/homework/upload-student-answer/', {'file': f, 'homework_id': self.hw.id}, format='multipart')
+        self.assertEqual(resp.status_code, 201)
+
+    def test_upload_too_large(self):
+        f = self._make_file('big.pdf', 'application/pdf', size=26 * 1024 * 1024)
+        resp = self.client.post('/api/homework/upload-student-answer/', {'file': f, 'homework_id': self.hw.id}, format='multipart')
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('25 MB', resp.data['detail'])
+
+    def test_upload_no_file(self):
+        resp = self.client.post('/api/homework/upload-student-answer/', {'homework_id': self.hw.id}, format='multipart')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_unauthenticated(self):
+        self.client.logout()
+        f = self._make_file('test.pdf', 'application/pdf')
+        resp = self.client.post('/api/homework/upload-student-answer/', {'file': f}, format='multipart')
+        self.assertEqual(resp.status_code, 401)

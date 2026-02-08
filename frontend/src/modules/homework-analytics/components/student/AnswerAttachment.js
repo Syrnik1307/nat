@@ -17,7 +17,7 @@ const AnswerAttachment = ({
   disabled = false, 
   homeworkId = null,
   maxFiles = 3,
-  maxSizeMB = 10 
+  maxSizeMB = 25 
 }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -179,6 +179,9 @@ const AnswerAttachment = ({
       case 'doc': case 'docx': return 'DOC';
       case 'xls': case 'xlsx': return 'XLS';
       case 'ppt': case 'pptx': return 'PPT';
+      case 'csv': return 'CSV';
+      case 'txt': return 'TXT';
+      case 'zip': case 'rar': case '7z': return 'ZIP';
       default: return 'FILE';
     }
   };
@@ -231,7 +234,7 @@ const AnswerAttachment = ({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z"
             onChange={handleFileSelect}
             style={{ display: 'none' }}
             disabled={disabled || uploading}

@@ -12,9 +12,10 @@ from accounts.notifications import send_telegram_notification
 from .models import Homework, StudentSubmission, Answer
 from .serializers import HomeworkSerializer, HomeworkStudentSerializer, StudentSubmissionSerializer
 from .permissions import IsTeacherHomework, IsStudentSubmission
+from core.tenant_mixins import TenantViewSetMixin
 
 
-class HomeworkViewSet(viewsets.ModelViewSet):
+class HomeworkViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset = Homework.objects.all().select_related('teacher', 'lesson', 'lesson__group')
     serializer_class = HomeworkSerializer
     permission_classes = [IsTeacherHomework]
@@ -113,7 +114,8 @@ class HomeworkViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # При создании ДЗ оно обычно в статусе draft.
         # Уведомления студентам должны уходить только при publish.
-        serializer.save()
+        # super() вызывает TenantViewSetMixin.perform_create → авто-school
+        super().perform_create(serializer)
 
     @action(detail=True, methods=['post'], url_path='publish')
     def publish(self, request, pk=None):
@@ -551,10 +553,10 @@ class HomeworkViewSet(viewsets.ModelViewSet):
             except Homework.DoesNotExist:
                 logger.warning(f"Homework {homework_id} not found for student upload")
         
-        # Валидация MIME типа - разрешаем изображения и документы
+        # Валидация MIME типа - разрешаем изображения, документы и архивы
         allowed_types = [
             # Изображения
-            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp',
             # PDF
             'application/pdf',
             # Word
@@ -563,8 +565,20 @@ class HomeworkViewSet(viewsets.ModelViewSet):
             # Excel
             'application/vnd.ms-excel',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            # Text
+            # PowerPoint
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            # Text / CSV
             'text/plain',
+            'text/csv',
+            # Archives
+            'application/zip',
+            'application/x-zip-compressed',
+            'application/x-rar-compressed',
+            'application/vnd.rar',
+            'application/x-7z-compressed',
+            # Generic binary (fallback for uncommon types)
+            'application/octet-stream',
         ]
         
         mime_type = uploaded_file.content_type
@@ -575,11 +589,11 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Проверка размера файла (макс 10 MB для студенческих ответов)
-        max_size = 10 * 1024 * 1024
+        # Проверка размера файла (макс 25 MB для студенческих ответов)
+        max_size = 25 * 1024 * 1024
         if uploaded_file.size > max_size:
             return Response(
-                {'detail': 'Файл слишком большой. Максимум: 10 MB'},
+                {'detail': 'Файл слишком большой. Максимум: 25 MB'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -1212,7 +1226,7 @@ class HomeworkViewSet(viewsets.ModelViewSet):
         })
 
 
-class StudentSubmissionViewSet(viewsets.ModelViewSet):
+class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset = StudentSubmission.objects.all().select_related(
         'homework', 'homework__lesson', 'homework__lesson__group', 'student'
     ).prefetch_related('student__enrolled_groups')
@@ -1518,7 +1532,7 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Просто создаём submission без уведомления.
         # Уведомление учителю отправляется только при финальном submit.
-        serializer.save()
+        super().perform_create(serializer)
 
     @staticmethod
     def _format_display_name(user):

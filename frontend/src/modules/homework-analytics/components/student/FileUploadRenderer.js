@@ -32,7 +32,7 @@ const FileUploadRenderer = ({ question, answer, onChange, disabled = false, home
       types.push('image/*');
     }
     if (allowedTypes.includes('document') || allowedTypes.includes('any')) {
-      types.push('.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv');
+      types.push('.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z');
     }
     if (allowedTypes.includes('any')) {
       types.push('*/*');
@@ -227,6 +227,9 @@ const FileUploadRenderer = ({ question, answer, onChange, disabled = false, home
       case 'doc': case 'docx': return 'DOC';
       case 'xls': case 'xlsx': return 'XLS';
       case 'ppt': case 'pptx': return 'PPT';
+      case 'csv': return 'CSV';
+      case 'txt': return 'TXT';
+      case 'zip': case 'rar': case '7z': return 'ZIP';
       default: return 'FILE';
     }
   };
