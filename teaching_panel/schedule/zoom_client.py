@@ -12,6 +12,12 @@ from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
+
+class ZoomScopeError(Exception):
+    """Zoom OAuth App не имеет необходимых scopes (cloud_recording и т.д.)."""
+    pass
+
+
 # ============================================================
 # CRITICAL: Force IPv4 for Zoom API requests
 # IPv6 causes 10+ second delays due to connection timeouts

@@ -2691,7 +2691,7 @@ def sync_missing_zoom_recordings_for_teacher(teacher):
     
     При наличии нескольких MP4 частей для одного урока - создаёт bundle и запускает склейку.
     """
-    from .zoom_client import ZoomAPIClient
+    from .zoom_client import ZoomAPIClient, ZoomScopeError
     from .tasks import process_zoom_recording_bundle
     
     # Проверяем что у учителя настроены Zoom credentials
@@ -2728,15 +2728,12 @@ def sync_missing_zoom_recordings_for_teacher(teacher):
                 from_date=recent_from.date().isoformat(),
                 to_date=now.date().isoformat(),
             )
-        except Exception as zoom_err:
-            from .zoom_client import ZoomScopeError
-            if isinstance(zoom_err, ZoomScopeError):
-                logger.warning(
-                    f"[ZOOM_SYNC] Teacher {teacher.email} (id={teacher.id}): "
-                    f"Zoom App не имеет scopes для записей. Пропускаем. {zoom_err}"
-                )
-                return 0
-            raise
+        except ZoomScopeError as zoom_err:
+            logger.warning(
+                f"[ZOOM_SYNC] Teacher {teacher.email} (id={teacher.id}): "
+                f"Zoom App не имеет scopes для записей. Пропускаем. {zoom_err}"
+            )
+            return 0
 
         meetings = recordings_response.get('meetings', [])
         meetings_by_id = {str(m.get('id')): m for m in meetings if m.get('id')}
