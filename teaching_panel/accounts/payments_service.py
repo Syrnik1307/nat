@@ -49,16 +49,22 @@ class PaymentService:
     ZOOM_ADDON_PRICE = '990.00'
 
     @staticmethod
-    def create_zoom_addon_payment(subscription, enable_recurrent: bool = False):
+    def create_zoom_addon_payment(subscription, enable_recurrent: bool = False, school=None):
         """Создать платёж за Zoom-аддон (990 ₽ / 1 месяц).
 
         Возвращает dict: {'payment_url': str, 'payment_id': str} или None.
         """
+        frontend_url = school.get_frontend_url() if school else settings.FRONTEND_URL
+        _meta_school_id = str(school.pk) if school else ''
+
         if not YOOKASSA_AVAILABLE:
             logger.error("YooKassa not available - using mock payment URL")
             from .models import Payment
 
             mock_payment_id = f'mock-zoom-addon-{subscription.id}-{timezone.now().timestamp()}'
+            _mock_meta = {'zoom_addon': True, 'mock': True, 'zoom_addon_auto_renew': bool(enable_recurrent)}
+            if _meta_school_id:
+                _mock_meta['school_id'] = _meta_school_id
             mock_payment = Payment.objects.create(
                 subscription=subscription,
                 amount=Decimal(PaymentService.ZOOM_ADDON_PRICE),
@@ -66,8 +72,8 @@ class PaymentService:
                 status=Payment.STATUS_PENDING,
                 payment_system='mock',
                 payment_id=mock_payment_id,
-                payment_url=f'{settings.FRONTEND_URL}/mock-payment?payment_id={mock_payment_id}',
-                metadata={'zoom_addon': True, 'mock': True, 'zoom_addon_auto_renew': bool(enable_recurrent)}
+                payment_url=f'{frontend_url}/mock-payment?payment_id={mock_payment_id}',
+                metadata=_mock_meta
             )
             return {
                 'payment_url': mock_payment.payment_url,
@@ -84,7 +90,7 @@ class PaymentService:
                 },
                 "confirmation": {
                     "type": "redirect",
-                    "return_url": f"{settings.FRONTEND_URL}/teacher/subscription/success"
+                    "return_url": f"{frontend_url}/teacher/subscription/success"
                 },
                 "capture": True,
                 "description": "Zoom (подписка) Lectio Space",
@@ -93,6 +99,7 @@ class PaymentService:
                     "user_id": subscription.user.id,
                     "zoom_addon": True,
                     "zoom_addon_auto_renew": '1' if enable_recurrent else '0',
+                    **(({'school_id': _meta_school_id} if _meta_school_id else {})),
                 }
             }
 
@@ -124,17 +131,28 @@ class PaymentService:
             return None
     
     @staticmethod
-    def create_subscription_payment(subscription, plan):
+    def create_subscription_payment(subscription, plan, school=None):
         """
         Создать платёж для подписки
         
         Args:
             subscription: Subscription instance
             plan: 'monthly' or 'yearly'
+            school: School instance (optional) — для per-school credentials
             
         Returns:
             dict: {'payment_url': str, 'payment_id': str} или None при ошибке
         """
+        # Определяем credentials и URL
+        if school:
+            creds = school.get_payment_credentials()
+            return_url = school.get_frontend_url() + '/teacher/subscription/success'
+            school_name = school.name
+        else:
+            creds = None
+            return_url = f'{settings.FRONTEND_URL}/teacher/subscription/success'
+            school_name = 'Lectio Space'
+        
         if not YOOKASSA_AVAILABLE:
             logger.error("YooKassa not available - using mock payment URL")
             # Мок для разработки - создаём Payment в БД
@@ -148,8 +166,11 @@ class PaymentService:
                 status=Payment.STATUS_PENDING,
                 payment_system='mock',
                 payment_id=mock_payment_id,
-                payment_url=f'{settings.FRONTEND_URL}/mock-payment?payment_id={mock_payment_id}',
-                metadata={'plan': plan, 'mock': True}
+                payment_url=f'{return_url}?payment_id={mock_payment_id}',
+                metadata={
+                    'plan': plan, 'mock': True,
+                    'school_id': str(school.id) if school else '',
+                }
             )
             
             return {
@@ -173,14 +194,15 @@ class PaymentService:
                 },
                 "confirmation": {
                     "type": "redirect",
-                    "return_url": f"{settings.FRONTEND_URL}/teacher/subscription/success"
+                    "return_url": return_url
                 },
                 "capture": True,
-                "description": f"Подписка Lectio Space ({plan})",
+                "description": f"Подписка {school_name} ({plan})",
                 "metadata": {
                     "subscription_id": subscription.id,
                     "user_id": subscription.user.id,
-                    "plan": plan
+                    "plan": plan,
+                    "school_id": str(school.id) if school else '',
                 }
             })
             
@@ -208,17 +230,21 @@ class PaymentService:
             return None
     
     @staticmethod
-    def create_storage_payment(subscription, gb):
+    def create_storage_payment(subscription, gb, school=None):
         """
         Создать платёж за дополнительное хранилище
         
         Args:
             subscription: Subscription instance
             gb: количество GB
+            school: School instance (multi-tenant)
             
         Returns:
             dict: {'payment_url': str, 'payment_id': str} или None
         """
+        frontend_url = school.get_frontend_url() if school else settings.FRONTEND_URL
+        _meta_school_id = str(school.pk) if school else ''
+
         if not YOOKASSA_AVAILABLE:
             logger.error("YooKassa not available - using mock")
             # Мок для разработки - создаём Payment в БД
@@ -226,6 +252,9 @@ class PaymentService:
             
             amount = Decimal(PaymentService.STORAGE_PRICE_PER_GB) * gb
             mock_payment_id = f'mock-storage-{subscription.id}-{gb}-{timezone.now().timestamp()}'
+            _mock_meta = {'type': 'storage', 'gb': gb, 'mock': True}
+            if _meta_school_id:
+                _mock_meta['school_id'] = _meta_school_id
             
             mock_payment = Payment.objects.create(
                 subscription=subscription,
@@ -234,8 +263,8 @@ class PaymentService:
                 status=Payment.STATUS_PENDING,
                 payment_system='mock',
                 payment_id=mock_payment_id,
-                payment_url=f'{settings.FRONTEND_URL}/mock-payment?payment_id={mock_payment_id}',
-                metadata={'type': 'storage', 'gb': gb, 'mock': True}
+                payment_url=f'{frontend_url}/mock-payment?payment_id={mock_payment_id}',
+                metadata=_mock_meta
             )
             
             return {
@@ -255,14 +284,15 @@ class PaymentService:
                 },
                 "confirmation": {
                     "type": "redirect",
-                    "return_url": f"{settings.FRONTEND_URL}/teacher/subscription/success"
+                    "return_url": f"{frontend_url}/teacher/subscription/success"
                 },
                 "capture": True,
                 "description": f"Дополнительное хранилище {gb} GB",
                 "metadata": {
                     "subscription_id": subscription.id,
                     "user_id": subscription.user.id,
-                    "storage_gb": gb
+                    "storage_gb": gb,
+                    **(({'school_id': _meta_school_id} if _meta_school_id else {})),
                 }
             })
             
@@ -371,6 +401,16 @@ class PaymentService:
                     message = None
                     notification_type = 'payment_success'
                     
+                    # --- MULTI-TENANT: Bind school from payment metadata ---
+                    _school_to_bind = None
+                    _school_id_meta = metadata.get('school_id')
+                    if _school_id_meta and not sub.school_id:
+                        try:
+                            from tenants.models import School
+                            _school_to_bind = School.objects.get(pk=_school_id_meta)
+                        except Exception:
+                            logger.warning(f"[WEBHOOK] School {_school_id_meta} from metadata not found, skipping binding")
+                    
                     # --- SUBSCRIPTION PLAN PAYMENT ---
                     if 'plan' in metadata:
                         plan = metadata['plan']
@@ -400,10 +440,14 @@ class PaymentService:
                         sub.total_paid += payment.amount
                         sub.last_payment_date = payment.paid_at
                         sub.payment_method = 'yookassa'
-                        sub.save(update_fields=[
+                        _plan_update_fields = [
                             'expires_at', 'plan', 'base_storage_gb', 'status',
                             'total_paid', 'last_payment_date', 'payment_method', 'updated_at'
-                        ])
+                        ]
+                        if _school_to_bind:
+                            sub.school = _school_to_bind
+                            _plan_update_fields.append('school')
+                        sub.save(update_fields=_plan_update_fields)
                         
                         logger.info(f"[WEBHOOK] Subscription {sub.id} activated: plan={plan}, expires={sub.expires_at}")
                         
@@ -440,6 +484,9 @@ class PaymentService:
                         
                         sub.total_paid += payment.amount
                         sub.last_payment_date = payment.paid_at
+                        if _school_to_bind:
+                            sub.school = _school_to_bind
+                            update_fields.append('school')
                         sub.save(update_fields=update_fields)
                         
                         logger.info(f"[WEBHOOK] Zoom add-on activated for subscription {sub.id}, expires={sub.zoom_addon_expires_at}")
@@ -464,7 +511,11 @@ class PaymentService:
                         sub.extra_storage_gb += gb
                         sub.total_paid += payment.amount
                         sub.last_payment_date = payment.paid_at
-                        sub.save(update_fields=['extra_storage_gb', 'total_paid', 'last_payment_date', 'updated_at'])
+                        _storage_update_fields = ['extra_storage_gb', 'total_paid', 'last_payment_date', 'updated_at']
+                        if _school_to_bind:
+                            sub.school = _school_to_bind
+                            _storage_update_fields.append('school')
+                        sub.save(update_fields=_storage_update_fields)
                         
                         logger.info(f"[WEBHOOK] Added {gb} GB storage to subscription {sub.id}, total={sub.total_storage_gb}")
                         

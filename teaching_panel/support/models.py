@@ -197,6 +197,15 @@ class SupportTicket(models.Model):
         default='web'
     )
     
+    # === Multi-Tenant ===
+    school = models.ForeignKey(
+        'tenants.School',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='support_tickets',
+        help_text='Школа отправителя тикета'
+    )
+    
     class Meta:
         verbose_name = 'Обращение в поддержку'
         verbose_name_plural = 'Обращения в поддержку'

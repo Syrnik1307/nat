@@ -126,6 +126,15 @@ class Homework(models.Model):
         help_text='Разрешить ученику просматривать свои ответы после сдачи (для КР лучше отключить)'
     )
 
+    # === Multi-Tenant ===
+    school = models.ForeignKey(
+        'tenants.School',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='homeworks',
+        help_text='Школа, которой принадлежит ДЗ'
+    )
+
     class Meta:
         ordering = ['-created_at']
         verbose_name = 'домашнее задание'

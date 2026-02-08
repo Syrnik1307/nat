@@ -39,11 +39,12 @@ from .serializers import (
     StudentBalanceSerializer,
 )
 from .permissions import IsTeacher, IsStudent
+from core.tenant_mixins import TenantViewSetMixin
 
 logger = logging.getLogger(__name__)
 
 
-class WalletViewSet(viewsets.ModelViewSet):
+class WalletViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """
     Кошельки учеников (для учителя).
     

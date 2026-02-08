@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
+from core.tenant_mixins import TenantViewSetMixin
 from django.utils.dateparse import parse_datetime
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -171,7 +172,7 @@ def log_audit(user, action, resource_type, resource_id=None, request=None, detai
     )
 
 
-class GroupViewSet(viewsets.ModelViewSet):
+class GroupViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """
     ViewSet для работы с группами.
     Преподаватели могут создавать и управлять своими группами.
@@ -420,7 +421,7 @@ class GroupViewSet(viewsets.ModelViewSet):
         return Response(list(students_dict.values()))
 
 
-class LessonViewSet(viewsets.ModelViewSet):
+class LessonViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """
     ViewSet для работы с занятиями.
     Поддерживает создание, редактирование, удаление занятий.
@@ -985,7 +986,8 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # serializer create already validates teacher/group ownership
-        serializer.save()
+        # super() вызывает TenantViewSetMixin.perform_create → авто-school
+        super().perform_create(serializer)
     
     @action(detail=True, methods=['get'])
     def analytics(self, request, pk=None):
@@ -2092,7 +2094,7 @@ class LessonViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
 
-class AttendanceViewSet(viewsets.ModelViewSet):
+class AttendanceViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """
     ViewSet для работы с посещаемостью.
     Требует аутентификации для всех операций.
@@ -2179,7 +2181,7 @@ class ZoomAccountViewSet(viewsets.ReadOnlyModelViewSet):
         })
 
 
-class RecurringLessonViewSet(viewsets.ModelViewSet):
+class RecurringLessonViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """
     ViewSet для управления регулярными уроками
     """
@@ -3461,7 +3463,7 @@ def lesson_recording(request, lesson_id):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class IndividualInviteCodeViewSet(viewsets.ModelViewSet):
+class IndividualInviteCodeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """ViewSet для управления индивидуальными инвайт-кодами"""
     queryset = IndividualInviteCode.objects.all()
     serializer_class = IndividualInviteCodeSerializer
@@ -3709,7 +3711,7 @@ from .models import LessonMaterial
 from .serializers import LessonMaterialSerializer
 
 
-class LessonMaterialViewSet(viewsets.ModelViewSet):
+class LessonMaterialViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """ViewSet для управления учебными материалами (Miro, конспекты, файлы)"""
     queryset = LessonMaterial.objects.all()
     serializer_class = LessonMaterialSerializer

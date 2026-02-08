@@ -57,12 +57,18 @@ def reverse_backfill(apps, schema_editor):
 
 class Migration(migrations.Migration):
     """
-    This migration depends on Phase 1 school FK migrations which don't exist yet.
-    It will be a no-op until those migrations are created.
-    For now, only depend on tenants.0002 so Django can start.
+    Data migration: привязка всех записей к Default School.
+    Зависит от всех FK миграций Phase 1, чтобы запускаться ПОСЛЕ добавления колонок.
     """
     dependencies = [
         ('tenants', '0002_create_default_school'),
+        ('schedule', '0034_add_school_fk_to_group'),
+        ('homework', '0019_add_school_fk_to_homework'),
+        ('accounts', '0038_add_school_fk_to_subscription'),
+        ('analytics', '0005_add_school_fk_to_controlpoint'),
+        ('support', '0004_add_school_fk_to_ticket'),
+        ('finance', '0002_add_school_fk_to_profile'),
+        ('bot', '0002_add_school_fk_to_scheduled_message'),
     ]
     operations = [
         migrations.RunPython(backfill_school_fk, reverse_backfill),

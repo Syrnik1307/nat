@@ -443,6 +443,28 @@ class RegisterView(APIView):
             # Записываем успешную регистрацию для rate limiting
             record_registration(fingerprint)
             
+            # === Multi-Tenant: привязка к школе ===
+            school = getattr(request, 'school', None)
+            if school:
+                from tenants.models import SchoolMembership
+                # Проверка мягкого лимита
+                if role == 'student':
+                    current_count = SchoolMembership.objects.filter(
+                        school=school, role='student', is_active=True
+                    ).count()
+                    if current_count >= school.max_students:
+                        logger.warning(
+                            f'School {school.slug} exceeded max_students limit '
+                            f'({current_count}/{school.max_students})'
+                        )
+                
+                SchoolMembership.objects.get_or_create(
+                    school=school,
+                    user=user,
+                    defaults={'role': role}
+                )
+                logger.info(f"[RegisterView] SchoolMembership created: {email} -> {school.slug} ({role})")
+            
             # Генерация JWT токенов сразу после регистрации (соответствие фронтенду)
             # При remember_me=true выдаём refresh token на 365 дней
             try:

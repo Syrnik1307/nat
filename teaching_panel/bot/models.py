@@ -92,6 +92,15 @@ class ScheduledMessage(models.Model):
     created_at = models.DateTimeField('Создано', auto_now_add=True)
     updated_at = models.DateTimeField('Обновлено', auto_now=True)
     
+    # === Multi-Tenant ===
+    school = models.ForeignKey(
+        'tenants.School',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='scheduled_messages',
+        help_text='Школа'
+    )
+    
     class Meta:
         verbose_name = 'Запланированное сообщение'
         verbose_name_plural = 'Запланированные сообщения'

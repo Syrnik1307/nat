@@ -23,6 +23,7 @@ from homework.models import StudentSubmission
 from homework.models import Homework
 from homework.models import Answer
 from accounts.models import CustomUser
+from core.tenant_mixins import TenantViewSetMixin
 
 class AnalyticsDashboardViewSet(viewsets.ViewSet):
     """
@@ -108,7 +109,7 @@ class AnalyticsDashboardViewSet(viewsets.ViewSet):
             'mentions_leaderboard': [{'name': k, 'count': v} for k, v in sorted_mentions],
         })
 
-class ControlPointViewSet(viewsets.ModelViewSet):
+class ControlPointViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset = ControlPoint.objects.all().select_related('teacher', 'group', 'lesson')
     serializer_class = ControlPointSerializer
     permission_classes = [IsAuthenticated]

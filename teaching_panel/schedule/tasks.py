@@ -1981,3 +1981,69 @@ def _notify_teacher_quota_warning(teacher, quota):
     )
     
     send_telegram_notification(teacher, 'storage_quota_warning', message)
+
+
+@shared_task(
+    name='schedule.tasks.sync_missing_zoom_recordings',
+    autoretry_for=(Exception,),
+    retry_backoff=300,
+    retry_backoff_max=1800,
+    max_retries=2,
+    retry_jitter=True,
+    soft_time_limit=600,   # 10 минут на все учителей
+    time_limit=900,        # 15 минут максимум
+)
+def sync_missing_zoom_recordings():
+    """
+    Периодическая задача: синхронизация записей Zoom для всех учителей.
+    
+    Fallback механизм на случай если webhook от Zoom не пришёл или сбоил.
+    Запускается каждые 30 минут по расписанию CELERY_BEAT_SCHEDULE.
+    
+    Для каждого учителя с Zoom credentials:
+    - Ищет уроки с record_lesson=True за последние 3 дня
+    - Запрашивает у Zoom API список облачных записей
+    - Если запись есть в Zoom но отсутствует в БД - создаёт и запускает обработку
+    
+    Retry: до 2 раз с backoff 300-1800 секунд при ошибках.
+    """
+    from accounts.models import CustomUser
+    from .views import sync_missing_zoom_recordings_for_teacher
+    
+    # Получаем всех учителей с настроенными Zoom credentials
+    teachers_with_zoom = CustomUser.objects.filter(
+        role='teacher',
+        zoom_account_id__isnull=False,
+        zoom_client_id__isnull=False,
+        zoom_client_secret__isnull=False,
+    ).exclude(
+        zoom_account_id='',
+        zoom_client_id='',
+        zoom_client_secret=''
+    )
+    
+    total_synced = 0
+    teachers_processed = 0
+    teachers_failed = 0
+    
+    for teacher in teachers_with_zoom:
+        try:
+            synced_count = sync_missing_zoom_recordings_for_teacher(teacher)
+            if synced_count > 0:
+                logger.info(f"[ZOOM_SYNC] Teacher {teacher.email}: synced {synced_count} recordings")
+                total_synced += synced_count
+            teachers_processed += 1
+        except Exception as e:
+            teachers_failed += 1
+            logger.error(f"[ZOOM_SYNC] Failed to sync recordings for teacher {teacher.email}: {e}")
+    
+    logger.info(
+        f"[ZOOM_SYNC] Completed: {teachers_processed} teachers processed, "
+        f"{teachers_failed} failed, {total_synced} recordings synced"
+    )
+    
+    return {
+        'teachers_processed': teachers_processed,
+        'teachers_failed': teachers_failed,
+        'total_synced': total_synced
+    }

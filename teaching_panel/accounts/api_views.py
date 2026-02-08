@@ -23,7 +23,25 @@ class MeView(APIView):
 
     def get(self, request):
         serializer = UserProfileSerializer(request.user)
-        return Response(serializer.data)
+        data = serializer.data
+        
+        # === Multi-Tenant: добавляем информацию о школе ===
+        school = getattr(request, 'school', None)
+        data['school'] = school.to_frontend_config() if school else None
+        data['school_membership'] = None
+        if school:
+            from tenants.models import SchoolMembership
+            membership = SchoolMembership.objects.filter(
+                school=school, user=request.user
+            ).first()
+            if membership:
+                data['school_membership'] = {
+                    'role': membership.role,
+                    'joined_at': membership.joined_at.isoformat(),
+                    'is_active': membership.is_active,
+                }
+        
+        return Response(data)
 
     def put(self, request):
         serializer = UserProfileSerializer(request.user, data=request.data)

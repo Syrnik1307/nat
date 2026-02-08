@@ -77,6 +77,15 @@ class StudentFinancialProfile(models.Model):
     created_at = models.DateTimeField(_('создан'), auto_now_add=True)
     updated_at = models.DateTimeField(_('обновлён'), auto_now=True)
     
+    # === Multi-Tenant ===
+    school = models.ForeignKey(
+        'tenants.School',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='financial_profiles',
+        help_text='Школа'
+    )
+    
     class Meta:
         verbose_name = _('финансовый профиль ученика')
         verbose_name_plural = _('финансовые профили учеников')

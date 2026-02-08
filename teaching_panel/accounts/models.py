@@ -917,6 +917,15 @@ class Subscription(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # === Multi-Tenant ===
+    school = models.ForeignKey(
+        'tenants.School',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='subscriptions',
+        help_text='Школа, в рамках которой подписка'
+    )
+
     class Meta:
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'

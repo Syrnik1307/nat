@@ -165,6 +165,9 @@ urlpatterns = [
     
     # Finance API (student lesson balances)
     path('api/finance/', include('finance.urls')),
+
+    # Tenants API (конфиг школы для фронтенда)
+    path('api/school/', include('tenants.urls')),
     
     # Analytics API
     path('api/', include('analytics.urls')),

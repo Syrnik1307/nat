@@ -155,10 +155,11 @@ class SubscriptionCreatePaymentView(APIView):
         sub.save(update_fields=['plan', 'status', 'updated_at'])
 
         # Создаём платёж через выбранный провайдер
+        school = getattr(request, 'school', None)
         if provider == 'tbank':
             payment_result = TBankService.create_subscription_payment(sub, plan)
         else:
-            payment_result = PaymentService.create_subscription_payment(sub, plan)
+            payment_result = PaymentService.create_subscription_payment(sub, plan, school=school)
         
         if not payment_result:
             return Response({'detail': 'Не удалось создать платёж'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -198,10 +199,11 @@ class SubscriptionAddStorageView(APIView):
         sub = get_subscription(request.user)
         
         # Создаём платёж через выбранный провайдер
+        school = getattr(request, 'school', None)
         if provider == 'tbank':
             payment_result = TBankService.create_storage_payment(sub, gb)
         else:
-            payment_result = PaymentService.create_storage_payment(sub, gb)
+            payment_result = PaymentService.create_storage_payment(sub, gb, school=school)
         
         if not payment_result:
             return Response({'detail': 'Не удалось создать платёж'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -232,10 +234,11 @@ class SubscriptionCreateZoomAddonPaymentView(APIView):
 
         enable_recurrent = _parse_bool(request.data.get('auto_renew'))
 
+        school = getattr(request, 'school', None)
         if provider == 'tbank':
             payment_result = TBankService.create_zoom_addon_payment(sub, enable_recurrent=enable_recurrent)
         else:
-            payment_result = PaymentService.create_zoom_addon_payment(sub, enable_recurrent=enable_recurrent)
+            payment_result = PaymentService.create_zoom_addon_payment(sub, enable_recurrent=enable_recurrent, school=school)
 
         if not payment_result:
             return Response({'detail': 'Не удалось создать платёж'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

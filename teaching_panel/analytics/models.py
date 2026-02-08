@@ -12,6 +12,15 @@ class ControlPoint(models.Model):
     date = models.DateField(db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
+    # === Multi-Tenant ===
+    school = models.ForeignKey(
+        'tenants.School',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='control_points',
+        help_text='Школа'
+    )
+
     class Meta:
         ordering = ['-date']
         verbose_name = 'контрольная точка'

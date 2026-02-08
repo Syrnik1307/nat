@@ -77,6 +77,15 @@ class Group(models.Model):
     created_at = models.DateTimeField(_('дата создания'), auto_now_add=True)
     updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
     
+    # === Multi-Tenant ===
+    school = models.ForeignKey(
+        'tenants.School',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='groups',
+        help_text='Школа, которой принадлежит группа'
+    )
+    
     class Meta:
         verbose_name = _('группа')
         verbose_name_plural = _('группы')
@@ -385,18 +394,21 @@ class LessonRecording(models.Model):
         _('ключ в хранилище'),
         max_length=500,
         blank=True,
+        default='',
         help_text='ID файла в Google Drive или путь в S3/Azure'
     )
     gdrive_file_id = models.CharField(
         _('Google Drive File ID'),
         max_length=100,
         blank=True,
+        default='',
         help_text='Уникальный ID файла в Google Drive для прямого доступа'
     )
     gdrive_folder_id = models.CharField(
         _('Google Drive Folder ID'),
         max_length=100,
         blank=True,
+        default='',
         help_text='ID папки в Google Drive где хранится запись'
     )
     thumbnail_url = models.URLField(

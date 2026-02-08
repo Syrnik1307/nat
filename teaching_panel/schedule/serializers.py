@@ -649,9 +649,31 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
     access_groups = serializers.SerializerMethodField()
     access_students = serializers.SerializerMethodField()
     streaming_url = serializers.SerializerMethodField()
+    use_direct_stream = serializers.SerializerMethodField()
+
+    def get_use_direct_stream(self, obj):
+        """
+        Определяет, использовать ли прямой stream вместо GDrive iframe.
+        
+        Для файлов >100MB GDrive iframe работает медленно и может зависать.
+        В таких случаях используем direct stream: /api/recordings/{id}/stream/
+        
+        Returns:
+            bool: True если файл >100MB, иначе False
+        """
+        LARGE_FILE_THRESHOLD = 100 * 1024 * 1024  # 100 MB в байтах
+        return obj.file_size and obj.file_size > LARGE_FILE_THRESHOLD
 
     def get_streaming_url(self, obj):
         """Получить прямую ссылку для HTML5 video player"""
+        # Для больших файлов (>100MB) возвращаем stream endpoint
+        if self.get_use_direct_stream(obj):
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(f'/schedule/api/recordings/{obj.id}/stream/')
+            return f'/schedule/api/recordings/{obj.id}/stream/'
+        
+        # Для маленьких файлов используем GDrive direct download
         if obj.gdrive_file_id:
             return f"https://drive.google.com/uc?export=download&id={obj.gdrive_file_id}"
         return None
@@ -744,7 +766,7 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
             'zoom_recording_id',
             'file_size', 'file_size_mb',
             'duration_display',
-            'play_url', 'download_url', 'thumbnail_url', 'streaming_url',
+            'play_url', 'download_url', 'thumbnail_url', 'streaming_url', 'use_direct_stream',
             'storage_provider', 'gdrive_file_id',
             'status', 'views_count',
             'visibility', 'access_groups', 'access_students',
@@ -753,7 +775,7 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id', 'title', 'zoom_recording_id', 'file_size',
-            'play_url', 'download_url', 'thumbnail_url', 'streaming_url',
+            'play_url', 'download_url', 'thumbnail_url', 'streaming_url', 'use_direct_stream',
             'storage_provider', 'gdrive_file_id',
             'status', 'views_count', 'visibility',
             'created_at', 'updated_at'

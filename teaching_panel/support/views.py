@@ -14,9 +14,10 @@ from .serializers import (
     QuickSupportResponseSerializer
 )
 from .telegram_notifications import notify_admins_new_message
+from core.tenant_mixins import TenantViewSetMixin
 
 
-class SupportTicketViewSet(viewsets.ModelViewSet):
+class SupportTicketViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """API для работы с тикетами поддержки"""
     
     def get_permissions(self):
