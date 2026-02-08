@@ -1985,11 +1985,6 @@ def _notify_teacher_quota_warning(teacher, quota):
 
 @shared_task(
     name='schedule.tasks.sync_missing_zoom_recordings',
-    autoretry_for=(Exception,),
-    retry_backoff=300,
-    retry_backoff_max=1800,
-    max_retries=2,
-    retry_jitter=True,
     soft_time_limit=600,   # 10 минут на все учителей
     time_limit=900,        # 15 минут максимум
 )

@@ -267,7 +267,15 @@ class ZoomAPIClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to list Zoom recordings: {e}")
             if hasattr(e, 'response') and e.response is not None:
-                logger.error(f"Response: {e.response.text}")
+                response_text = e.response.text
+                logger.error(f"Response: {response_text}")
+                # Zoom возвращает 400 если OAuth App не имеет нужных scopes
+                if 'does not contain scopes' in response_text or 'cloud_recording' in response_text:
+                    raise ZoomScopeError(
+                        f"Zoom OAuth App не имеет scope для записей. "
+                        f"Добавьте cloud_recording:read:list_user_recordings в Zoom Marketplace. "
+                        f"Ответ Zoom: {response_text}"
+                    )
             raise Exception(f"Failed to list Zoom recordings: {str(e)}")
 
 

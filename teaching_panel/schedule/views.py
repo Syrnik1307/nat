@@ -2722,11 +2722,21 @@ def sync_missing_zoom_recordings_for_teacher(teacher):
             client_secret=teacher.zoom_client_secret
         )
         
-        recordings_response = zoom_client.list_user_recordings(
-            user_id=teacher.zoom_user_id or 'me',
-            from_date=recent_from.date().isoformat(),
-            to_date=now.date().isoformat(),
-        )
+        try:
+            recordings_response = zoom_client.list_user_recordings(
+                user_id=teacher.zoom_user_id or 'me',
+                from_date=recent_from.date().isoformat(),
+                to_date=now.date().isoformat(),
+            )
+        except Exception as zoom_err:
+            from .zoom_client import ZoomScopeError
+            if isinstance(zoom_err, ZoomScopeError):
+                logger.warning(
+                    f"[ZOOM_SYNC] Teacher {teacher.email} (id={teacher.id}): "
+                    f"Zoom App не имеет scopes для записей. Пропускаем. {zoom_err}"
+                )
+                return 0
+            raise
 
         meetings = recordings_response.get('meetings', [])
         meetings_by_id = {str(m.get('id')): m for m in meetings if m.get('id')}
