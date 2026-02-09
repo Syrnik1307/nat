@@ -159,6 +159,11 @@ export const homeworkService = {
     // Максимальный таймаут 90 сек для критической операции
     return apiClient.post(`submissions/${submissionId}/submit/`, {}, { timeout: 90000 });
   },
+
+  async sendForRevision(submissionId, comment = '') {
+    // Отправить работу на доработку ученику
+    return apiClient.post(`submissions/${submissionId}/send_for_revision/`, { comment }, { timeout: 30000 });
+  },
 };
 
 export default homeworkService;

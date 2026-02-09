@@ -98,6 +98,8 @@ const HomeworkTake = () => {
     savingState,
     progress,
     isLocked,
+    isRevision,
+    revisionQuestionIds,
     // Telemetry
     startQuestionTimer,
     recordPaste,
@@ -256,11 +258,19 @@ const HomeworkTake = () => {
   const savingLabel = useMemo(() => {
     if (submission?.status === 'submitted') return 'Отправлено';
     if (submission?.status === 'graded') return 'Проверено';
+    if (submission?.status === 'revision') return 'На доработке';
     if (savingState.status === 'saving') return 'Сохранение...';
     if (savingState.status === 'saved') return 'Сохранено';
     if (savingState.status === 'error') return 'Ошибка автосохранения';
     return 'Черновик';
   }, [savingState.status, submission?.status]);
+
+  // В режиме доработки: вопрос заблокирован если он НЕ нуждается в доработке
+  const isQuestionLocked = (questionId) => {
+    if (isLocked) return true;
+    if (isRevision && !revisionQuestionIds.has(questionId)) return true;
+    return false;
+  };
 
   if (loading) {
     return (
@@ -377,6 +387,15 @@ const HomeworkTake = () => {
               <p>{homework.student_instructions}</p>
             </div>
           )}
+          {isRevision && (
+            <div className="ht-revision-banner">
+              <strong>Работа отправлена на доработку</strong>
+              <p>Исправьте отмеченные вопросы ({revisionQuestionIds.size} шт.) и отправьте работу повторно.</p>
+              {submission?.revision_comment && (
+                <p className="ht-revision-comment">Комментарий учителя: {submission.revision_comment}</p>
+              )}
+            </div>
+          )}
         </div>
         <div className="ht-header-meta">
           <ProgressBar percent={progress} />
@@ -391,6 +410,7 @@ const HomeworkTake = () => {
             currentIndex={currentIndex}
             answers={answers}
             onSelect={(index) => setCurrentIndex(index)}
+            revisionQuestionIds={isRevision ? revisionQuestionIds : null}
           />
           <div className="ht-sidebar-hint">
             <span>Навигация по вопросам:</span>
@@ -419,8 +439,8 @@ const HomeworkTake = () => {
                 <h2 className="ht-question-text">{currentQuestion.question_text || currentQuestion.prompt}</h2>
               )}
 
-              {/* Пояснение с правильным ответом - показываем ТОЛЬКО после сдачи */}
-              {isLocked && (currentQuestion.explanation || currentQuestion.config?.explanationImageUrl) && (
+              {/* Пояснение с правильным ответом - показываем после сдачи или для принятых вопросов в revision */}
+              {(isLocked || (isRevision && !revisionQuestionIds.has(currentQuestion.id))) && (currentQuestion.explanation || currentQuestion.config?.explanationImageUrl) && (
                 <div className="ht-question-explanation">
                   <span className="ht-explanation-label">Пояснение:</span>
                   {currentQuestion.explanation && <p>{currentQuestion.explanation}</p>}
@@ -471,20 +491,26 @@ const HomeworkTake = () => {
                 </div>
               )}
 
+              {isRevision && revisionQuestionIds.has(currentQuestion.id) && (
+                <div className="ht-revision-question-tag">Требуется доработка</div>
+              )}
+              {isRevision && !revisionQuestionIds.has(currentQuestion.id) && (
+                <div className="ht-revision-question-ok">Ответ принят</div>
+              )}
               <QuestionRenderer
                 question={currentQuestion}
                 answer={answers[currentQuestion.id]}
                 onChange={(value) => {
-                  if (!isLocked) {
+                  if (!isQuestionLocked(currentQuestion.id)) {
                     recordAnswer(currentQuestion.id, value);
                   }
                 }}
                 onPaste={() => {
-                  if (!isLocked && currentQuestion?.id) {
+                  if (!isQuestionLocked(currentQuestion.id) && currentQuestion?.id) {
                     recordPaste(currentQuestion.id);
                   }
                 }}
-                disabled={isLocked}
+                disabled={isQuestionLocked(currentQuestion.id)}
                 homeworkId={id}
               />
 
@@ -493,11 +519,11 @@ const HomeworkTake = () => {
                 <AnswerAttachment
                   attachments={answers[`${currentQuestion.id}_attachments`] || []}
                   onChange={(files) => {
-                    if (!isLocked) {
+                    if (!isQuestionLocked(currentQuestion.id)) {
                       recordAnswer(`${currentQuestion.id}_attachments`, files);
                     }
                   }}
-                  disabled={isLocked}
+                  disabled={isQuestionLocked(currentQuestion.id)}
                   homeworkId={id}
                   maxFiles={3}
                   maxSizeMB={10}
@@ -508,14 +534,14 @@ const HomeworkTake = () => {
                 <Button
                   variant="secondary"
                   onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
-                  disabled={currentIndex === 0 || isLocked}
+                  disabled={currentIndex === 0}
                 >
                   ← Назад
                 </Button>
                 <Button
                   variant="secondary"
                   onClick={() => setCurrentIndex((index) => Math.min(questions.length - 1, index + 1))}
-                  disabled={currentIndex === questions.length - 1 || isLocked}
+                  disabled={currentIndex === questions.length - 1}
                 >
                   Далее →
                 </Button>
@@ -538,6 +564,11 @@ const HomeworkTake = () => {
                   Работа проверена. Посмотрите результаты ниже
                 </span>
               )}
+              {isRevision && (
+                <span className="ht-submit-message ht-revision-info">
+                  Исправьте {revisionQuestionIds.size} вопрос(ов) и отправьте повторно
+                </span>
+              )}
             </div>
             <div className="ht-footer-actions">
               <Button
@@ -547,7 +578,7 @@ const HomeworkTake = () => {
               >
                 Назад к списку
               </Button>
-              {isLocked ? (
+              {isLocked && !isRevision ? (
                 <Button
                   variant="secondary"
                   onClick={() => navigate(`/homework/${id}/result`)}

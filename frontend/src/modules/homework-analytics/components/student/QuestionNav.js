@@ -1,6 +1,6 @@
 import React from 'react';
 
-const QuestionNav = ({ questions = [], currentIndex = 0, answers = {}, onSelect }) => {
+const QuestionNav = ({ questions = [], currentIndex = 0, answers = {}, onSelect, revisionQuestionIds }) => {
   const getStatus = (question, index) => {
     if (index === currentIndex) return 'current';
     const value = answers[question.id];
@@ -40,11 +40,12 @@ const QuestionNav = ({ questions = [], currentIndex = 0, answers = {}, onSelect 
     <div className="ht-question-nav">
       {questions.map((question, index) => {
         const status = getStatus(question, index);
+        const needsRevision = revisionQuestionIds?.has(question.id);
         return (
           <button
             key={question.id}
             type="button"
-            className={`ht-question-nav-item ${status}`}
+            className={`ht-question-nav-item ${status}${needsRevision ? ' revision' : ''}`}
             onClick={() => onSelect?.(index)}
           >
             {index + 1}

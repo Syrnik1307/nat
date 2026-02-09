@@ -173,7 +173,7 @@ const HomeworkList = () => {
   // Разделение по табам
   const activeHomework = useMemo(() => {
     return filteredBySource.filter(hw => 
-      hw.status === 'not_started' || hw.status === 'in_progress'
+      hw.status === 'not_started' || hw.status === 'in_progress' || hw.status === 'revision'
     );
   }, [filteredBySource]);
 
@@ -196,6 +196,8 @@ const HomeworkList = () => {
         return { label: 'На проверке', className: 'status-submitted', icon: <IconClock size={14} /> };
       case 'graded':
         return { label: 'Проверено', className: 'status-graded', icon: <IconCheck size={14} /> };
+      case 'revision':
+        return { label: 'На доработке', className: 'status-revision', icon: <IconClock size={14} /> };
       default:
         return { label: 'Новое', className: 'status-new', icon: null };
     }
@@ -210,6 +212,8 @@ const HomeworkList = () => {
       case 'submitted':
       case 'graded':
         return { label: 'Смотреть', variant: 'secondary' };
+      case 'revision':
+        return { label: 'Исправить', variant: 'primary' };
       default:
         return { label: 'Открыть', variant: 'primary' };
     }

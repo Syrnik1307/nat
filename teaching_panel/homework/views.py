@@ -1440,10 +1440,35 @@ class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         submission = self.get_object()
         if request.user != submission.student:
             return Response({'error': 'Доступ только для автора попытки'}, status=status.HTTP_403_FORBIDDEN)
-        if submission.status != 'in_progress':
+        if submission.status not in ('in_progress', 'revision'):
             return Response({'error': 'Работа уже отправлена или проверена'}, status=status.HTTP_400_BAD_REQUEST)
 
         answers_payload = request.data.get('answers', {})
+        
+        # В режиме доработки — разрешаем редактировать только вопросы с needs_revision=True
+        if submission.status == 'revision':
+            revision_question_ids = set(
+                submission.answers.filter(needs_revision=True).values_list('question_id', flat=True)
+            )
+            filtered_payload = {}
+            for key, value in answers_payload.items():
+                # Пропускаем telemetry/attachments ключи — фильтруем по основному question_id
+                if isinstance(key, str) and (key.endswith('_attachments') or key.endswith('_telemetry')):
+                    try:
+                        qid = int(key.split('_')[0])
+                        if qid in revision_question_ids:
+                            filtered_payload[key] = value
+                    except (ValueError, TypeError):
+                        pass
+                    continue
+                try:
+                    qid = int(key)
+                    if qid in revision_question_ids:
+                        filtered_payload[key] = value
+                except (ValueError, TypeError):
+                    continue
+            answers_payload = filtered_payload
+        
         self._upsert_answers(submission, answers_payload)
         return Response({'status': 'saved', 'total_score': submission.total_score})
 
@@ -1460,7 +1485,32 @@ class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             # Если ответы переданы вместе с submit — сначала сохраним их
             answers_payload = request.data.get('answers')
             if answers_payload:
+                # В режиме доработки фильтруем только revision-вопросы
+                if submission.status == 'revision':
+                    revision_question_ids = set(
+                        submission.answers.filter(needs_revision=True).values_list('question_id', flat=True)
+                    )
+                    filtered = {}
+                    for key, value in answers_payload.items():
+                        if isinstance(key, str) and (key.endswith('_attachments') or key.endswith('_telemetry')):
+                            try:
+                                qid = int(key.split('_')[0])
+                                if qid in revision_question_ids:
+                                    filtered[key] = value
+                            except (ValueError, TypeError):
+                                pass
+                            continue
+                        try:
+                            qid = int(key)
+                            if qid in revision_question_ids:
+                                filtered[key] = value
+                        except (ValueError, TypeError):
+                            continue
+                    answers_payload = filtered
                 self._upsert_answers(submission, answers_payload)
+
+            # Сбрасываем needs_revision на всех ответах после повторной отправки
+            submission.answers.filter(needs_revision=True).update(needs_revision=False)
 
             submission.submitted_at = timezone.now()
             
@@ -1808,6 +1858,22 @@ class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         )
         send_telegram_notification(student, 'homework_regraded', message)
 
+    def _notify_student_revision(self, submission: StudentSubmission, questions_count: int):
+        """Уведомить ученика что работа отправлена на доработку."""
+        student = submission.student
+        teacher_name = self._format_display_name(submission.homework.teacher)
+        comment_line = ''
+        if submission.revision_comment:
+            comment_line = f"\nКомментарий: {submission.revision_comment}"
+        message = (
+            f"Работа на доработке\n"
+            f"Задание: '{submission.homework.title}'.\n"
+            f"Преподаватель: {teacher_name}.\n"
+            f"Вопросов для исправления: {questions_count}.{comment_line}\n"
+            f"Зайдите в Lectio Space, чтобы исправить ответы."
+        )
+        send_telegram_notification(student, 'homework_revision', message)
+
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def complete_review(self, request, pk=None):
         """
@@ -1834,6 +1900,83 @@ class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             self._notify_student_graded(submission)
 
         self._recalculate_ratings_for_submission(submission)
+        
+        serializer = self.get_serializer(submission)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def send_for_revision(self, request, pk=None):
+        """
+        Отправить работу на доработку ученику.
+        Все ответы с баллами < максимума помечаются needs_revision=True.
+        Ученик видит только те вопросы, которые нужно переделать.
+        
+        POST /api/submissions/{id}/send_for_revision/
+        {
+            "comment": "Исправьте ошибки в вопросах 2 и 5"  // optional
+        }
+        """
+        submission = self.get_object()
+        
+        # Проверяем права: только учитель этого задания
+        if request.user != submission.homework.teacher:
+            return Response(
+                {'error': 'Только учитель, создавший задание, может отправлять на доработку'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Можно отправить на доработку только submitted или graded работы
+        if submission.status not in ('submitted', 'graded'):
+            return Response(
+                {'error': 'Отправить на доработку можно только проверенные или сданные работы'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        comment = request.data.get('comment', '')
+        
+        # Помечаем ответы с неполным баллом как needs_revision
+        revision_count = 0
+        for answer in submission.answers.select_related('question').all():
+            score = answer.teacher_score if answer.teacher_score is not None else answer.auto_score
+            max_points = answer.question.points
+            
+            if score is None or score < max_points:
+                answer.needs_revision = True
+                answer.save(update_fields=['needs_revision'])
+                revision_count += 1
+            else:
+                # Сбрасываем флаг для правильных ответов
+                answer.needs_revision = False
+                answer.save(update_fields=['needs_revision'])
+        
+        if revision_count == 0:
+            return Response(
+                {'error': 'Нет вопросов для доработки — все ответы правильные'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Обновляем submission
+        submission.status = 'revision'
+        submission.revision_count += 1
+        submission.revision_comment = comment
+        submission.save(update_fields=['status', 'revision_count', 'revision_comment'])
+        
+        # Логируем действие
+        AuditLog.log(
+            user=request.user,
+            action='send_for_revision',
+            content_object=submission,
+            description=f'Работа {submission.id} отправлена на доработку ({revision_count} вопросов)',
+            metadata={
+                'revision_count': submission.revision_count,
+                'questions_for_revision': revision_count,
+                'comment': comment,
+            },
+            request=request
+        )
+        
+        # Уведомляем ученика
+        self._notify_student_revision(submission, revision_count)
         
         serializer = self.get_serializer(submission)
         return Response(serializer.data)

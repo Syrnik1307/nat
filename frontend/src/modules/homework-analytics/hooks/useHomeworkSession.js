@@ -630,6 +630,28 @@ const useHomeworkSession = (homeworkId, injectedService) => {
   }, [answers, homework]);
   
   // ============================================================================
+  // REVISION SUPPORT
+  // ============================================================================
+  
+  /**
+   * true если ДЗ в статусе revision — ученик должен исправить ответы.
+   */
+  const isRevision = submission?.status === 'revision';
+  
+  /**
+   * Набор question_id, которые нуждаются в доработке (needs_revision=true).
+   * Используется для блокировки правильных ответов и разблокировки неправильных.
+   */
+  const revisionQuestionIds = useMemo(() => {
+    if (!isRevision || !submission?.answers) return new Set();
+    return new Set(
+      submission.answers
+        .filter(a => a.needs_revision)
+        .map(a => a.question)
+    );
+  }, [isRevision, submission?.answers]);
+  
+  // ============================================================================
   // RETURN
   // ============================================================================
   return {
@@ -643,7 +665,9 @@ const useHomeworkSession = (homeworkId, injectedService) => {
     submitHomework,
     savingState,
     progress,
-    isLocked: submission?.status && submission.status !== 'in_progress',
+    isLocked: submission?.status && submission.status !== 'in_progress' && submission.status !== 'revision',
+    isRevision,
+    revisionQuestionIds,
     reload: loadHomework,
     // Telemetry functions
     startQuestionTimer,

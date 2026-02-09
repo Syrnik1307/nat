@@ -774,3 +774,78 @@
   color: var(--text-muted, #9ca3af);
   font-size: 0.75rem;
 }
+
+/* =====================================
+   REVISION (На доработке) STYLES
+   ===================================== */
+
+.ht-revision-banner {
+  margin-top: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 3px solid #f59e0b;
+  border-radius: 0 8px 8px 0;
+}
+
+.ht-revision-banner strong {
+  display: block;
+  font-size: 0.9rem;
+  color: #b45309;
+  margin-bottom: 0.25rem;
+}
+
+.ht-revision-banner p {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.ht-revision-comment {
+  margin-top: 0.5rem !important;
+  font-style: italic;
+  color: #92400e !important;
+  background: rgba(245, 158, 11, 0.06);
+  padding: 0.5rem 0.625rem;
+  border-radius: 6px;
+}
+
+.ht-revision-question-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.ht-revision-question-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  background: rgba(34, 197, 94, 0.08);
+  color: #16a34a;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.ht-revision-info {
+  color: #b45309 !important;
+  font-weight: 500;
+}
+
+/* QuestionNav — revision dot */
+.ht-question-nav-item.revision {
+  box-shadow: 0 0 0 2px #f59e0b;
+}
+
+.ht-question-nav-item.revision.current {
+  box-shadow: 0 0 0 2px #f59e0b, 0 0 0 4px rgba(245, 158, 11, 0.25);
+}

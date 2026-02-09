@@ -196,6 +196,7 @@ class StudentSubmission(models.Model):
         ('in_progress', 'В процессе'),
         ('submitted', 'Отправлено'),
         ('graded', 'Проверено'),
+        ('revision', 'На доработке'),
     )
     homework = models.ForeignKey(Homework, on_delete=models.CASCADE, related_name='submissions')
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='homework_submissions', limit_choices_to={'role': 'student'})
@@ -209,6 +210,17 @@ class StudentSubmission(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
     graded_at = models.DateTimeField(null=True, blank=True)
+    
+    # Доработка
+    revision_count = models.IntegerField(
+        default=0,
+        help_text='Сколько раз работа отправлялась на доработку'
+    )
+    revision_comment = models.TextField(
+        blank=True,
+        default='',
+        help_text='Комментарий учителя при отправке на доработку'
+    )
 
     class Meta:
         unique_together = ['homework', 'student']
@@ -262,6 +274,10 @@ class Answer(models.Model):
     teacher_score = models.IntegerField(null=True, blank=True, help_text='Оценка учителя (переопределяет auto_score)')
     teacher_feedback = models.TextField(blank=True, help_text='Комментарий учителя')
     needs_manual_review = models.BooleanField(default=False)
+    needs_revision = models.BooleanField(
+        default=False,
+        help_text='Отмечен учителем для доработки (балл < макс)'
+    )
     
     # Прикреплённые файлы к ответу (фото, документы)
     attachments = models.JSONField(

@@ -390,9 +390,9 @@ class AnswerSerializer(serializers.ModelSerializer):
         model = Answer
         fields = ['id', 'question', 'question_text', 'question_type', 'question_points', 
                   'text_answer', 'selected_choices', 'auto_score', 'teacher_score', 
-                  'teacher_feedback', 'needs_manual_review', 'attachments',
+                  'teacher_feedback', 'needs_manual_review', 'needs_revision', 'attachments',
                   'time_spent_seconds', 'is_pasted', 'tab_switches']
-        read_only_fields = ['auto_score', 'needs_manual_review', 'time_spent_seconds', 'is_pasted', 'tab_switches']
+        read_only_fields = ['auto_score', 'needs_manual_review', 'needs_revision', 'time_spent_seconds', 'is_pasted', 'tab_switches']
 
 
 class StudentSubmissionSerializer(serializers.ModelSerializer):
@@ -419,7 +419,8 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
               'status', 'total_score', 'max_score', 'group_id', 'group_name', 'is_individual',
               'answers', 'questions', 'time_spent_seconds', 'teacher_feedback_summary', 
               'created_at', 'submitted_at', 'graded_at', 'showAnswers',
-              'has_paste_flags', 'total_tab_switches', 'paste_count']
+              'has_paste_flags', 'total_tab_switches', 'paste_count',
+              'revision_count', 'revision_comment']
         # Статус и даты жизненного цикла управляются сервером через отдельные endpoints
         # (answer/saveProgress, submit, feedback) и не должны приходить от клиента.
         read_only_fields = [
@@ -431,6 +432,8 @@ class StudentSubmissionSerializer(serializers.ModelSerializer):
             'created_at',
             'submitted_at',
             'graded_at',
+            'revision_count',
+            'revision_comment',
         ]
     
     def get_student_name(self, obj):

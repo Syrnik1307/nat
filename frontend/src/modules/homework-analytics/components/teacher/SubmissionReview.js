@@ -20,6 +20,8 @@ const SubmissionReview = () => {
   const [editingAnswerId, setEditingAnswerId] = useState(null);
   const [editValues, setEditValues] = useState({});
   const [saving, setSaving] = useState(false);
+  const [showRevisionModal, setShowRevisionModal] = useState(false);
+  const [revisionComment, setRevisionComment] = useState('');
 
   const loadSubmission = useCallback(async () => {
     try {
@@ -353,6 +355,7 @@ const SubmissionReview = () => {
         teacher_feedback: answer?.teacher_feedback || '',
         attachments: answer?.attachments || [],
         hasAnswer: !!answer,
+        needs_revision: answer?.needs_revision ?? false,
         index,
         // Telemetry data
         time_spent_seconds: answer?.time_spent_seconds ?? null,
@@ -374,6 +377,36 @@ const SubmissionReview = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const sendForRevision = async () => {
+    try {
+      setSaving(true);
+      const response = await apiClient.post(`submissions/${submissionId}/send_for_revision/`, {
+        comment: revisionComment
+      });
+      setSubmission(response.data);
+      setShowRevisionModal(false);
+      setRevisionComment('');
+      showNotification('success', 'Отправлено', 'Работа отправлена на доработку ученику');
+      setTimeout(() => navigate(-1), 1500);
+    } catch (err) {
+      console.error('Ошибка отправки на доработку:', err);
+      showNotification('error', 'Ошибка', err.response?.data?.error || 'Не удалось отправить на доработку');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Считаем количество ответов с неполным баллом для preview
+  const getRevisionQuestionsCount = () => {
+    if (!submission) return 0;
+    const reviewItems = getReviewItems();
+    return reviewItems.filter(item => {
+      if (!item.hasAnswer) return true; // Нет ответа = нужна доработка
+      const score = item.teacher_score ?? item.auto_score ?? 0;
+      return score < item.question_points;
+    }).length;
   };
 
   if (loading) {
@@ -449,6 +482,16 @@ const SubmissionReview = () => {
             <span className="sr-meta-item">
               <strong>Общий балл:</strong> {submission.total_score || 0} / {submission.max_score || 0}
             </span>
+            {submission.status === 'revision' && (
+              <span className="sr-meta-item sr-meta-revision">
+                <strong>Статус:</strong> На доработке (попытка {submission.revision_count})
+              </span>
+            )}
+            {submission.revision_count > 0 && submission.status !== 'revision' && (
+              <span className="sr-meta-item">
+                <strong>Доработок:</strong> {submission.revision_count}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -489,9 +532,12 @@ const SubmissionReview = () => {
               ? (correctInfo.isMatch ? 'is-correct' : 'is-incorrect')
               : '';
             return (
-              <div key={item.id} className={`sr-answer-card ${!item.hasAnswer ? 'sr-no-answer' : ''}`}>
+              <div key={item.id} className={`sr-answer-card ${!item.hasAnswer ? 'sr-no-answer' : ''} ${item.needs_revision ? 'sr-needs-revision' : ''}`}>
               <div className="sr-answer-header">
-                <div className="sr-question-number">Вопрос {item.index + 1}</div>
+                <div className="sr-question-number">
+                  Вопрос {item.index + 1}
+                  {item.needs_revision && <span className="sr-revision-marker">на доработке</span>}
+                </div>
                 <div className="sr-question-type-badge">
                   {item.question_type === 'TEXT' && 'Текстовый ответ'}
                   {item.question_type === 'SINGLE_CHOICE' && 'Один вариант'}
@@ -683,14 +729,67 @@ const SubmissionReview = () => {
         <div className="sr-total-score">
           <strong>Итоговый балл:</strong> {submission.total_score || 0}
         </div>
-        <button 
-          className="sr-btn-done" 
-          onClick={completeReview}
-          disabled={saving}
-        >
-          {saving ? 'Завершение...' : 'Завершить проверку'}
-        </button>
+        <div className="sr-footer-actions">
+          {submission.status !== 'revision' && getRevisionQuestionsCount() > 0 && (
+            <button
+              className="sr-btn-revision"
+              onClick={() => setShowRevisionModal(true)}
+              disabled={saving}
+            >
+              На доработку ({getRevisionQuestionsCount()})
+            </button>
+          )}
+          {submission.status === 'revision' && (
+            <span className="sr-revision-badge">Уже на доработке (попытка {submission.revision_count})</span>
+          )}
+          <button 
+            className="sr-btn-done" 
+            onClick={completeReview}
+            disabled={saving}
+          >
+            {saving ? 'Завершение...' : 'Завершить проверку'}
+          </button>
+        </div>
       </div>
+
+      {/* Модальное окно отправки на доработку */}
+      {showRevisionModal && (
+        <div className="sr-revision-overlay" onClick={() => setShowRevisionModal(false)}>
+          <div className="sr-revision-modal" onClick={e => e.stopPropagation()}>
+            <h3 className="sr-revision-modal-title">Отправить на доработку</h3>
+            <p className="sr-revision-modal-info">
+              Ученик сможет исправить <strong>{getRevisionQuestionsCount()}</strong> вопрос(ов) с неполным баллом.
+              Правильные ответы будут заблокированы.
+            </p>
+            <div className="sr-form-group">
+              <label className="sr-label">Комментарий для ученика (необязательно):</label>
+              <textarea
+                className="sr-textarea"
+                rows="3"
+                value={revisionComment}
+                onChange={e => setRevisionComment(e.target.value)}
+                placeholder="Обратите внимание на вопросы 2 и 5..."
+              />
+            </div>
+            <div className="sr-revision-modal-actions">
+              <button
+                className="sr-btn-primary"
+                onClick={sendForRevision}
+                disabled={saving}
+              >
+                {saving ? 'Отправка...' : 'Отправить'}
+              </button>
+              <button
+                className="sr-btn-secondary"
+                onClick={() => setShowRevisionModal(false)}
+                disabled={saving}
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Notification
         isOpen={notification.isOpen}

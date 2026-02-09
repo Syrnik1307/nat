@@ -66,7 +66,8 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
     const labels = {
       'in_progress': 'В работе',
       'submitted': 'Отправлено',
-      'graded': 'Проверено'
+      'graded': 'Проверено',
+      'revision': 'На доработке'
     };
     return labels[status] || status;
   };
