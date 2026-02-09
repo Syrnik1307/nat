@@ -16,6 +16,7 @@ const SUPPORTED_TYPES = [
   'FILL_BLANKS',
   'HOTSPOT',
   'CODE',
+  'FILE_UPLOAD',
 ];
 
 const mapFrontendTypeToBackend = (type) => {

@@ -155,6 +155,9 @@ const buildInitialAnswers = (homework) => {
       case 'CODE':
         acc[q.id] = { code: q.config?.starterCode || '', testResults: [] };
         break;
+      case 'FILE_UPLOAD':
+        acc[q.id] = [];
+        break;
       default:
         break;
     }
@@ -207,6 +210,10 @@ const convertAnswersArrayToMap = (answersArray, questions) => {
         try {
           acc[qId] = answer.text_answer ? JSON.parse(answer.text_answer) : { code: '', testResults: [] };
         } catch { acc[qId] = { code: '', testResults: [] }; }
+        break;
+      case 'FILE_UPLOAD':
+        // FILE_UPLOAD: файлы хранятся в attachments
+        acc[qId] = answer.attachments || [];
         break;
       default:
         acc[qId] = answer.text_answer || (answer.selected_choices?.length ? answer.selected_choices : null);
@@ -609,6 +616,10 @@ const useHomeworkSession = (homeworkId, injectedService) => {
           break;
         case 'CODE':
           if (value?.code?.trim() && value?.testResults?.length > 0) answered++;
+          break;
+        case 'FILE_UPLOAD':
+          if (Array.isArray(value) && value.length > 0) answered++;
+          else if (value && typeof value === 'object' && value.url) answered++;
           break;
         default:
           if (value) answered++;

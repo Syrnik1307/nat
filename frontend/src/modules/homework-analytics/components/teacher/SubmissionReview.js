@@ -141,6 +141,12 @@ const SubmissionReview = () => {
       }
       return formatComplexValue(parsed);
     }
+
+    if (item.question_type === 'FILE_UPLOAD') {
+      const count = item.attachments?.length || 0;
+      if (count === 0) return '(Файлы не загружены)';
+      return `Загружено файлов: ${count}`;
+    }
     
     return item.text_answer || 'Ответ предоставлен';
   };
@@ -495,6 +501,7 @@ const SubmissionReview = () => {
                   {item.question_type === 'MATCHING' && 'Сопоставление'}
                   {item.question_type === 'FILL_BLANKS' && 'Заполнение пропусков'}
                   {item.question_type === 'CODE' && 'Код'}
+                  {item.question_type === 'FILE_UPLOAD' && 'Загрузка файла'}
                 </div>
                 <div className="sr-points">
                   {getCurrentScore(item)} / {item.question_points} баллов

@@ -73,6 +73,10 @@ def sanitize_question_config(question: Question):
             for hotspot in hotspots:
                 if isinstance(hotspot, dict):
                     hotspot.pop('isCorrect', None)
+    elif q_type == 'FILE_UPLOAD':
+        # Для ученика нужны: allowedTypes, maxFiles, maxSizeMB, instructions
+        # Ничего секретного в config нет — передаём как есть
+        pass
 
     return config
 

@@ -155,6 +155,7 @@ class Question(models.Model):
         ('FILL_BLANKS', 'Заполнение пропусков'),
         ('HOTSPOT', 'Хотспот на изображении'),
         ('CODE', 'Программирование'),
+        ('FILE_UPLOAD', 'Загрузка файла'),
     )
     homework = models.ForeignKey(Homework, on_delete=models.CASCADE, related_name='questions')
     prompt = models.TextField(blank=True, default='')  # blank allowed for image-only questions
@@ -554,6 +555,14 @@ class Answer(models.Model):
                         self.auto_score = int(q.points * (passed_count / total_count))
                     else:
                         self.auto_score = 0
+        elif q.question_type == 'FILE_UPLOAD':
+            # Загрузка файла — всегда ручная проверка
+            if self.attachments:
+                self.needs_manual_review = True
+                self.auto_score = None
+            else:
+                self.auto_score = 0
+                self.needs_manual_review = False
         else:
             # Неизвестный тип
             self.needs_manual_review = True
