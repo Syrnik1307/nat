@@ -21,14 +21,16 @@ import asyncio
 import logging
 from asgiref.sync import sync_to_async
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import NetworkError, TimedOut
 from telegram.ext import (
     Application,
     CommandHandler,
     MessageHandler,
     CallbackQueryHandler,
     ContextTypes,
-    filters
+    filters,
 )
+from telegram.request import HTTPXRequest
 
 # Настройка Django
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -1192,7 +1194,24 @@ def main():
         print("Создайте бота через @BotFather и установите переменную окружения")
         sys.exit(1)
     
-    application = Application.builder().token(token).build()
+    # Устойчивые сетевые настройки
+    request = HTTPXRequest(
+        connect_timeout=20.0,
+        read_timeout=30.0,
+        write_timeout=30.0,
+        pool_timeout=10.0,
+        connection_pool_size=8,
+    )
+    application = (
+        Application.builder()
+        .token(token)
+        .request(request)
+        .connect_timeout(20.0)
+        .read_timeout(30.0)
+        .write_timeout(30.0)
+        .pool_timeout(10.0)
+        .build()
+    )
     
     # Регистрация обработчиков
     application.add_handler(CommandHandler("start", start))
@@ -1226,11 +1245,27 @@ def main():
         handle_message
     ))
     
+    # Глобальный обработчик сетевых ошибок
+    async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+        error = context.error
+        if isinstance(error, (NetworkError, TimedOut)):
+            logging.getLogger(__name__).warning(f"Telegram network error (will retry): {error}")
+            return
+        logging.getLogger(__name__).error(f"Unhandled exception: {error}", exc_info=context.error)
+
+    application.add_error_handler(error_handler)
+
     print("✅ Бот поддержки запущен!")
     print(f"Команды: /start, /tickets, /my, /view_<id>, /reply, /stats, /help")
     print(f"Инцидент: /incident, /resolve, /status, /sla")
-    
-    application.run_polling()
+
+    application.run_polling(
+        drop_pending_updates=True,
+        bootstrap_retries=-1,
+        read_timeout=30,
+        connect_timeout=20,
+        pool_timeout=10,
+    )
 
 
 if __name__ == '__main__':

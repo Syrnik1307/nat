@@ -11,7 +11,9 @@ from urllib.parse import urljoin
 from django.conf import settings
 from django.db.models import Prefetch, Q
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import NetworkError, TimedOut
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
+from telegram.request import HTTPXRequest
 from asgiref.sync import sync_to_async
 
 # Django setup
@@ -817,8 +819,24 @@ def main():
         print("  export TELEGRAM_BOT_TOKEN=your_token_here  (Linux/Mac)")
         return
     
-    # Создаём приложение
-    application = Application.builder().token(BOT_TOKEN).build()
+    # Создаём приложение с устойчивыми сетевыми настройками
+    request = HTTPXRequest(
+        connect_timeout=20.0,
+        read_timeout=30.0,
+        write_timeout=30.0,
+        pool_timeout=10.0,
+        connection_pool_size=8,
+    )
+    application = (
+        Application.builder()
+        .token(BOT_TOKEN)
+        .request(request)
+        .connect_timeout(20.0)
+        .read_timeout(30.0)
+        .write_timeout(30.0)
+        .pool_timeout(10.0)
+        .build()
+    )
     
     # Регистрируем обработчики команд
     application.add_handler(CommandHandler("start", start))
@@ -850,10 +868,28 @@ def main():
     except Exception as e:
         logger.error(f"Ошибка загрузки модуля bot: {e}")
     
-    # Запускаем бота
+    # Глобальный обработчик сетевых ошибок
+    async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Обработка ошибок: сетевые ошибки не роняют бота."""
+        error = context.error
+        if isinstance(error, (NetworkError, TimedOut)):
+            logger.warning(f"Telegram network error (will retry): {error}")
+            return
+        logger.error(f"Unhandled exception: {error}", exc_info=context.error)
+
+    application.add_error_handler(error_handler)
+
+    # Запускаем бота с устойчивым polling
     print("🤖 Telegram бот запущен!")
     print(f"🌐 Web приложение: {WEBAPP_URL}")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    application.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=True,
+        bootstrap_retries=-1,
+        read_timeout=30,
+        connect_timeout=20,
+        pool_timeout=10,
+    )
 
 
 if __name__ == '__main__':

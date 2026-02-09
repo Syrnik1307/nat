@@ -26,7 +26,9 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from telegram import Update
+from telegram.error import NetworkError, TimedOut
 from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.request import HTTPXRequest
 
 
 CONFIG_FILE = Path(os.environ.get("LECTIO_MONITOR_CONFIG", "/opt/lectio-monitor/config.env"))
@@ -261,8 +263,32 @@ def build_app() -> Application:
     if not allowed:
         raise SystemExit("No allowed chat IDs. Set OPS_ALLOWED_CHAT_IDS or ERRORS_CHAT_ID")
 
-    app = Application.builder().token(token).build()
+    request = HTTPXRequest(
+        connect_timeout=20.0,
+        read_timeout=30.0,
+        write_timeout=30.0,
+        pool_timeout=10.0,
+        connection_pool_size=8,
+    )
+    app = (
+        Application.builder()
+        .token(token)
+        .request(request)
+        .connect_timeout(20.0)
+        .read_timeout(30.0)
+        .write_timeout(30.0)
+        .pool_timeout(10.0)
+        .build()
+    )
     app.bot_data["allowed_chat_ids"] = allowed
+
+    # Обработчик сетевых ошибок — не роняет бота
+    async def _error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if isinstance(context.error, (NetworkError, TimedOut)):
+            return  # polling сам retry-ит
+        raise context.error  # re-raise прочие
+
+    app.add_error_handler(_error_handler)
 
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("status", cmd_status))
@@ -276,7 +302,14 @@ def build_app() -> Application:
 
 def main() -> None:
     app = build_app()
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    app.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=True,
+        bootstrap_retries=-1,
+        read_timeout=30,
+        connect_timeout=20,
+        pool_timeout=10,
+    )
 
 
 if __name__ == "__main__":
