@@ -827,10 +827,18 @@ def main():
         pool_timeout=10.0,
         connection_pool_size=8,
     )
+    get_updates_request = HTTPXRequest(
+        connect_timeout=20.0,
+        read_timeout=30.0,
+        write_timeout=30.0,
+        pool_timeout=10.0,
+        connection_pool_size=8,
+    )
     application = (
         Application.builder()
         .token(BOT_TOKEN)
         .request(request)
+        .get_updates_request(get_updates_request)
         .build()
     )
     
@@ -882,9 +890,6 @@ def main():
         allowed_updates=Update.ALL_TYPES,
         drop_pending_updates=True,
         bootstrap_retries=-1,
-        read_timeout=30,
-        connect_timeout=20,
-        pool_timeout=10,
     )
 
 
