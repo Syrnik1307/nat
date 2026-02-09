@@ -135,7 +135,7 @@ const ReassignModal = ({ homework, groups, onClose, onSave, toast }) => {
   };
 
   return (
-    <Modal onClose={onClose} title="Назначить ДЗ">
+    <Modal isOpen={true} onClose={onClose} title="Назначить ДЗ">
       <div className="reassign-modal-content">
         {/* Выбор режима */}
         <div className="reassign-field">
@@ -231,6 +231,7 @@ const MyHomeworksList = ({ onEditHomework }) => {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all'); // 'all' | 'published' | 'draft' | 'archived'
   const [reassignHomework, setReassignHomework] = useState(null);
+  const [editingId, setEditingId] = useState(null); // ID загружаемого ДЗ для индикатора
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -334,7 +335,8 @@ const MyHomeworksList = ({ onEditHomework }) => {
 
   // Редактирование ДЗ
   const handleEdit = async (homework) => {
-    // Загружаем полные данные ДЗ с вопросами
+    if (editingId) return; // Предотвращаем двойной клик
+    setEditingId(homework.id);
     try {
       const response = await getHomework(homework.id);
       const fullHomework = response.data;
@@ -343,6 +345,8 @@ const MyHomeworksList = ({ onEditHomework }) => {
       }
     } catch (err) {
       toast.error('Ошибка загрузки ДЗ');
+    } finally {
+      setEditingId(null);
     }
   };
 
@@ -476,12 +480,16 @@ const MyHomeworksList = ({ onEditHomework }) => {
 
               <div className="myhw-actions">
                 <button 
-                  className="myhw-action-btn edit"
+                  className={`myhw-action-btn edit ${editingId === homework.id ? 'loading' : ''}`}
                   onClick={() => handleEdit(homework)}
                   title="Редактировать"
+                  disabled={!!editingId}
                 >
-                  <IconEdit size={16} />
-                  <span>Редактировать</span>
+                  {editingId === homework.id ? (
+                    <><div className="myhw-btn-spinner" /><span>Загрузка...</span></>
+                  ) : (
+                    <><IconEdit size={16} /><span>Редактировать</span></>
+                  )}
                 </button>
                 
                 <button 

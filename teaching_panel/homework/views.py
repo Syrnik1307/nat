@@ -32,11 +32,13 @@ class HomeworkViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                     )
                 if is_template == '0':
                     return qs.filter(teacher=user, is_template=False).prefetch_related(
-                        'questions', 'questions__choices', 'assigned_groups', 'submissions'
+                        'questions', 'questions__choices', 'assigned_groups', 'submissions',
+                        'group_assignments', 'group_assignments__group', 'group_assignments__students'
                     )
                 # default: показываем обычные ДЗ
                 return qs.filter(teacher=user, is_template=False).prefetch_related(
-                    'questions', 'questions__choices', 'assigned_groups', 'submissions'
+                    'questions', 'questions__choices', 'assigned_groups', 'submissions',
+                    'group_assignments', 'group_assignments__group', 'group_assignments__students'
                 )
             elif getattr(user, 'role', None) == 'student':
                 # Студенты видят только опубликованные ДЗ
@@ -1382,6 +1384,15 @@ class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             elif qtype in {'TEXT'}:
                 answer_obj.selected_choices.clear()
                 answer_obj.text_answer = raw_value or ''
+            elif qtype == 'FILE_UPLOAD':
+                # Файлы приходят как объект/массив {url, file_id, name, size, mime_type}
+                answer_obj.selected_choices.clear()
+                answer_obj.text_answer = ''
+                if isinstance(raw_value, list):
+                    answer_obj.attachments = raw_value
+                elif isinstance(raw_value, dict) and raw_value.get('url'):
+                    answer_obj.attachments = [raw_value]
+                # Если raw_value пустой/None — не трогаем attachments
             else:
                 # Сложные типы храним в text_answer как JSON
                 answer_obj.selected_choices.clear()

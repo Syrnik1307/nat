@@ -251,6 +251,29 @@
   border-color: var(--danger, #ef4444);
 }
 
+.myhw-action-btn.loading {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.myhw-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.myhw-btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-color, #e2e8f0);
+  border-top-color: var(--primary, #6366f1);
+  border-radius: 50%;
+  animation: myhw-spin 0.6s linear infinite;
+}
+
+@keyframes myhw-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Модальное окно переназначения */
 .reassign-modal-content {
   display: flex;
