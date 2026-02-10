@@ -143,6 +143,13 @@ class HomeworkSerializer(serializers.ModelSerializer):
         required=False,
         help_text='[{"group_id": 1, "student_ids": [5, 7], "deadline": "..."}, ...]'
     )
+    exam_topic_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        help_text='IDs тем экзамена для привязки к ДЗ'
+    )
+    exam_topics_data = serializers.SerializerMethodField(read_only=True)
     group_id = serializers.SerializerMethodField(read_only=True)
     group_name = serializers.SerializerMethodField(read_only=True)
     questions_count = serializers.SerializerMethodField(read_only=True)
@@ -159,6 +166,7 @@ class HomeworkSerializer(serializers.ModelSerializer):
             'status', 'deadline', 'published_at', 'max_score',
             'is_template', 'gdrive_folder_id',
             'assigned_group_ids', 'assigned_student_ids', 'group_assignments_data',
+            'exam_topic_ids', 'exam_topics_data',
             'group_id', 'group_name',
             'questions_count', 'submissions_count', 'assigned_groups',
             'group_assignments', 'assigned_students',
@@ -174,6 +182,19 @@ class HomeworkSerializer(serializers.ModelSerializer):
 
     def get_submissions_count(self, obj):
         return obj.submissions.count()
+
+    def get_exam_topics_data(self, obj):
+        """Возвращает привязанные темы экзамена."""
+        topics = obj.exam_topics.select_related('section', 'section__subject', 'section__subject__exam_type').all()
+        return [{
+            'id': t.id,
+            'code': t.code,
+            'name': t.name,
+            'task_number': t.task_number,
+            'section_name': t.section.name,
+            'subject_name': t.section.subject.name,
+            'exam_type': t.section.subject.exam_type.code,
+        } for t in topics]
 
     def get_assigned_groups(self, obj):
         """Возвращает список групп для переназначения (обратная совместимость)."""
@@ -274,9 +295,14 @@ class HomeworkSerializer(serializers.ModelSerializer):
         assigned_group_ids = validated_data.pop('assigned_group_ids', [])
         assigned_student_ids = validated_data.pop('assigned_student_ids', [])
         group_assignments_data = validated_data.pop('group_assignments_data', [])
+        exam_topic_ids = validated_data.pop('exam_topic_ids', [])
         questions_data = validated_data.pop('questions', [])
         validated_data['teacher'] = self.context['request'].user
         homework = Homework.objects.create(**validated_data)
+
+        # Привязка к темам экзамена
+        if exam_topic_ids:
+            homework.exam_topics.set(exam_topic_ids)
 
         # Новый формат: group_assignments_data с конкретными учениками
         if group_assignments_data:
@@ -299,7 +325,12 @@ class HomeworkSerializer(serializers.ModelSerializer):
         assigned_group_ids = validated_data.pop('assigned_group_ids', None)
         assigned_student_ids = validated_data.pop('assigned_student_ids', None)
         group_assignments_data = validated_data.pop('group_assignments_data', None)
+        exam_topic_ids = validated_data.pop('exam_topic_ids', None)
         questions_data = validated_data.pop('questions', None)
+
+        # Обновить привязку к темам экзамена
+        if exam_topic_ids is not None:
+            instance.exam_topics.set(exam_topic_ids)
 
         for attr, val in validated_data.items():
             setattr(instance, attr, val)

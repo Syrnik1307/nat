@@ -169,6 +169,9 @@ urlpatterns = [
     # Tenants API (конфиг школы для фронтенда)
     path('api/school/', include('tenants.urls')),
     
+    # Knowledge Map API (Карта знаний ЕГЭ/ОГЭ)
+    path('api/knowledge-map/', include('knowledge_map.urls')),
+    
     # Analytics API
     path('api/', include('analytics.urls')),
     

@@ -1,0 +1,276 @@
+/* ============================================================
+   ExamTopicSelector — Выбор тем экзамена при создании ДЗ
+   ============================================================ */
+
+.exam-topic-selector {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.ets-label {
+  display: flex;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  margin-bottom: 6px;
+}
+
+/* Selected chips */
+.ets-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.ets-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  font-size: 0.78rem;
+  color: #4338ca;
+  animation: etsChipIn 0.2s ease;
+}
+
+@keyframes etsChipIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.ets-chip-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: #6366f1;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.ets-chip-name {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ets-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #6366f1;
+  cursor: pointer;
+  padding: 1px;
+  border-radius: 3px;
+  transition: background 0.15s;
+}
+
+.ets-chip-remove:hover {
+  background: #c7d2fe;
+}
+
+/* Toggle button */
+.ets-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px dashed var(--border-color, #d1d5db);
+  border-radius: 8px;
+  background: var(--bg-card, #fff);
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--text-secondary, #64748b);
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
+}
+
+.ets-toggle:hover {
+  border-color: #6366f1;
+  color: #6366f1;
+  background: #fafaff;
+}
+
+.ets-toggle.open {
+  border-color: #6366f1;
+  border-style: solid;
+  color: #6366f1;
+}
+
+.ets-toggle-icon {
+  transition: transform 0.2s ease;
+}
+
+.ets-toggle-icon.rotated {
+  transform: rotate(180deg);
+}
+
+/* Dropdown */
+.ets-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin-top: 4px;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  animation: etsDropIn 0.2s var(--ease-smooth, ease);
+  overflow: hidden;
+}
+
+@keyframes etsDropIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Filters */
+.ets-filters {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-light, #f1f5f9);
+}
+
+.ets-select {
+  flex: 1;
+  padding: 5px 6px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  font-size: 0.78rem;
+  background: var(--bg-card, #fff);
+  color: var(--text-primary, #1e293b);
+}
+
+.ets-select:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+/* Search */
+.ets-search-wrap {
+  position: relative;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-light, #f1f5f9);
+}
+
+.ets-search-icon {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+.ets-search {
+  width: 100%;
+  padding: 6px 6px 6px 24px;
+  border: none;
+  font-size: 0.82rem;
+  background: transparent;
+  color: var(--text-primary, #1e293b);
+}
+
+.ets-search:focus {
+  outline: none;
+}
+
+/* Options list */
+.ets-list {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.ets-loading,
+.ets-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.ets-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.ets-option:hover {
+  background: var(--bg-hover, #f8fafc);
+}
+
+.ets-option.selected {
+  background: #eef2ff;
+}
+
+.ets-check {
+  display: flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1.5px solid #d1d5db;
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: all 0.15s;
+}
+
+.ets-check.visible {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: #fff;
+}
+
+.ets-option-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ets-option-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 18px;
+  border-radius: 4px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.65rem;
+  font-weight: 700;
+  margin-bottom: 1px;
+  align-self: flex-start;
+}
+
+.ets-option-name {
+  font-size: 0.82rem;
+  color: var(--text-primary, #1e293b);
+  font-weight: 500;
+}
+
+.ets-option-meta {
+  font-size: 0.72rem;
+  color: var(--text-secondary, #94a3b8);
+}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../apiService';
+import { getSubjects, getStudentProgress } from '../knowledgeMapService';
 import './StudentDetailAnalytics.css';
 import ActivityHeatmap from './ActivityHeatmap';
 
@@ -72,12 +73,34 @@ const IconActivity = () => (
     </svg>
 );
 
+const IconBrain = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M12 2a4 4 0 0 0-4 4v1H6a4 4 0 0 0-1 7.9V16a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4v-1.1A4 4 0 0 0 18 7h-2V6a4 4 0 0 0-4-4z"/>
+        <path d="M12 2v20"/>
+        <path d="M8 10h0"/>
+        <path d="M16 10h0"/>
+    </svg>
+);
+
+const IconChevronRight = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="9 18 15 12 9 6"/>
+    </svg>
+);
+
+const IconChevronDown = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="6 9 12 15 18 9"/>
+    </svg>
+);
+
 const TABS = [
     { id: 'overview', label: 'Обзор', Icon: IconUser },
     { id: 'attendance', label: 'Посещаемость', Icon: IconCalendar },
     { id: 'participation', label: 'Участие', Icon: IconMic },
     { id: 'homework', label: 'Домашние задания', Icon: IconBook },
     { id: 'activity', label: 'Карта активности', Icon: IconActivity },
+    { id: 'knowledge', label: 'Карта знаний', Icon: IconBrain },
 ];
 
 function StatCard({ title, value, subtitle, icon: Icon, color, trend }) {
@@ -128,6 +151,13 @@ function StudentDetailAnalytics({ studentId, groupId, onBack }) {
     const [homework, setHomework] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    // Knowledge map state
+    const [knowledgeSubjects, setKnowledgeSubjects] = useState([]);
+    const [selectedKnowledgeSubject, setSelectedKnowledgeSubject] = useState(null);
+    const [knowledgeProgress, setKnowledgeProgress] = useState(null);
+    const [knowledgeLoading, setKnowledgeLoading] = useState(false);
+    const [expandedSections, setExpandedSections] = useState({});
 
     const loadSummary = useCallback(async () => {
         try {
@@ -524,7 +554,257 @@ function StudentDetailAnalytics({ studentId, groupId, onBack }) {
                 {activeTab === 'activity' && (
                     <ActivityHeatmap studentId={studentId} />
                 )}
+                {activeTab === 'knowledge' && (
+                    <KnowledgeTreeTab
+                        studentId={studentId}
+                        subjects={knowledgeSubjects}
+                        setSubjects={setKnowledgeSubjects}
+                        selectedSubject={selectedKnowledgeSubject}
+                        setSelectedSubject={setSelectedKnowledgeSubject}
+                        progress={knowledgeProgress}
+                        setProgress={setKnowledgeProgress}
+                        loading={knowledgeLoading}
+                        setLoading={setKnowledgeLoading}
+                        expandedSections={expandedSections}
+                        setExpandedSections={setExpandedSections}
+                    />
+                )}
             </div>
+        </div>
+    );
+}
+
+/* ===== Knowledge Tree Tab ===== */
+
+function KnowledgeTreeTab({
+    studentId, subjects, setSubjects,
+    selectedSubject, setSelectedSubject,
+    progress, setProgress,
+    loading, setLoading,
+    expandedSections, setExpandedSections,
+}) {
+    // Load subjects on mount
+    useEffect(() => {
+        if (subjects.length > 0) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await getSubjects();
+                const data = res.data?.results || res.data || [];
+                if (!cancelled) setSubjects(data);
+            } catch (err) {
+                console.error('Failed to load subjects:', err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [subjects.length, setSubjects]);
+
+    // Load progress when subject changes
+    useEffect(() => {
+        if (!selectedSubject) { setProgress(null); return; }
+        let cancelled = false;
+        (async () => {
+            setLoading(true);
+            try {
+                const res = await getStudentProgress(studentId, selectedSubject);
+                if (!cancelled) {
+                    setProgress(res.data);
+                    // Auto-expand all sections
+                    const expanded = {};
+                    (res.data.sections || []).forEach(s => { expanded[s.id] = true; });
+                    setExpandedSections(expanded);
+                }
+            } catch (err) {
+                console.error('Failed to load knowledge progress:', err);
+                if (!cancelled) setProgress(null);
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [studentId, selectedSubject, setProgress, setLoading, setExpandedSections]);
+
+    const toggleSection = (sectionId) => {
+        setExpandedSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
+    };
+
+    const getMasteryColor = (level) => {
+        if (level >= 80) return '#16a34a';
+        if (level >= 60) return '#ca8a04';
+        if (level >= 40) return '#f97316';
+        if (level > 0) return '#dc2626';
+        return '#e2e8f0';
+    };
+
+    const getStatusLabel = (mastery) => {
+        if (!mastery) return { text: 'Не начато', className: 'km-status--not-started' };
+        const s = mastery.status;
+        if (s === 'mastered') return { text: 'Освоено', className: 'km-status--mastered' };
+        if (s === 'confident') return { text: 'Уверенно', className: 'km-status--confident' };
+        if (s === 'in_progress') return { text: 'В процессе', className: 'km-status--in-progress' };
+        if (s === 'needs_review') return { text: 'Повторить', className: 'km-status--needs-review' };
+        if (s === 'weak') return { text: 'Слабо', className: 'km-status--weak' };
+        return { text: 'Не начато', className: 'km-status--not-started' };
+    };
+
+    const getTrendLabel = (mastery) => {
+        if (!mastery || mastery.trend == null) return null;
+        if (mastery.trend > 5) return { text: 'Рост', className: 'km-trend--up' };
+        if (mastery.trend < -5) return { text: 'Спад', className: 'km-trend--down' };
+        return { text: 'Стабильно', className: 'km-trend--stable' };
+    };
+
+    // Group subjects by exam type
+    const examGroups = subjects.reduce((acc, subj) => {
+        const examName = subj.exam_type_name || subj.exam_type?.name || 'Другое';
+        if (!acc[examName]) acc[examName] = [];
+        acc[examName].push(subj);
+        return acc;
+    }, {});
+
+    return (
+        <div className="sd-knowledge">
+            <div className="sd-section-header">
+                <h3>Карта знаний по экзамену</h3>
+            </div>
+
+            {/* Subject selector */}
+            <div className="km-subject-selector">
+                {Object.entries(examGroups).map(([examName, subjs]) => (
+                    <div key={examName} className="km-exam-group">
+                        <span className="km-exam-label">{examName}</span>
+                        <div className="km-subject-chips">
+                            {subjs.map(subj => (
+                                <button
+                                    key={subj.id}
+                                    className={`km-subject-chip ${selectedSubject === subj.id ? 'km-subject-chip--active' : ''}`}
+                                    onClick={() => setSelectedSubject(subj.id)}
+                                >
+                                    {subj.name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {!selectedSubject && (
+                <div className="sd-empty-state">Выберите предмет для просмотра карты знаний</div>
+            )}
+
+            {loading && selectedSubject && (
+                <div className="sd-loading km-loading">
+                    <div className="sd-spinner"></div>
+                    <span>Загрузка карты знаний...</span>
+                </div>
+            )}
+
+            {!loading && progress && selectedSubject && (
+                <>
+                    {/* Summary cards */}
+                    <div className="km-summary">
+                        <div className="km-summary-card km-summary-card--mastery">
+                            <div className="km-summary-value">{progress.overall_mastery}%</div>
+                            <div className="km-summary-label">Общее владение</div>
+                            <div className="km-summary-bar">
+                                <div
+                                    className="km-summary-bar-fill"
+                                    style={{
+                                        width: `${progress.overall_mastery}%`,
+                                        backgroundColor: getMasteryColor(progress.overall_mastery),
+                                    }}
+                                />
+                            </div>
+                        </div>
+                        <div className="km-summary-card km-summary-card--mastered">
+                            <div className="km-summary-value">{progress.topics_mastered}</div>
+                            <div className="km-summary-label">Освоено</div>
+                        </div>
+                        <div className="km-summary-card km-summary-card--progress">
+                            <div className="km-summary-value">{progress.topics_in_progress}</div>
+                            <div className="km-summary-label">В процессе</div>
+                        </div>
+                        <div className="km-summary-card km-summary-card--review">
+                            <div className="km-summary-value">{progress.topics_needs_review}</div>
+                            <div className="km-summary-label">Повторить</div>
+                        </div>
+                        <div className="km-summary-card km-summary-card--not-started">
+                            <div className="km-summary-value">{progress.topics_not_started}</div>
+                            <div className="km-summary-label">Не начато</div>
+                        </div>
+                    </div>
+
+                    {/* Section tree */}
+                    <div className="km-tree">
+                        {(progress.sections || []).map(section => (
+                            <div key={section.id} className="km-section">
+                                <button
+                                    className="km-section-header"
+                                    onClick={() => toggleSection(section.id)}
+                                >
+                                    <span className="km-section-chevron">
+                                        {expandedSections[section.id] ? <IconChevronDown /> : <IconChevronRight />}
+                                    </span>
+                                    <span className="km-section-name">{section.name}</span>
+                                    <span className="km-section-meta">
+                                        {section.topics_with_data}/{section.topics_count} тем
+                                    </span>
+                                    <div className="km-section-bar">
+                                        <div
+                                            className="km-section-bar-fill"
+                                            style={{
+                                                width: `${section.avg_mastery}%`,
+                                                backgroundColor: getMasteryColor(section.avg_mastery),
+                                            }}
+                                        />
+                                    </div>
+                                    <span className="km-section-percent">{section.avg_mastery}%</span>
+                                </button>
+
+                                {expandedSections[section.id] && (
+                                    <div className="km-topics">
+                                        {section.topics.map(topic => {
+                                            const statusInfo = getStatusLabel(topic.mastery);
+                                            const trendInfo = getTrendLabel(topic.mastery);
+                                            return (
+                                                <div key={topic.id} className="km-topic-row">
+                                                    <span className="km-topic-task">
+                                                        {topic.task_number ? `Задание ${topic.task_number}` : topic.code}
+                                                    </span>
+                                                    <span className="km-topic-name">{topic.name}</span>
+                                                    <span className={`km-topic-status ${statusInfo.className}`}>
+                                                        {statusInfo.text}
+                                                    </span>
+                                                    {topic.mastery && (
+                                                        <div className="km-topic-bar">
+                                                            <div
+                                                                className="km-topic-bar-fill"
+                                                                style={{
+                                                                    width: `${topic.mastery.mastery_level}%`,
+                                                                    backgroundColor: getMasteryColor(topic.mastery.mastery_level),
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {!topic.mastery && <div className="km-topic-bar km-topic-bar--empty" />}
+                                                    <span className="km-topic-percent">
+                                                        {topic.mastery ? `${topic.mastery.mastery_level}%` : '—'}
+                                                    </span>
+                                                    {trendInfo && (
+                                                        <span className={`km-topic-trend ${trendInfo.className}`}>
+                                                            {trendInfo.text}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
         </div>
     );
 }

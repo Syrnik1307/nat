@@ -24,6 +24,7 @@ import '../questions/CodeQuestion.css';
 import './HomeworkConstructor.css';
 import DateTimePicker from './DateTimePicker';
 import StudentPicker from './StudentPicker';
+import ExamTopicSelector from './ExamTopicSelector';
 
 const initialMeta = {
   title: '',
@@ -35,6 +36,7 @@ const initialMeta = {
   gamificationEnabled: true,
   studentInstructions: '',
   allowViewAnswers: true,
+  examTopicIds: [],
 };
 
 const QUESTION_COMPONENTS = {
@@ -314,6 +316,9 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
         gamificationEnabled: editingHomework.gamification_enabled !== false,
         studentInstructions: editingHomework.student_instructions || '',
         allowViewAnswers: editingHomework.allow_view_answers !== false,
+        examTopicIds: editingHomework.exam_topics_data
+          ? editingHomework.exam_topics_data.map(t => t.id)
+          : [],
       };
       
       setAssignmentMeta(meta);
@@ -857,6 +862,11 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                 </label>
                 <span className="hc-checkbox-hint">Отключите для контрольных работ, чтобы ученики не могли делиться ответами</span>
               </div>
+
+              <ExamTopicSelector
+                value={assignmentMeta.examTopicIds || []}
+                onChange={(ids) => handleMetaChange('examTopicIds', ids)}
+              />
 
               <div className="hc-params-row hc-params-row--picker" data-tour="hw-group-selector">
                 <div className="hc-params-row-fill">

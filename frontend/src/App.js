@@ -74,6 +74,7 @@ const PageLoader = () => {
 const teacherHomeImport = () => import('./components/TeacherHomePage');
 const studentHomeImport = () => import('./components/StudentHomePage');
 const analyticsImport = () => import('./components/AnalyticsPage');
+const knowledgeMapImport = () => import('./components/KnowledgeMapPage');
 const financeImport = () => import('./components/FinancePage');
 const profileImport = () => import('./components/ProfilePage');
 const groupsManageImport = () => import('./components/GroupsManage');
@@ -104,6 +105,7 @@ const AttendanceLogPage = lazy(() => import('./components/AttendanceLogPage'));
 const TeacherRecordingsPage = lazy(teacherRecordingsImport);
 const TeacherMaterialsPage = lazy(teacherMaterialsImport);
 const AnalyticsPage = lazy(analyticsImport);
+const KnowledgeMapPage = lazy(knowledgeMapImport);
 const HomeworkManage = lazy(() => import('./components/HomeworkManage'));
 const HomeworkPage = lazy(homeworkPageImport);
 const SubmissionsList = lazy(() => import('./modules/homework-analytics/components/teacher/SubmissionsList'));
@@ -146,6 +148,7 @@ const preloadPages = (role) => {
   if (role === 'teacher') {
     scheduleLoad(teacherHomeImport);
     scheduleLoad(analyticsImport);
+    scheduleLoad(knowledgeMapImport);
     scheduleLoad(financeImport);
     scheduleLoad(groupsManageImport);
     scheduleLoad(homeworkPageImport);
@@ -257,6 +260,7 @@ const AppRoutes = () => {
           <Route path="/recurring-lessons/manage" element={<Protected allowRoles={['teacher']}><RecurringLessonsManage /></Protected>} />
           <Route path="/groups/manage" element={<Protected allowRoles={['teacher']}><GroupsManage /></Protected>} />
           <Route path="/analytics" element={<Protected allowRoles={['teacher', 'admin']}><AnalyticsPage /></Protected>} />
+          <Route path="/knowledge-map" element={<Protected allowRoles={['teacher', 'admin']}><KnowledgeMapPage /></Protected>} />
           <Route path="/finance" element={<Protected allowRoles={['teacher', 'admin']}><FinancePage /></Protected>} />
           <Route path="/teacher/ai-reports" element={<Protected allowRoles={['teacher']}><StudentAIReports /></Protected>} />
           <Route path="/calendar/settings" element={<Protected allowRoles={['teacher', 'student']}><CalendarIntegrationPage /></Protected>} />

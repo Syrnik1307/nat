@@ -105,6 +105,11 @@ export const buildHomeworkPayload = (meta, questions) => {
   payload.student_instructions = meta.studentInstructions?.trim() || '';
   payload.allow_view_answers = meta.allowViewAnswers !== false;
 
+  // Привязка к темам экзамена (карта знаний)
+  if (meta.examTopicIds && meta.examTopicIds.length > 0) {
+    payload.exam_topic_ids = meta.examTopicIds;
+  }
+
   return payload;
 };
 

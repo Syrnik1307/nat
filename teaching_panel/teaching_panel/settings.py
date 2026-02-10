@@ -100,6 +100,7 @@ INSTALLED_APPS = [
     'market',  # Digital products marketplace (Zoom accounts, etc.)
     'finance',  # Student-teacher financial accounting (lesson balances)
     'tenants',  # Multi-tenant: онлайн-школы на базе платформы
+    'knowledge_map',  # Карта знаний ЕГЭ/ОГЭ
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'django_celery_beat',

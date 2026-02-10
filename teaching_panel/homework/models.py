@@ -127,6 +127,14 @@ class Homework(models.Model):
     )
 
     # === Multi-Tenant ===
+    # Привязка к темам ЕГЭ/ОГЭ
+    exam_topics = models.ManyToManyField(
+        'knowledge_map.Topic',
+        blank=True,
+        related_name='homeworks',
+        help_text='Темы экзамена, к которым относится ДЗ'
+    )
+
     school = models.ForeignKey(
         'tenants.School',
         on_delete=models.CASCADE,
