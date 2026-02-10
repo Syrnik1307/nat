@@ -418,6 +418,8 @@ CELERY_TASK_QUEUES = (
     Queue('heavy', routing_key='heavy'),  # Video processing, GDrive uploads
     Queue('notifications', routing_key='notifications'),  # Emails, Telegram
     Queue('periodic', routing_key='periodic'),  # Scheduled tasks from beat
+    Queue('ai_grading', routing_key='ai_grading'),  # AI grading tasks (isolated)
+    Queue('ai_grading_dlq', routing_key='ai_grading_dlq'),  # Dead Letter Queue for failed AI tasks
 )
 
 # Route tasks to appropriate queues
@@ -442,6 +444,10 @@ CELERY_TASK_ROUTES = {
     'schedule.tasks.warmup_zoom_oauth_tokens': {'queue': 'periodic'},
     'schedule.tasks.release_stuck_zoom_accounts': {'queue': 'periodic'},
     'accounts.tasks.process_expired_subscriptions': {'queue': 'periodic'},
+    
+    # AI Grading tasks → isolated ai_grading queue
+    'homework.tasks.process_ai_grading': {'queue': 'ai_grading'},
+    'homework.tasks.process_ai_grading_dlq': {'queue': 'ai_grading_dlq'},
 }
 
 # =============================================================================
@@ -914,6 +920,30 @@ DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
 # OpenAI API (альтернатива)
 # Получить ключ: https://platform.openai.com/
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+
+# --- Асинхронная AI-проверка (микросервис) ---
+# Включает асинхронный путь: Answer → Redis Queue → AI Worker → Callback
+# При выключенном — используется старый синхронный путь через _evaluate_with_ai()
+AI_GRADING_ASYNC = os.environ.get('AI_GRADING_ASYNC', '0') == '1'
+
+# Shared secret для HMAC-подписи callback от AI worker
+AI_CALLBACK_SECRET = os.environ.get('AI_CALLBACK_SECRET', 'dev-ai-callback-secret-change-me')
+
+# URL куда AI worker отправляет результаты (внутренний callback)
+AI_CALLBACK_URL = os.environ.get(
+    'AI_CALLBACK_URL',
+    'https://lectiospace.ru/api/internal/ai-grading/callback/'
+)
+
+# Retry policy
+AI_GRADING_MAX_RETRIES = int(os.environ.get('AI_GRADING_MAX_RETRIES', '3'))
+AI_GRADING_TIMEOUT = int(os.environ.get('AI_GRADING_TIMEOUT', '30'))  # секунд на AI API call
+
+# Provider failover chain: primary → fallback
+AI_GRADING_PROVIDER_CHAIN = [
+    {'provider': 'deepseek', 'model': 'deepseek-chat'},
+    {'provider': 'openai', 'model': 'gpt-4o-mini'},
+]
 
 # =============================================================================
 # LOGGING CONFIGURATION

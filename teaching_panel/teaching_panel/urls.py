@@ -22,6 +22,7 @@ from rest_framework.routers import DefaultRouter
 from core import views as core_views
 from schedule import views as schedule_views
 from homework.views import HomeworkViewSet, StudentSubmissionViewSet, HomeworkFileProxyView
+from homework.ai_callback_views import ai_grading_callback
 from analytics.views import GradebookViewSet
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from accounts.jwt_views import LogoutView, RegisterView, CaseInsensitiveTokenObtainPairView, DirectTokenView
@@ -153,6 +154,9 @@ urlpatterns = [
     
     # Homework file proxy (быстрый доступ к файлам)
     path('api/homework/file/<str:file_id>/', HomeworkFileProxyView.as_view(), name='homework-file-proxy'),
+    
+    # AI Grading internal callback (HMAC auth, not JWT)
+    path('api/internal/ai-grading/callback/', ai_grading_callback, name='ai-grading-callback'),
     
     # Integrations API (Google Meet, etc.)
     path('api/integrations/', include('integrations.urls')),

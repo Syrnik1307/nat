@@ -1227,6 +1227,85 @@ class HomeworkViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             'answers': answers,
         })
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def ai_grade_all(self, request, pk=None):
+        """
+        Запустить AI-проверку всех непроверенных TEXT-ответов в домашнем задании.
+        
+        Только для учителей. Ставит задания в очередь ai_grading.
+        Возвращает количество поставленных в очередь и пропущенных.
+        """
+        homework = self.get_object()
+        user = request.user
+
+        if getattr(user, 'role', None) not in ('teacher', 'admin'):
+            return Response(
+                {'error': 'Только учитель может запустить AI-проверку'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not homework.ai_grading_enabled:
+            return Response(
+                {'error': 'AI-проверка отключена для этого задания'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Собираем непроверенные TEXT-ответы
+        unchecked_answers = Answer.objects.filter(
+            submission__homework=homework,
+            question__question_type='TEXT',
+            auto_score__isnull=True,
+            teacher_score__isnull=True,
+        ).exclude(
+            ai_grading_status__in=['pending', 'processing'],
+        ).select_related('question', 'submission')
+
+        from .ai_gateway import AIGradingGateway
+        gateway = AIGradingGateway()
+        result = gateway.submit_batch(unchecked_answers, homework)
+
+        return Response({
+            'status': 'queued',
+            'queued': result['queued'],
+            'skipped': result['skipped'],
+            'estimated_time_seconds': result['queued'] * 8,  # ~8 сек на ответ
+        }, status=status.HTTP_202_ACCEPTED)
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def ai_grading_stats(self, request, pk=None):
+        """Статистика AI-проверки для домашнего задания."""
+        homework = self.get_object()
+
+        answers = Answer.objects.filter(
+            submission__homework=homework,
+            question__question_type='TEXT',
+        )
+        total = answers.count()
+        pending = answers.filter(ai_grading_status='pending').count()
+        processing = answers.filter(ai_grading_status='processing').count()
+        completed = answers.filter(ai_grading_status='completed').count()
+        failed = answers.filter(ai_grading_status='failed').count()
+        not_started = total - pending - processing - completed - failed
+
+        from django.db.models import Sum, Avg
+        cost_stats = answers.filter(ai_grading_status='completed').aggregate(
+            total_cost=Sum('ai_cost_rubles'),
+            avg_latency=Avg('ai_latency_ms'),
+            total_tokens=Sum('ai_tokens_used'),
+        )
+
+        return Response({
+            'total_text_answers': total,
+            'not_started': not_started,
+            'pending': pending,
+            'processing': processing,
+            'completed': completed,
+            'failed': failed,
+            'cost_rubles': float(cost_stats['total_cost'] or 0),
+            'avg_latency_ms': int(cost_stats['avg_latency'] or 0),
+            'total_tokens': cost_stats['total_tokens'] or 0,
+        })
+
 
 class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset = StudentSubmission.objects.all().select_related(
@@ -1980,6 +2059,53 @@ class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated],
+            url_path='grading-status')
+    def grading_status(self, request, pk=None):
+        """
+        Статус AI-проверки для submission (polling от фронтенда).
+        
+        Возвращает статус каждого TEXT-ответа и общий прогресс.
+        """
+        submission = self.get_object()
+
+        text_answers = Answer.objects.filter(
+            submission=submission,
+            question__question_type='TEXT',
+        ).select_related('question')
+
+        results = []
+        for ans in text_answers:
+            results.append({
+                'question_id': ans.question_id,
+                'ai_grading_status': ans.ai_grading_status,
+                'auto_score': ans.auto_score,
+                'max_points': ans.question.points,
+                'confidence': ans.ai_confidence,
+                'needs_manual_review': ans.needs_manual_review,
+                'feedback': ans.teacher_feedback if ans.ai_grading_status == 'completed' else None,
+            })
+
+        total = len(results)
+        completed = sum(1 for r in results if r['ai_grading_status'] == 'completed')
+        failed = sum(1 for r in results if r['ai_grading_status'] == 'failed')
+        pending = sum(1 for r in results if r['ai_grading_status'] in ('pending', 'processing'))
+
+        overall = 'completed' if completed == total and total > 0 else \
+                  'failed' if failed == total and total > 0 else \
+                  'processing' if pending > 0 else \
+                  'not_started'
+
+        return Response({
+            'submission_id': submission.id,
+            'overall_status': overall,
+            'total': total,
+            'completed': completed,
+            'failed': failed,
+            'pending': pending,
+            'answers': results,
+        })
 
 
 # ============================================================

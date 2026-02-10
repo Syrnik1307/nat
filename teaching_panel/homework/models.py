@@ -321,6 +321,46 @@ class Answer(models.Model):
         help_text='Количество переключений вкладок во время ответа'
     )
 
+    # === AI GRADING ASYNC FIELDS ===
+    grading_job_id = models.UUIDField(
+        null=True, blank=True, db_index=True,
+        help_text='UUID задачи AI-проверки в очереди'
+    )
+    ai_grading_status = models.CharField(
+        max_length=20, null=True, blank=True,
+        choices=[
+            ('pending', 'В очереди'),
+            ('processing', 'Проверяется'),
+            ('completed', 'Проверено AI'),
+            ('failed', 'Ошибка AI'),
+        ],
+        help_text='Статус асинхронной AI-проверки'
+    )
+    ai_provider_used = models.CharField(
+        max_length=30, null=True, blank=True,
+        help_text='Какой AI-провайдер использован (deepseek/openai/mock)'
+    )
+    ai_cost_rubles = models.DecimalField(
+        max_digits=8, decimal_places=4, null=True, blank=True,
+        help_text='Стоимость AI-проверки в рублях'
+    )
+    ai_latency_ms = models.IntegerField(
+        null=True, blank=True,
+        help_text='Время ответа AI-провайдера в миллисекундах'
+    )
+    ai_tokens_used = models.IntegerField(
+        null=True, blank=True,
+        help_text='Количество токенов, использованных AI'
+    )
+    ai_checked_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text='Время завершения AI-проверки'
+    )
+    ai_confidence = models.FloatField(
+        null=True, blank=True,
+        help_text='Уверенность AI (0.0 - 1.0)'
+    )
+
     class Meta:
         verbose_name = 'ответ'
         verbose_name_plural = 'ответы'
@@ -356,7 +396,17 @@ class Answer(models.Model):
                     self.needs_manual_review = False
             elif use_ai and homework.ai_grading_enabled:
                 # Нет эталонного ответа, но включена AI проверка
-                self._evaluate_with_ai(homework)
+                from django.conf import settings as django_settings
+                if getattr(django_settings, 'AI_GRADING_ASYNC', False):
+                    # Асинхронный путь → Gateway → Redis → Worker → Callback
+                    from .ai_gateway import AIGradingGateway
+                    gateway = AIGradingGateway()
+                    gateway.submit_for_grading(self, homework)
+                    # НЕ вызываем self.save() — gateway уже сохранил status=pending
+                    return self.auto_score
+                else:
+                    # Legacy: синхронный вызов AI (блокирующий)
+                    self._evaluate_with_ai(homework)
             else:
                 # Нет эталонного ответа и нет AI - ручная проверка
                 self.needs_manual_review = True
