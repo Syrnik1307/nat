@@ -422,8 +422,10 @@ class AnswerSerializer(serializers.ModelSerializer):
         fields = ['id', 'question', 'question_text', 'question_type', 'question_points', 
                   'text_answer', 'selected_choices', 'auto_score', 'teacher_score', 
                   'teacher_feedback', 'needs_manual_review', 'needs_revision', 'attachments',
-                  'time_spent_seconds', 'is_pasted', 'tab_switches']
-        read_only_fields = ['auto_score', 'needs_manual_review', 'needs_revision', 'time_spent_seconds', 'is_pasted', 'tab_switches']
+                  'time_spent_seconds', 'is_pasted', 'tab_switches',
+                  'ai_grading_status', 'ai_confidence', 'ai_review', 'ai_checked_at']
+        read_only_fields = ['auto_score', 'needs_manual_review', 'needs_revision', 'time_spent_seconds', 'is_pasted', 'tab_switches',
+                           'ai_grading_status', 'ai_confidence', 'ai_review', 'ai_checked_at']
 
 
 class StudentSubmissionSerializer(serializers.ModelSerializer):

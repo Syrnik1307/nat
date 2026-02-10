@@ -3230,6 +3230,7 @@ class StudentActivityHeatmapViewSet(viewsets.ViewSet):
             },
             'event_breakdown': event_breakdown_enriched,
             'heatmap_data': heatmap_data,
+            'platform_time': self._get_platform_time(student, start_date, today, heatmap_data),
         })
     
     def _calculate_level(self, count: int) -> int:
@@ -3257,6 +3258,38 @@ class StudentActivityHeatmapViewSet(viewsets.ViewSet):
             return 3
         else:
             return 4
+
+    def _get_platform_time(self, user, start_date, end_date, heatmap_data):
+        """
+        Получает суммарное время на платформе по дням из PlatformSession.
+        Возвращает dict для интеграции в heatmap ответ.
+        """
+        from accounts.models import PlatformSession
+        from datetime import timedelta
+        
+        daily_time = []
+        total_minutes = 0
+        days_with_activity = 0
+        
+        current_date = start_date
+        while current_date <= end_date:
+            minutes = PlatformSession.get_daily_minutes(user, current_date)
+            daily_time.append({
+                'date': current_date.isoformat(),
+                'minutes': minutes,
+            })
+            total_minutes += minutes
+            if minutes > 0:
+                days_with_activity += 1
+            current_date += timedelta(days=1)
+        
+        return {
+            'total_minutes': total_minutes,
+            'total_hours': round(total_minutes / 60, 1),
+            'avg_daily_minutes': round(total_minutes / max(days_with_activity, 1), 1),
+            'days_with_activity': days_with_activity,
+            'daily_time': daily_time,
+        }
 
 
 class TeacherActivityHeatmapViewSet(viewsets.ViewSet):
@@ -3625,6 +3658,7 @@ class TeacherActivityHeatmapViewSet(viewsets.ViewSet):
             'event_breakdown': breakdown,
             'heatmap_data': heatmap_data,
             'period': period,
+            'platform_time': self._get_platform_time(teacher, start_date, today, heatmap_data),
         })
     
     @action(detail=False, methods=['get'], url_path='summary')
@@ -3702,3 +3736,34 @@ class TeacherActivityHeatmapViewSet(viewsets.ViewSet):
             return 3
         else:
             return 4
+
+    def _get_platform_time(self, user, start_date, end_date, heatmap_data):
+        """
+        Получает суммарное время на платформе по дням из PlatformSession.
+        """
+        from accounts.models import PlatformSession
+        from datetime import timedelta
+        
+        daily_time = []
+        total_minutes = 0
+        days_with_activity = 0
+        
+        current_date = start_date
+        while current_date <= end_date:
+            minutes = PlatformSession.get_daily_minutes(user, current_date)
+            daily_time.append({
+                'date': current_date.isoformat(),
+                'minutes': minutes,
+            })
+            total_minutes += minutes
+            if minutes > 0:
+                days_with_activity += 1
+            current_date += timedelta(days=1)
+        
+        return {
+            'total_minutes': total_minutes,
+            'total_hours': round(total_minutes / 60, 1),
+            'avg_daily_minutes': round(total_minutes / max(days_with_activity, 1), 1),
+            'days_with_activity': days_with_activity,
+            'daily_time': daily_time,
+        }

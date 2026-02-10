@@ -1916,6 +1916,125 @@ class TeacherSession(models.Model):
             )
 
 
+class PlatformSession(models.Model):
+    """
+    Универсальная модель трекинга времени на платформе.
+    Работает для всех ролей: student, teacher, admin.
+    
+    Фронтенд шлёт heartbeat каждые 60 секунд.
+    Если heartbeat не приходит > TIMEOUT_MINUTES — сессия закрывается.
+    """
+    TIMEOUT_MINUTES = 3  # пауза > 3 мин = новая сессия
+    
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='platform_sessions',
+        verbose_name=_('пользователь')
+    )
+    started_at = models.DateTimeField(auto_now_add=True, verbose_name=_('начало сессии'))
+    last_heartbeat = models.DateTimeField(auto_now=True, verbose_name=_('последний heartbeat'))
+    ended_at = models.DateTimeField(null=True, blank=True, verbose_name=_('конец сессии'))
+    duration_minutes = models.PositiveIntegerField(default=0, verbose_name=_('длительность (мин)'))
+    is_active = models.BooleanField(default=True, verbose_name=_('сессия активна'))
+    
+    class Meta:
+        verbose_name = _('сессия на платформе')
+        verbose_name_plural = _('сессии на платформе')
+        ordering = ['-started_at']
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+            models.Index(fields=['user', 'started_at']),
+        ]
+    
+    def __str__(self):
+        status = 'active' if self.is_active else f'{self.duration_minutes}min'
+        return f'Session {self.id}: {self.user.email} ({status})'
+    
+    @property
+    def current_duration_minutes(self):
+        """Текущая длительность (для активных сессий — до now)."""
+        if self.is_active:
+            from django.utils import timezone
+            delta = timezone.now() - self.started_at
+            return int(delta.total_seconds() / 60)
+        return self.duration_minutes
+    
+    @classmethod
+    def heartbeat(cls, user):
+        """
+        Вызывается при каждом heartbeat от фронтенда.
+        Возвращает (session, created).
+        """
+        from django.utils import timezone
+        now = timezone.now()
+        cutoff = now - timezone.timedelta(minutes=cls.TIMEOUT_MINUTES)
+        
+        # Ищем активную сессию с недавним heartbeat
+        active = cls.objects.filter(
+            user=user,
+            is_active=True,
+            last_heartbeat__gte=cutoff
+        ).first()
+        
+        if active:
+            # Обновляем heartbeat (auto_now на last_heartbeat)
+            active.save(update_fields=['last_heartbeat'])
+            return active, False
+        
+        # Закрываем все старые активные сессии
+        stale = cls.objects.filter(user=user, is_active=True)
+        for s in stale:
+            s.close_session()
+        
+        # Новая сессия
+        session = cls.objects.create(user=user)
+        return session, True
+    
+    def close_session(self):
+        """Закрывает сессию, вычисляет duration."""
+        from django.utils import timezone
+        if self.is_active:
+            self.ended_at = timezone.now()
+            delta = self.ended_at - self.started_at
+            self.duration_minutes = max(1, int(delta.total_seconds() / 60))
+            self.is_active = False
+            self.save(update_fields=['ended_at', 'duration_minutes', 'is_active'])
+    
+    @classmethod
+    def get_daily_minutes(cls, user, date):
+        """Суммарные минуты на платформе за конкретную дату."""
+        from django.utils import timezone
+        from django.db.models import Sum
+        
+        day_start = timezone.make_aware(
+            timezone.datetime.combine(date, timezone.datetime.min.time())
+        ) if timezone.is_naive(
+            timezone.datetime.combine(date, timezone.datetime.min.time())
+        ) else timezone.datetime.combine(date, timezone.datetime.min.time())
+        day_end = day_start + timezone.timedelta(days=1)
+        
+        # Закрытые сессии за этот день
+        closed_minutes = cls.objects.filter(
+            user=user,
+            started_at__gte=day_start,
+            started_at__lt=day_end,
+            is_active=False
+        ).aggregate(total=Sum('duration_minutes'))['total'] or 0
+        
+        # Активная сессия за сегодня
+        active = cls.objects.filter(
+            user=user,
+            started_at__gte=day_start,
+            started_at__lt=day_end,
+            is_active=True
+        ).first()
+        
+        active_minutes = active.current_duration_minutes if active else 0
+        
+        return closed_minutes + active_minutes
+
+
 class ChatAnalyticsSummary(models.Model):
     """
     Агрегированная статистика активности ученика в чатах группы.

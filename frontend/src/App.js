@@ -88,6 +88,7 @@ const teacherRecordingsImport = () => import('./modules/Recordings/TeacherRecord
 const teacherMaterialsImport = () => import('./modules/Recordings/TeacherMaterialsPage');
 const studentMaterialsImport = () => import('./modules/Recordings/StudentMaterialsPage');
 const studentDashboardImport = () => import('./components/StudentDashboard');
+const studentKnowledgeTreeImport = () => import('./components/StudentKnowledgeTree');
 
 // Lazy-loaded компоненты - грузятся по требованию
 const AuthPage = lazy(() => import('./components/AuthPage'));
@@ -118,6 +119,7 @@ const FinancePage = lazy(financeImport);
 // Student pages - используем уже созданные импорты
 const StudentHomePage = lazy(studentHomeImport);
 const StudentDashboard = lazy(studentDashboardImport);
+const StudentKnowledgeTree = lazy(studentKnowledgeTreeImport);
 const RecordingsPage = lazy(recordingsImport);
 const StudentMaterialsPage = lazy(studentMaterialsImport);
 const HomeworkList = lazy(homeworkListImport);
@@ -128,6 +130,12 @@ const HomeworkAnswersView = lazy(homeworkAnswersImport);
 const AdminHomePage = lazy(() => import('./components/AdminHomePage'));
 const TeacherHeatmapTable = lazy(() => import('./components/admin/TeacherHeatmapTable'));
 const TeacherHeatmapDetail = lazy(() => import('./components/admin/TeacherHeatmapDetail'));
+
+// Exam (simulation) pages
+const examPageImport = () => import('./modules/exam/components/ExamPage');
+const examTakeImport = () => import('./modules/exam/components/ExamTake');
+const ExamPage = lazy(examPageImport);
+const ExamTake = lazy(examTakeImport);
 
 // Common pages - используем уже созданный импорт
 const Calendar = lazy(calendarImport);
@@ -158,6 +166,7 @@ const preloadPages = (role) => {
   } else if (role === 'student') {
     scheduleLoad(studentHomeImport);
     scheduleLoad(studentDashboardImport);
+    scheduleLoad(studentKnowledgeTreeImport);
     scheduleLoad(recordingsImport);
     scheduleLoad(studentMaterialsImport); // Предзагрузка Материалов ученика
     scheduleLoad(profileImport);
@@ -269,12 +278,17 @@ const AppRoutes = () => {
           <Route path="/student" element={<Protected allowRoles={['student']}><StudentHomePage /></Protected>} />
           <Route path="/student/courses" element={<Protected allowRoles={['student']}><StudentHomePage /></Protected>} />
           <Route path="/student/stats" element={<Protected allowRoles={['student']}><StudentDashboard /></Protected>} />
+          <Route path="/student/knowledge-tree" element={<Protected allowRoles={['student']}><StudentKnowledgeTree /></Protected>} />
           <Route path="/student/recordings" element={<Protected allowRoles={['student']}><RecordingsPage /></Protected>} />
           <Route path="/student/materials" element={<Protected allowRoles={['student']}><StudentMaterialsPage /></Protected>} />
           <Route path="/homework" element={<Protected allowRoles={['student']}><HomeworkList /></Protected>} />
           <Route path="/student/homework/:id" element={<Protected allowRoles={['student']}><HomeworkTake /></Protected>} />
           <Route path="/homework/:id/answers" element={<Protected allowRoles={['student']}><HomeworkAnswersView /></Protected>} />
-        
+
+          {/* Exams (simulation) */}
+          <Route path="/exams" element={<Protected allowRoles={['teacher', 'student', 'admin']}><ExamPage /></Protected>} />
+          <Route path="/exams/take/:attemptId" element={<Protected allowRoles={['student']}><ExamTake /></Protected>} />
+
           {/* Admin */}
           <Route path="/admin" element={<Navigate to="/admin-home" replace />} />
           <Route path="/admin-home" element={<Protected allowRoles={['admin']}><AdminHomePage /></Protected>} />

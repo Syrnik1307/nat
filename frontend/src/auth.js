@@ -11,6 +11,7 @@ import {
   apiClient,
 } from './apiService';
 import { AuthCheckingSkeleton } from './shared/components';
+import { sessionTracker } from './sessionTracker';
 
 const AuthContext = createContext(null);
 
@@ -134,6 +135,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       // Загружаем user в фоне
       loadUser();
+      sessionTracker.start();
       return;
     }
     
@@ -157,6 +159,7 @@ export const AuthProvider = ({ children }) => {
           setLoading(false);
           // Загружаем user в фоне
           loadUser();
+          sessionTracker.start();
           return;
         }
       } catch (err) {
@@ -191,6 +194,7 @@ export const AuthProvider = ({ children }) => {
     // Важно для скорости: не блокируем редирект ожиданием /api/me/.
     // Профиль подтянется в фоне, как и при auto-login по refresh.
     loadUser();
+    sessionTracker.start();
     return resolvedRole;
   }, [loadUser]);
 
@@ -276,6 +280,9 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(async () => {
     // Показываем skeleton для плавного перехода (избегаем "дребезга")
     setLoading(true);
+    
+    // Останавливаем трекинг времени
+    sessionTracker.stop();
     
     // Очищаем токены синхронно
     clearTokens();

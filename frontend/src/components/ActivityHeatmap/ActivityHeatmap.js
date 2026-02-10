@@ -44,6 +44,23 @@ const IconTrendUp = () => (
     </svg>
 );
 
+const IconClock = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+    </svg>
+);
+
+/** Форматирует минуты в строку 'Xч Yм' */
+const formatMinutes = (minutes) => {
+    if (!minutes || minutes <= 0) return '0м';
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h === 0) return `${m}м`;
+    if (m === 0) return `${h}ч`;
+    return `${h}ч ${m}м`;
+};
+
 const MONTHS_RU = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
 const WEEKDAYS_RU = ['Пн', '', 'Ср', '', 'Пт', '', ''];
 
@@ -106,10 +123,23 @@ function ActivityHeatmap({ studentId, isOwnProfile = false }) {
         const startDate = new Date(today);
         startDate.setDate(startDate.getDate() - period);
         
-        return data.heatmap_data.filter(day => {
-            const dayDate = new Date(day.date);
-            return dayDate >= startDate && dayDate <= today;
-        });
+        // Создаём map минут на платформе по датам
+        const platformMap = {};
+        if (data?.platform_time?.daily_time) {
+            data.platform_time.daily_time.forEach(d => {
+                platformMap[d.date] = d.minutes;
+            });
+        }
+        
+        return data.heatmap_data
+            .filter(day => {
+                const dayDate = new Date(day.date);
+                return dayDate >= startDate && dayDate <= today;
+            })
+            .map(day => ({
+                ...day,
+                platform_minutes: platformMap[day.date] || 0,
+            }));
     }, [data, period]);
     
     // Группировка по неделям для отображения
@@ -257,6 +287,21 @@ function ActivityHeatmap({ studentId, isOwnProfile = false }) {
                         ~{stats.avg_daily_score} в день
                     </div>
                 </div>
+                
+                {data?.platform_time && (
+                    <div className="heatmap-stat-card">
+                        <div className="heatmap-stat-card__icon heatmap-stat-card__icon--time">
+                            <IconClock />
+                        </div>
+                        <div className="heatmap-stat-card__value">
+                            {data.platform_time.total_hours}ч
+                        </div>
+                        <div className="heatmap-stat-card__label">На платформе</div>
+                        <div className="heatmap-stat-card__sublabel">
+                            ~{Math.round(data.platform_time.avg_daily_minutes)}м в день
+                        </div>
+                    </div>
+                )}
             </div>
         );
     };
@@ -377,7 +422,7 @@ function ActivityHeatmap({ studentId, isOwnProfile = false }) {
                                                 ${selectedDay?.date === day.date ? 'heatmap-cell--selected' : ''}
                                             `}
                                             onClick={() => handleCellClick(day)}
-                                            title={day.empty ? '' : `${day.date}: ${day.count} баллов`}
+                                            title={day.empty ? '' : `${day.date}: ${day.count} баллов${day.platform_minutes > 0 ? ` | ${formatMinutes(day.platform_minutes)}` : ''}`}
                                         />
                                     ))}
                                 </div>

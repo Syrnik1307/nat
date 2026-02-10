@@ -101,6 +101,7 @@ INSTALLED_APPS = [
     'finance',  # Student-teacher financial accounting (lesson balances)
     'tenants',  # Multi-tenant: онлайн-школы на базе платформы
     'knowledge_map',  # Карта знаний ЕГЭ/ОГЭ
+    'exam',  # Симуляция экзаменов ЕГЭ/ОГЭ (банк заданий, варианты, таймер)
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'django_celery_beat',
@@ -622,6 +623,11 @@ CELERY_BEAT_SCHEDULE = {
     'cleanup-old-broadcast-logs': {
         'task': 'bot.tasks.cleanup_old_broadcast_logs',
         'schedule': 604800.0,  # каждую неделю
+    },
+    # --- Exam Timer Auto-Submit ---
+    'auto-submit-expired-exams': {
+        'task': 'exam.auto_submit_expired',
+        'schedule': 60.0,  # каждую минуту — проверяем истёкшие таймеры экзаменов
     },
 }
 

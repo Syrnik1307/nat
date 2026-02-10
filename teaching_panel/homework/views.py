@@ -1278,7 +1278,7 @@ class HomeworkViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
 
         answers = Answer.objects.filter(
             submission__homework=homework,
-            question__question_type='TEXT',
+            question__question_type__in=['TEXT', 'CODE', 'FILE_UPLOAD'],
         )
         total = answers.count()
         pending = answers.filter(ai_grading_status='pending').count()
@@ -2072,19 +2072,21 @@ class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
 
         text_answers = Answer.objects.filter(
             submission=submission,
-            question__question_type='TEXT',
+            question__question_type__in=['TEXT', 'CODE', 'FILE_UPLOAD'],
         ).select_related('question')
 
         results = []
         for ans in text_answers:
             results.append({
                 'question_id': ans.question_id,
+                'question_type': ans.question.question_type,
                 'ai_grading_status': ans.ai_grading_status,
                 'auto_score': ans.auto_score,
                 'max_points': ans.question.points,
                 'confidence': ans.ai_confidence,
                 'needs_manual_review': ans.needs_manual_review,
                 'feedback': ans.teacher_feedback if ans.ai_grading_status == 'completed' else None,
+                'ai_review': ans.ai_review if ans.ai_grading_status == 'completed' else None,
             })
 
         total = len(results)
@@ -2105,6 +2107,98 @@ class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             'failed': failed,
             'pending': pending,
             'answers': results,
+        })
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated],
+            url_path='approve-ai-review')
+    def approve_ai_review(self, request, pk=None):
+        """
+        Преподаватель подтверждает или редактирует AI-ревью.
+        
+        Body:
+        {
+            "answers": [
+                {
+                    "answer_id": 123,
+                    "action": "approve" | "edit" | "reject",
+                    "score": 8,              // только для edit/reject
+                    "feedback": "...",        // только для edit
+                }
+            ]
+        }
+        """
+        user = request.user
+        if user.role not in ('teacher', 'admin'):
+            return Response({'error': 'Только для преподавателей'}, status=status.HTTP_403_FORBIDDEN)
+
+        submission = self.get_object()
+        answers_data = request.data.get('answers', [])
+
+        if not answers_data:
+            return Response({'error': 'Необходимо указать answers'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from django.utils import timezone
+        results = []
+
+        for item in answers_data:
+            answer_id = item.get('answer_id')
+            action = item.get('action', 'approve')
+
+            try:
+                answer = Answer.objects.get(id=answer_id, submission=submission)
+            except Answer.DoesNotExist:
+                results.append({'answer_id': answer_id, 'status': 'not_found'})
+                continue
+
+            if action == 'approve':
+                # Принимаем AI-оценку как есть
+                answer.teacher_score = answer.auto_score
+                answer.needs_manual_review = False
+                answer.save(update_fields=['teacher_score', 'needs_manual_review'])
+                results.append({'answer_id': answer_id, 'status': 'approved'})
+
+            elif action == 'edit':
+                # Преподаватель корректирует оценку и/или feedback
+                new_score = item.get('score')
+                new_feedback = item.get('feedback')
+                if new_score is not None:
+                    answer.teacher_score = int(new_score)
+                if new_feedback:
+                    answer.teacher_feedback = new_feedback
+                answer.needs_manual_review = False
+                answer.save(update_fields=['teacher_score', 'teacher_feedback', 'needs_manual_review'])
+                results.append({'answer_id': answer_id, 'status': 'edited'})
+
+            elif action == 'reject':
+                # Отклоняем AI-оценку, ставим свою
+                new_score = item.get('score', 0)
+                answer.teacher_score = int(new_score)
+                answer.teacher_feedback = item.get('feedback', '[AI ревью отклонено преподавателем]')
+                answer.needs_manual_review = False
+                answer.save(update_fields=['teacher_score', 'teacher_feedback', 'needs_manual_review'])
+                results.append({'answer_id': answer_id, 'status': 'rejected'})
+
+            else:
+                results.append({'answer_id': answer_id, 'status': 'unknown_action'})
+
+        # Пересчитываем total
+        submission.compute_auto_score()
+
+        # Обновляем статус → graded если все ответы проверены
+        unchecked = Answer.objects.filter(
+            submission=submission,
+            teacher_score__isnull=True,
+            auto_score__isnull=True,
+        ).count()
+        if unchecked == 0 and submission.status != 'graded':
+            submission.status = 'graded'
+            submission.graded_at = timezone.now()
+            submission.save(update_fields=['status', 'graded_at'])
+
+        serializer = self.get_serializer(submission)
+        return Response({
+            'results': results,
+            'submission': serializer.data,
         })
 
 

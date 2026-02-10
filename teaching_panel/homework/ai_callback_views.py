@@ -94,6 +94,7 @@ def _handle_completed(data: dict) -> Response:
     # Обновляем поля Answer
     metadata = result.get('ai_metadata', {})
     confidence = result.get('confidence', 0.0)
+    review = result.get('review')  # Структурированный ревью
 
     answer.auto_score = result.get('score')
     answer.ai_confidence = confidence
@@ -109,22 +110,30 @@ def _handle_completed(data: dict) -> Response:
     if cost is not None:
         answer.ai_cost_rubles = Decimal(str(cost))
 
-    # Feedback с пометкой AI
-    feedback = result.get('feedback', '')
-    answer.teacher_feedback = f"[AI оценка, уверенность: {confidence:.0%}] {feedback}"
+    # Сохраняем структурированный AI-ревью
+    if review:
+        answer.ai_review = review
 
-    answer.save(update_fields=[
+    # Формируем подробный teacher_feedback из структурированного ревью
+    answer.teacher_feedback = _format_teacher_feedback(review, confidence, result.get('score'), answer.question.points)
+
+    update_fields = [
         'auto_score', 'ai_confidence', 'needs_manual_review',
         'ai_grading_status', 'ai_checked_at', 'ai_provider_used',
         'ai_tokens_used', 'ai_latency_ms', 'ai_cost_rubles',
-        'teacher_feedback',
-    ])
+        'teacher_feedback', 'ai_review',
+    ]
+    answer.save(update_fields=update_fields)
 
     # Пересчитываем total_score на submission
-    answer.submission.recalculate_total()
+    submission = answer.submission
+    submission.compute_auto_score()
+
+    # Обновляем статус submission → ai_checked если все AI-ответы готовы
+    _maybe_update_submission_status(submission)
 
     # Уведомляем студента (если все ответы проверены)
-    _maybe_notify_student(answer.submission)
+    _maybe_notify_student(submission)
 
     logger.info(
         f"AI grading completed: answer={answer_id}, "
@@ -171,6 +180,76 @@ def _handle_failed(data: dict) -> Response:
     )
 
     return Response({'status': 'ok', 'answer_id': answer_id, 'fallback': True})
+
+
+def _format_teacher_feedback(review: dict, confidence: float, score: int, max_points: int) -> str:
+    """Форматирует структурированный AI-ревью в читаемый текст для teacher_feedback."""
+    if not review:
+        return f'[AI оценка, уверенность: {confidence:.0%}] Оценка: {score}/{max_points}'
+
+    lines = [f'[AI ревью, уверенность: {confidence:.0%}]']
+    lines.append(f'Оценка: {score}/{max_points}')
+    lines.append('')
+
+    # Критерии
+    criteria = review.get('criteria', [])
+    if criteria:
+        lines.append('--- Критерии ---')
+        for c in criteria:
+            name = c.get('name', '')
+            c_score = c.get('score', 0)
+            c_max = c.get('max_score', 1)
+            comment = c.get('comment', '')
+            lines.append(f'{name}: {c_score}/{c_max}')
+            if comment:
+                lines.append(f'  {comment}')
+        lines.append('')
+
+    # Сильные стороны
+    strengths = review.get('strengths', [])
+    if strengths:
+        lines.append('--- Сильные стороны ---')
+        for s in strengths:
+            lines.append(f'  + {s}')
+        lines.append('')
+
+    # Недочеты
+    weaknesses = review.get('weaknesses', [])
+    if weaknesses:
+        lines.append('--- Недочеты ---')
+        for w in weaknesses:
+            lines.append(f'  - {w}')
+        lines.append('')
+
+    # Рекомендации
+    recommendations = review.get('recommendations', [])
+    if recommendations:
+        lines.append('--- Рекомендации ---')
+        for r in recommendations:
+            lines.append(f'  * {r}')
+        lines.append('')
+
+    # Общий комментарий
+    summary = review.get('summary', '')
+    if summary:
+        lines.append(summary)
+
+    return '\n'.join(lines)
+
+
+def _maybe_update_submission_status(submission):
+    """Обновляет статус submission на ai_checked если все AI-ответы готовы."""
+    from homework.models import Answer
+
+    # Считаем незавершенные AI-ответы
+    ai_pending = Answer.objects.filter(
+        submission=submission,
+        ai_grading_status__in=['pending', 'processing'],
+    ).count()
+
+    if ai_pending == 0 and submission.status == 'submitted':
+        submission.status = 'ai_checked'
+        submission.save(update_fields=['status'])
 
 
 def _maybe_notify_student(submission):

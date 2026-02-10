@@ -70,6 +70,7 @@ from .api_views import (
     notification_mute_delete_view,
 )
 from .simple_reset_views import simple_password_reset
+from .session_views import session_heartbeat, session_daily_time, session_close
 
 
 app_name = 'accounts'
@@ -203,4 +204,11 @@ urlpatterns = [
     # Изолированный endpoint, не трогает существующий код
     # ============================================
     path('api/simple-reset/', simple_password_reset, name='simple_password_reset'),
+
+    # ============================================
+    # SESSION / PLATFORM TIME TRACKING
+    # ============================================
+    path('api/session/heartbeat/', session_heartbeat, name='session_heartbeat'),
+    path('api/session/daily-time/', session_daily_time, name='session_daily_time'),
+    path('api/session/close/', session_close, name='session_close'),
 ]

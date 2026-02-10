@@ -1,0 +1,1165 @@
+/* ============================================================
+   ExamPage — Module root styles
+   ============================================================ */
+
+.exam-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  font-family: var(--font-sans);
+}
+
+/* Header */
+.exam-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.exam-title {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+/* Tabs */
+.exam-tabs {
+  display: flex;
+  gap: 0.375rem;
+  margin-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 0;
+}
+
+.exam-tab {
+  padding: 0.625rem 1.125rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-smooth),
+              border-color var(--duration-fast) var(--ease-smooth);
+  white-space: nowrap;
+}
+
+.exam-tab:hover {
+  color: var(--text-main);
+}
+
+.exam-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Content area */
+.exam-content {
+  min-height: 400px;
+}
+
+/* ============================================================
+   Blueprint List
+   ============================================================ */
+
+.blueprint-list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.blueprint-list-filters {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.blueprint-filter-select {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-smooth);
+}
+
+.blueprint-filter-select:hover {
+  border-color: var(--border-medium);
+}
+
+.blueprint-filter-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}
+
+.blueprint-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-lg);
+}
+
+/* Individual blueprint card */
+.blueprint-card {
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: box-shadow var(--duration-normal) var(--ease-smooth),
+              border-color var(--duration-normal) var(--ease-smooth),
+              transform var(--duration-normal) var(--ease-smooth);
+}
+
+.blueprint-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-medium);
+  transform: translateY(-1px);
+}
+
+.blueprint-card.selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-subtle), var(--shadow-sm);
+}
+
+.blueprint-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.blueprint-card-name {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+  line-height: var(--leading-tight);
+}
+
+.blueprint-card-badges {
+  display: flex;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+.blueprint-card-meta {
+  display: flex;
+  gap: var(--space-md);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.blueprint-card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.blueprint-card-subject {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-bottom: var(--space-xs);
+}
+
+.blueprint-card-actions {
+  display: flex;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border-light);
+}
+
+/* ============================================================
+   Blueprint Editor
+   ============================================================ */
+
+.blueprint-editor {
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+}
+
+.blueprint-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-lg);
+}
+
+.blueprint-editor-title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.blueprint-editor-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.blueprint-editor-form .full-width {
+  grid-column: 1 / -1;
+}
+
+.blueprint-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.blueprint-editor-label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.blueprint-editor-input {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  color: var(--text-main);
+  transition: border-color var(--duration-fast) var(--ease-smooth);
+}
+
+.blueprint-editor-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}
+
+.blueprint-editor-input::placeholder {
+  color: var(--text-light);
+}
+
+/* Slots table */
+.slots-section {
+  margin-top: var(--space-xl);
+}
+
+.slots-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
+.slots-section-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.slots-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-sm);
+}
+
+.slots-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.slots-table th:first-child {
+  border-radius: var(--radius-sm) 0 0 0;
+}
+
+.slots-table th:last-child {
+  border-radius: 0 var(--radius-sm) 0 0;
+}
+
+.slots-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+  vertical-align: middle;
+}
+
+.slots-table tr:hover td {
+  background: var(--bg-hover);
+}
+
+.slot-input {
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  color: var(--text-main);
+}
+
+.slot-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.slot-select {
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.slot-remove-btn {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: var(--radius-xs);
+  transition: color var(--duration-fast) var(--ease-smooth),
+              background var(--duration-fast) var(--ease-smooth);
+}
+
+.slot-remove-btn:hover {
+  color: var(--color-error);
+  background: rgba(244, 63, 94, 0.08);
+}
+
+/* ФИПИ Scale editor */
+.scale-editor {
+  margin-top: var(--space-xl);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+}
+
+.scale-editor-title {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 var(--space-md) 0;
+}
+
+.scale-entries {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.5rem;
+}
+
+.scale-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.scale-entry-input {
+  width: 52px;
+  padding: 0.25rem 0.375rem;
+  text-align: center;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--text-main);
+}
+
+.scale-entry-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Editor footer */
+.blueprint-editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-xl);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-light);
+}
+
+/* ============================================================
+   Task Bank
+   ============================================================ */
+
+.task-bank {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.task-bank-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.task-bank-filters {
+  display: flex;
+  gap: var(--space-sm);
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.task-bank-stats {
+  display: flex;
+  gap: var(--space-lg);
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border-light);
+}
+
+.task-bank-stat {
+  text-align: center;
+}
+
+.task-bank-stat-value {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+}
+
+.task-bank-stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 0.125rem;
+}
+
+.task-bank-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-md);
+}
+
+/* Task card */
+.task-card {
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  transition: box-shadow var(--duration-normal) var(--ease-smooth),
+              border-color var(--duration-normal) var(--ease-smooth);
+}
+
+.task-card:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border-medium);
+}
+
+.task-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-xs);
+}
+
+.task-card-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.task-card-difficulty {
+  font-size: var(--text-xs);
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+}
+
+.task-card-difficulty.easy {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--color-success);
+}
+
+.task-card-difficulty.medium {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--color-warning);
+}
+
+.task-card-difficulty.hard {
+  background: rgba(244, 63, 94, 0.1);
+  color: var(--color-error);
+}
+
+.task-card-prompt {
+  font-size: var(--text-sm);
+  color: var(--text-main);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--space-sm);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.task-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   Variant Builder
+   ============================================================ */
+
+.variant-builder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.variant-builder-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.variant-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.variant-card {
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  transition: box-shadow var(--duration-normal) var(--ease-smooth);
+}
+
+.variant-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.variant-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.variant-card-name {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.variant-card-meta {
+  display: flex;
+  gap: var(--space-md);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.variant-task-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.variant-task-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 0.375rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  background: var(--bg-surface);
+}
+
+.variant-task-pill.filled {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: transparent;
+}
+
+.variant-task-pill.empty {
+  border-style: dashed;
+}
+
+.variant-card-actions {
+  display: flex;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border-light);
+}
+
+/* ============================================================
+   Exam Take (student view)
+   ============================================================ */
+
+.exam-take {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: var(--space-lg);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  min-height: 100vh;
+}
+
+.exam-take-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* Timer */
+.exam-timer {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.exam-timer-clock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.exam-timer-clock.warning {
+  color: var(--color-warning);
+}
+
+.exam-timer-clock.danger {
+  color: var(--color-error);
+  animation: smoothPulse 1.5s ease-in-out infinite;
+}
+
+.exam-timer-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.exam-timer-progress {
+  flex: 1;
+  max-width: 200px;
+  height: 4px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin: 0 var(--space-md);
+}
+
+.exam-timer-progress-bar {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  transition: width 1s linear, background-color var(--duration-slow) var(--ease-smooth);
+}
+
+.exam-timer-progress-bar.warning {
+  background: var(--color-warning);
+}
+
+.exam-timer-progress-bar.danger {
+  background: var(--color-error);
+}
+
+/* Task content */
+.exam-task-content {
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+}
+
+.exam-task-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.exam-task-number-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.exam-task-info {
+  flex: 1;
+}
+
+.exam-task-info-type {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.exam-task-info-points {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.exam-task-prompt {
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--text-main);
+  margin-bottom: var(--space-lg);
+}
+
+.exam-task-prompt img {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  margin: var(--space-sm) 0;
+}
+
+/* Answer input area */
+.exam-answer-area {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
+}
+
+.exam-answer-label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-main);
+  margin-bottom: var(--space-sm);
+}
+
+.exam-answer-input {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  font-family: var(--font-sans);
+  color: var(--text-main);
+  transition: border-color var(--duration-fast) var(--ease-smooth);
+}
+
+.exam-answer-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}
+
+.exam-answer-input.mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+}
+
+/* Navigation panel (sidebar) */
+.exam-nav-panel {
+  position: sticky;
+  top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  height: fit-content;
+}
+
+.exam-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.375rem;
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+}
+
+.exam-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: var(--font-mono);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  background: var(--bg-paper);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.exam-nav-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-medium);
+}
+
+.exam-nav-btn.current {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+  font-weight: 700;
+}
+
+.exam-nav-btn.answered {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary-subtle);
+}
+
+.exam-nav-btn.flagged {
+  position: relative;
+}
+
+.exam-nav-btn.flagged::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  background: var(--color-warning);
+  border-radius: var(--radius-full);
+}
+
+.exam-nav-summary {
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  font-size: var(--text-sm);
+}
+
+.exam-nav-summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+  color: var(--text-muted);
+}
+
+.exam-nav-summary-row span:last-child {
+  font-weight: 600;
+  color: var(--text-main);
+  font-family: var(--font-mono);
+}
+
+/* Task navigation buttons (prev/next) */
+.exam-task-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-lg);
+}
+
+/* ============================================================
+   Exam Results
+   ============================================================ */
+
+.exam-results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.exam-results-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-md);
+}
+
+.exam-result-stat {
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.exam-result-stat-value {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+}
+
+.exam-result-stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.exam-result-stat.grade-5 .exam-result-stat-value { color: var(--color-success); }
+.exam-result-stat.grade-4 .exam-result-stat-value { color: #3B82F6; }
+.exam-result-stat.grade-3 .exam-result-stat-value { color: var(--color-warning); }
+.exam-result-stat.grade-2 .exam-result-stat-value { color: var(--color-error); }
+
+/* Task breakdown */
+.exam-results-breakdown {
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.exam-results-breakdown-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-light);
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--text-main);
+}
+
+.exam-results-task-row {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border-light);
+  gap: var(--space-md);
+  transition: background var(--duration-fast) var(--ease-smooth);
+}
+
+.exam-results-task-row:last-child {
+  border-bottom: none;
+}
+
+.exam-results-task-row:hover {
+  background: var(--bg-hover);
+}
+
+.exam-results-task-num {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.exam-results-task-num.correct {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--color-success);
+}
+
+.exam-results-task-num.partial {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--color-warning);
+}
+
+.exam-results-task-num.wrong {
+  background: rgba(244, 63, 94, 0.1);
+  color: var(--color-error);
+}
+
+.exam-results-task-prompt {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exam-results-task-score {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+/* ============================================================
+   Empty states
+   ============================================================ */
+
+.exam-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.exam-empty-state-icon {
+  width: 64px;
+  height: 64px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-md);
+  color: var(--text-light);
+}
+
+.exam-empty-state-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.exam-empty-state-desc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  max-width: 360px;
+  margin: 0 0 var(--space-lg) 0;
+}
+
+/* ============================================================
+   Loading skeleton for exam
+   ============================================================ */
+
+.exam-skeleton-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-lg);
+}
+
+.exam-skeleton-card {
+  height: 160px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  animation: skeletonShimmer 1.5s infinite;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .exam-page {
+    padding: 1.5rem 1rem;
+  }
+
+  .exam-title {
+    font-size: var(--text-2xl);
+  }
+
+  .exam-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .exam-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .blueprint-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .blueprint-editor-form {
+    grid-template-columns: 1fr;
+  }
+
+  .exam-take {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+
+  .exam-nav-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    background: var(--bg-paper);
+    border-top: 1px solid var(--border-light);
+    box-shadow: var(--shadow-lg);
+    padding: 1rem;
+    z-index: var(--z-sticky);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .exam-nav-grid {
+    border: none;
+    padding: 0;
+    grid-template-columns: repeat(9, 1fr);
+  }
+
+  .exam-nav-btn {
+    width: 32px;
+    height: 32px;
+    font-size: var(--text-xs);
+  }
+
+  .task-bank-grid {
+    grid-template-columns: 1fr;
+  }
+}

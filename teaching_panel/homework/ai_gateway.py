@@ -62,6 +62,26 @@ class AIGradingGateway:
         q = answer.question
         config = q.config or {}
 
+        # Данные ответа студента
+        student_answer_data = {
+            'text': answer.text_answer or '',
+        }
+
+        # Для CODE — добавляем структурированные данные
+        if q.question_type == 'CODE':
+            try:
+                import json
+                answer_data = json.loads(answer.text_answer) if answer.text_answer else {}
+                student_answer_data['text'] = answer_data.get('code', answer.text_answer or '')
+                student_answer_data['test_results'] = answer_data.get('testResults', [])
+                student_answer_data['language'] = config.get('language', '')
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # Для FILE_UPLOAD — добавляем метаданные файлов
+        if q.question_type == 'FILE_UPLOAD' and answer.attachments:
+            student_answer_data['file_info'] = answer.attachments
+
         payload = {
             'task_id': f'grade_{job_id}',
             'version': '1',
@@ -77,9 +97,7 @@ class AIGradingGateway:
                     'correct_answer': config.get('correctAnswer', '') or None,
                     'subject_context': homework.ai_grading_prompt or None,
                 },
-                'student_answer': {
-                    'text': answer.text_answer or '',
-                },
+                'student_answer': student_answer_data,
                 'grading_config': {
                     'provider': homework.ai_provider or 'deepseek',
                     'custom_prompt': homework.ai_grading_prompt or None,
@@ -108,19 +126,24 @@ class AIGradingGateway:
     def submit_batch(self, answers, homework) -> dict:
         """
         Массовая отправка ответов на AI-проверку.
+        Поддерживает типы: TEXT, CODE, FILE_UPLOAD.
         
         Returns:
             dict: {'queued': int, 'skipped': int, 'job_ids': list}
         """
+        AI_SUPPORTED_TYPES = {'TEXT', 'CODE', 'FILE_UPLOAD'}
         queued = 0
         skipped = 0
         job_ids = []
 
         for answer in answers:
-            if answer.question.question_type != 'TEXT':
+            if answer.question.question_type not in AI_SUPPORTED_TYPES:
                 skipped += 1
                 continue
             if answer.auto_score is not None or answer.teacher_score is not None:
+                skipped += 1
+                continue
+            if answer.ai_grading_status in ('pending', 'processing', 'completed'):
                 skipped += 1
                 continue
 

@@ -176,6 +176,9 @@ urlpatterns = [
     # Knowledge Map API (Карта знаний ЕГЭ/ОГЭ)
     path('api/knowledge-map/', include('knowledge_map.urls')),
     
+    # Exam Simulation API (Симуляция ЕГЭ/ОГЭ)
+    path('api/exam/', include('exam.urls')),
+    
     # Analytics API
     path('api/', include('analytics.urls')),
     

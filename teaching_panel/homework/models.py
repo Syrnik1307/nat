@@ -203,6 +203,7 @@ class StudentSubmission(models.Model):
     STATUS_CHOICES = (
         ('in_progress', 'В процессе'),
         ('submitted', 'Отправлено'),
+        ('ai_checked', 'Проверено AI'),
         ('graded', 'Проверено'),
         ('revision', 'На доработке'),
     )
@@ -359,6 +360,10 @@ class Answer(models.Model):
     ai_confidence = models.FloatField(
         null=True, blank=True,
         help_text='Уверенность AI (0.0 - 1.0)'
+    )
+    ai_review = models.JSONField(
+        null=True, blank=True,
+        help_text='Структурированный AI-ревью: {criteria: [{name, score, max_score, comment}], strengths, weaknesses, recommendations, summary}'
     )
 
     class Meta:
@@ -605,7 +610,14 @@ class Answer(models.Model):
             # text_answer содержит JSON: {code: "...", testResults: [{passed, input, expected, actual}]}
             test_cases = config.get('testCases', [])
             if not test_cases:
-                # Нет тестов - требуется ручная проверка
+                # Нет тестов - требуется ручная проверка или AI
+                if use_ai and homework.ai_grading_enabled:
+                    from django.conf import settings as django_settings
+                    if getattr(django_settings, 'AI_GRADING_ASYNC', False):
+                        from .ai_gateway import AIGradingGateway
+                        gateway = AIGradingGateway()
+                        gateway.submit_for_grading(self, homework)
+                        return self.auto_score
                 self.needs_manual_review = True
                 self.auto_score = None
             else:
@@ -629,9 +641,31 @@ class Answer(models.Model):
                         self.auto_score = int(q.points * (passed_count / total_count))
                     else:
                         self.auto_score = 0
+
+                # Дополнительно: AI код-ревью (не меняет auto_score, добавляет review)
+                if use_ai and homework.ai_grading_enabled:
+                    from django.conf import settings as django_settings
+                    if getattr(django_settings, 'AI_GRADING_ASYNC', False):
+                        from .ai_gateway import AIGradingGateway
+                        gateway = AIGradingGateway()
+                        # Сохраняем текущий auto_score перед AI (тесты уже оценили)
+                        self.save()
+                        gateway.submit_for_grading(self, homework)
+                        return self.auto_score
+
         elif q.question_type == 'FILE_UPLOAD':
-            # Загрузка файла — всегда ручная проверка
-            if self.attachments:
+            # Загрузка файла — AI-проверка если включена, иначе ручная
+            if use_ai and homework.ai_grading_enabled and self.attachments:
+                from django.conf import settings as django_settings
+                if getattr(django_settings, 'AI_GRADING_ASYNC', False):
+                    from .ai_gateway import AIGradingGateway
+                    gateway = AIGradingGateway()
+                    gateway.submit_for_grading(self, homework)
+                    return self.auto_score
+                else:
+                    self.needs_manual_review = True
+                    self.auto_score = None
+            elif self.attachments:
                 self.needs_manual_review = True
                 self.auto_score = None
             else:

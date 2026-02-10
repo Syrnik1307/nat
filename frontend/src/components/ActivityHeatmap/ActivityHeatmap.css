@@ -314,6 +314,11 @@
   color: #4f46e5;
 }
 
+.heatmap-stat-card__icon--time {
+  background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+  color: #be185d;
+}
+
 .heatmap-stat-card__value {
   font-size: 1.5rem;
   font-weight: 700;

@@ -189,7 +189,15 @@ def _mock_ai_response(messages: list) -> dict:
         except (ValueError, IndexError):
             pass
 
-    score = random.randint(max_pts // 2, max_pts)
+    # Distribute points across criteria
+    k1_max = max(1, int(max_pts * 0.5))
+    k2_max = max(1, int(max_pts * 0.3))
+    k3_max = max(1, max_pts - k1_max - k2_max)
+
+    k1_score = random.randint(k1_max // 2, k1_max)
+    k2_score = random.randint(k2_max // 2, k2_max)
+    k3_score = random.randint(k3_max // 2, k3_max)
+    score = k1_score + k2_score + k3_score
     confidence = round(random.uniform(0.65, 0.95), 2)
 
     return {
@@ -197,15 +205,23 @@ def _mock_ai_response(messages: list) -> dict:
             'message': {
                 'content': json.dumps({
                     'score': score,
-                    'feedback': f'[MOCK] Ответ проверен автоматически. Балл: {score}/{max_pts}.',
                     'confidence': confidence,
+                    'criteria': [
+                        {'name': 'K1: Содержание', 'score': k1_score, 'max_score': k1_max, 'comment': '[MOCK] Ответ раскрывает тему достаточно полно'},
+                        {'name': 'K2: Логика', 'score': k2_score, 'max_score': k2_max, 'comment': '[MOCK] Аргументация последовательная'},
+                        {'name': 'K3: Оформление', 'score': k3_score, 'max_score': k3_max, 'comment': '[MOCK] Оформление приемлемое'},
+                    ],
+                    'strengths': ['[MOCK] Хорошее раскрытие основной идеи', '[MOCK] Структурированный ответ'],
+                    'weaknesses': ['[MOCK] Недостаточно примеров'],
+                    'recommendations': ['[MOCK] Добавить конкретные примеры для подкрепления аргументов'],
+                    'summary': f'[MOCK] Ответ проверен автоматически. Итоговый балл: {score}/{max_pts}. Работа в целом хорошая, но есть возможности для улучшения.',
                 }, ensure_ascii=False)
             }
         }],
         'usage': {
-            'prompt_tokens': 150,
-            'completion_tokens': 80,
-            'total_tokens': 230,
+            'prompt_tokens': 350,
+            'completion_tokens': 250,
+            'total_tokens': 600,
         },
         '_mock': True,
     }
@@ -213,20 +229,68 @@ def _mock_ai_response(messages: list) -> dict:
 
 SYSTEM_PROMPT = """Ты - опытный преподаватель, проверяющий домашние задания студентов.
 
-Твоя задача - оценить ответ студента на вопрос.
+Твоя задача - оценить ответ студента и написать подробный структурированный ревью.
 
 ВАЖНЫЕ ПРАВИЛА:
 1. Оценивай по существу, не придирайся к мелочам
 2. Частично правильные ответы заслуживают частичных баллов
-3. Давай конструктивную обратную связь
+3. Давай конструктивную обратную связь с конкретными примерами
 4. Будь доброжелательным, но объективным
 5. Если ответ пустой или бессмысленный - 0 баллов
+6. Оценку разбивай по критериям, каждому критерию ставь баллы
+
+КРИТЕРИИ ОЦЕНКИ (адаптируй под предмет и тип задания):
+- K1: Содержание и полнота ответа (основная часть баллов)
+- K2: Логика и аргументация (обоснованность выводов)
+- K3: Грамотность и оформление (язык, структура)
+Если задание по программированию, используй критерии:
+- K1: Корректность решения (правильность кода/алгоритма)
+- K2: Качество кода (читаемость, структура, best practices)
+- K3: Эффективность (оптимальность решения)
+
+Распредели max_points между критериями пропорционально их важности.
+Сумма max_score по всем критериям ДОЛЖНА равняться max_points.
 
 Отвечай ТОЛЬКО в формате JSON:
 {
-    "score": <число от 0 до max_points>,
-    "feedback": "<краткий комментарий на русском языке>",
-    "confidence": <число от 0.0 до 1.0>
+    "score": <итоговый балл от 0 до max_points>,
+    "confidence": <уверенность от 0.0 до 1.0>,
+    "criteria": [
+        {"name": "K1: Содержание", "score": <балл>, "max_score": <макс балл>, "comment": "<что хорошо/плохо>"},
+        {"name": "K2: Логика", "score": <балл>, "max_score": <макс балл>, "comment": "<что хорошо/плохо>"},
+        {"name": "K3: Оформление", "score": <балл>, "max_score": <макс балл>, "comment": "<что хорошо/плохо>"}
+    ],
+    "strengths": ["<сильная сторона 1>", "<сильная сторона 2>"],
+    "weaknesses": ["<ошибка/недочет 1>", "<ошибка/недочет 2>"],
+    "recommendations": ["<рекомендация 1>", "<рекомендация 2>"],
+    "summary": "<общий комментарий преподавателя, 2-4 предложения>"
+}"""
+
+
+SYSTEM_PROMPT_CODE = """Ты - опытный преподаватель программирования, проверяющий код студентов.
+
+Твоя задача - оценить код студента и написать подробный код-ревью.
+
+ВАЖНЫЕ ПРАВИЛА:
+1. Оценивай корректность решения, качество кода и эффективность
+2. Указывай конкретные строки/участки с проблемами
+3. Предлагай конкретные улучшения
+4. Если код не компилируется/не запускается - отметь это
+5. Учитывай результаты тестов, если они предоставлены
+
+Отвечай ТОЛЬКО в формате JSON:
+{
+    "score": <итоговый балл от 0 до max_points>,
+    "confidence": <уверенность от 0.0 до 1.0>,
+    "criteria": [
+        {"name": "K1: Корректность", "score": <балл>, "max_score": <макс балл>, "comment": "<работает ли решение>"},
+        {"name": "K2: Качество кода", "score": <балл>, "max_score": <макс балл>, "comment": "<читаемость, именование, структура>"},
+        {"name": "K3: Эффективность", "score": <балл>, "max_score": <макс балл>, "comment": "<оптимальность, сложность>"}
+    ],
+    "strengths": ["<что студент сделал хорошо>"],
+    "weaknesses": ["<ошибки и проблемы в коде>"],
+    "recommendations": ["<конкретные улучшения>"],
+    "summary": "<общий комментарий, 2-4 предложения>"
 }"""
 
 
@@ -278,10 +342,20 @@ def process_ai_grading(self, payload: dict):
     question = request.get('question', {})
     student = request.get('student_answer', {})
     config = request.get('grading_config', {})
+    question_type = request.get('question_type', 'TEXT')
+
+    # Choose system prompt based on question type
+    system_prompt = SYSTEM_PROMPT_CODE if question_type == 'CODE' else SYSTEM_PROMPT
+
+    # Add custom teacher instructions if provided
+    custom_prompt = config.get('custom_prompt')
+    if custom_prompt:
+        system_prompt += f"\n\nДОПОЛНИТЕЛЬНЫЕ ИНСТРУКЦИИ ПРЕПОДАВАТЕЛЯ:\n{custom_prompt}"
 
     prompt_parts = [
         f"ВОПРОС:\n{question.get('prompt', '')}",
         f"\nМАКСИМУМ БАЛЛОВ: {question.get('max_points', 10)}",
+        f"\nТИП ЗАДАНИЯ: {question_type}",
     ]
     if question.get('correct_answer'):
         prompt_parts.append(f"\nЭТАЛОННЫЙ ОТВЕТ:\n{question['correct_answer']}")
@@ -291,8 +365,23 @@ def process_ai_grading(self, payload: dict):
     student_text = student.get('text', '').strip() or '(пустой ответ)'
     prompt_parts.append(f"\nОТВЕТ СТУДЕНТА:\n{student_text}")
 
+    # For CODE type — add test results if available
+    if question_type == 'CODE':
+        test_results = student.get('test_results')
+        if test_results:
+            prompt_parts.append(f"\nРЕЗУЛЬТАТЫ ТЕСТОВ:\n{json.dumps(test_results, ensure_ascii=False, indent=2)}")
+        language = student.get('language', '')
+        if language:
+            prompt_parts.append(f"\nЯЗЫК ПРОГРАММИРОВАНИЯ: {language}")
+
+    # For FILE_UPLOAD — add file metadata
+    if question_type == 'FILE_UPLOAD':
+        file_info = student.get('file_info')
+        if file_info:
+            prompt_parts.append(f"\nИНФОРМАЦИЯ О ФАЙЛЕ:\n{json.dumps(file_info, ensure_ascii=False)}")
+
     messages = [
-        {'role': 'system', 'content': SYSTEM_PROMPT},
+        {'role': 'system', 'content': system_prompt},
         {'role': 'user', 'content': '\n'.join(prompt_parts)},
     ]
 
@@ -342,6 +431,7 @@ def process_ai_grading(self, payload: dict):
                     'max_points': question.get('max_points', 10),
                     'confidence': result['confidence'],
                     'feedback': result['feedback'],
+                    'review': result.get('review'),  # Структурированный ревью
                     'needs_manual_review': result['confidence'] < 0.7,
                     'ai_metadata': {
                         'provider': provider,
@@ -350,7 +440,7 @@ def process_ai_grading(self, payload: dict):
                         'output_tokens': output_tokens,
                         'cost_rubles': float(cost),
                         'latency_ms': elapsed_ms,
-                        'prompt_version': 'v1',
+                        'prompt_version': 'v2',
                     },
                 },
             }
@@ -429,7 +519,7 @@ def process_ai_grading_dlq(payload: dict):
 
 
 def _parse_ai_response(raw_response: dict, max_points: int) -> dict:
-    """Parse AI response JSON from chat completion."""
+    """Parse AI response JSON from chat completion — structured review format."""
     try:
         content = raw_response['choices'][0]['message']['content']
         # Try to parse as JSON
@@ -445,10 +535,31 @@ def _parse_ai_response(raw_response: dict, max_points: int) -> dict:
         score = int(result.get('score', 0))
         score = max(0, min(score, max_points))
 
+        # Parse structured review
+        criteria = result.get('criteria', [])
+        # Validate each criterion
+        validated_criteria = []
+        for c in criteria:
+            validated_criteria.append({
+                'name': str(c.get('name', '')),
+                'score': max(0, int(c.get('score', 0))),
+                'max_score': max(1, int(c.get('max_score', 1))),
+                'comment': str(c.get('comment', '')),
+            })
+
+        review = {
+            'criteria': validated_criteria,
+            'strengths': [str(s) for s in result.get('strengths', [])],
+            'weaknesses': [str(w) for w in result.get('weaknesses', [])],
+            'recommendations': [str(r) for r in result.get('recommendations', [])],
+            'summary': str(result.get('summary', result.get('feedback', ''))),
+        }
+
         return {
             'score': score,
-            'feedback': str(result.get('feedback', '')),
+            'feedback': review['summary'],
             'confidence': float(result.get('confidence', 0.5)),
+            'review': review,
         }
     except (json.JSONDecodeError, KeyError, IndexError, TypeError) as e:
         logger.warning(f"Failed to parse AI response: {e}")
@@ -456,6 +567,7 @@ def _parse_ai_response(raw_response: dict, max_points: int) -> dict:
             'score': 0,
             'feedback': 'AI не смог оценить ответ (ошибка парсинга)',
             'confidence': 0.0,
+            'review': None,
         }
 
 
