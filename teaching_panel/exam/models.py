@@ -132,7 +132,7 @@ class ExamBlueprint(models.Model):
         self.save(update_fields=['total_primary_score'])
         return total
 
-    def convert_to_test_score(self, primary_score: int) -> int | None:
+    def convert_to_test_score(self, primary_score: int):
         """Конвертировать первичный балл → тестовый по шкале ФИПИ."""
         if not self.score_scale:
             return None
