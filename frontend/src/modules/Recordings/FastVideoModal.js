@@ -11,20 +11,41 @@ import './FastVideoModal.css';
 
 function FastVideoModal({ recording, onClose }) {
   const iframeRef = useRef(null);
+  const videoRef = useRef(null);
   const modalRef = useRef(null);
   const [showDetails, setShowDetails] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [iframeError, setIframeError] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+
+  // Определяем: есть ли GDrive или это local storage запись
+  const hasGdrive = !!recording?.gdrive_file_id;
+  
+  // Для local storage записей используем play_url/download_url напрямую
+  const isLocalStorage = !hasGdrive && (recording?.play_url || recording?.download_url);
+  // Для local записей используем streaming endpoint (авторизованный) или прямой URL
+  const localVideoUrl = isLocalStorage
+    ? (() => {
+        // Используем stream endpoint для авторизованного доступа
+        const token = localStorage.getItem('tp_access_token');
+        if (token) {
+          return `/schedule/api/recordings/${recording.id}/stream/?token=${encodeURIComponent(token)}`;
+        }
+        // Fallback на прямой URL
+        return recording?.play_url || recording?.download_url;
+      })()
+    : null;
 
   // Google Drive embed URL
-  const embedUrl = recording?.gdrive_file_id 
+  const embedUrl = hasGdrive
     ? `https://drive.google.com/file/d/${recording.gdrive_file_id}/preview`
     : null;
 
   // Fallback: direct download link
-  const downloadUrl = recording?.gdrive_file_id
+  const downloadUrl = hasGdrive
     ? `https://drive.google.com/uc?export=download&id=${recording.gdrive_file_id}`
-    : recording?.download_url || null;
+    : recording?.download_url || recording?.play_url || null;
 
   // Закрытие по Escape
   useEffect(() => {
@@ -104,9 +125,62 @@ function FastVideoModal({ recording, onClose }) {
           )}
         </header>
 
-        {/* Видеоплеер (Google Drive Embed) */}
+        {/* Видеоплеер (Google Drive Embed или HTML5 Video для local storage) */}
         <div className="fast-video-player">
-          {embedUrl ? (
+          {isLocalStorage ? (
+            /* Local storage: HTML5 video player */
+            <>
+              {!videoLoaded && !videoError && (
+                <div className="fast-video-loading" role="status" aria-live="polite">
+                  <div className="fast-video-loading-spinner" aria-hidden="true" />
+                  <div className="fast-video-loading-text">
+                    <div className="fast-video-loading-title">Загрузка видео…</div>
+                  </div>
+                </div>
+              )}
+              {videoError && (
+                <div className="fast-video-error">
+                  <div className="fast-video-error-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 8v4M12 16h.01" />
+                    </svg>
+                  </div>
+                  <p>Не удалось загрузить видео</p>
+                  {downloadUrl && (
+                    <a 
+                      href={downloadUrl}
+                      className="fast-video-retry"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Скачать видео
+                    </a>
+                  )}
+                </div>
+              )}
+              <video
+                ref={videoRef}
+                src={localVideoUrl}
+                controls
+                autoPlay={false}
+                playsInline
+                preload="auto"
+                onCanPlay={() => setVideoLoaded(true)}
+                onError={() => setVideoError(true)}
+                style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  backgroundColor: '#000',
+                  display: videoError ? 'none' : 'block',
+                  opacity: videoLoaded ? 1 : 0,
+                  transition: 'opacity 0.3s ease'
+                }}
+                title={title}
+              />
+            </>
+          ) : embedUrl ? (
+            /* GDrive: iframe embed */
             <>
               {!iframeLoaded && (
                 <div className="fast-video-loading" role="status" aria-live="polite">

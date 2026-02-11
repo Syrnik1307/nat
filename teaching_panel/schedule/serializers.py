@@ -656,17 +656,21 @@ class LessonRecordingSerializer(serializers.ModelSerializer):
         Определяет, использовать ли прямой stream вместо GDrive iframe.
         
         Для файлов >100MB GDrive iframe работает медленно и может зависать.
+        Для локальных записей (без gdrive_file_id) всегда используем stream.
         В таких случаях используем direct stream: /api/recordings/{id}/stream/
         
         Returns:
-            bool: True если файл >100MB, иначе False
+            bool: True если файл >100MB или локальное хранение, иначе False
         """
+        # Локальные записи всегда стримим через бэкенд
+        if not obj.gdrive_file_id and obj.play_url:
+            return True
         LARGE_FILE_THRESHOLD = 100 * 1024 * 1024  # 100 MB в байтах
         return obj.file_size and obj.file_size > LARGE_FILE_THRESHOLD
 
     def get_streaming_url(self, obj):
         """Получить прямую ссылку для HTML5 video player"""
-        # Для больших файлов (>100MB) возвращаем stream endpoint
+        # Для локальных записей (без GDrive) или больших файлов — stream endpoint
         if self.get_use_direct_stream(obj):
             request = self.context.get('request')
             if request:
@@ -792,6 +796,9 @@ class StudentLessonRecordingSerializer(serializers.ModelSerializer):
     streaming_url = serializers.SerializerMethodField()
 
     def get_streaming_url(self, obj):
+        # Локальные записи (без GDrive) — стримим через бэкенд
+        if not obj.gdrive_file_id and obj.play_url:
+            return f'/schedule/api/recordings/{obj.id}/stream/'
         if obj.gdrive_file_id:
             return f"https://drive.google.com/uc?export=download&id={obj.gdrive_file_id}"
         return None

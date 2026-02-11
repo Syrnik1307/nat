@@ -3232,11 +3232,86 @@ def stream_recording(request, recording_id):
                 'error': 'У вас нет доступа к этой записи'
             }, status=status.HTTP_403_FORBIDDEN)
         
-        # Проверяем что есть file_id в Google Drive
-        if not recording.gdrive_file_id:
+        # Проверяем что есть file_id в Google Drive ИЛИ локальный файл
+        if not recording.gdrive_file_id and not recording.play_url:
             return Response({
                 'error': 'Файл записи не найден в хранилище'
             }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Если это локальный файл (без GDrive) — стримим напрямую с диска
+        if not recording.gdrive_file_id and recording.play_url:
+            import os
+            from django.conf import settings
+            
+            # play_url для локальных файлов выглядит как /media/lesson_recordings/...
+            local_path = recording.play_url
+            if local_path.startswith('/media/'):
+                local_path = local_path[len('/media/'):]
+            
+            media_root = getattr(settings, 'MEDIA_ROOT', '')
+            full_path = os.path.join(media_root, local_path)
+            
+            if not os.path.exists(full_path):
+                logger.warning(f"Local recording file not found: {full_path}")
+                return Response({
+                    'error': 'Файл записи не найден на сервере'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            file_size = os.path.getsize(full_path)
+            range_header = request.META.get('HTTP_RANGE')
+            
+            if range_header:
+                # Парсим Range: bytes=start-end
+                import re
+                range_match = re.match(r'bytes=(\d+)-(\d*)', range_header)
+                if range_match:
+                    start = int(range_match.group(1))
+                    end = int(range_match.group(2)) if range_match.group(2) else file_size - 1
+                    end = min(end, file_size - 1)
+                    length = end - start + 1
+                    
+                    def file_range_iterator(path, start, length, chunk_size=1024*1024):
+                        with open(path, 'rb') as f:
+                            f.seek(start)
+                            remaining = length
+                            while remaining > 0:
+                                chunk = f.read(min(chunk_size, remaining))
+                                if not chunk:
+                                    break
+                                remaining -= len(chunk)
+                                yield chunk
+                    
+                    response = StreamingHttpResponse(
+                        file_range_iterator(full_path, start, length),
+                        status=206,
+                        content_type='video/mp4',
+                    )
+                    response['Content-Length'] = length
+                    response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+                    response['Accept-Ranges'] = 'bytes'
+                    response['Content-Disposition'] = f'inline; filename="{recording_id}.mp4"'
+                    response['Cache-Control'] = 'no-store'
+                    return response
+            
+            # Без Range — отдаём весь файл
+            def file_iterator(path, chunk_size=1024*1024):
+                with open(path, 'rb') as f:
+                    while True:
+                        chunk = f.read(chunk_size)
+                        if not chunk:
+                            break
+                        yield chunk
+            
+            response = StreamingHttpResponse(
+                file_iterator(full_path),
+                status=200,
+                content_type='video/mp4',
+            )
+            response['Content-Length'] = file_size
+            response['Accept-Ranges'] = 'bytes'
+            response['Content-Disposition'] = f'inline; filename="{recording_id}.mp4"'
+            response['Cache-Control'] = 'no-store'
+            return response
         
         # Получаем Google Drive manager
         from .gdrive_utils import get_gdrive_manager
