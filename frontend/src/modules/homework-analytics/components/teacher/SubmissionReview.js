@@ -670,7 +670,7 @@ const SubmissionReview = () => {
       {/* AI-проверка всех ответов */}
       {(() => {
         const textAnswers = getReviewItems().filter(
-          i => i.hasAnswer && (i.question_type === 'TEXT' || i.question_type === 'CODE') && (i.text_answer || '').trim()
+          i => i.hasAnswer && (i.question_type === 'TEXT' || i.question_type === 'CODE')
         );
         if (textAnswers.length === 0) return null;
         return (
@@ -840,8 +840,7 @@ const SubmissionReview = () => {
                 );
                 const isChecking = aiCheckingIds.has(item.id) || (aiCheckingAll && (item.question_type === 'TEXT' || item.question_type === 'CODE'));
                 const canAiCheck = item.hasAnswer 
-                  && (item.question_type === 'TEXT' || item.question_type === 'CODE')
-                  && (item.text_answer || '').trim();
+                  && (item.question_type === 'TEXT' || item.question_type === 'CODE');
 
                 return (
                   <>

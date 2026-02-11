@@ -2108,12 +2108,7 @@ class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        student_answer = answer.text_answer or ''
-        if not student_answer.strip():
-            return Response(
-                {'error': 'Ответ пуст, нечего проверять'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        student_answer = answer.text_answer or '(пустой ответ)'
 
         # Получаем правильный ответ из config вопроса
         config = answer.question.config or {}
