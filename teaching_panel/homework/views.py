@@ -2131,7 +2131,7 @@ class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         start_time = _time.time()
         service = AIGradingService(provider=provider)
         result = service.grade_answer_sync(
-            question_text=answer.question.prompt or answer.question.text or '',
+            question_text=answer.question.prompt or '',
             student_answer=student_answer,
             max_points=answer.question.points,
             correct_answer=correct_answer if correct_answer else None,
@@ -2237,7 +2237,7 @@ class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
 
             start_time = _time.time()
             result = service.grade_answer_sync(
-                question_text=answer.question.prompt or answer.question.text or '',
+                question_text=answer.question.prompt or '',
                 student_answer=answer.text_answer or '',
                 max_points=answer.question.points,
                 correct_answer=correct_answer if correct_answer else None,
