@@ -2060,6 +2060,247 @@ class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated],
+            url_path='ai-check-answer')
+    def ai_check_answer(self, request, pk=None):
+        """
+        AI-проверка одного конкретного ответа.
+        
+        Body:
+        {
+            "answer_id": 123,
+            "teacher_context": "Обратите внимание на грамматику"  // необязательно
+        }
+        
+        Использует AIGradingService.grade_answer_sync() для немедленной проверки.
+        Возвращает обновлённый ответ с ai_review.
+        """
+        user = request.user
+        if getattr(user, 'role', None) not in ('teacher', 'admin'):
+            return Response(
+                {'error': 'Только для преподавателей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        submission = self.get_object()
+        answer_id = request.data.get('answer_id')
+        teacher_context = request.data.get('teacher_context', '').strip()
+
+        if not answer_id:
+            return Response(
+                {'error': 'Требуется answer_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            answer = Answer.objects.select_related('question').get(
+                id=answer_id, submission=submission
+            )
+        except Answer.DoesNotExist:
+            return Response(
+                {'error': 'Ответ не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if answer.question.question_type not in ('TEXT', 'CODE'):
+            return Response(
+                {'error': 'AI-проверка доступна только для текстовых и code-ответов'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        student_answer = answer.text_answer or ''
+        if not student_answer.strip():
+            return Response(
+                {'error': 'Ответ пуст, нечего проверять'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Получаем правильный ответ из config вопроса
+        config = answer.question.config or {}
+        correct_answer = config.get('correctAnswer', '')
+
+        # Также добавляем ai_grading_prompt из homework, если есть
+        homework = submission.homework
+        hw_context = getattr(homework, 'ai_grading_prompt', '') or ''
+        full_context = '\n'.join(filter(None, [hw_context, teacher_context]))
+
+        # Определяем провайдер
+        provider = getattr(homework, 'ai_provider', 'deepseek') or 'deepseek'
+
+        import time as _time
+        from .ai_grading_service import AIGradingService
+
+        answer.ai_grading_status = 'processing'
+        answer.save(update_fields=['ai_grading_status'])
+
+        start_time = _time.time()
+        service = AIGradingService(provider=provider)
+        result = service.grade_answer_sync(
+            question_text=answer.question.prompt or answer.question.text or '',
+            student_answer=student_answer,
+            max_points=answer.question.points,
+            correct_answer=correct_answer if correct_answer else None,
+            teacher_context=full_context if full_context else None,
+        )
+        elapsed_ms = int((_time.time() - start_time) * 1000)
+
+        if result.error:
+            answer.ai_grading_status = 'failed'
+            answer.save(update_fields=['ai_grading_status'])
+            return Response({
+                'error': f'AI-проверка не удалась: {result.error}',
+                'answer_id': answer.id,
+            }, status=status.HTTP_502_BAD_GATEWAY)
+
+        # Сохраняем результат
+        answer.auto_score = result.score
+        answer.ai_confidence = result.confidence
+        answer.ai_review = {
+            'summary': result.feedback,
+            'score': result.score,
+            'max_points': result.max_points,
+            'confidence': result.confidence,
+        }
+        answer.ai_grading_status = 'completed'
+        answer.ai_latency_ms = elapsed_ms
+        answer.ai_checked_at = timezone.now()
+        answer.save(update_fields=[
+            'auto_score', 'ai_confidence', 'ai_review',
+            'ai_grading_status', 'ai_latency_ms', 'ai_checked_at',
+        ])
+
+        # Пересчитываем total_score
+        submission.compute_auto_score()
+
+        return Response({
+            'answer_id': answer.id,
+            'status': 'completed',
+            'auto_score': result.score,
+            'max_points': result.max_points,
+            'ai_confidence': result.confidence,
+            'ai_review': answer.ai_review,
+            'ai_latency_ms': elapsed_ms,
+        })
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated],
+            url_path='ai-check-all')
+    def ai_check_all(self, request, pk=None):
+        """
+        AI-проверка всех текстовых ответов в submission.
+        
+        Body:
+        {
+            "teacher_context": "Проверяйте строго"  // необязательно
+        }
+        
+        Проверяет синхронно все TEXT/CODE ответы последовательно.
+        Возвращает результаты по каждому ответу.
+        """
+        user = request.user
+        if getattr(user, 'role', None) not in ('teacher', 'admin'):
+            return Response(
+                {'error': 'Только для преподавателей'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        submission = self.get_object()
+        teacher_context = request.data.get('teacher_context', '').strip()
+
+        homework = submission.homework
+        hw_context = getattr(homework, 'ai_grading_prompt', '') or ''
+        full_context = '\n'.join(filter(None, [hw_context, teacher_context]))
+        provider = getattr(homework, 'ai_provider', 'deepseek') or 'deepseek'
+
+        # Находим все TEXT/CODE ответы с непустым текстом
+        answers = Answer.objects.filter(
+            submission=submission,
+            question__question_type__in=['TEXT', 'CODE'],
+        ).exclude(
+            text_answer__isnull=True,
+        ).exclude(
+            text_answer='',
+        ).select_related('question')
+
+        if not answers.exists():
+            return Response({
+                'status': 'no_answers',
+                'message': 'Нет текстовых ответов для проверки',
+                'results': [],
+            })
+
+        import time as _time
+        from .ai_grading_service import AIGradingService
+        service = AIGradingService(provider=provider)
+
+        results = []
+        for answer in answers:
+            config = answer.question.config or {}
+            correct_answer = config.get('correctAnswer', '')
+
+            answer.ai_grading_status = 'processing'
+            answer.save(update_fields=['ai_grading_status'])
+
+            start_time = _time.time()
+            result = service.grade_answer_sync(
+                question_text=answer.question.prompt or answer.question.text or '',
+                student_answer=answer.text_answer or '',
+                max_points=answer.question.points,
+                correct_answer=correct_answer if correct_answer else None,
+                teacher_context=full_context if full_context else None,
+            )
+            elapsed_ms = int((_time.time() - start_time) * 1000)
+
+            if result.error:
+                answer.ai_grading_status = 'failed'
+                answer.save(update_fields=['ai_grading_status'])
+                results.append({
+                    'answer_id': answer.id,
+                    'question_id': answer.question_id,
+                    'status': 'failed',
+                    'error': result.error,
+                })
+                continue
+
+            answer.auto_score = result.score
+            answer.ai_confidence = result.confidence
+            answer.ai_review = {
+                'summary': result.feedback,
+                'score': result.score,
+                'max_points': result.max_points,
+                'confidence': result.confidence,
+            }
+            answer.ai_grading_status = 'completed'
+            answer.ai_latency_ms = elapsed_ms
+            answer.ai_checked_at = timezone.now()
+            answer.save(update_fields=[
+                'auto_score', 'ai_confidence', 'ai_review',
+                'ai_grading_status', 'ai_latency_ms', 'ai_checked_at',
+            ])
+
+            results.append({
+                'answer_id': answer.id,
+                'question_id': answer.question_id,
+                'status': 'completed',
+                'auto_score': result.score,
+                'max_points': result.max_points,
+                'ai_confidence': result.confidence,
+                'ai_review': answer.ai_review,
+            })
+
+        # Пересчитываем total_score
+        submission.compute_auto_score()
+
+        completed = sum(1 for r in results if r['status'] == 'completed')
+        failed = sum(1 for r in results if r['status'] == 'failed')
+
+        return Response({
+            'status': 'done',
+            'total': len(results),
+            'completed': completed,
+            'failed': failed,
+            'results': results,
+        })
+
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated],
             url_path='grading-status')
     def grading_status(self, request, pk=None):

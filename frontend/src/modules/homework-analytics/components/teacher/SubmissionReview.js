@@ -23,6 +23,14 @@ const SubmissionReview = () => {
   const [showRevisionModal, setShowRevisionModal] = useState(false);
   const [revisionComment, setRevisionComment] = useState('');
 
+  // AI grading state
+  const [aiCheckingIds, setAiCheckingIds] = useState(new Set()); // answer IDs being checked
+  const [aiCheckingAll, setAiCheckingAll] = useState(false);
+  const [aiResults, setAiResults] = useState({}); // { answerId: { ai_review, auto_score, ai_confidence, status } }
+  const [showAiContextModal, setShowAiContextModal] = useState(false);
+  const [aiContextText, setAiContextText] = useState('');
+  const [aiContextTarget, setAiContextTarget] = useState(null); // null = all, answerId = single
+
   const loadSubmission = useCallback(async () => {
     try {
       setLoading(true);
@@ -357,6 +365,10 @@ const SubmissionReview = () => {
         hasAnswer: !!answer,
         needs_revision: answer?.needs_revision ?? false,
         index,
+        // AI grading data
+        ai_grading_status: answer?.ai_grading_status || null,
+        ai_confidence: answer?.ai_confidence ?? null,
+        ai_review: answer?.ai_review || null,
         // Telemetry data
         time_spent_seconds: answer?.time_spent_seconds ?? null,
         is_pasted: answer?.is_pasted ?? false,
@@ -397,6 +409,141 @@ const SubmissionReview = () => {
       setSaving(false);
     }
   };
+
+  // === AI Grading Functions ===
+
+  const openAiContext = (answerId = null) => {
+    setAiContextTarget(answerId);
+    setAiContextText('');
+    setShowAiContextModal(true);
+  };
+
+  const startAiCheck = () => {
+    setShowAiContextModal(false);
+    if (aiContextTarget) {
+      runAiCheckSingle(aiContextTarget, aiContextText);
+    } else {
+      runAiCheckAll(aiContextText);
+    }
+  };
+
+  const skipContextAndCheck = () => {
+    setShowAiContextModal(false);
+    if (aiContextTarget) {
+      runAiCheckSingle(aiContextTarget, '');
+    } else {
+      runAiCheckAll('');
+    }
+  };
+
+  const runAiCheckSingle = async (answerId, teacherContext) => {
+    setAiCheckingIds(prev => new Set([...prev, answerId]));
+    try {
+      const response = await apiClient.post(
+        `submissions/${submissionId}/ai-check-answer/`,
+        { answer_id: answerId, teacher_context: teacherContext }
+      );
+      setAiResults(prev => ({
+        ...prev,
+        [answerId]: {
+          ai_review: response.data.ai_review,
+          auto_score: response.data.auto_score,
+          ai_confidence: response.data.ai_confidence,
+          status: 'completed',
+        }
+      }));
+      // Reload submission for updated scores
+      await loadSubmission();
+    } catch (err) {
+      console.error('AI check error:', err);
+      setAiResults(prev => ({
+        ...prev,
+        [answerId]: { status: 'failed', error: err.response?.data?.error || 'Ошибка AI-проверки' }
+      }));
+      showNotification('error', 'Ошибка AI', err.response?.data?.error || 'Не удалось выполнить AI-проверку');
+    } finally {
+      setAiCheckingIds(prev => {
+        const next = new Set(prev);
+        next.delete(answerId);
+        return next;
+      });
+    }
+  };
+
+  const runAiCheckAll = async (teacherContext) => {
+    setAiCheckingAll(true);
+    try {
+      const response = await apiClient.post(
+        `submissions/${submissionId}/ai-check-all/`,
+        { teacher_context: teacherContext }
+      );
+      const newResults = {};
+      (response.data.results || []).forEach(r => {
+        newResults[r.answer_id] = {
+          ai_review: r.ai_review,
+          auto_score: r.auto_score,
+          ai_confidence: r.ai_confidence,
+          status: r.status,
+          error: r.error,
+        };
+      });
+      setAiResults(prev => ({ ...prev, ...newResults }));
+      const { completed, failed, total } = response.data;
+      showNotification(
+        failed > 0 ? 'warning' : 'success',
+        'AI-проверка завершена',
+        `Проверено: ${completed} из ${total}${failed > 0 ? `, ошибок: ${failed}` : ''}`
+      );
+      // Reload submission for updated scores
+      await loadSubmission();
+    } catch (err) {
+      console.error('AI check all error:', err);
+      showNotification('error', 'Ошибка AI', err.response?.data?.error || 'Не удалось выполнить AI-проверку');
+    } finally {
+      setAiCheckingAll(false);
+    }
+  };
+
+  const acceptAiReview = async (answerId) => {
+    const aiData = aiResults[answerId];
+    if (!aiData || aiData.status !== 'completed') return;
+
+    try {
+      setSaving(true);
+      await apiClient.post(`submissions/${submissionId}/approve-ai-review/`, {
+        answers: [{
+          answer_id: answerId,
+          action: 'approve',
+        }]
+      });
+      await loadSubmission();
+      showNotification('success', 'Принято', 'AI-оценка принята');
+    } catch (err) {
+      showNotification('error', 'Ошибка', err.response?.data?.error || 'Не удалось принять оценку');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const rejectAiReview = (answerId) => {
+    // Dismiss AI review — teacher will grade manually
+    setAiResults(prev => {
+      const next = { ...prev };
+      delete next[answerId];
+      return next;
+    });
+  };
+
+  const editFromAiReview = (item, answerId) => {
+    const aiData = aiResults[answerId];
+    setEditingAnswerId(answerId);
+    setEditValues({
+      teacher_score: aiData?.auto_score ?? item.auto_score ?? 0,
+      teacher_feedback: aiData?.ai_review?.summary || ''
+    });
+  };
+
+  // === End AI Grading Functions ===
 
   // Считаем количество ответов с неполным баллом для preview
   const getRevisionQuestionsCount = () => {
@@ -519,6 +666,42 @@ const SubmissionReview = () => {
           </div>
         </div>
       )}
+
+      {/* AI-проверка всех ответов */}
+      {(() => {
+        const textAnswers = getReviewItems().filter(
+          i => i.hasAnswer && (i.question_type === 'TEXT' || i.question_type === 'CODE') && (i.text_answer || '').trim()
+        );
+        if (textAnswers.length === 0) return null;
+        return (
+          <div className="sr-ai-toolbar">
+            <button
+              className="sr-btn-ai-all"
+              onClick={() => openAiContext(null)}
+              disabled={aiCheckingAll}
+            >
+              {aiCheckingAll ? (
+                <>
+                  <span className="sr-ai-spinner" />
+                  AI проверяет...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.58-3.25 3.93L12 22"/>
+                    <path d="M8 6a4 4 0 0 1 8 0"/>
+                    <path d="M17 12.5c1.77.47 3 2.1 3 4v.5H4v-.5c0-1.9 1.23-3.53 3-4"/>
+                  </svg>
+                  Проверить все AI ({textAnswers.length})
+                </>
+              )}
+            </button>
+            <span className="sr-ai-toolbar-hint">
+              AI проверит текстовые ответы и предложит оценку
+            </span>
+          </div>
+        );
+      })()}
 
       <div className="sr-answers-list">
         {(() => {
@@ -648,6 +831,105 @@ const SubmissionReview = () => {
                 </div>
               )}
 
+              {/* AI review inline block */}
+              {(() => {
+                const aiData = aiResults[item.id] || (
+                  item.ai_grading_status === 'completed' && item.ai_review
+                    ? { ai_review: item.ai_review, auto_score: item.auto_score, ai_confidence: item.ai_confidence, status: 'completed' }
+                    : null
+                );
+                const isChecking = aiCheckingIds.has(item.id) || (aiCheckingAll && (item.question_type === 'TEXT' || item.question_type === 'CODE'));
+                const canAiCheck = item.hasAnswer 
+                  && (item.question_type === 'TEXT' || item.question_type === 'CODE')
+                  && (item.text_answer || '').trim();
+
+                return (
+                  <>
+                    {/* AI проверка — кнопка для одного ответа */}
+                    {canAiCheck && !aiData && !isChecking && (
+                      <button
+                        className="sr-btn-ai-single"
+                        onClick={() => openAiContext(item.id)}
+                        disabled={aiCheckingAll}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.58-3.25 3.93L12 22"/>
+                          <path d="M8 6a4 4 0 0 1 8 0"/>
+                          <path d="M17 12.5c1.77.47 3 2.1 3 4v.5H4v-.5c0-1.9 1.23-3.53 3-4"/>
+                        </svg>
+                        Проверить AI
+                      </button>
+                    )}
+
+                    {/* AI проверка — spinner */}
+                    {isChecking && (
+                      <div className="sr-ai-checking">
+                        <span className="sr-ai-spinner" />
+                        <span>AI проверяет ответ...</span>
+                      </div>
+                    )}
+
+                    {/* AI review результат */}
+                    {aiData && aiData.status === 'completed' && aiData.ai_review && (
+                      <div className="sr-ai-review-block">
+                        <div className="sr-ai-review-header">
+                          <span className="sr-ai-review-label">AI-проверка</span>
+                          <span className="sr-ai-review-score">
+                            {aiData.ai_review.score ?? aiData.auto_score ?? '?'} / {aiData.ai_review.max_points ?? item.question_points}
+                          </span>
+                          {aiData.ai_confidence != null && (
+                            <span className={`sr-ai-confidence ${aiData.ai_confidence >= 0.8 ? 'high' : aiData.ai_confidence >= 0.5 ? 'medium' : 'low'}`}>
+                              {Math.round(aiData.ai_confidence * 100)}%
+                            </span>
+                          )}
+                        </div>
+                        <div className="sr-ai-review-body">
+                          {aiData.ai_review.summary || aiData.ai_review.feedback || 'Без комментария'}
+                        </div>
+                        <div className="sr-ai-review-actions">
+                          <button
+                            className="sr-btn-ai-accept"
+                            onClick={() => acceptAiReview(item.id)}
+                            disabled={saving}
+                            title="Принять AI-оценку"
+                          >
+                            Принять
+                          </button>
+                          <button
+                            className="sr-btn-ai-edit"
+                            onClick={() => editFromAiReview(item, item.id)}
+                            title="Редактировать на основе AI"
+                          >
+                            Редактировать
+                          </button>
+                          <button
+                            className="sr-btn-ai-reject"
+                            onClick={() => rejectAiReview(item.id)}
+                            title="Отклонить AI-проверку"
+                          >
+                            Отклонить
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* AI review ошибка */}
+                    {aiData && aiData.status === 'failed' && (
+                      <div className="sr-ai-review-block sr-ai-review-failed">
+                        <span className="sr-ai-review-label">AI-проверка не удалась</span>
+                        <span className="sr-ai-review-error">{aiData.error || 'Неизвестная ошибка'}</span>
+                        <button
+                          className="sr-btn-ai-single"
+                          onClick={() => openAiContext(item.id)}
+                        >
+                          Повторить
+                        </button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
               {item.hasAnswer && editingAnswerId === item.id ? (
                 <div className="sr-edit-form">
                   <div className="sr-form-group">
@@ -751,6 +1033,43 @@ const SubmissionReview = () => {
           </button>
         </div>
       </div>
+
+      {/* Модальное окно AI-контекста */}
+      {showAiContextModal && (
+        <div className="sr-revision-overlay" onClick={() => setShowAiContextModal(false)}>
+          <div className="sr-ai-context-modal" onClick={e => e.stopPropagation()}>
+            <h3 className="sr-revision-modal-title">
+              {aiContextTarget ? 'AI-проверка ответа' : 'AI-проверка всех ответов'}
+            </h3>
+            <p className="sr-revision-modal-info">
+              {aiContextTarget
+                ? 'AI проверит этот ответ и предложит оценку с комментарием.'
+                : 'AI проверит все текстовые ответы и предложит оценки.'}
+            </p>
+            <div className="sr-form-group">
+              <label className="sr-label">Инструкции для AI (необязательно):</label>
+              <textarea
+                className="sr-textarea"
+                rows="3"
+                value={aiContextText}
+                onChange={e => setAiContextText(e.target.value)}
+                placeholder="Например: обрати внимание на грамматику, проверь использование терминов..."
+              />
+            </div>
+            <div className="sr-revision-modal-actions">
+              <button className="sr-btn-primary" onClick={startAiCheck}>
+                Проверить с инструкциями
+              </button>
+              <button className="sr-btn-secondary" onClick={skipContextAndCheck}>
+                Проверить без инструкций
+              </button>
+              <button className="sr-btn-secondary" onClick={() => setShowAiContextModal(false)}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Модальное окно отправки на доработку */}
       {showRevisionModal && (
