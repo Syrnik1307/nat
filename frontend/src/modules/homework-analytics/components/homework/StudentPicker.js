@@ -39,18 +39,20 @@ const IconX = ({ size = 18 }) => (
 );
 
 /**
- * Компонент для выбора учеников из групп.
- * Поддерживает:
- * - Выбор нескольких групп
- * - Выбор конкретных учеников в каждой группе
- * - Режим "все ученики группы" / "конкретные ученики"
- * 
+ * StudentPicker — Redesigned multi-select component for groups & students.
+ *
+ * Features:
+ * - Flex-wrap chip display for selected groups at the top
+ * - Auto-expanding container (no fixed height)
+ * - Inline student chips when specific students are selected
+ * - Modal for picking individual students with search & select-all
+ * - Follows design-system.css tokens
+ *
  * @param {Object} props
- * @param {Array} props.value - Текущее значение: [{groupId, studentIds: [], allStudents: bool}]
- * @param {Function} props.onChange - Callback при изменении
- * @param {Array} props.groups - Список групп (опционально, иначе загружается)
- * @param {Array} props.individualStudents - Индивидуально выбранные ученики (без группы)
- * @param {Function} props.onIndividualChange - Callback для индивидуальных учеников
+ * @param {Array} props.value - [{groupId, studentIds: [], allStudents: bool}]
+ * @param {Function} props.onChange
+ * @param {Array} props.groups - group list (optional, loads via API)
+ * @param {boolean} props.disabled
  */
 const StudentPicker = ({
   value = [],
@@ -65,22 +67,22 @@ const StudentPicker = ({
     const num = Number(id);
     return Number.isFinite(num) ? num : id;
   }, []);
+
   const [groups, setGroups] = useState(propGroups || []);
   const [loadingGroups, setLoadingGroups] = useState(!propGroups);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
-  const [groupStudents, setGroupStudents] = useState({}); // {groupId: [students]}
+  const [groupStudents, setGroupStudents] = useState({});
   const [loadingStudents, setLoadingStudents] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
   const [studentModalGroupKey, setStudentModalGroupKey] = useState(null);
   const [studentModalSearch, setStudentModalSearch] = useState('');
 
-  // Загрузка групп
+  // Load groups
   useEffect(() => {
     if (propGroups) {
       setGroups(propGroups);
       return;
     }
-    
     const loadGroups = async () => {
       setLoadingGroups(true);
       try {
@@ -96,30 +98,28 @@ const StudentPicker = ({
     loadGroups();
   }, [propGroups]);
 
-  // Загрузка учеников группы при раскрытии
+  // Load students for a group
   const loadGroupStudents = useCallback(async (groupId) => {
-    const normalizedGroupId = normalizeId(groupId);
-    if (groupStudents[normalizedGroupId] || loadingStudents[normalizedGroupId]) return;
-    
-    setLoadingStudents(prev => ({ ...prev, [normalizedGroupId]: true }));
+    const key = normalizeId(groupId);
+    if (groupStudents[key] || loadingStudents[key]) return;
+
+    setLoadingStudents(prev => ({ ...prev, [key]: true }));
     try {
       const res = await getGroupStudents(Number(groupId));
       const raw = res.data?.results || res.data?.students || res.data || [];
-      const students = Array.isArray(raw) ? raw : [];
-      setGroupStudents(prev => ({ ...prev, [normalizedGroupId]: students }));
+      setGroupStudents(prev => ({ ...prev, [key]: Array.isArray(raw) ? raw : [] }));
     } catch (err) {
       console.error('Failed to load students for group', groupId, err);
-      // Fallback: попробуем использовать студентов из groups
-      const group = groups.find(g => normalizeId(g.id) === normalizedGroupId);
+      const group = groups.find(g => normalizeId(g.id) === key);
       if (group?.students) {
-        setGroupStudents(prev => ({ ...prev, [normalizedGroupId]: Array.isArray(group.students) ? group.students : [] }));
+        setGroupStudents(prev => ({ ...prev, [key]: Array.isArray(group.students) ? group.students : [] }));
       }
     } finally {
-      setLoadingStudents(prev => ({ ...prev, [normalizedGroupId]: false }));
+      setLoadingStudents(prev => ({ ...prev, [key]: false }));
     }
   }, [groupStudents, loadingStudents, groups, normalizeId]);
 
-  // Индекс выбранных групп и учеников
+  // Selection index
   const selectionIndex = useMemo(() => {
     const index = {};
     value.forEach(item => {
@@ -133,39 +133,31 @@ const StudentPicker = ({
     return index;
   }, [value, normalizeId]);
 
-  // Toggle группы
+  // Toggle group
   const toggleGroup = (groupId) => {
-    const normalizedGroupId = normalizeId(groupId);
-    const isSelected = !!selectionIndex[normalizedGroupId];
-    
-    if (isSelected) {
-      // Удаляем группу
-      onChange(value.filter(v => normalizeId(v.groupId) !== normalizedGroupId));
+    const key = normalizeId(groupId);
+    if (selectionIndex[key]) {
+      onChange(value.filter(v => normalizeId(v.groupId) !== key));
     } else {
-      // Добавляем группу (по умолчанию все ученики)
       onChange([...value, { groupId, allStudents: true, studentIds: [] }]);
     }
   };
 
-  // Toggle "все ученики" / "конкретные"
+  // Toggle all students mode
   const toggleAllStudents = (groupId) => {
-    const groupKey = normalizeId(groupId);
-    const current = selectionIndex[groupKey];
+    const key = normalizeId(groupId);
+    const current = selectionIndex[key];
     if (!current) return;
-    
-    const newValue = value.map(v => {
-      if (normalizeId(v.groupId) === groupKey) {
-        return { ...v, allStudents: !current.allStudents, studentIds: [] };
-      }
-      return v;
-    });
-    onChange(newValue);
+    onChange(value.map(v =>
+      normalizeId(v.groupId) === key
+        ? { ...v, allStudents: !current.allStudents, studentIds: [] }
+        : v
+    ));
   };
 
   const openStudentModal = (groupId) => {
-    const groupKey = normalizeId(groupId);
     setStudentModalSearch('');
-    setStudentModalGroupKey(groupKey);
+    setStudentModalGroupKey(normalizeId(groupId));
     loadGroupStudents(groupId);
   };
 
@@ -174,12 +166,12 @@ const StudentPicker = ({
     setStudentModalSearch('');
   }, []);
 
-  // Toggle конкретного ученика
+  // Toggle a single student
   const toggleStudent = (groupId, studentId) => {
     const groupKey = normalizeId(groupId);
     const current = selectionIndex[groupKey];
     if (!current) return;
-    
+
     const studentKey = normalizeId(studentId);
     const currentIds = new Set(current.studentIds);
     if (currentIds.has(studentKey)) {
@@ -187,66 +179,97 @@ const StudentPicker = ({
     } else {
       currentIds.add(studentKey);
     }
-    
-    const newValue = value.map(v => {
-      if (normalizeId(v.groupId) === groupKey) {
-        return { ...v, allStudents: false, studentIds: Array.from(currentIds).map(toNumberId) };
-      }
-      return v;
-    });
-    onChange(newValue);
+
+    onChange(value.map(v =>
+      normalizeId(v.groupId) === groupKey
+        ? { ...v, allStudents: false, studentIds: Array.from(currentIds).map(toNumberId) }
+        : v
+    ));
   };
 
-  // Развернуть/свернуть группу
-  const toggleExpand = (groupId) => {
+  // Remove a single student chip (from expanded view)
+  const removeStudent = (groupId, studentId) => {
     const groupKey = normalizeId(groupId);
-    const newExpanded = new Set(expandedGroups);
-    if (newExpanded.has(groupKey)) {
-      newExpanded.delete(groupKey);
-      if (studentModalGroupKey === groupKey) {
-        closeStudentModal();
-      }
+    const current = selectionIndex[groupKey];
+    if (!current) return;
+
+    const studentKey = normalizeId(studentId);
+    const currentIds = new Set(current.studentIds);
+    currentIds.delete(studentKey);
+
+    onChange(value.map(v =>
+      normalizeId(v.groupId) === groupKey
+        ? { ...v, allStudents: false, studentIds: Array.from(currentIds).map(toNumberId) }
+        : v
+    ));
+  };
+
+  // Select/deselect all students in modal
+  const selectAllInModal = useCallback(() => {
+    if (!studentModalGroupKey) return;
+    const students = groupStudents[studentModalGroupKey] || [];
+    const current = selectionIndex[studentModalGroupKey];
+    if (!current) return;
+
+    const allIds = students.map(s => normalizeId(s?.id));
+    const allSelected = allIds.every(id => current.studentIds.has(id));
+
+    onChange(value.map(v =>
+      normalizeId(v.groupId) === studentModalGroupKey
+        ? {
+            ...v,
+            allStudents: false,
+            studentIds: allSelected ? [] : students.map(s => toNumberId(s?.id)),
+          }
+        : v
+    ));
+  }, [studentModalGroupKey, groupStudents, selectionIndex, value, onChange, normalizeId, toNumberId]);
+
+  // Expand/collapse group
+  const toggleExpand = (groupId) => {
+    const key = normalizeId(groupId);
+    const next = new Set(expandedGroups);
+    if (next.has(key)) {
+      next.delete(key);
+      if (studentModalGroupKey === key) closeStudentModal();
     } else {
-      newExpanded.add(groupKey);
+      next.add(key);
       loadGroupStudents(groupId);
     }
-    setExpandedGroups(newExpanded);
+    setExpandedGroups(next);
   };
 
+  // Esc to close modal, lock scroll
   useEffect(() => {
     if (!studentModalGroupKey) return;
-
-    const prevOverflow = document.body.style.overflow;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') closeStudentModal();
-    };
-
-    document.addEventListener('keydown', onKeyDown);
+    const onKey = (e) => { if (e.key === 'Escape') closeStudentModal(); };
+    document.addEventListener('keydown', onKey);
     return () => {
-      document.body.style.overflow = prevOverflow;
-      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
     };
   }, [studentModalGroupKey, closeStudentModal]);
 
-  // Фильтрация групп по поиску
+  // Filter groups by search
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return groups;
-    const query = searchQuery.toLowerCase();
-    return groups.filter(g => String(g?.name || '').toLowerCase().includes(query));
+    const q = searchQuery.toLowerCase();
+    return groups.filter(g => String(g?.name || '').toLowerCase().includes(q));
   }, [groups, searchQuery]);
 
-  // Подсчет выбранных
+  // Counts
   const selectedCount = value.length;
   const studentsCount = value.reduce((acc, v) => {
     if (v.allStudents) {
-      const group = groups.find(g => normalizeId(g.id) === normalizeId(v.groupId));
-      return acc + (group?.students_count || group?.students?.length || 0);
+      const g = groups.find(g2 => normalizeId(g2.id) === normalizeId(v.groupId));
+      return acc + (g?.students_count || g?.students?.length || 0);
     }
     return acc + (v.studentIds?.length || 0);
   }, 0);
 
+  // Modal helpers
   const modalGroup = useMemo(() => {
     if (!studentModalGroupKey) return null;
     return groups.find(g => normalizeId(g.id) === studentModalGroupKey) || null;
@@ -261,15 +284,32 @@ const StudentPicker = ({
     if (!studentModalGroupKey) return [];
     const raw = groupStudents[studentModalGroupKey];
     const all = Array.isArray(raw) ? raw : [];
-    const query = studentModalSearch.trim().toLowerCase();
-    if (!query) return all;
-    return all.filter((s) => {
+    const q = studentModalSearch.trim().toLowerCase();
+    if (!q) return all;
+    return all.filter(s => {
       const name = `${s?.first_name || ''} ${s?.last_name || ''}`.trim().toLowerCase();
       const email = String(s?.email || '').toLowerCase();
-      return name.includes(query) || email.includes(query);
+      return name.includes(q) || email.includes(q);
     });
   }, [studentModalGroupKey, groupStudents, studentModalSearch]);
 
+  const modalAllSelected = useMemo(() => {
+    if (!studentModalGroupKey || !modalSelection) return false;
+    const students = groupStudents[studentModalGroupKey] || [];
+    if (students.length === 0) return false;
+    return students.every(s => modalSelection.studentIds.has(normalizeId(s?.id)));
+  }, [studentModalGroupKey, modalSelection, groupStudents, normalizeId]);
+
+  // Resolve student name by id (for chips display)
+  const getStudentName = useCallback((groupKey, studentId) => {
+    const students = groupStudents[groupKey];
+    if (!Array.isArray(students)) return `#${studentId}`;
+    const s = students.find(st => normalizeId(st?.id) === normalizeId(studentId));
+    if (!s) return `#${studentId}`;
+    return `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email || `#${studentId}`;
+  }, [groupStudents, normalizeId]);
+
+  // Loading state
   if (loadingGroups) {
     return (
       <div className="student-picker loading">
@@ -281,9 +321,10 @@ const StudentPicker = ({
 
   return (
     <div className={`student-picker ${disabled ? 'disabled' : ''}`}>
+      {/* ===== MODAL ===== */}
       {studentModalGroupKey && modalGroup && modalSelection && !modalSelection.allStudents && (
         <div className="sp-modal-backdrop" onClick={closeStudentModal} role="presentation">
-          <div className="sp-modal" role="dialog" aria-modal="true" aria-label="Выбор учеников" onClick={(e) => e.stopPropagation()}>
+          <div className="sp-modal" role="dialog" aria-modal="true" aria-label="Выбор учеников" onClick={e => e.stopPropagation()}>
             <div className="sp-modal-header">
               <div className="sp-modal-title">
                 <div className="sp-modal-group-name">{modalGroup.name}</div>
@@ -292,7 +333,7 @@ const StudentPicker = ({
                 </div>
               </div>
               <button type="button" className="sp-modal-close" onClick={closeStudentModal} aria-label="Закрыть" disabled={disabled}>
-                <IconX size={18} />
+                <IconX size={16} />
               </button>
             </div>
 
@@ -303,16 +344,12 @@ const StudentPicker = ({
                   type="text"
                   placeholder="Поиск ученика..."
                   value={studentModalSearch}
-                  onChange={(e) => setStudentModalSearch(e.target.value)}
+                  onChange={e => setStudentModalSearch(e.target.value)}
                   disabled={disabled}
+                  autoFocus
                 />
                 {studentModalSearch && (
-                  <button 
-                    type="button" 
-                    className="sp-modal-search-clear"
-                    onClick={() => setStudentModalSearch('')}
-                    disabled={disabled}
-                  >
+                  <button type="button" className="sp-modal-search-clear" onClick={() => setStudentModalSearch('')} disabled={disabled}>
                     <IconX size={14} />
                   </button>
                 )}
@@ -322,27 +359,35 @@ const StudentPicker = ({
               </button>
             </div>
 
+            {/* Select all / deselect */}
+            {!loadingStudents[studentModalGroupKey] && modalStudents.length > 0 && (
+              <div className="sp-modal-select-all">
+                <button type="button" className="sp-modal-select-all-btn" onClick={selectAllInModal} disabled={disabled}>
+                  {modalAllSelected ? 'Снять все' : 'Выбрать все'}
+                </button>
+              </div>
+            )}
+
             <div className="sp-modal-list">
               {loadingStudents[studentModalGroupKey] ? (
                 <div className="sp-loading-students">Загрузка...</div>
               ) : modalStudents.length === 0 ? (
                 <div className="sp-no-students">Нет учеников</div>
               ) : (
-                modalStudents.map((student) => {
+                modalStudents.map(student => {
                   const studentKey = normalizeId(student?.id);
-                  const isStudentSelected = modalSelection?.studentIds?.has(studentKey);
+                  const isChecked = modalSelection?.studentIds?.has(studentKey);
                   const fullName = `${student?.first_name || ''} ${student?.last_name || ''}`.trim() || student?.email;
-
                   return (
                     <label key={studentKey} className="sp-student-item sp-student-item-modal">
                       <input
                         type="checkbox"
-                        checked={!!isStudentSelected}
+                        checked={!!isChecked}
                         onChange={() => toggleStudent(modalGroup.id, student?.id)}
                         disabled={disabled}
                       />
                       <span className="sp-checkbox-custom">
-                        {isStudentSelected && <IconCheck size={12} />}
+                        {isChecked && <IconCheck size={12} />}
                       </span>
                       <span className="sp-student-name">{fullName}</span>
                     </label>
@@ -354,29 +399,76 @@ const StudentPicker = ({
         </div>
       )}
 
-      {/* Поиск */}
+      {/* ===== SELECTED CHIPS (top summary) ===== */}
+      {value.length > 0 && (
+        <div className="sp-selected-chips-container">
+          {value.map(item => {
+            const groupKey = normalizeId(item.groupId);
+            const group = groups.find(g => normalizeId(g.id) === groupKey);
+            const groupName = group?.name || `Группа ${item.groupId}`;
+            const sel = selectionIndex[groupKey];
+
+            if (sel?.allStudents) {
+              // "All students" chip
+              const count = group?.students_count || group?.students?.length || 0;
+              return (
+                <div key={groupKey} className="sp-chip sp-chip--all">
+                  <span className="sp-chip-label">{groupName}</span>
+                  {count > 0 && <span className="sp-chip-detail">{count} уч.</span>}
+                  <button
+                    type="button"
+                    className="sp-chip-remove"
+                    onClick={() => toggleGroup(item.groupId)}
+                    aria-label={`Удалить ${groupName}`}
+                    disabled={disabled}
+                  >
+                    <IconX size={12} />
+                  </button>
+                </div>
+              );
+            }
+
+            // Specific students chip
+            const selectedStudentCount = sel?.studentIds?.size || 0;
+            return (
+              <div key={groupKey} className="sp-chip">
+                <span className="sp-chip-label">{groupName}</span>
+                <span className="sp-chip-detail">
+                  {selectedStudentCount > 0 ? `${selectedStudentCount} уч.` : 'нет уч.'}
+                </span>
+                <button
+                  type="button"
+                  className="sp-chip-remove"
+                  onClick={() => toggleGroup(item.groupId)}
+                  aria-label={`Удалить ${groupName}`}
+                  disabled={disabled}
+                >
+                  <IconX size={12} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ===== SEARCH ===== */}
       <div className="student-picker-search">
         <IconSearch size={16} />
         <input
           type="text"
           placeholder="Поиск группы..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={e => setSearchQuery(e.target.value)}
           disabled={disabled}
         />
         {searchQuery && (
-          <button 
-            type="button" 
-            className="student-picker-search-clear"
-            onClick={() => setSearchQuery('')}
-            disabled={disabled}
-          >
+          <button type="button" className="student-picker-search-clear" onClick={() => setSearchQuery('')} disabled={disabled}>
             <IconX size={14} />
           </button>
         )}
       </div>
 
-      {/* Статистика */}
+      {/* ===== STATS ===== */}
       <div className="student-picker-stats">
         <span className="stat-badge">
           <IconUsers size={14} />
@@ -389,7 +481,7 @@ const StudentPicker = ({
         )}
       </div>
 
-      {/* Список групп */}
+      {/* ===== GROUPS LIST ===== */}
       <div className="student-picker-groups">
         {filteredGroups.length === 0 ? (
           <div className="student-picker-empty">
@@ -403,11 +495,10 @@ const StudentPicker = ({
             const selection = selectionIndex[groupKey];
             const studentsRaw = groupStudents[groupKey];
             const students = Array.isArray(studentsRaw) ? studentsRaw : [];
-            const isLoadingStudents = !!loadingStudents[groupKey];
 
             return (
               <div key={group.id} className={`sp-group ${isSelected ? 'selected' : ''}`}>
-                {/* Заголовок группы */}
+                {/* Group header */}
                 <div className="sp-group-header">
                   <label className="sp-group-checkbox">
                     <input
@@ -424,7 +515,7 @@ const StudentPicker = ({
                       {group.students_count || group.students?.length || 0} уч.
                     </span>
                   </label>
-                  
+
                   {isSelected && (
                     <button
                       type="button"
@@ -439,10 +530,10 @@ const StudentPicker = ({
                   )}
                 </div>
 
-                {/* Опции выбора учеников (когда развернуто) */}
+                {/* Expanded student options */}
                 {isSelected && isExpanded && (
                   <div className="sp-group-students">
-                    {/* Переключатель "все / конкретные" */}
+                    {/* Mode toggle: All / Specific */}
                     <div className="sp-mode-toggle">
                       <button
                         type="button"
@@ -472,6 +563,7 @@ const StudentPicker = ({
                       </button>
                     </div>
 
+                    {/* "All" message */}
                     {selection?.allStudents && (
                       <div className="sp-allstudents-card">
                         <div className="sp-allstudents-text">
@@ -491,20 +583,45 @@ const StudentPicker = ({
                       </div>
                     )}
 
+                    {/* Specific students: show chips + open button */}
                     {!selection?.allStudents && (
-                      <div className="sp-custom-summary">
-                        <div className="sp-custom-summary-text">
-                          Выбрано учеников: {selection?.studentIds?.size || 0}
+                      <>
+                        {/* Chips of selected students */}
+                        {selection?.studentIds?.size > 0 && (
+                          <div className="sp-selected-students-chips">
+                            {Array.from(selection.studentIds).map(sid => (
+                              <div key={sid} className="sp-student-chip">
+                                <span className="sp-student-chip-name">
+                                  {getStudentName(groupKey, sid)}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="sp-student-chip-remove"
+                                  onClick={() => removeStudent(group.id, sid)}
+                                  disabled={disabled}
+                                  aria-label="Удалить"
+                                >
+                                  <IconX size={10} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="sp-custom-summary">
+                          <div className="sp-custom-summary-text">
+                            Выбрано учеников: {selection?.studentIds?.size || 0}
+                          </div>
+                          <button
+                            type="button"
+                            className="sp-custom-summary-btn"
+                            onClick={() => openStudentModal(group.id)}
+                            disabled={disabled}
+                          >
+                            Открыть список
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          className="sp-custom-summary-btn"
-                          onClick={() => openStudentModal(group.id)}
-                          disabled={disabled}
-                        >
-                          Открыть список
-                        </button>
-                      </div>
+                      </>
                     )}
                   </div>
                 )}
