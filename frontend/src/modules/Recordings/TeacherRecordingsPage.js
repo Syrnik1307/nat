@@ -326,7 +326,7 @@ function TeacherRecordingsPage() {
         onCancel: () => cancelUpload(toastId)
       });
       
-      await api.post(
+      const response = await api.post(
         endpoint,
         formData,
         {
@@ -343,15 +343,23 @@ function TeacherRecordingsPage() {
         }
       );
       
-      // Успех - заменяем toast
+      // Сервер принял файл и поставил задачу на загрузку в облако
+      // Обновляем toast — файл принят, обработка в фоне
       removeToast(toastId);
       addToast({
         type: 'success',
-        title: 'Видео загружено',
-        message: fileName
+        title: 'Видео принято',
+        message: `${fileName} — загрузка в облако идёт в фоне`
       });
       
+      // Обновляем список — новая запись появится со статусом "processing"
       loadRecordings();
+      
+      // Запускаем поллинг, чтобы обновить статус когда запись будет готова
+      const recordingId = response?.data?.recording?.id;
+      if (recordingId && response?.data?.recording?.status === 'processing') {
+        pollRecordingStatus(recordingId);
+      }
     } catch (err) {
       console.error('Error uploading video:', err);
       
@@ -383,6 +391,60 @@ function TeacherRecordingsPage() {
       });
     }
   };
+
+  // Поллинг статуса записи (ждём пока Celery загрузит на GDrive)
+  const pollRecordingStatus = useCallback((recordingId) => {
+    let attempts = 0;
+    const maxAttempts = 60; // 5 минут макс (60 * 5s)
+    
+    const poll = setInterval(async () => {
+      attempts++;
+      if (attempts > maxAttempts) {
+        clearInterval(poll);
+        return;
+      }
+      
+      try {
+        const response = await api.get('recordings/teacher/', withScheduleApiBase());
+        const rawData = response.data.results || response.data;
+        const allRecordings = Array.isArray(rawData) ? rawData : [];
+        const target = allRecordings.find(r => r.id === recordingId);
+        
+        if (target && target.status !== 'processing') {
+          clearInterval(poll);
+          setRecordings(allRecordings);
+          
+          // Обновляем статистику
+          setStats({
+            total: allRecordings.length,
+            ready: allRecordings.filter(r => r.status === 'ready').length,
+            processing: allRecordings.filter(r => r.status === 'processing').length,
+            failed: allRecordings.filter(r => r.status === 'failed').length
+          });
+          
+          if (target.status === 'ready') {
+            addToast({
+              type: 'success',
+              title: 'Видео готово',
+              message: target.title || 'Запись доступна для просмотра'
+            });
+          } else if (target.status === 'failed') {
+            addToast({
+              type: 'error',
+              title: 'Ошибка обработки',
+              message: `Не удалось обработать: ${target.title || 'запись'}`,
+              duration: 10000
+            });
+          }
+        }
+      } catch (err) {
+        // Ошибка поллинга — не критично
+        console.debug('Polling error:', err);
+      }
+    }, 5000); // Каждые 5 секунд
+    
+    return () => clearInterval(poll);
+  }, [addToast]);
 
   const handleDrag = (e) => {
     e.preventDefault();

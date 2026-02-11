@@ -732,7 +732,12 @@ class LessonViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     
     @action(detail=False, methods=['post'], url_path='upload_standalone_recording')
     def upload_standalone_recording(self, request):
-        """Загрузить самостоятельное видео без привязки к уроку — напрямую в Google Drive"""
+        """Загрузить самостоятельное видео без привязки к уроку.
+        
+        Файл сохраняется на диск, запись создаётся со status='processing',
+        а загрузка на Google Drive происходит АСИНХРОННО через Celery.
+        Это позволяет вернуть ответ за секунды, а не ждать upload на GDrive.
+        """
         # Требуем активную подписку
         try:
             require_active_subscription(request.user)
@@ -815,82 +820,31 @@ class LessonViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         date_prefix = datetime.now().strftime('%Y%m%d_%H%M%S')
         safe_filename = f'{date_prefix}_{slugify(title)}_{uuid.uuid4().hex[:6]}_{safe_original}'
         
-        # Загрузка в Google Drive
-        gdrive_file_id = None
-        play_url = None
-        download_url = None
-        storage_provider = 'local'
-        tmp_video_path = None
+        # Сохраняем файл на диск (persistent path, не temp)
+        upload_dir = os.path.join(getattr(settings, 'MEDIA_ROOT', '/tmp'), 'pending_uploads')
+        os.makedirs(upload_dir, exist_ok=True)
+        local_path = os.path.join(upload_dir, safe_filename)
         
-        if settings.USE_GDRIVE_STORAGE:
-            try:
-                from .gdrive_utils import get_gdrive_manager
-                gdrive = get_gdrive_manager()
-                
-                # Получаем папку Recordings учителя
-                teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
-                recordings_folder_id = teacher_folders.get('recordings', teacher_folders.get('root'))
-                
-                # CRITICAL: Сохраняем видео во временный файл чтобы:
-                # 1. Не держать всё видео в RAM (OOM для больших файлов)
-                # 2. Передать путь в GDrive upload (resumable upload по чанкам)
-                import tempfile
-                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(safe_filename)[1]) as tmp:
-                    tmp_video_path = tmp.name
-                    for chunk in video_file.chunks(chunk_size=1024*1024*2):  # 2MB chunks
-                        tmp.write(chunk)
-                
-                # Загружаем файл в Google Drive из временного файла (не из памяти)
-                result = gdrive.upload_file(
-                    file_path_or_object=tmp_video_path,
-                    file_name=safe_filename,
-                    folder_id=recordings_folder_id,
-                    mime_type=video_file.content_type,
-                    teacher=request.user
-                )
-                
-                gdrive_file_id = result['file_id']
-                play_url = gdrive.get_embed_link(gdrive_file_id)
-                download_url = gdrive.get_direct_download_link(gdrive_file_id)
-                storage_provider = 'gdrive'
-                
-                logger.info(f"Uploaded standalone video to GDrive: {safe_filename} -> {gdrive_file_id}")
-                
-            except Exception as e:
-                logger.exception(f"Failed to upload to GDrive, falling back to local: {e}")
-                # Fallback на локальное хранение при ошибке GDrive
-                storage_provider = 'local'
-        
-        # Fallback: локальное хранение если GDrive выключен или ошибка
-        if storage_provider == 'local':
-            from django.core.files.storage import default_storage
-            
-            upload_dir = 'lesson_recordings'
-            media_root = getattr(settings, 'MEDIA_ROOT', '/tmp')
-            if not os.path.exists(os.path.join(media_root, upload_dir)):
-                os.makedirs(os.path.join(media_root, upload_dir))
-            
-            file_path = os.path.join(upload_dir, safe_filename)
-            saved_path = default_storage.save(file_path, video_file)
-            play_url = f'/media/{saved_path}'
-            download_url = f'/media/{saved_path}'
+        with open(local_path, 'wb') as f:
+            for chunk in video_file.chunks(chunk_size=1024 * 1024 * 2):  # 2MB chunks
+                f.write(chunk)
         
         # Извлекаем длительность видео
-        video_file.seek(0)  # Сбрасываем позицию после загрузки в GDrive
+        video_file.seek(0)
         video_duration = _get_video_duration(video_file)
         
-        # Создаём запись БЕЗ урока (standalone recording)
+        # Создаём запись со status='processing' — GDrive upload будет в Celery
         recording = LessonRecording.objects.create(
             lesson=None,
-            teacher=request.user,  # Владелец standalone записи
+            teacher=request.user,
             title=title,
-            play_url=play_url or '',
-            download_url=download_url or '',
-            gdrive_file_id=gdrive_file_id or '',
-            status='ready',
+            play_url='',
+            download_url='',
+            gdrive_file_id='',
+            status='processing',
             file_size=video_file.size,
-            duration=video_duration,  # Реальная длительность видео
-            storage_provider=storage_provider
+            duration=video_duration,
+            storage_provider='gdrive' if settings.USE_GDRIVE_STORAGE else 'local'
         )
         
         recording.apply_privacy(
@@ -899,24 +853,36 @@ class LessonViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             student_ids=allowed_students,
             teacher=request.user
         )
-
-        logger.info(f"Standalone video uploaded by {request.user.email}: {safe_filename}, storage: {storage_provider}, privacy: {privacy_type}")
         
-        # Удаляем временный файл
-        if tmp_video_path:
-            try:
-                os.remove(tmp_video_path)
-            except OSError:
-                pass
+        # Ставим Celery-таск на загрузку в GDrive (асинхронно!)
+        if settings.USE_GDRIVE_STORAGE:
+            from .tasks import upload_standalone_to_gdrive
+            upload_standalone_to_gdrive.delay(
+                recording_id=recording.id,
+                file_path=local_path,
+                file_name=safe_filename,
+                mime_type=video_file.content_type,
+            )
+            logger.info(
+                f"Standalone video queued for GDrive upload by {request.user.email}: "
+                f"{safe_filename} ({video_file.size} bytes), recording_id={recording.id}"
+            )
+        else:
+            # Локальное хранение — готово сразу
+            recording.play_url = f'/media/pending_uploads/{safe_filename}'
+            recording.download_url = f'/media/pending_uploads/{safe_filename}'
+            recording.status = 'ready'
+            recording.save(update_fields=['play_url', 'download_url', 'status', 'updated_at'])
+            logger.info(f"Standalone video saved locally: {safe_filename}")
         
         return Response({
             'status': 'success',
             'recording': {
                 'id': recording.id,
                 'title': recording.title,
-                'play_url': recording.play_url,
+                'status': recording.status,
                 'file_size': recording.file_size,
-                'storage_provider': storage_provider,
+                'storage_provider': recording.storage_provider,
                 'created_at': recording.created_at
             }
         }, status=status.HTTP_201_CREATED)

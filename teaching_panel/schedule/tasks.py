@@ -536,6 +536,120 @@ def archive_zoom_recordings():
 
 
 # ============================================================================
+# ASYNC STANDALONE VIDEO UPLOAD TO GOOGLE DRIVE
+# ============================================================================
+
+@shared_task(
+    name='schedule.tasks.upload_standalone_to_gdrive',
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=30,
+    retry_backoff_max=600,
+    retry_jitter=True,
+    max_retries=5,
+    acks_late=True,
+)
+def upload_standalone_to_gdrive(self, recording_id, file_path, file_name, mime_type='video/mp4'):
+    """
+    Асинхронная загрузка standalone-видео на Google Drive.
+    
+    Вызывается из upload_standalone_recording view после сохранения файла на диск.
+    Это позволяет view вернуть ответ мгновенно, а загрузка идёт в фоне.
+    """
+    from .models import LessonRecording
+    from .gdrive_utils import get_gdrive_manager
+    import os
+
+    logger.info(
+        f"[STANDALONE_UPLOAD] Starting upload for recording {recording_id}, "
+        f"file={file_name}, attempt {self.request.retries + 1}/{self.max_retries + 1}"
+    )
+
+    try:
+        recording = LessonRecording.all_objects.get(id=recording_id)
+
+        # Уже загружено или удалено
+        if recording.gdrive_file_id and recording.status == 'ready':
+            logger.info(f"[STANDALONE_UPLOAD] Recording {recording_id} already uploaded, skipping")
+            _cleanup_temp_file(file_path)
+            return {'status': 'skipped', 'reason': 'already_uploaded'}
+
+        if recording.is_deleted:
+            logger.info(f"[STANDALONE_UPLOAD] Recording {recording_id} deleted, skipping")
+            _cleanup_temp_file(file_path)
+            return {'status': 'skipped', 'reason': 'deleted'}
+
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        file_size = os.path.getsize(file_path)
+        teacher = recording.teacher
+
+        gdrive = get_gdrive_manager()
+        teacher_folders = gdrive.get_or_create_teacher_folder(teacher)
+        folder_id = teacher_folders.get('recordings', teacher_folders.get('root'))
+
+        # Загрузка через основной метод (resumable по 5MB чанкам)
+        result = gdrive.upload_file(
+            file_path_or_object=file_path,
+            file_name=file_name,
+            folder_id=folder_id,
+            mime_type=mime_type,
+            teacher=teacher,
+        )
+
+        gdrive_file_id = result['file_id']
+
+        # Обновляем запись
+        recording.gdrive_file_id = gdrive_file_id
+        recording.gdrive_folder_id = folder_id
+        recording.play_url = gdrive.get_embed_link(gdrive_file_id)
+        recording.download_url = gdrive.get_direct_download_link(gdrive_file_id)
+        recording.status = 'ready'
+        recording.file_size = file_size
+        recording.save(update_fields=[
+            'gdrive_file_id', 'gdrive_folder_id', 'play_url',
+            'download_url', 'status', 'file_size', 'updated_at',
+        ])
+
+        # Удаляем локальный файл
+        _cleanup_temp_file(file_path)
+
+        logger.info(
+            f"[STANDALONE_UPLOAD] Successfully uploaded recording {recording_id} "
+            f"({file_size} bytes) as {gdrive_file_id}"
+        )
+        return {'status': 'success', 'recording_id': recording_id, 'gdrive_file_id': gdrive_file_id}
+
+    except Exception as e:
+        logger.error(f"[STANDALONE_UPLOAD] Error for recording {recording_id}: {e}")
+
+        if self.request.retries >= self.max_retries:
+            try:
+                recording = LessonRecording.all_objects.get(id=recording_id)
+                recording.status = 'failed'
+                recording.save(update_fields=['status', 'updated_at'])
+                logger.error(f"[STANDALONE_UPLOAD] Recording {recording_id} failed permanently after {self.max_retries + 1} attempts")
+            except Exception:
+                pass
+            _cleanup_temp_file(file_path)
+
+        raise
+
+
+def _cleanup_temp_file(path):
+    """Безопасное удаление временного файла."""
+    if path:
+        try:
+            import os
+            if os.path.exists(path):
+                os.remove(path)
+                logger.debug(f"Cleaned up temp file: {path}")
+        except OSError as e:
+            logger.warning(f"Failed to cleanup temp file {path}: {e}")
+
+
+# ============================================================================
 # PRODUCTION-GRADE: Robust GDrive Upload with Retry
 # ============================================================================
 
@@ -683,7 +797,7 @@ def upload_recording_to_gdrive_robust(self, recording_id, file_path=None, downlo
             upload_path,
             mimetype='video/mp4',
             resumable=True,
-            chunksize=256 * 1024  # 256 KB chunks for reliability
+            chunksize=5 * 1024 * 1024  # 5 MB chunks (was 256KB — too slow for large videos)
         )
         
         uploaded_file = gdrive.service.files().create(
