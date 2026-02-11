@@ -820,6 +820,7 @@ class LessonViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         play_url = None
         download_url = None
         storage_provider = 'local'
+        tmp_video_path = None
         
         if settings.USE_GDRIVE_STORAGE:
             try:
@@ -830,9 +831,18 @@ class LessonViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                 teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
                 recordings_folder_id = teacher_folders.get('recordings', teacher_folders.get('root'))
                 
-                # Загружаем файл в Google Drive
+                # CRITICAL: Сохраняем видео во временный файл чтобы:
+                # 1. Не держать всё видео в RAM (OOM для больших файлов)
+                # 2. Передать путь в GDrive upload (resumable upload по чанкам)
+                import tempfile
+                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(safe_filename)[1]) as tmp:
+                    tmp_video_path = tmp.name
+                    for chunk in video_file.chunks(chunk_size=1024*1024*2):  # 2MB chunks
+                        tmp.write(chunk)
+                
+                # Загружаем файл в Google Drive из временного файла (не из памяти)
                 result = gdrive.upload_file(
-                    file_path_or_object=video_file,
+                    file_path_or_object=tmp_video_path,
                     file_name=safe_filename,
                     folder_id=recordings_folder_id,
                     mime_type=video_file.content_type,
@@ -891,6 +901,13 @@ class LessonViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         )
 
         logger.info(f"Standalone video uploaded by {request.user.email}: {safe_filename}, storage: {storage_provider}, privacy: {privacy_type}")
+        
+        # Удаляем временный файл
+        if tmp_video_path:
+            try:
+                os.remove(tmp_video_path)
+            except OSError:
+                pass
         
         return Response({
             'status': 'success',

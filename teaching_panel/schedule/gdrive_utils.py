@@ -603,35 +603,64 @@ class GoogleDriveManager:
                     file = self._execute_resumable_upload(file_metadata, media, file_name)
                 except (RedirectMissingLocation, Exception) as e:
                     # Fallback: если resumable upload падает с redirect ошибкой
-                    # пробуем simple upload (пересоздав HTTP-соединение)
                     error_str = str(e).lower()
                     is_redirect_error = 'redirect' in error_str or isinstance(e, RedirectMissingLocation)
                     if is_redirect_error:
-                        logger.warning(
-                            f"Resumable upload failed with redirect error for {file_name}. "
-                            f"File is {file_size/1024/1024:.2f}MB, "
-                            f"rebuilding service connection and trying simple upload fallback..."
-                        )
                         # Пересоздаём HTTP-клиент т.к. соединение corrupted
                         self._rebuild_service()
-                        # Пересоздаём media stream для simple upload (не resumable)
-                        if file_content is not None:
-                            media = MediaIoBaseUpload(
-                                io.BytesIO(file_content),
-                                mimetype=mime_type,
-                                resumable=False
+                        
+                        # CRITICAL: НЕ пытаемся simple upload для больших файлов!
+                        # Simple upload загружает весь файл в одном HTTP запросе,
+                        # что вызывает OOM и SIGKILL воркера для файлов > 5MB
+                        if file_size > SIMPLE_UPLOAD_THRESHOLD:
+                            logger.warning(
+                                f"Resumable upload failed with redirect error for {file_name}. "
+                                f"File is {file_size/1024/1024:.2f}MB (> {SIMPLE_UPLOAD_THRESHOLD/1024/1024:.0f}MB threshold), "
+                                f"retrying resumable upload with rebuilt service connection..."
                             )
-                        elif isinstance(file_path_or_object, str):
-                            with open(file_path_or_object, 'rb') as f:
-                                file_content = f.read()
-                            media = MediaIoBaseUpload(
-                                io.BytesIO(file_content),
-                                mimetype=mime_type,
-                                resumable=False
-                            )
+                            # Пересоздаём media stream для повторного resumable upload
+                            if file_content is not None:
+                                media = MediaIoBaseUpload(
+                                    io.BytesIO(file_content),
+                                    mimetype=mime_type,
+                                    resumable=True,
+                                    chunksize=1024*1024*5  # 5 MB chunks
+                                )
+                            elif isinstance(file_path_or_object, str):
+                                media = MediaFileUpload(
+                                    file_path_or_object,
+                                    mimetype=mime_type,
+                                    resumable=True,
+                                    chunksize=1024*1024*5
+                                )
+                            else:
+                                self._reset_media_stream(media)
+                            # Повторяем resumable upload с пересозданным сервисом
+                            file = self._execute_resumable_upload(file_metadata, media, file_name)
                         else:
-                            self._reset_media_stream(media)
-                        file = self._execute_simple_upload(file_metadata, media, file_name)
+                            logger.warning(
+                                f"Resumable upload failed with redirect error for {file_name}. "
+                                f"File is {file_size/1024/1024:.2f}MB, "
+                                f"trying simple upload fallback..."
+                            )
+                            # Simple upload допустим только для маленьких файлов (< 5MB)
+                            if file_content is not None:
+                                media = MediaIoBaseUpload(
+                                    io.BytesIO(file_content),
+                                    mimetype=mime_type,
+                                    resumable=False
+                                )
+                            elif isinstance(file_path_or_object, str):
+                                with open(file_path_or_object, 'rb') as f:
+                                    file_content = f.read()
+                                media = MediaIoBaseUpload(
+                                    io.BytesIO(file_content),
+                                    mimetype=mime_type,
+                                    resumable=False
+                                )
+                            else:
+                                self._reset_media_stream(media)
+                            file = self._execute_simple_upload(file_metadata, media, file_name)
                     else:
                         raise
             

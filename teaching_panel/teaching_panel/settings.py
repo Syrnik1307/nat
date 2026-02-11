@@ -258,9 +258,12 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# File upload settings for large video files (up to 10GB)
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024 * 1024  # 10GB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024 * 1024  # 10GB
+# File upload settings for large video files
+# DATA_UPLOAD_MAX_MEMORY_SIZE: max size of request body Django will read into memory
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 1024  # 1GB (for multipart with large video)
+# FILE_UPLOAD_MAX_MEMORY_SIZE: files larger than this go to TemporaryUploadedFile (disk)
+# instead of InMemoryUploadedFile (RAM). 10MB threshold prevents OOM on large videos.
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB - larger files go to disk temp file
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
