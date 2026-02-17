@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { getGroupStudents, getGroups } from '../../../../apiService';
+import React, { useState, useEffect, useMemo } from 'react';
+import { getGroups } from '../../../../apiService';
 import './StudentPicker.css';
 
 /**
  * StudentPicker — clean checkbox list for selecting groups & students.
+ *
+ * Groups API already returns `students` array inside each group object,
+ * so no separate student-loading call is needed.
  *
  * Props:
  * @param {Array}    value    - [{groupId, studentIds: [], allStudents: bool}]
@@ -21,10 +24,8 @@ const StudentPicker = ({
   const [loadingGroups, setLoadingGroups] = useState(!propGroups);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedGroupId, setExpandedGroupId] = useState(null);
-  const [groupStudents, setGroupStudents] = useState({});
-  const [loadingStudents, setLoadingStudents] = useState({});
 
-  // --- Load groups ---
+  // --- Load groups (students come embedded in each group) ---
   useEffect(() => {
     if (propGroups) { setGroups(propGroups); return; }
     let cancelled = false;
@@ -43,21 +44,11 @@ const StudentPicker = ({
     return () => { cancelled = true; };
   }, [propGroups]);
 
-  // --- Load students for expanded group ---
-  const loadStudents = useCallback(async (groupId) => {
-    const key = String(groupId);
-    if (groupStudents[key] || loadingStudents[key]) return;
-    setLoadingStudents(prev => ({ ...prev, [key]: true }));
-    try {
-      const res = await getGroupStudents(Number(groupId));
-      const raw = res.data?.results || res.data?.students || res.data || [];
-      setGroupStudents(prev => ({ ...prev, [key]: Array.isArray(raw) ? raw : [] }));
-    } catch (err) {
-      console.error('StudentPicker: failed to load students', groupId, err);
-    } finally {
-      setLoadingStudents(prev => ({ ...prev, [key]: false }));
-    }
-  }, [groupStudents, loadingStudents]);
+  // --- Helper: get students array from group object ---
+  const getStudentsForGroup = (groupId) => {
+    const group = groups.find(g => String(g.id) === String(groupId));
+    return Array.isArray(group?.students) ? group.students : [];
+  };
 
   // --- Selection helpers ---
   const selectionMap = useMemo(() => {
@@ -86,12 +77,7 @@ const StudentPicker = ({
 
   const expandGroup = (groupId) => {
     const key = String(groupId);
-    if (expandedGroupId === key) {
-      setExpandedGroupId(null);
-    } else {
-      setExpandedGroupId(key);
-      loadStudents(groupId);
-    }
+    setExpandedGroupId(expandedGroupId === key ? null : key);
   };
 
   // Toggle individual student
@@ -102,7 +88,7 @@ const StudentPicker = ({
     const current = selectionMap[groupKey];
     if (!current) return;
 
-    const students = groupStudents[groupKey] || [];
+    const students = getStudentsForGroup(groupId);
     let newIds;
 
     if (current.allStudents) {
@@ -141,7 +127,7 @@ const StudentPicker = ({
     const current = selectionMap[groupKey];
     if (!current) return;
 
-    const students = groupStudents[groupKey] || [];
+    const students = getStudentsForGroup(groupId);
     if (students.length === 0) return;
 
     const allSelected = current.allStudents ||
@@ -208,9 +194,8 @@ const StudentPicker = ({
           const gKey = String(group.id);
           const selected = isGroupSelected(group.id);
           const expanded = expandedGroupId === gKey && selected;
-          const students = groupStudents[gKey] || [];
-          const loading = loadingStudents[gKey];
-          const studentCount = group.students_count || group.students?.length || 0;
+          const students = getStudentsForGroup(group.id);
+          const studentCount = group.students_count || students.length || 0;
 
           return (
             <div key={group.id} className={`sp-group ${selected ? 'sp-group--selected' : ''}`}>
@@ -243,12 +228,7 @@ const StudentPicker = ({
               {/* Expanded student list */}
               {expanded && (
                 <div className="sp-students">
-                  {loading ? (
-                    <div className="sp-students-loading">
-                      <div className="sp-spinner sp-spinner--small" />
-                      <span>Загрузка учеников...</span>
-                    </div>
-                  ) : students.length === 0 ? (
+                  {students.length === 0 ? (
                     <div className="sp-students-empty">Нет учеников в группе</div>
                   ) : (
                     <>
