@@ -422,15 +422,6 @@ const NavBar = () => {
             <span className="nav-icon"></span>
             <span>Аналитика</span>
           </Link>
-
-          <Link 
-            to="/knowledge-map" 
-            className="nav-link"
-            onClick={() => setShowMobileMenu(false)}
-          >
-            <span className="nav-icon"></span>
-            <span>Карта знаний</span>
-          </Link>
         </>
       )}
 
