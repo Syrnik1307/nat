@@ -1,10 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { apiClient, uploadHomeworkFile, saveAsTemplate } from '../../../../apiService';
+import { Modal, Button } from '../../../../shared/components';
 import useHomeworkConstructor from '../../hooks/useHomeworkConstructor';
 import {
   QUESTION_TYPES,
   createQuestionTemplate,
   getQuestionLabel,
+  getQuestionIcon,
 } from '../../utils/questionTemplates';
 import TextQuestion from '../questions/TextQuestion';
 import SingleChoiceQuestion from '../questions/SingleChoiceQuestion';
@@ -14,7 +18,11 @@ import MatchingQuestion from '../questions/MatchingQuestion';
 import DragDropQuestion from '../questions/DragDropQuestion';
 import FillBlanksQuestion from '../questions/FillBlanksQuestion';
 import HotspotQuestion from '../questions/HotspotQuestion';
+import CodeQuestion from '../questions/CodeQuestion';
+import '../questions/CodeQuestion.css';
 import './HomeworkConstructor.css';
+import DateTimePicker from './DateTimePicker';
+import GroupSelect from './GroupSelect';
 
 const initialMeta = {
   title: '',
@@ -34,9 +42,153 @@ const QUESTION_COMPONENTS = {
   DRAG_DROP: DragDropQuestion,
   FILL_BLANKS: FillBlanksQuestion,
   HOTSPOT: HotspotQuestion,
+  CODE: CodeQuestion,
 };
 
-const HomeworkConstructor = () => {
+// Нормализация URL для картинок (включая Google Drive)
+const normalizeUrl = (url) => {
+  if (!url) return '';
+  
+  // Конвертация Google Drive ссылок для inline отображения
+  if (url.includes('drive.google.com')) {
+    let fileId = null;
+    
+    // Формат: /uc?export=download&id=FILE_ID или /uc?id=FILE_ID
+    const ucMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (ucMatch) {
+      fileId = ucMatch[1];
+    }
+    
+    // Формат: /file/d/FILE_ID/view
+    const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileMatch) {
+      fileId = fileMatch[1];
+    }
+    
+    if (fileId) {
+      return `https://lh3.googleusercontent.com/d/${fileId}`;
+    }
+  }
+  
+  // Blob URL или полный URL
+  if (url.startsWith('blob:') || url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  
+  if (url.startsWith('/media')) {
+    return url;
+  }
+  
+  return `/media/${url}`;
+};
+
+const HomeworkPreviewSection = ({ questions, previewQuestion, onChangePreviewQuestion }) => {
+  if (!questions || questions.length === 0) {
+    return <div className="hc-preview-placeholder">Добавьте вопросы для превью</div>;
+  }
+
+  const currentQuestion = questions[previewQuestion];
+  if (!currentQuestion) {
+    return <div className="hc-preview-placeholder">Выберите вопрос для превью</div>;
+  }
+
+  const renderPreviewContent = () => {
+    switch (currentQuestion.question_type) {
+      case 'TEXT':
+        return (
+          <div className="preview-question">
+            <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
+            <textarea className="form-textarea" placeholder="Ответ студента..." disabled rows={4} />
+          </div>
+        );
+
+      case 'SINGLE_CHOICE':
+        return (
+          <div className="preview-question">
+            <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
+            {(currentQuestion.config?.options || []).map((option, idx) => (
+              <div key={idx} className="preview-option">
+                <input type="radio" name="preview-radio" disabled />
+                <label>{option.text || `Вариант ${idx + 1}`}</label>
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'MULTIPLE_CHOICE':
+        return (
+          <div className="preview-question">
+            <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
+            {(currentQuestion.config?.options || []).map((option, idx) => (
+              <div key={idx} className="preview-option">
+                <input type="checkbox" disabled />
+                <label>{option.text || `Вариант ${idx + 1}`}</label>
+              </div>
+            ))}
+          </div>
+        );
+
+      default:
+        return (
+          <div className="preview-question">
+            <p>{currentQuestion.question_text || 'Текст вопроса не заполнен'}</p>
+            <p className="preview-note">Тип: {getQuestionLabel(currentQuestion.question_type)}</p>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="hc-preview-live">
+      <div className="hc-preview-nav">
+        <span>
+          Вопрос {previewQuestion + 1} из {questions.length}
+        </span>
+        <div>
+          <button
+            type="button"
+            className="gm-btn-surface"
+            onClick={() => onChangePreviewQuestion(Math.max(0, previewQuestion - 1))}
+            disabled={previewQuestion === 0}
+          >
+            ← Пред.
+          </button>
+          <button
+            type="button"
+            className="gm-btn-surface"
+            onClick={() => onChangePreviewQuestion(Math.min(questions.length - 1, previewQuestion + 1))}
+            disabled={previewQuestion === questions.length - 1}
+          >
+            След. →
+          </button>
+        </div>
+      </div>
+      {renderPreviewContent()}
+    </div>
+  );
+};
+
+const HomeworkQuestionEditor = ({ question, index, onUpdateQuestion }) => {
+  const TypeComponent = QUESTION_COMPONENTS[question.question_type];
+
+  if (!TypeComponent) {
+    return (
+      <div className="hc-preview-placeholder">
+        Тип вопроса в разработке. Он появится в следующей итерации.
+      </div>
+    );
+  }
+
+  return (
+    <TypeComponent
+      question={question}
+      onChange={(next) => onUpdateQuestion(index, next)}
+    />
+  );
+};
+
+const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, onClearEditing = null }) => {
+  const navigate = useNavigate();
   const {
     groupOptions,
     loadingGroups,
@@ -52,6 +204,196 @@ const HomeworkConstructor = () => {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [validationIssues, setValidationIssues] = useState(null);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [homeworkId, setHomeworkId] = useState(null);
+  const [previewQuestion, setPreviewQuestion] = useState(0);
+  const [confirmDialog, setConfirmDialog] = useState({ open: false });
+  const [uploadingImageFor, setUploadingImageFor] = useState(null); // index вопроса
+  const [uploadProgress, setUploadProgress] = useState(0); // прогресс загрузки 0-100
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isPublished, setIsPublished] = useState(false);
+  const blobUrlsRef = useRef(new Set());
+
+  // Загрузка данных из editingHomework (редактирование или дублирование)
+  useEffect(() => {
+    if (editingHomework) {
+      // Если дублирование - создаём копию без ID
+      // Если редактирование - загружаем с ID
+      
+      const meta = {
+        title: isDuplicating ? `${editingHomework.title} (копия)` : editingHomework.title || '',
+        description: editingHomework.description || '',
+        groupId: editingHomework.assigned_groups?.[0]?.id || editingHomework.assigned_groups?.[0] || '',
+        deadline: editingHomework.deadline ? editingHomework.deadline.slice(0, 16) : '',
+        maxScore: editingHomework.max_score || 100,
+        gamificationEnabled: editingHomework.gamification_enabled !== false,
+      };
+      
+      setAssignmentMeta(meta);
+      
+      // Загружаем вопросы с их конфигурацией
+      if (editingHomework.questions && editingHomework.questions.length > 0) {
+        const loadedQuestions = editingHomework.questions.map((q, idx) => ({
+          id: isDuplicating ? `q-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : (q.id || `q-${idx}`),
+          question_type: q.question_type || 'TEXT',
+          question_text: q.question_text || '',
+          points: q.points || 1,
+          order: q.order || idx,
+          config: q.config || {},
+          correct_answer: q.correct_answer,
+        }));
+        setQuestions(loadedQuestions);
+      }
+      
+      // Устанавливаем ID для редактирования (не для дублирования)
+      if (!isDuplicating && editingHomework.id) {
+        setHomeworkId(editingHomework.id);
+        setIsEditMode(true);
+        // Проверяем статус - если опубликовано, показываем кнопку "Сохранить"
+        setIsPublished(editingHomework.status === 'published');
+      } else {
+        setHomeworkId(null);
+        setIsEditMode(false);
+        setIsPublished(false);
+      }
+      
+      // Показываем уведомление
+      setFeedback({
+        status: 'info',
+        message: isDuplicating 
+          ? 'Создание копии ДЗ. Измените название и сохраните.'
+          : editingHomework.status === 'published'
+            ? 'Редактирование опубликованного ДЗ. Нажмите "Сохранить" для применения изменений.'
+            : 'Режим редактирования ДЗ. После изменений нажмите "Сохранить".',
+      });
+    }
+  }, [editingHomework, isDuplicating]);
+
+  // Сброс при размонтировании или очистке
+  const handleClearEditing = useCallback(() => {
+    if (onClearEditing) {
+      onClearEditing();
+    }
+    setAssignmentMeta(initialMeta);
+    setQuestions([]);
+    setHomeworkId(null);
+    setIsEditMode(false);
+    setIsPublished(false);
+    setFeedback(null);
+  }, [onClearEditing]);
+
+  useEffect(() => {
+    return () => {
+      blobUrlsRef.current.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (_) {
+          // ignore
+        }
+      });
+      blobUrlsRef.current.clear();
+    };
+  }, []);
+
+  // Обработка вставки изображения прямо в карточку вопроса
+  const handleCardPaste = useCallback(async (event, questionIndex) => {
+    const clipboardData = event.clipboardData || window.clipboardData;
+    if (!clipboardData) return;
+
+    const items = clipboardData.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        event.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const localUrl = URL.createObjectURL(file);
+          blobUrlsRef.current.add(localUrl);
+
+          // Мгновенный preview до завершения загрузки
+          setQuestions((prev) => {
+            const updated = [...prev];
+            const q = updated[questionIndex];
+            const previousUrl = q?.config?.imageUrl;
+            if (previousUrl && previousUrl.startsWith('blob:') && previousUrl !== localUrl) {
+              try {
+                URL.revokeObjectURL(previousUrl);
+              } catch (_) {
+                // ignore
+              }
+              blobUrlsRef.current.delete(previousUrl);
+            }
+            updated[questionIndex] = {
+              ...q,
+              config: { ...q.config, imageUrl: localUrl, imageFileId: null }
+            };
+            return updated;
+          });
+
+          setUploadingImageFor(questionIndex);
+          setUploadProgress(0);
+          try {
+            const response = await uploadHomeworkFile(file, 'image', (percent) => {
+              setUploadProgress(percent);
+            });
+            if (response.data?.url) {
+              setQuestions((prev) => {
+                const updated = [...prev];
+                const q = updated[questionIndex];
+                const previousUrl = q?.config?.imageUrl;
+                if (previousUrl && previousUrl.startsWith('blob:')) {
+                  try {
+                    URL.revokeObjectURL(previousUrl);
+                  } catch (_) {
+                    // ignore
+                  }
+                  blobUrlsRef.current.delete(previousUrl);
+                }
+                updated[questionIndex] = {
+                  ...q,
+                  config: { ...q.config, imageUrl: response.data.url, imageFileId: response.data.file_id || null }
+                };
+                return updated;
+              });
+            }
+          } catch (err) {
+            setFeedback({ type: 'error', message: 'Ошибка загрузки: ' + (err.message || 'Попробуйте ещё раз') });
+          } finally {
+            setUploadingImageFor(null);
+            setUploadProgress(0);
+          }
+        }
+        break;
+      }
+    }
+  }, []);
+
+  const openConfirmDialog = (config) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Подтверждение',
+      message: '',
+      confirmLabel: 'Подтвердить',
+      cancelLabel: 'Отмена',
+      onConfirm: null,
+      ...config,
+    });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog((previous) => ({ ...previous, open: false }));
+  };
+
+  const handleConfirmDialog = () => {
+    const action = confirmDialog.onConfirm;
+    closeConfirmDialog();
+    if (typeof action === 'function') {
+      action();
+    }
+  };
 
   const handleMetaChange = (field, value) => {
     setAssignmentMeta((previous) => ({
@@ -73,19 +415,21 @@ const HomeworkConstructor = () => {
 
   const handleAddQuestion = (type) => {
     const template = createQuestionTemplate(type);
-    template.order = questions.length;
-    setQuestions((previous) => [...previous, template]);
+    // Генерируем СТАБИЛЬНЫЙ уникальный ID один раз при создании
+    template.id = `q-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    template.order = 0; // Новый вопрос добавляется в начало UI
+    // Добавляем в начало массива для удобства редактирования (не нужно скроллить вверх)
+    setQuestions((previous) => [template, ...previous]);
     setShowTypeMenu(false);
   };
 
   const handleUpdateQuestion = (index, nextQuestion) => {
-    setQuestions((previous) =>
-      previous.map((question, questionIndex) =>
-        questionIndex === index
-          ? { ...nextQuestion, order: questionIndex }
-          : { ...question, order: questionIndex }
-      )
-    );
+    setQuestions((previous) => {
+      const updated = [...previous];
+      // Обновляем ТОЛЬКО нужный вопрос, остальные остаются теми же объектами
+      updated[index] = { ...nextQuestion, order: index };
+      return updated;
+    });
   };
 
   const handleQuestionTextChange = (index, text) => {
@@ -113,12 +457,18 @@ const HomeworkConstructor = () => {
   };
 
   const handleRemoveQuestion = (index) => {
-    if (!window.confirm('Удалить вопрос из задания?')) return;
-    setQuestions((previous) =>
-      previous
-        .filter((_, questionIndex) => questionIndex !== index)
-        .map((question, order) => ({ ...question, order }))
-    );
+    openConfirmDialog({
+      title: 'Удалить вопрос?',
+      message: 'После удаления восстановить вопрос будет нельзя.',
+      confirmLabel: 'Удалить',
+      onConfirm: () => {
+        setQuestions((previous) =>
+          previous
+            .filter((_, questionIndex) => questionIndex !== index)
+            .map((question, order) => ({ ...question, order }))
+        );
+      },
+    });
   };
 
   const handleDuplicateQuestion = (index) => {
@@ -150,45 +500,101 @@ const HomeworkConstructor = () => {
 
   const questionCount = questions.length;
 
-  const previewTitle = useMemo(() => assignmentMeta.title || 'Новое домашнее задание', [assignmentMeta.title]);
-
-  const QuestionEditor = ({ question, index }) => {
-    const TypeComponent = QUESTION_COMPONENTS[question.question_type];
-
-    if (!TypeComponent) {
-      return (
-        <div className="hc-preview-placeholder">
-          Тип вопроса в разработке. Он появится в следующей итерации.
-        </div>
-      );
+  // Сохранение изменений для уже опубликованного ДЗ
+  const handleSaveChanges = async () => {
+    if (!assignmentMeta.title || questions.length === 0) {
+      setFeedback({
+        status: 'error',
+        message: 'Заполните название и добавьте хотя бы один вопрос',
+      });
+      return;
     }
 
-    return <TypeComponent question={question} onChange={(next) => handleUpdateQuestion(index, next)} />;
-  };
-
-  const handleSaveDraft = async () => {
     setSaving(true);
     setFeedback(null);
-    setValidationIssues(null);
+
     try {
-      const result = await saveDraft(assignmentMeta, questions, null);
+      const result = await saveDraft(assignmentMeta, questions, homeworkId);
       if (!result.saved) {
         setValidationIssues(result.validation);
         setFeedback({
           status: 'warning',
-          message: 'Проверьте настройки — найдено несколько моментов, требующих внимания.',
+          message: 'Проверьте настройки задания',
         });
         return;
       }
-
-      setFeedback({ status: 'success', message: 'Черновик успешно сохранен.' });
-      setValidationIssues(result.validation);
-    } catch (error) {
-      console.error('[HomeworkConstructor] Save draft failed:', error);
-      const backendMessage = error.response?.data?.detail || error.message;
-      setFeedback({ status: 'error', message: backendMessage || 'Не удалось сохранить задание.' });
+      
+      setHomeworkId(result.homeworkId);
+      setFeedback({
+        status: 'success',
+        message: 'Изменения сохранены!',
+      });
+    } catch (err) {
+      setFeedback({
+        status: 'error',
+        message: err.response?.data?.detail || 'Ошибка сохранения',
+      });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    // Валидация перед публикацией
+    if (!assignmentMeta.title || !assignmentMeta.groupId || questions.length === 0) {
+      setFeedback({
+        status: 'error',
+        message: 'Заполните название, выберите группу и добавьте хотя бы один вопрос',
+      });
+      setShowPublishModal(false);
+      return;
+    }
+
+    setSaving(true);
+    setFeedback(null);
+
+    try {
+      // Сначала сохраняем черновик, если нужно
+      let currentHomeworkId = homeworkId;
+      
+      if (!currentHomeworkId) {
+        const saveResult = await saveDraft(assignmentMeta, questions, null);
+        if (!saveResult.saved) {
+          setValidationIssues(saveResult.validation);
+          setFeedback({
+            status: 'error',
+            message: 'Исправьте ошибки перед публикацией',
+          });
+          setSaving(false);
+          setShowPublishModal(false);
+          return;
+        }
+        currentHomeworkId = saveResult.homeworkId;
+        setHomeworkId(currentHomeworkId);
+      }
+
+      // Затем публикуем
+      await apiClient.post(`/homework/${currentHomeworkId}/publish/`);
+
+      setFeedback({
+        status: 'success',
+        message: 'ДЗ опубликовано! Студенты получат уведомления.',
+      });
+
+      // Redirect через 2 секунды
+      setTimeout(() => {
+        navigate('/teacher');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Publish error:', error);
+      setFeedback({
+        status: 'error',
+        message: error.response?.data?.detail || 'Ошибка при публикации ДЗ',
+      });
+    } finally {
+      setSaving(false);
+      setShowPublishModal(false);
     }
   };
 
@@ -219,9 +625,14 @@ const HomeworkConstructor = () => {
   return (
     <div className="homework-constructor-page">
       <div className="hc-header">
-        <h1 className="hc-header-title">🏗️ Конструктор домашних заданий</h1>
+        <h1 className="hc-header-title">
+          {isEditMode ? 'Редактирование ДЗ' : isDuplicating ? 'Создание копии ДЗ' : 'Конструктор домашних заданий'}
+        </h1>
         <p className="hc-header-subtitle">
-          Соберите идеальное ДЗ с разными типами вопросов, настройте дедлайны и включите геймификацию.
+          {isEditMode 
+            ? 'Внесите изменения и сохраните' 
+            : 'Создавайте, назначайте и проверяйте работы учеников'
+          }
         </p>
       </div>
 
@@ -232,6 +643,8 @@ const HomeworkConstructor = () => {
               ? 'hc-feedback-success'
               : feedback.status === 'error'
               ? 'hc-feedback-error'
+              : feedback.status === 'info'
+              ? 'hc-feedback-info'
               : 'hc-feedback-warning'
           }`}
         >
@@ -241,142 +654,164 @@ const HomeworkConstructor = () => {
 
       {renderValidationDetails()}
 
-      <div className="hc-grid">
-        <div className="hc-card">
-          <div className="hc-section-title">
-            <span>Параметры задания</span>
-            <div className="hc-inline-fields" style={{ maxWidth: '240px' }}>
-              <label className="form-label" style={{ fontSize: '0.75rem' }}>Вопросов: {questionCount}</label>
-            </div>
-          </div>
+      {/* Sticky панель с действиями */}
+      <div className="hc-sticky-actions">
+        <div className="hc-sticky-actions-left">
+          {(isEditMode || isDuplicating) && (
+            <button
+              type="button"
+              className="gm-btn-surface hc-action-btn hc-new-btn"
+              onClick={handleClearEditing}
+            >
+              Новое ДЗ
+            </button>
+          )}
+          <span className="hc-stats-badge">{questionCount} вопрос{questionCount === 1 ? '' : questionCount >= 2 && questionCount <= 4 ? 'а' : 'ов'}</span>
+          {assignmentMeta.title && <span className="hc-stats-badge hc-stats-title">{assignmentMeta.title.slice(0, 30)}{assignmentMeta.title.length > 30 ? '...' : ''}</span>}
+        </div>
+        <div className="hc-sticky-actions-right">
+          <button
+            type="button"
+            className="gm-btn-surface hc-action-btn"
+            onClick={async () => {
+              setSavingTemplate(true);
+              setFeedback(null);
+              try {
+                // Сначала сохраняем как черновик, потом делаем шаблон
+                  const result = await saveDraft(assignmentMeta, questions, homeworkId, { requireGroup: false });
+                if (!result.saved) {
+                  setValidationIssues(result.validation);
+                  setFeedback({ status: 'warning', message: 'Проверьте настройки задания' });
+                  return;
+                }
+                const savedId = result.homeworkId;
+                setHomeworkId(savedId);
+                await saveAsTemplate(savedId);
+                setFeedback({ status: 'success', message: 'Шаблон создан! Перейдите во вкладку Шаблоны.' });
+              } catch (err) {
+                setFeedback({ status: 'error', message: err.response?.data?.detail || 'Ошибка сохранения шаблона' });
+              } finally {
+                setSavingTemplate(false);
+              }
+            }}
+            disabled={savingTemplate || questions.length === 0}
+          >
+            {savingTemplate ? 'Сохранение...' : 'Создать шаблон'}
+          </button>
+          {isEditMode && isPublished ? (
+            // Для опубликованного ДЗ показываем кнопку "Сохранить"
+            <button
+              type="button"
+              className="gm-btn-primary hc-action-btn"
+              onClick={handleSaveChanges}
+              disabled={saving || questions.length === 0}
+            >
+              {saving ? 'Сохранение...' : 'Сохранить изменения'}
+            </button>
+          ) : (
+            // Для нового или черновика - кнопка "Опубликовать"
+            <button
+              type="button"
+              className="gm-btn-primary hc-action-btn"
+              onClick={() => setShowPublishModal(true)}
+              disabled={saving || questions.length === 0}
+            >
+              Опубликовать
+            </button>
+          )}
+        </div>
+      </div>
 
-          <form className="gm-form" onSubmit={(event) => event.preventDefault()}>
-            <div className="form-group">
-              <label className="form-label">Название</label>
-              <input
-                className="form-input"
-                value={assignmentMeta.title}
-                onChange={(event) => handleMetaChange('title', event.target.value)}
-                placeholder="Например: Past Simple revision"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Описание</label>
-              <textarea
-                className="form-textarea"
-                rows={3}
-                value={assignmentMeta.description}
-                onChange={(event) => handleMetaChange('description', event.target.value)}
-                placeholder="Дайте ученикам контекст и пояснение к заданию"
-              />
-            </div>
-
-            <div className="hc-inline-fields">
+      <div className="hc-main-layout">
+        {/* Левая колонка — параметры */}
+        <div className="hc-sidebar">
+          <div className="hc-card hc-params-card">
+            <div className="hc-section-title">Параметры</div>
+            
+            <form className="gm-form hc-compact-form" onSubmit={(event) => event.preventDefault()}>
               <div className="form-group">
-                <label className="form-label">Группа</label>
-                <select
-                  className="form-input"
+                <label className="form-label">Название задания</label>
+                <input
+                  className="form-input hc-input-large"
+                  value={assignmentMeta.title}
+                  onChange={(event) => handleMetaChange('title', event.target.value)}
+                  placeholder="Например: Past Simple revision"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Описание (опционально)</label>
+                <textarea
+                  className="form-textarea"
+                  rows={2}
+                  value={assignmentMeta.description}
+                  onChange={(event) => handleMetaChange('description', event.target.value)}
+                  placeholder="Инструкции для учеников"
+                />
+              </div>
+
+              <div className="hc-params-row">
+                <GroupSelect
                   value={assignmentMeta.groupId}
-                  onChange={(event) => handleMetaChange('groupId', event.target.value)}
+                  options={groupOptions}
+                  onChange={(nextValue) => handleMetaChange('groupId', nextValue)}
                   disabled={loadingGroups}
-                >
-                  <option value="">Выберите группу</option>
-                  {groupOptions.map((group) => (
-                    <option key={group.value} value={group.value}>
-                      {group.label}
-                    </option>
-                  ))}
-                </select>
-                {groupError && (
-                  <button type="button" className="gm-btn-surface" onClick={reloadGroups}>
-                    Повторить загрузку групп
-                  </button>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Дедлайн</label>
-                <input
-                  className="form-input"
-                  type="datetime-local"
-                  value={assignmentMeta.deadline}
-                  onChange={(event) => handleMetaChange('deadline', event.target.value)}
+                  loading={loadingGroups}
+                  error={groupError}
+                  onRetry={reloadGroups}
+                  placeholder="Выберите группу"
                 />
               </div>
-            </div>
 
-            <div className="hc-inline-fields">
-              <div className="form-group">
-                <label className="form-label">Максимальный балл</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  min={1}
-                  value={assignmentMeta.maxScore}
-                  onChange={(event) => handleMaxScoreChange(event.target.value)}
-                />
-                <button type="button" className="gm-btn-surface" onClick={handleAutoMaxScore}>
-                  Рассчитать по сумме вопросов
-                </button>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Геймификация</label>
-                <div className="gm-tab-switch">
-                  <button
-                    type="button"
-                    className={`gm-tab-button ${assignmentMeta.gamificationEnabled ? 'active' : ''}`}
-                    onClick={() => handleMetaChange('gamificationEnabled', true)}
-                  >
-                    Включено
-                  </button>
-                  <button
-                    type="button"
-                    className={`gm-tab-button ${!assignmentMeta.gamificationEnabled ? 'active' : ''}`}
-                    onClick={() => handleMetaChange('gamificationEnabled', false)}
-                  >
-                    Выключено
-                  </button>
+              <div className="hc-params-row">
+                <div className="form-group" style={{ flex: 1 }}>
+                  <DateTimePicker
+                    value={assignmentMeta.deadline}
+                    onChange={(nextValue) => handleMetaChange('deadline', nextValue)}
+                  />
+                </div>
+                <div className="form-group hc-score-field">
+                  <label className="form-label">Макс. балл</label>
+                  <div className="hc-score-input-wrap">
+                    <input
+                      className="form-input"
+                      type="number"
+                      min={1}
+                      value={assignmentMeta.maxScore}
+                      onChange={(event) => handleMaxScoreChange(event.target.value)}
+                    />
+                    <button type="button" className="hc-auto-score-btn" onClick={handleAutoMaxScore} title="Рассчитать по сумме вопросов">
+                      ↻
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="gm-actions">
               <button
                 type="button"
-                className="gm-btn-primary"
-                onClick={handleSaveDraft}
-                disabled={saving}
-              >
-                {saving ? 'Сохранение...' : '💾 Сохранить черновик'}
-              </button>
-              <button
-                type="button"
-                className="gm-btn-surface"
+                className="hc-reset-btn"
                 onClick={() => {
-                  setAssignmentMeta({ ...initialMeta });
-                  setQuestions([]);
+                  openConfirmDialog({
+                    title: 'Сбросить задание?',
+                    message: 'Все текущие настройки будут очищены.',
+                    confirmLabel: 'Сбросить',
+                    onConfirm: () => {
+                      setAssignmentMeta({ ...initialMeta });
+                      setQuestions([]);
+                      setHomeworkId(null);
+                    },
+                  });
                 }}
                 disabled={saving}
               >
-                Очистить форму
+                Очистить
               </button>
-            </div>
-          </form>
-        </div>
-
-        <div className="hc-card hc-preview-card">
-          <div className="hc-section-title">Превью для студентов</div>
-          <div className="hc-preview-placeholder">
-            <strong>{previewTitle}</strong>
-            <p>
-              Здесь будет интерактивный предпросмотр, как только мы подключим рендерер вопросов и экран
-              прохождения.
-            </p>
+            </form>
           </div>
         </div>
-      </div>
+
+        {/* Правая колонка — вопросы */}
+        <div className="hc-questions-area">
 
       <div className="hc-card">
         <div className="hc-section-title">
@@ -386,16 +821,15 @@ const HomeworkConstructor = () => {
             className="hc-add-button"
             onClick={() => setShowTypeMenu((value) => !value)}
           >
-            {showTypeMenu ? 'Закрыть меню типов' : '+ Добавить вопрос'}
+            {showTypeMenu ? 'Скрыть' : '+ Добавить'}
           </button>
         </div>
 
         {showTypeMenu && (
           <div className="hc-type-menu">
             {QUESTION_TYPES.map((type) => (
-              <button key={type.value} type="button" onClick={() => handleAddQuestion(type.value)}>
-                <span>{type.label}</span>
-                <span>{type.description}</span>
+              <button key={type.value} type="button" onClick={() => handleAddQuestion(type.value)} className="hc-type-btn">
+                {type.label}
               </button>
             ))}
           </div>
@@ -403,8 +837,7 @@ const HomeworkConstructor = () => {
 
         {questionCount === 0 ? (
           <div className="hc-empty-state">
-            <strong>Пока вопросов нет.</strong>
-            <span>Добавьте первый вопрос, чтобы начать собирать задание.</span>
+            Нажмите «+ Добавить» чтобы создать первый вопрос
           </div>
         ) : (
           <DragDropContext onDragEnd={handleDragEnd}>
@@ -419,34 +852,46 @@ const HomeworkConstructor = () => {
                     <Draggable key={question.id} draggableId={question.id} index={index}>
                       {(draggableProvided, snapshot) => (
                         <div
-                          className={`hc-question-card ${snapshot.isDragging ? 'is-dragging' : ''}`}
+                          className={`hc-question-card ${snapshot.isDragging ? 'is-dragging' : ''} ${uploadingImageFor === index ? 'is-uploading' : ''}`}
                           ref={draggableProvided.innerRef}
                           {...draggableProvided.draggableProps}
+                          onPaste={(e) => handleCardPaste(e, index)}
+                          tabIndex={0}
                         >
+                          {uploadingImageFor === index && (
+                            <div className="hc-upload-overlay">
+                              <div className="hc-upload-progress-container">
+                                <div className="hc-upload-progress-bar" style={{ width: `${uploadProgress}%` }} />
+                              </div>
+                              <span>{uploadProgress > 0 ? `Загрузка ${uploadProgress}%` : 'Сжатие изображения...'}</span>
+                            </div>
+                          )}
+                          
                           <div className="hc-question-toolbar">
                             <div className="hc-question-toolbar-left">
-                              <span className="hc-question-index">{index + 1}</span>
-                              <span className="hc-question-type">{getQuestionLabel(question.question_type)}</span>
+                              <span className="hc-question-index">{questions.length - index}</span>
+                              <span className="hc-question-type-badge">
+                                {getQuestionLabel(question.question_type)}
+                              </span>
                             </div>
                             <div className="hc-question-actions">
                               <button
                                 type="button"
-                                className="gm-btn-icon"
+                                className="hc-btn-text"
                                 {...draggableProvided.dragHandleProps}
-                                aria-label="Переместить вопрос"
                               >
-                                ☰
+                                ⋮⋮
                               </button>
                               <button
                                 type="button"
-                                className="gm-btn-surface"
+                                className="hc-btn-text"
                                 onClick={() => handleDuplicateQuestion(index)}
                               >
-                                Дублировать
+                                Копия
                               </button>
                               <button
                                 type="button"
-                                className="gm-btn-danger"
+                                className="hc-btn-text hc-btn-text-danger"
                                 onClick={() => handleRemoveQuestion(index)}
                               >
                                 Удалить
@@ -455,28 +900,148 @@ const HomeworkConstructor = () => {
                           </div>
 
                           <div className="form-group">
-                            <label className="form-label">Формулировка вопроса</label>
                             <textarea
                               className="form-textarea"
-                              rows={3}
+                              rows={2}
                               value={question.question_text}
                               onChange={(event) => handleQuestionTextChange(index, event.target.value)}
-                              placeholder="Опишите задание для ученика"
+                              placeholder="Текст вопроса"
                             />
                           </div>
 
-                          <div className="form-group" style={{ maxWidth: '160px' }}>
-                            <label className="form-label">Баллы</label>
-                            <input
-                              className="form-input"
-                              type="number"
-                              min={1}
-                              value={question.points}
-                              onChange={(event) => handleQuestionPointsChange(index, event.target.value)}
-                            />
+                          {/* Кнопка добавления изображения */}
+                          <div className="hc-image-section">
+                            {!question.config?.imageUrl ? (
+                              <div className="hc-image-actions">
+                                <label className="hc-image-upload-btn">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+
+                                    const localUrl = URL.createObjectURL(file);
+                                    blobUrlsRef.current.add(localUrl);
+
+                                    // Мгновенный preview до завершения загрузки
+                                    setQuestions((prev) => {
+                                      const updated = [...prev];
+                                      const q = updated[index];
+                                      const previousUrl = q?.config?.imageUrl;
+                                      if (previousUrl && previousUrl.startsWith('blob:') && previousUrl !== localUrl) {
+                                        try {
+                                          URL.revokeObjectURL(previousUrl);
+                                        } catch (_) {
+                                          // ignore
+                                        }
+                                        blobUrlsRef.current.delete(previousUrl);
+                                      }
+                                      updated[index] = {
+                                        ...q,
+                                        config: {
+                                          ...q.config,
+                                          imageUrl: localUrl,
+                                          imageFileId: null,
+                                        }
+                                      };
+                                      return updated;
+                                    });
+
+                                    setUploadingImageFor(index);
+                                    setUploadProgress(0);
+                                    try {
+                                      const response = await uploadHomeworkFile(file, 'image', (percent) => {
+                                        setUploadProgress(percent);
+                                      });
+                                      if (response.data?.url) {
+                                        setQuestions((prev) => {
+                                          const updated = [...prev];
+                                          const q = updated[index];
+                                          const previousUrl = q?.config?.imageUrl;
+                                          if (previousUrl && previousUrl.startsWith('blob:')) {
+                                            try {
+                                              URL.revokeObjectURL(previousUrl);
+                                            } catch (_) {
+                                              // ignore
+                                            }
+                                            blobUrlsRef.current.delete(previousUrl);
+                                          }
+                                          updated[index] = {
+                                            ...q,
+                                            config: {
+                                              ...q.config,
+                                              imageUrl: response.data.url,
+                                              imageFileId: response.data.file_id || null,
+                                            }
+                                          };
+                                          return updated;
+                                        });
+                                      }
+                                    } catch (err) {
+                                      setFeedback({ type: 'error', message: 'Ошибка загрузки: ' + (err.message || '') });
+                                    } finally {
+                                      setUploadingImageFor(null);
+                                      setUploadProgress(0);
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                />
+                                {uploadingImageFor === index ? (uploadProgress > 0 ? `${uploadProgress}%` : 'Сжатие...') : '+ Выбрать файл'}
+                              </label>
+                                <span className="hc-paste-hint">или Ctrl+V</span>
+                              </div>
+                            ) : (
+                              <div className="hc-image-preview-inline">
+                                <img src={normalizeUrl(question.config.imageUrl)} alt="" />
+                                <button
+                                  type="button"
+                                  className="hc-image-remove-btn"
+                                  onClick={() => {
+                                    setQuestions((prev) => {
+                                      const updated = [...prev];
+                                      const previousUrl = updated[index]?.config?.imageUrl;
+                                      if (previousUrl && previousUrl.startsWith('blob:')) {
+                                        try {
+                                          URL.revokeObjectURL(previousUrl);
+                                        } catch (_) {
+                                          // ignore
+                                        }
+                                        blobUrlsRef.current.delete(previousUrl);
+                                      }
+                                      updated[index] = {
+                                        ...updated[index],
+                                        config: { ...updated[index].config, imageUrl: null, imageFileId: null }
+                                      };
+                                      return updated;
+                                    });
+                                  }}
+                                >
+                                  Удалить фото
+                                </button>
+                              </div>
+                            )}
                           </div>
 
-                          <QuestionEditor question={question} index={index} />
+                          <div className="hc-question-meta">
+                            <div className="form-group hc-points-field">
+                              <label className="form-label">Баллы</label>
+                              <input
+                                className="form-input"
+                                type="number"
+                                min={1}
+                                value={question.points}
+                                onChange={(event) => handleQuestionPointsChange(index, event.target.value)}
+                              />
+                            </div>
+                          </div>
+
+                          <HomeworkQuestionEditor
+                            question={question}
+                            index={index}
+                            onUpdateQuestion={handleUpdateQuestion}
+                          />
                         </div>
                       )}
                     </Draggable>
@@ -487,7 +1052,56 @@ const HomeworkConstructor = () => {
             </Droppable>
           </DragDropContext>
         )}
+        </div>
+        </div>
       </div>
+
+      {/* Модальное окно подтверждения публикации */}
+      <Modal
+        isOpen={showPublishModal}
+        onClose={() => setShowPublishModal(false)}
+        title="Опубликовать домашнее задание?"
+        size="small"
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setShowPublishModal(false)} disabled={saving}>
+              Отмена
+            </Button>
+            <Button onClick={handlePublish} disabled={saving}>
+              {saving ? 'Публикация...' : 'Да, опубликовать'}
+            </Button>
+          </>
+        )}
+      >
+        <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-secondary)' }}>После публикации:</p>
+        <ul style={{ margin: 0, paddingLeft: '1.25rem', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+          <li>✉️ Все студенты группы получат уведомление</li>
+          <li>📱 Уведомления придут в Telegram (если привязан)</li>
+          <li>⏰ Начнется отсчет до дедлайна</li>
+          <li>🔒 Редактирование будет ограничено</li>
+        </ul>
+      </Modal>
+
+      <Modal
+        isOpen={confirmDialog.open}
+        onClose={closeConfirmDialog}
+        title={confirmDialog.title}
+        size="small"
+        footer={(
+          <>
+            <Button variant="secondary" onClick={closeConfirmDialog}>
+              {confirmDialog.cancelLabel}
+            </Button>
+            <Button onClick={handleConfirmDialog}>
+              {confirmDialog.confirmLabel}
+            </Button>
+          </>
+        )}
+      >
+        {confirmDialog.message && (
+          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{confirmDialog.message}</p>
+        )}
+      </Modal>
     </div>
   );
 };
