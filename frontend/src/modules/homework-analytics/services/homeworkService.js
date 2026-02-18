@@ -6,6 +6,61 @@ import {
   apiClient,
 } from '../../../apiService';
 
+// =====================
+// Attachment API helpers
+// =====================
+
+/**
+ * Получить список вложений вопроса.
+ * GET /api/homework/questions/{questionId}/attachments/
+ */
+export const getQuestionAttachments = async (questionId) => {
+  const response = await apiClient.get(`homework/questions/${questionId}/attachments/`);
+  return response.data;
+};
+
+/**
+ * Загрузить файл к вопросу.
+ * POST /api/homework/questions/{questionId}/attachments/
+ * @param {number} questionId
+ * @param {File} file
+ * @param {function} onProgress — callback(percent)
+ */
+export const uploadQuestionAttachment = async (questionId, file, onProgress) => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await apiClient.post(
+    `homework/questions/${questionId}/attachments/`,
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000, // 2 min for large files
+      onUploadProgress: (event) => {
+        if (onProgress && event.total) {
+          onProgress(Math.round((event.loaded * 100) / event.total));
+        }
+      },
+    }
+  );
+  return response.data;
+};
+
+/**
+ * Удалить вложение.
+ * DELETE /api/homework/attachments/{attachmentId}/
+ */
+export const deleteQuestionAttachment = async (attachmentId) => {
+  const response = await apiClient.delete(`homework/attachments/${attachmentId}/`);
+  return response.data;
+};
+
+/**
+ * URL для скачивания вложения через бэкенд-прокси.
+ */
+export const getAttachmentDownloadUrl = (attachmentId) =>
+  `/api/homework/attachments/${attachmentId}/download/`;
+
 const mapQuestionToPayload = (question, order) => {
   const basePayload = {
     question_type: question.question_type,

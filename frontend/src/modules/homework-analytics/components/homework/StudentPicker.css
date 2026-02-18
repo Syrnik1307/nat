@@ -1,0 +1,327 @@
+/* ===== StudentPicker — clean, no-overlap design ===== */
+
+.sp-root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.sp-root.sp-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.sp-root.sp-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ---- Search ---- */
+.sp-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sp-search-icon {
+  position: absolute;
+  left: 0.75rem;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.sp-search {
+  width: 100%;
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #111827;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sp-search:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.sp-search::placeholder {
+  color: #9ca3af;
+}
+
+/* ---- Summary ---- */
+.sp-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  padding: 0 0.25rem;
+}
+
+/* ---- Group list ---- */
+.sp-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.sp-group-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sp-group-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sp-group-list::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+/* ---- Group item ---- */
+.sp-group {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.sp-group:last-child {
+  border-bottom: none;
+}
+
+.sp-group-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  user-select: none;
+  min-height: 44px;
+}
+
+.sp-group-row:hover {
+  background: #f9fafb;
+}
+
+.sp-group--selected > .sp-group-row {
+  background: #f0f0ff;
+}
+
+.sp-group--selected > .sp-group-row:hover {
+  background: #e8e8ff;
+}
+
+/* ---- Checkbox ---- */
+.sp-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: 2px solid #d1d5db;
+  border-radius: 5px;
+  background: #fff;
+  transition: all 0.15s ease;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.sp-checkbox--checked {
+  background: #6366f1;
+  border-color: #6366f1;
+}
+
+.sp-checkbox--sm {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  border-radius: 4px;
+}
+
+/* ---- Group name & count ---- */
+.sp-group-name {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-group-count {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---- Expand button ---- */
+.sp-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.sp-expand-btn:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+/* ---- Students panel ---- */
+.sp-students {
+  padding: 0 0.75rem 0.625rem 2.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  animation: sp-slide-down 0.2s ease;
+}
+
+@keyframes sp-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sp-students-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.sp-students-empty {
+  padding: 0.5rem 0;
+  font-size: 0.8125rem;
+  color: #9ca3af;
+}
+
+/* ---- Select all button ---- */
+.sp-select-all-btn {
+  align-self: flex-start;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6366f1;
+  background: transparent;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  margin-bottom: 0.25rem;
+}
+
+.sp-select-all-btn:hover {
+  background: #eef2ff;
+}
+
+/* ---- Student list ---- */
+.sp-students-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ---- Student item ---- */
+.sp-student {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  user-select: none;
+}
+
+.sp-student:hover {
+  background: #f3f4f6;
+}
+
+.sp-student--selected {
+  background: #eef2ff;
+}
+
+.sp-student--selected:hover {
+  background: #e0e7ff;
+}
+
+/* ---- Student avatar ---- */
+.sp-student-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a5b4fc, #818cf8);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.sp-student-name {
+  font-size: 0.8125rem;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Spinner ---- */
+.sp-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: sp-spin 0.6s linear infinite;
+}
+
+.sp-spinner--small {
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes sp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---- Empty state ---- */
+.sp-empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+}

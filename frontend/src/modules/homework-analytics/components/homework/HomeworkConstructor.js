@@ -14,6 +14,7 @@ import MatchingQuestion from '../questions/MatchingQuestion';
 import DragDropQuestion from '../questions/DragDropQuestion';
 import FillBlanksQuestion from '../questions/FillBlanksQuestion';
 import HotspotQuestion from '../questions/HotspotQuestion';
+import QuestionAttachments from './QuestionAttachments';
 import './HomeworkConstructor.css';
 
 const initialMeta = {
@@ -28,6 +29,7 @@ const initialMeta = {
 const QUESTION_COMPONENTS = {
   TEXT: TextQuestion,
   SINGLE_CHOICE: SingleChoiceQuestion,
+  MULTI_CHOICE: MultipleChoiceQuestion,
   MULTIPLE_CHOICE: MultipleChoiceQuestion,
   LISTENING: ListeningQuestion,
   MATCHING: MatchingQuestion,
@@ -52,6 +54,8 @@ const HomeworkConstructor = () => {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [validationIssues, setValidationIssues] = useState(null);
+  // Map local question index -> server question ID (set after first save)
+  const [savedQuestionIds, setSavedQuestionIds] = useState({});
 
   const handleMetaChange = (field, value) => {
     setAssignmentMeta((previous) => ({
@@ -181,7 +185,16 @@ const HomeworkConstructor = () => {
         return;
       }
 
-      setFeedback({ status: 'success', message: 'Черновик успешно сохранен.' });
+      // Сохраняем маппинг index -> server question ID для вложений
+      if (result.homeworkData?.questions) {
+        const idMap = {};
+        result.homeworkData.questions.forEach((q, idx) => {
+          if (q.id) idMap[idx] = q.id;
+        });
+        setSavedQuestionIds(idMap);
+      }
+
+      setFeedback({ status: 'success', message: 'Черновик успешно сохранен. Теперь можно прикреплять файлы к вопросам.' });
       setValidationIssues(result.validation);
     } catch (error) {
       console.error('[HomeworkConstructor] Save draft failed:', error);
@@ -477,6 +490,11 @@ const HomeworkConstructor = () => {
                           </div>
 
                           <QuestionEditor question={question} index={index} />
+
+                          {/* Блок вложений к вопросу */}
+                          <QuestionAttachments
+                            questionId={savedQuestionIds[index] || null}
+                          />
                         </div>
                       )}
                     </Draggable>
