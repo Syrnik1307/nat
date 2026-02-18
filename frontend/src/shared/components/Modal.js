@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * Переиспользуемый компонент модального окна
@@ -63,114 +64,105 @@ const Modal = ({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1000,
-    padding: '1rem',
-    animation: 'fadeIn 0.2s ease',
+    zIndex: 50000, // Must be higher than fixed footer (15000) and SupportWidget (12000)
+    padding: 'var(--space-lg, 16px)',
+    animation: 'backdropFadeIn var(--duration-slow, 400ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1))',
+    // iOS Safari fixes
+    WebkitOverflowScrolling: 'touch',
+    overscrollBehavior: 'contain',
   };
 
   const modalStyles = {
-    backgroundColor: 'white',
-    borderRadius: '12px',
+    backgroundColor: 'var(--bg-primary, #ffffff)',
+    borderRadius: 'var(--radius-xl, 16px)',
     maxWidth: sizes[size],
     width: '100%',
     maxHeight: '90vh',
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-    animation: 'slideUp 0.3s ease',
+    boxShadow: '0 25px 50px -12px rgba(79, 70, 229, 0.25), 0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+    animation: 'smoothScaleIn var(--duration-slow, 400ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1))',
+    // iOS Safari fixes
+    WebkitTransform: 'translateZ(0)',
+    transform: 'translateZ(0)',
   };
 
   const headerStyles = {
-    padding: '1.5rem',
-    borderBottom: '1px solid #e5e7eb',
+    padding: 'var(--space-xl)',
+    borderBottom: '1px solid var(--border-color)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
   };
 
   const titleStyles = {
-    fontSize: '1.25rem',
-    fontWeight: '600',
-    color: '#111827',
+    fontSize: 'var(--text-xl)',
+    fontWeight: 'var(--font-semibold)',
+    color: 'var(--text-primary)',
     margin: 0,
   };
 
   const closeButtonStyles = {
     background: 'none',
     border: 'none',
-    fontSize: '1.5rem',
+    fontSize: 'var(--text-2xl)',
     cursor: 'pointer',
-    color: '#6b7280',
-    padding: '0.25rem',
+    color: 'var(--text-secondary)',
+    padding: 'var(--space-xs)',
     lineHeight: 1,
-    transition: 'color 0.2s ease',
+    transition: 'color var(--duration-fast, 180ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)), transform var(--duration-fast, 180ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1))',
+    borderRadius: '8px',
   };
 
   const bodyStyles = {
-    padding: '1.5rem',
+    padding: 'var(--space-xl)',
     overflowY: 'auto',
     flex: 1,
   };
 
   const footerStyles = {
-    padding: '1rem 1.5rem',
-    borderTop: '1px solid #e5e7eb',
+    padding: 'var(--space-lg) var(--space-xl)',
+    borderTop: '1px solid var(--border-color)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: '0.75rem',
+    gap: 'var(--space-md)',
+    flexWrap: 'wrap',
   };
 
-  return (
-    <>
-      <style>
-        {`
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-          @keyframes slideUp {
-            from { 
-              transform: translateY(20px);
-              opacity: 0;
-            }
-            to { 
-              transform: translateY(0);
-              opacity: 1;
-            }
-          }
-        `}
-      </style>
-      <div style={backdropStyles} onClick={handleBackdropClick}>
-        <div style={modalStyles}>
-          {title && (
-            <div style={headerStyles}>
-              <h3 style={titleStyles}>{title}</h3>
-              <button
-                style={closeButtonStyles}
-                onClick={onClose}
-                onMouseEnter={(e) => e.target.style.color = '#111827'}
-                onMouseLeave={(e) => e.target.style.color = '#6b7280'}
-              >
-                ×
-              </button>
-            </div>
-          )}
-          <div style={bodyStyles}>
-            {children}
+  return createPortal(
+    <div className="modal-backdrop tp-allow-fixed" style={backdropStyles} onClick={handleBackdropClick}>
+      <div style={modalStyles}>
+        {title && (
+          <div style={headerStyles}>
+            <h3 style={titleStyles}>{title}</h3>
+            <button
+              style={closeButtonStyles}
+              onClick={onClose}
+              onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
+              onMouseLeave={(e) => e.target.style.color = 'var(--text-secondary)'}
+            >
+              ×
+            </button>
           </div>
-          {footer && (
-            <div style={footerStyles}>
-              {footer}
-            </div>
-          )}
+        )}
+        <div style={bodyStyles}>
+          {children}
         </div>
+        {footer && (
+          <div style={footerStyles}>
+            {footer}
+          </div>
+        )}
       </div>
-    </>
+    </div>,
+    document.body
   );
 };
 

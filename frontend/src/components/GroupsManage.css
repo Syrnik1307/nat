@@ -1,7 +1,41 @@
 .groups-manage-page {
   min-height: 100vh;
-  background: var(--bg-gray);
+  position: relative;
+  overflow-x: hidden;
   padding: 2rem;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  /* Aurora Background */
+  background: radial-gradient(circle at 20% 20%, rgba(224, 231, 255, 0.5), transparent 40%),
+              radial-gradient(circle at 80% 10%, rgba(221, 214, 254, 0.45), transparent 40%),
+              radial-gradient(circle at 40% 80%, rgba(191, 219, 254, 0.35), transparent 45%),
+              #f8fafc;
+}
+
+/* Aurora animation overlay */
+.groups-manage-page::before {
+  content: '';
+  position: fixed;
+  inset: -15%;
+  background: radial-gradient(780px at 15% 20%, rgba(224, 231, 255, 0.5), transparent 55%),
+              radial-gradient(720px at 85% 5%, rgba(221, 214, 254, 0.45), transparent 55%),
+              radial-gradient(760px at 40% 85%, rgba(191, 219, 254, 0.35), transparent 60%);
+  filter: blur(60px);
+  opacity: 0.75;
+  animation: auroraFloat 18s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes auroraFloat {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(4%, -3%, 0) scale(1.05); }
+  100% { transform: translate3d(-3%, 4%, 0) scale(1.02); }
+}
+
+/* Content above background */
+.groups-manage-page > * {
+  position: relative;
+  z-index: 1;
 }
 
 .groups-manage-header {
@@ -70,13 +104,26 @@
 }
 
 .gm-card {
-  background: var(--bg-white);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-2xl);
+  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
+              0 10px 25px -5px rgba(0, 0, 0, 0.06),
+              0 0 20px rgba(79, 70, 229, 0.08);
   padding: 1.75rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gm-card:hover {
+  box-shadow: 0 30px 60px -14px rgba(79, 70, 229, 0.18),
+              0 0 25px rgba(79, 70, 229, 0.15);
+  transform: translateY(-2px);
+  border-color: rgba(79, 70, 229, 0.2);
 }
 
 .gm-card-heading {
@@ -142,12 +189,12 @@
 }
 
 .gm-btn-primary {
-  background: var(--primary-600);
+  background: var(--color-primary);
   color: #fff;
 }
 
 .gm-btn-primary:hover {
-  background: var(--primary-700);
+  background: var(--color-primary-dark);
 }
 
 .gm-btn-surface {
@@ -167,6 +214,15 @@
 
 .gm-btn-danger:hover {
   background: var(--error-600);
+}
+
+/* Disabled states for buttons */
+.gm-btn-primary:disabled,
+.gm-btn-surface:disabled,
+.gm-btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .gm-btn-block {
@@ -253,6 +309,11 @@
 .gm-badge-blue {
   background: rgba(37, 99, 235, 0.12);
   color: var(--primary-700);
+}
+
+.gm-badge-success {
+  background: rgba(34, 197, 94, 0.14);
+  color: var(--color-success);
 }
 
 .gm-badge-muted {
@@ -425,7 +486,7 @@
 
 @media (max-width: 768px) {
   .groups-manage-page {
-    padding: 1.5rem;
+    padding: 1rem;
   }
 
   .gm-modal-controls {
@@ -433,6 +494,98 @@
   }
 
   .gm-group-card {
-    padding: 1.1rem 1.25rem;
+    padding: 1rem;
+  }
+
+  .gm-page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .gm-page-header h1 {
+    font-size: 1.5rem;
+    text-align: center;
+  }
+
+  .gm-create-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .gm-group-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .gm-group-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .gm-group-meta {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .gm-students-summary {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  /* Mobile-friendly buttons - grid layout for touch targets */
+  .gm-group-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .gm-group-card-actions .gm-btn-primary,
+  .gm-group-card-actions .gm-btn-surface,
+  .gm-group-card-actions .gm-btn-danger {
+    min-height: 44px; /* Apple's recommended touch target */
+    padding: 0.6rem 0.75rem;
+    font-size: 0.9rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Danger button spans full width at bottom */
+  .gm-group-card-actions .gm-btn-danger {
+    grid-column: 1 / -1;
   }
 }
+
+@media (max-width: 480px) {
+  .groups-manage-page {
+    padding: 0.75rem;
+  }
+
+  .gm-group-card {
+    padding: 0.875rem;
+    border-radius: 12px;
+  }
+
+  .gm-group-name {
+    font-size: 1rem;
+  }
+
+  .gm-group-actions .gm-action-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  /* Extra small screens - stack all buttons vertically */
+  .gm-group-card-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .gm-group-card-actions .gm-btn-primary,
+  .gm-group-card-actions .gm-btn-surface,
+  .gm-group-card-actions .gm-btn-danger {
+    min-height: 48px; /* Larger touch targets for small screens */
+    font-size: 0.95rem;
+  }
+}
+

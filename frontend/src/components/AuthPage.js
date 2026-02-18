@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { Input, Button, Modal, Notification } from '../shared/components';
+import { clearTokens } from '../apiService';
+import { Input, Button, Notification } from '../shared/components';
+import { TELEGRAM_RESET_DEEPLINK } from '../constants';
 import SupportWidget from './SupportWidget';
-import PasswordResetModal from './PasswordResetModal';
 import './AuthPage.css';
 import EyeIcon from './icons/EyeIcon';
 // import { useRecaptcha } from '../hooks/useRecaptcha'; // отключено
@@ -26,32 +27,31 @@ import EyeIcon from './icons/EyeIcon';
 
 const AuthPage = () => {
   const navigate = useNavigate();
-  const { login, register, accessTokenValid, role: userRole } = useAuth();
+  const { login, register } = useAuth();
   // const { executeRecaptcha } = useRecaptcha(); // отключено
+
+  const isDev = process.env.NODE_ENV !== 'production';
   
   useEffect(() => {
-    console.log('✅✅✅ AuthPage ЗАГРУЖЕНА ✅✅✅');
-    console.log('  - step:', step);
-    console.log('  - role:', role);
-    console.log('  - mode:', mode);
+    // Если токены есть — пользователь уже залогинен, редиректим на home
+    try {
+      const hasTokens = !!(localStorage.getItem('tp_access_token') && localStorage.getItem('tp_refresh_token'));
+      if (hasTokens) {
+        navigate('/home-new', { replace: true });
+        return undefined;
+      }
+      // Очищаем устаревшие ключи (совместимость со старым кодом)
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+    } catch (_) {}
     
-    // Глобальный обработчик кликов для отладки
-    const handleClick = (e) => {
-      console.log('🖱️ КЛИК:', {
-        tag: e.target.tagName,
-        class: e.target.className,
-        type: e.target.type,
-        text: e.target.textContent?.substring(0, 30)
-      });
-    };
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
-  }, []);
+    return undefined;
+  }, [navigate]);
   
   // === ШАГИ АУТЕНТИФИКАЦИИ ===
-  // 0 = Выбор роли
+  // 'role' = Выбор роли
   // 1 = Форма входа/регистрации
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState('role');
   const [role, setRole] = useState(null); // 'student' | 'teacher'
   const [mode, setMode] = useState('login'); // 'login' | 'register'
   
@@ -65,6 +65,7 @@ const AuthPage = () => {
     lastName: '',
     telegramUsername: '', // Telegram для восстановления пароля
     honeypot: '', // Защита от ботов
+    notificationConsent: false, // Согласие на уведомления в Telegram
   });
   
   // === UI СОСТОЯНИЯ ===
@@ -72,8 +73,9 @@ const AuthPage = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => {
-    // Инициализируем из localStorage
-    return localStorage.getItem('remember_me') === 'true';
+    // По умолчанию включено, если явно не отключено
+    const stored = localStorage.getItem('remember_me');
+    return stored === null ? true : stored === 'true';
   });
   
   // === УВЕДОМЛЕНИЯ ===
@@ -83,12 +85,6 @@ const AuthPage = () => {
     title: '',
     message: '',
   });
-  
-  // === ВОССТАНОВЛЕНИЕ ПАРОЛЯ ===
-  const [showResetModal, setShowResetModal] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetSuccess, setResetSuccess] = useState(false);
-  const [resetLoading, setResetLoading] = useState(false);
   
   // === ЗАЩИТА ОТ БОТОВ ===
   const [loginAttempts, setLoginAttempts] = useState(0);
@@ -148,8 +144,12 @@ const AuthPage = () => {
     // Телефон необязателен
     if (!phone) return '';
     
-    const phoneRegex = /^(\+7|8)?[\s-]?\(?[0-9]{3}\)?[\s-]?[0-9]{3}[\s-]?[0-9]{2}[\s-]?[0-9]{2}$/;
-    if (!phoneRegex.test(phone)) return 'Неверный формат телефона';
+    // Поддержка СНГ: +7 (РФ/Казахстан), +380 (Украина), +375 (Беларусь), 
+    // +998 (Узбекистан), +996 (Кыргызстан), +992 (Таджикистан), +994 (Азербайджан),
+    // +995 (Грузия), +374 (Армения), +373 (Молдова), +993 (Туркменистан)
+    const cleaned = phone.replace(/[\s\-()]/g, '');
+    const phoneRegex = /^(\+7|8|7|\+380|\+375|\+998|\+996|\+992|\+994|\+995|\+374|\+373|\+993)[0-9]{9,10}$/;
+    if (!phoneRegex.test(cleaned)) return 'Неверный формат телефона';
     return '';
   };
 
@@ -173,14 +173,18 @@ const AuthPage = () => {
   // === ВАЛИДАЦИЯ ФОРМЫ ===
   const validateForm = () => {
     const newErrors = {};
-    
-    console.log('📝 Валидация формы:');
-    console.log('  - mode:', mode);
-    console.log('  - formData:', formData);
+
+    if (isDev) {
+      // eslint-disable-next-line no-console
+      console.log('[AuthPage] validateForm', { mode });
+    }
     
     // Проверка honeypot (должно быть пустым)
     if (formData.honeypot) {
-      console.log('❌ Honeypot сработал (бот?)');
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthPage] honeypot triggered');
+      }
       setBlocked(true);
       setBlockTimer(300); // 5 минут блокировки
       return false;
@@ -188,42 +192,65 @@ const AuthPage = () => {
     
     const emailError = validateEmail(formData.email);
     if (emailError) {
-      console.log('❌ Email ошибка:', emailError);
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthPage] email error:', emailError);
+      }
       newErrors.email = emailError;
     }
     
     const passwordError = validatePassword(formData.password);
     if (passwordError) {
-      console.log('❌ Password ошибка:', passwordError);
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthPage] password error:', passwordError);
+      }
       newErrors.password = passwordError;
     }
     
     if (mode === 'register') {
-      console.log('  - Режим регистрации, дополнительные проверки...');
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthPage] register validation');
+      }
       
       if (!formData.firstName) {
-        console.log('❌ Имя пустое');
+        if (isDev) {
+          // eslint-disable-next-line no-console
+          console.log('[AuthPage] firstName empty');
+        }
         newErrors.firstName = 'Имя обязательно';
       }
       if (!formData.lastName) {
-        console.log('❌ Фамилия пустая');
+        if (isDev) {
+          // eslint-disable-next-line no-console
+          console.log('[AuthPage] lastName empty');
+        }
         newErrors.lastName = 'Фамилия обязательна';
       }
       
       const phoneError = validatePhone(formData.phone);
       if (phoneError) {
-        console.log('❌ Телефон ошибка:', phoneError);
+        if (isDev) {
+          // eslint-disable-next-line no-console
+          console.log('[AuthPage] phone error:', phoneError);
+        }
         newErrors.phone = phoneError;
       }
       
       if (formData.password !== formData.confirmPassword) {
-        console.log('❌ Пароли не совпадают');
+        if (isDev) {
+          // eslint-disable-next-line no-console
+          console.log('[AuthPage] passwords mismatch');
+        }
         newErrors.confirmPassword = 'Пароли не совпадают';
       }
     }
-    
-    console.log('  - Все ошибки:', newErrors);
-    console.log('  - Количество ошибок:', Object.keys(newErrors).length);
+
+    if (isDev) {
+      // eslint-disable-next-line no-console
+      console.log('[AuthPage] validation errors:', Object.keys(newErrors));
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -235,13 +262,28 @@ const AuthPage = () => {
     setLoading(true);
     
     try {
+      // Перед стартом логина принудительно очищаем старые токены
+      clearTokens();
+      // Логирование для диагностики мобильных проблем
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthPage] login attempt', {
+          email: formData.email?.trim().toLowerCase(),
+          passwordLength: formData.password?.length,
+          passwordHasSpaces: formData.password?.includes(' '),
+          role,
+          userAgent: navigator.userAgent,
+        });
+      }
+      
       // reCAPTCHA отключена
-      const recaptchaToken = null;
+      // const recaptchaToken = null;
 
-      const resolvedRole = await login({ 
-        email: formData.email?.trim().toLowerCase(), 
-        password: formData.password, 
-        roleSelection: role 
+      const resolvedRole = await login({
+        email: formData.email?.trim().toLowerCase(),
+        password: formData.password?.trim(),
+        roleSelection: role,
+        rememberMe: rememberMe,
       });
       // Используем только роль из JWT токена (resolvedRole)
       const nextRole = resolvedRole || 'teacher';
@@ -250,26 +292,29 @@ const AuthPage = () => {
         student: '/student',
         admin: '/admin-home',
       };
-      // Сохраняем настройку "Запомнить меня"
-      if (rememberMe) {
-        localStorage.setItem('remember_me', 'true');
-        // Можно установить более длительный срок для refresh токена
-      } else {
-        localStorage.removeItem('remember_me');
-      }
+      // Токены сохраняются в localStorage и автоматически истекают через 12 часов
+      // Флаг remember_me больше не используется — всегда "запоминаем"
       
       // Показываем успешное уведомление
       showNotification('success', 'Вход выполнен', `Добро пожаловать, ${formData.email}!`);
-      
-      // Небольшая задержка перед редиректом для показа уведомления
-      setTimeout(() => {
-        navigate(roleRedirects[nextRole] || '/');
-      }, 500);
+
+      // Редирект сразу: профиль догрузится в фоне, а искусственная задержка ощущается как "долгий логин".
+      navigate(roleRedirects[nextRole] || '/');
       
       // Сброс попыток при успешном входе
       setLoginAttempts(0);
       setShowCaptcha(false);
     } catch (err) {
+      // Логирование ошибки для диагностики
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.error('[AuthPage] login error:', {
+          status: err.response?.status,
+          detail: err.response?.data?.detail,
+          message: err.message,
+        });
+      }
+      
       // Увеличиваем счетчик попыток
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
@@ -277,18 +322,25 @@ const AuthPage = () => {
       // Определяем тип ошибки и формируем сообщение
       const errorDetail = err.response?.data?.detail || '';
       let errorTitle = 'Ошибка входа';
-      let errorMessage = 'Проверьте правильность введённых данных';
+      let errorMessage = errorDetail || 'Проверьте правильность введённых данных';
       
       // Проверяем различные типы ошибок
-      if (err.response?.status === 401 || errorDetail.includes('credentials') || errorDetail.includes('account')) {
-        errorTitle = 'Неверный логин или пароль';
-        errorMessage = 'Пожалуйста, проверьте правильность написания email и пароля. Убедитесь, что Caps Lock выключен.';
-      } else if (errorDetail.includes('inactive') || errorDetail.includes('disabled')) {
+      if (err.response?.status === 502) {
+        errorTitle = 'Сбой сервера (502)';
+        errorMessage = 'Временная ошибка шлюза. Попробуйте ещё раз через минуту.';
+      } else if (err.response?.status === 500) {
+        errorTitle = 'Внутренняя ошибка (500)';
+        errorMessage = 'На сервере произошла ошибка. Сообщите поддержке, если повторяется.';
+      } else if (err.response?.status === 401) {
+        // Используем сообщение от бэкенда (например "Неверный email или пароль")
+        errorTitle = 'Ошибка авторизации';
+        errorMessage = errorDetail || 'Неверный email или пароль';
+      } else if (errorDetail.includes('inactive') || errorDetail.includes('деактивирован')) {
         errorTitle = 'Аккаунт неактивен';
-        errorMessage = 'Ваш аккаунт был деактивирован. Обратитесь к администратору.';
-      } else if (errorDetail.includes('verified') || errorDetail.includes('verification')) {
-        errorTitle = 'Email не подтверждён';
-        errorMessage = 'Пожалуйста, подтвердите ваш email перед входом.';
+        errorMessage = errorDetail;
+      } else if (errorDetail.includes('блокирован') || errorDetail.includes('попыток')) {
+        errorTitle = 'Доступ ограничен';
+        errorMessage = errorDetail;
       } else if (err.message === 'Network Error' || !err.response) {
         errorTitle = 'Ошибка подключения';
         errorMessage = 'Не удалось подключиться к серверу. Проверьте интернет-соединение.';
@@ -334,16 +386,20 @@ const AuthPage = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         phone: formData.phone,
-        role
+        role,
+        rememberMe,
+        notificationConsent: formData.notificationConsent
       });
       const resolvedRole = await register({
         email: formData.email.trim().toLowerCase(),
-        password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        password: formData.password.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
         phone: formData.phone.trim(),
         role,
         birthDate: null,
+        rememberMe,
+        notificationConsent: formData.notificationConsent,
       });
       console.log('✅ Регистрация завершена. Роль из токена:', resolvedRole);
       showNotification('success', 'Регистрация выполнена', 'Добро пожаловать!');
@@ -367,9 +423,15 @@ const AuthPage = () => {
         }
       })();
 
-      // После регистрации перенаправляем на /home-new
-      console.log('✅ Регистрация успешна, перенаправление на /home-new');
-      navigate('/home-new', { replace: true });
+      // После регистрации перенаправляем в зависимости от роли
+      const roleRedirects = {
+        teacher: '/home-new',
+        admin: '/admin-home',
+        student: '/student',
+      };
+      const nextPath = roleRedirects[resolvedRole] || '/';
+      console.log('✅ Регистрация успешна, перенаправление на', nextPath);
+      navigate(nextPath, { replace: true });
     } catch (err) {
       console.error('❌ Ошибка регистрации:', err);
       showNotification('error', 'Ошибка регистрации', err.message || 'Не удалось зарегистрироваться');
@@ -423,60 +485,22 @@ const AuthPage = () => {
     }
   };
 
-  // === ВОССТАНОВЛЕНИЕ ПАРОЛЯ ===
-  const handleResetPassword = async () => {
-    const emailError = validateEmail(resetEmail);
-    if (emailError) {
-      setError(emailError);
+  // eslint-disable-next-line no-unused-vars
+  const openTelegramResetFlow = () => {
+    if (loading || blocked) {
       return;
     }
-    
-    setResetLoading(true);
-    setError('');
-    
-    try {
-      // Пробуем новый метод через Telegram
-      const response = await fetch('/accounts/api/password-reset-telegram/request/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: resetEmail }),
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        if (data.telegram_linked) {
-          // Telegram привязан - показываем инструкцию
-          setError('');
-          showNotification(
-            'info',
-            'Откройте Telegram',
-            'Отправьте команду /reset нашему боту @YourBotName для получения ссылки'
-          );
-        } else {
-          // Telegram не привязан
-          showNotification(
-            'warning',
-            'Telegram не привязан',
-            'Обратитесь к администратору для восстановления пароля'
-          );
-        }
-        setResetSuccess(true);
-        setTimeout(() => {
-          setShowResetModal(false);
-          setResetSuccess(false);
-          setResetEmail('');
-        }, 5000);
-      } else {
-        setError(data.detail || 'Ошибка при запросе восстановления');
-      }
-    } catch (err) {
-      setError('Ошибка сети. Попробуйте позже.');
-    } finally {
-      setResetLoading(false);
+
+    const newTab = window.open(TELEGRAM_RESET_DEEPLINK, '_blank');
+    if (!newTab) {
+      window.location.href = TELEGRAM_RESET_DEEPLINK;
     }
+
+    showNotification(
+      'info',
+      'Откройте Telegram',
+      'Мы открыли бота Lectio Space. Нажмите Start и выполните команду /reset.'
+    );
   };
 
   // === ВЫБОР РОЛИ ===
@@ -494,15 +518,23 @@ const AuthPage = () => {
     setErrors({});
   };
 
-  // === РЕНДЕР: ШАГ 0 - ВЫБОР РОЛИ ===
-  if (step === 0) {
+  // === ШАГ 1: ВЫБОР РОЛИ ===
+  if (step === 'role') {
     return (
       <>
         <div className="auth-container">
+          <div className="auth-pattern" aria-hidden="true" />
+          <div className="auth-brand">
+            <h1>
+              <span className="brand-primary">Lectio</span>
+              <span className="brand-secondary"> Space</span>
+            </h1>
+          </div>
+          
           <div className="auth-content">
             <div className="auth-header">
-              <h1 className="auth-title">Добро пожаловать</h1>
-              <p className="auth-subtitle">Выберите вашу роль для продолжения</p>
+              <h1 className="auth-title">Добро пожаловать!</h1>
+              <p className="auth-subtitle">Выберите вашу роль для входа</p>
             </div>
 
             <div className="role-selection">
@@ -513,10 +545,10 @@ const AuthPage = () => {
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && selectRole('student')}
               >
-                <div className="role-icon">🎓</div>
-                <h3 className="role-title">Я Ученик</h3>
+                <div className="role-icon">👨‍🎓</div>
+                <h3 className="role-title">Ученик</h3>
                 <p className="role-description">
-                  Доступ к расписанию, заданиям и материалам
+                  Доступ к урокам и заданиям
                 </p>
               </div>
 
@@ -528,9 +560,9 @@ const AuthPage = () => {
                 onKeyDown={(e) => e.key === 'Enter' && selectRole('teacher')}
               >
                 <div className="role-icon">👨‍🏫</div>
-                <h3 className="role-title">Я Учитель</h3>
+                <h3 className="role-title">Учитель</h3>
                 <p className="role-description">
-                  Управление группами, уроками и домашними заданиями
+                  Управление группами и уроками
                 </p>
               </div>
             </div>
@@ -545,15 +577,16 @@ const AuthPage = () => {
   if (step === 1) {
     return (
       <div className="auth-container">
+        <div className="auth-pattern" aria-hidden="true" />
         <div className="auth-content">
           <div className="auth-header">
             <h1 className="auth-title">
-              {mode === 'login' ? 'Вход в систему' : 'Регистрация'}
+              {mode === 'login' ? 'Вход' : 'Регистрация'}
             </h1>
             <p className="auth-subtitle">
               {mode === 'login' 
-                ? `Войдите как ${role === 'student' ? 'ученик' : 'учитель'}`
-                : `Зарегистрируйтесь как ${role === 'student' ? 'ученик' : 'учитель'}`
+                ? `как ${role === 'student' ? 'ученик' : 'учитель'}`
+                : `как ${role === 'student' ? 'ученик' : 'учитель'}`
               }
             </p>
           </div>
@@ -561,7 +594,7 @@ const AuthPage = () => {
           <div className="auth-backlink">
             <button 
               className="back-button"
-              onClick={() => { setStep(0); setMode('login'); }}
+              onClick={() => { setStep('role'); setMode('login'); }}
               aria-label="Вернуться к выбору роли"
               type="button"
             >
@@ -696,14 +729,36 @@ const AuthPage = () => {
                   <span>Запомнить меня</span>
                 </label>
 
-                <button
-                  type="button"
+                <Link
+                  to="/simple-reset"
                   className="link-button"
-                  onClick={() => setShowResetModal(true)}
-                  disabled={loading || blocked}
+                  style={{ textDecoration: 'none' }}
                 >
                   Забыли пароль?
-                </button>
+                </Link>
+              </div>
+            )}
+
+            {mode === 'register' && (
+              <div className="form-options register-options">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    disabled={loading || blocked}
+                  />
+                  <span>Запомнить меня</span>
+                </label>
+                <label className="checkbox-label notification-consent">
+                  <input
+                    type="checkbox"
+                    checked={formData.notificationConsent}
+                    onChange={(e) => handleChange('notificationConsent', e.target.checked)}
+                    disabled={loading || blocked}
+                  />
+                  <span>Я согласен получать уведомления в Telegram о занятиях и домашних заданиях</span>
+                </label>
               </div>
             )}
 
@@ -743,15 +798,14 @@ const AuthPage = () => {
 
             <div className="auth-switch">
               <p>
-                {mode === 'login' ? 'Нет аккаунта?' : 'Уже есть аккаунт?'}
-                {' '}
+                {mode === 'login' ? 'Нет аккаунта? ' : 'Уже есть аккаунт? '}
                 <button
                   type="button"
                   className="link-button"
                   onClick={toggleMode}
                   disabled={loading || blocked}
                 >
-                  {mode === 'login' ? 'Зарегистрироваться' : 'Войти'}
+                  {mode === 'login' ? 'Создать' : 'Войти'}
                 </button>
               </p>
             </div>
@@ -761,12 +815,6 @@ const AuthPage = () => {
 
           
         </div>
-
-        {/* Новое модальное окно восстановления пароля через Telegram/WhatsApp */}
-        <PasswordResetModal
-          isOpen={showResetModal}
-          onClose={() => setShowResetModal(false)}
-        />
         
         <SupportWidget />
       </div>

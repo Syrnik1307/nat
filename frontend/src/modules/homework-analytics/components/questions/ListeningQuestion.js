@@ -1,6 +1,7 @@
 import React from 'react';
+import FileUploader from './FileUploader';
 
-const ListeningQuestion = ({ question, onChange }) => {
+const ListeningQuestion = React.memo(({ question, onChange }) => {
   const { config = {} } = question;
   const subQuestions = Array.isArray(config.subQuestions) ? config.subQuestions : [];
 
@@ -29,26 +30,29 @@ const ListeningQuestion = ({ question, onChange }) => {
 
   return (
     <div className="hc-question-editor">
-      <div className="form-group">
-        <label className="form-label">Ссылка на аудио</label>
-        <input
-          className="form-input"
-          placeholder="https://example.com/audio.mp3"
-          value={config.audioUrl || ''}
-          onChange={(event) => updateConfig({ audioUrl: event.target.value })}
+      <div className="form-group" data-tour="q-listening-audio">
+        <label className="form-label">Аудиофайл</label>
+        <FileUploader
+          fileType="audio"
+          currentUrl={config.audioUrl || ''}
+          onUploadSuccess={(url, fileData) => updateConfig({
+            audioUrl: url,
+            audioFileId: fileData?.file_id || null,
+          })}
+          accept="audio/*"
         />
-        <small className="gm-hint">Пока используется ссылка. Загрузка файлов появится после интеграции хранилища.</small>
+        <small className="gm-hint">Загрузите аудио (MP3, WAV, OGG, до 50 МБ)</small>
       </div>
 
       {config.audioUrl && (
-        <div className="hc-audio-preview">
+        <div className="hc-audio-preview" data-tour="q-listening-player">
           <audio controls src={config.audioUrl}>
             Ваш браузер не поддерживает аудио.
           </audio>
         </div>
       )}
 
-      <div className="form-group">
+      <div className="form-group" data-tour="q-listening-prompt">
         <label className="form-label">Инструкция для учеников</label>
         <textarea
           className="form-textarea"
@@ -59,10 +63,10 @@ const ListeningQuestion = ({ question, onChange }) => {
         />
       </div>
 
-      <div className="hc-subsection">
+      <div className="hc-subsection" data-tour="q-listening-subquestions">
         <div className="hc-subsection-header">
           <span>Подвопросы ({subQuestions.length})</span>
-          <button type="button" className="gm-btn-surface" onClick={addSubQuestion}>
+          <button type="button" className="gm-btn-surface" onClick={addSubQuestion} data-tour="q-listening-add">
             + Добавить подвопрос
           </button>
         </div>
@@ -109,6 +113,10 @@ const ListeningQuestion = ({ question, onChange }) => {
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  return prevProps.question.id === nextProps.question.id &&
+         JSON.stringify(prevProps.question.config) === JSON.stringify(nextProps.question.config) &&
+         prevProps.question.question_text === nextProps.question.question_text;
+});
 
 export default ListeningQuestion;

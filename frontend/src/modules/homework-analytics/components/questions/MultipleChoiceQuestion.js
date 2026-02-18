@@ -40,7 +40,7 @@ const MultipleChoiceQuestion = ({ question, onChange }) => {
     <div className="hc-question-editor">
       <div className="form-group">
         <label className="form-label">Варианты ответов</label>
-        <div className="hc-question-options">
+        <div className="hc-question-options" data-tour="q-multi-options">
           {options.map((option, index) => (
             <div key={option.id} className="hc-option-row">
               <label className="hc-option-checkbox">
@@ -69,7 +69,7 @@ const MultipleChoiceQuestion = ({ question, onChange }) => {
             </div>
           ))}
         </div>
-        <button type="button" className="gm-btn-surface" onClick={addOption}>
+        <button type="button" className="gm-btn-surface" onClick={addOption} data-tour="q-multi-add">
           + Добавить вариант
         </button>
       </div>

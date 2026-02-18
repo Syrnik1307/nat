@@ -1,0 +1,404 @@
+/* GroupSocialDynamics.css */
+
+.group-social-dynamics {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+/* Header */
+.dynamics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.dynamics-header h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #1e293b;
+}
+
+.header-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.period-label {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.recalculate-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.recalculate-btn:hover {
+  background: #2563eb;
+}
+
+.recalculate-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Loading/Error */
+.group-dynamics-loading,
+.group-dynamics-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 48px;
+  background: white;
+  border-radius: 12px;
+  color: #64748b;
+}
+
+.group-dynamics-error {
+  color: #ef4444;
+}
+
+.group-dynamics-error button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* View Toggle */
+.view-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  background: white;
+  padding: 8px;
+  border-radius: 12px;
+  width: fit-content;
+}
+
+.view-toggle button {
+  background: none;
+  border: none;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.view-toggle button:hover {
+  background: #f1f5f9;
+}
+
+.view-toggle button.active {
+  background: #3b82f6;
+  color: white;
+}
+
+/* Roles Distribution */
+.roles-distribution {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.roles-distribution h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  color: #1e293b;
+}
+
+.roles-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.role-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.role-icon-small {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+}
+
+.role-bar-label {
+  width: 100px;
+  font-size: 14px;
+  color: #475569;
+}
+
+.role-bar-container {
+  flex: 1;
+  height: 24px;
+  background: #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.role-bar-fill {
+  height: 100%;
+  border-radius: 12px;
+  transition: width 0.3s ease;
+  min-width: 2px;
+}
+
+.role-bar-count {
+  width: 32px;
+  text-align: right;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* Students Grid */
+.students-grid {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.students-grid h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  color: #1e293b;
+}
+
+.students-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+/* Student Social Card */
+.student-social-card {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 16px;
+  border-left: 4px solid #e2e8f0;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.student-social-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.card-header .role-icon {
+  font-size: 24px;
+}
+
+.card-header .student-name {
+  font-weight: 600;
+  color: #1e293b;
+  flex: 1;
+}
+
+.influence-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.card-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.card-stats .stat {
+  text-align: center;
+}
+
+.card-stats .stat-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.card-stats .stat-label {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.sentiment-row {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* Rankings Table */
+.rankings-table-container {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+}
+
+.rankings-table-container h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  color: #1e293b;
+}
+
+.rankings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rankings-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.rankings-table td {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.rankings-table tr:hover {
+  background: #f8fafc;
+}
+
+.rankings-table tr.top-rank {
+  background: #fffbeb;
+}
+
+.rankings-table tr.top-rank:hover {
+  background: #fef3c7;
+}
+
+.rank-cell {
+  font-size: 18px;
+  text-align: center;
+  width: 60px;
+}
+
+.name-cell {
+  font-weight: 500;
+}
+
+.points-cell {
+  width: 100px;
+}
+
+.points-badge {
+  display: inline-block;
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.attendance-cell {
+  width: 100px;
+}
+
+.attendance-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.score-cell {
+  width: 80px;
+  text-align: center;
+}
+
+/* Spinner */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .group-social-dynamics {
+    padding: 16px;
+  }
+
+  .dynamics-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .students-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .card-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .role-bar-label {
+    width: 80px;
+    font-size: 12px;
+  }
+
+  .rankings-table th,
+  .rankings-table td {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}

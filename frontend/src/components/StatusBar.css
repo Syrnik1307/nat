@@ -1,6 +1,6 @@
 /* Status Bar */
 .status-bar {
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   color: white;
   padding: 0.75rem 2rem;
   display: flex;
@@ -76,3 +76,4 @@
     font-size: 1rem;
   }
 }
+

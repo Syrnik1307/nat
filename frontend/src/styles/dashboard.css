@@ -1,0 +1,517 @@
+/*
+ * 🌨️ WINTER MAGIC DASHBOARD
+ * Стили для Dashboard карточек с атмосферой зимней магии
+ */
+
+/* ========================================
+   📊 DASHBOARD LAYOUT
+   ======================================== */
+
+.dashboard-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--space-xl);
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Aurora Background for Dashboard */
+.dashboard-container::before {
+  content: '';
+  position: fixed;
+  inset: -8%;
+  background: radial-gradient(780px at 15% 20%, rgba(224, 231, 255, 0.5), transparent 55%),
+              radial-gradient(720px at 85% 5%, rgba(221, 214, 254, 0.45), transparent 55%),
+              radial-gradient(760px at 40% 85%, rgba(191, 219, 254, 0.35), transparent 60%);
+  filter: blur(32px);
+  opacity: 0.75;
+  /* PERF: Убрана бесконечная анимация фона */
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes auroraFloat {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(4%, -3%, 0) scale(1.05); }
+  100% { transform: translate3d(-3%, 4%, 0) scale(1.02); }
+}
+
+.dashboard-container > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.dashboard-section {
+  margin-bottom: var(--space-2xl);
+}
+
+.dashboard-section-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* ========================================
+   🃏 STATS CARDS - Статистика
+   ======================================== */
+
+.stats-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-2xl);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-md);
+  /* PERF: Убран backdrop-filter, ускорены переходы */
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
+  position: relative;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.stats-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.stats-card:hover {
+  box-shadow: 0 30px 60px -14px rgba(79, 70, 229, 0.18),
+              0 0 25px rgba(79, 70, 229, 0.15);
+  transform: translateY(-4px) scale(1.02);
+  border-color: rgba(79, 70, 229, 0.2);
+}
+
+.stats-card:hover::before {
+  opacity: 1;
+}
+
+.stats-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
+.stats-card-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-button);
+  background: var(--accent-primary-light);
+  color: var(--accent-primary);
+  font-size: var(--text-2xl);
+}
+
+.stats-card-value {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  margin: var(--space-sm) 0;
+}
+
+.stats-card-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+}
+
+.stats-card-trend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-xs);
+  margin-top: var(--space-xs);
+}
+
+.stats-card-trend.positive {
+  color: var(--color-success);
+}
+
+.stats-card-trend.negative {
+  color: var(--color-error);
+}
+
+/* ========================================
+   📋 LESSON CARDS - Карточки уроков
+   ======================================== */
+
+.lesson-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-2xl);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-md);
+  /* PERF: Мгновенные переходы */
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
+  border-left: 4px solid transparent;
+  will-change: transform;
+}
+
+.lesson-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+  border-left-color: var(--accent-primary);
+}
+
+.lesson-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
+.lesson-card-time {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.lesson-card-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: var(--space-xs) 0;
+}
+
+.lesson-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin: var(--space-md) 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.lesson-card-meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.lesson-card-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-light);
+}
+
+/* ========================================
+   👥 GROUP/STUDENT CARDS - Карточки групп
+   ======================================== */
+
+.group-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-2xl);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-md);
+  /* PERF: Мгновенные переходы */
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.group-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.group-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.group-card-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background: var(--accent-primary-light);
+  color: var(--accent-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+}
+
+.group-card-info {
+  flex: 1;
+}
+
+.group-card-name {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.group-card-description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.group-card-stats {
+  display: flex;
+  gap: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-light);
+}
+
+.group-card-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.group-card-stat-value {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+}
+
+.group-card-stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ========================================
+   📈 PROGRESS CARDS - Прогресс
+   ======================================== */
+
+.progress-card {
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.progress-card-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-md);
+}
+
+.progress-bar-container {
+  position: relative;
+  height: 8px;
+  background: var(--bg-snow);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--space-xs);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-slow);
+  box-shadow: var(--glow-accent);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+  /* PERF: Убрана бесконечная анимация shimmer */
+  opacity: 0.18;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.progress-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+/* ========================================
+   🔔 NOTIFICATION CARDS
+   ======================================== */
+
+.notification-card {
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+  border-left: 4px solid var(--accent-primary);
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
+}
+
+.notification-card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateX(4px);
+}
+
+.notification-card.error {
+  border-left-color: var(--color-error);
+}
+
+.notification-card.success {
+  border-left-color: var(--color-success);
+}
+
+.notification-card.warning {
+  border-left-color: var(--color-warning);
+}
+
+.notification-card-icon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--accent-primary-light);
+  color: var(--accent-primary);
+  font-size: var(--text-lg);
+}
+
+.notification-card-content {
+  flex: 1;
+}
+
+.notification-card-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.notification-card-message {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+/* ========================================
+   📱 RESPONSIVE
+   ======================================== */
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: var(--space-md);
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+
+  .stats-card,
+  .lesson-card,
+  .group-card {
+    padding: var(--space-md);
+  }
+
+  .group-card-stats {
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .dashboard-title {
+    font-size: 1.5rem;
+    text-align: center;
+  }
+
+  .dashboard-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .dashboard-actions button {
+    width: 100%;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-container {
+    padding: var(--space-sm);
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lesson-card,
+  .group-card {
+    padding: var(--space-sm);
+  }
+
+  .lesson-card-header {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .lesson-card-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

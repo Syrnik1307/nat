@@ -42,7 +42,7 @@
 .error-banner {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #ef4444;
+  color: var(--color-error);
   padding: var(--space-md);
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-lg);
@@ -55,7 +55,7 @@
 .error-banner button {
   background: none;
   border: none;
-  color: #ef4444;
+  color: var(--color-error);
   cursor: pointer;
   font-size: 1.2rem;
   padding: 0 var(--space-sm);
@@ -136,13 +136,13 @@
 
 .status-badge.active {
   background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
+  color: var(--color-primary);
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .status-badge.inactive {
   background: rgba(107, 114, 128, 0.2);
-  color: #6b7280;
+  color: var(--text-muted);
   border: 1px solid rgba(107, 114, 128, 0.3);
 }
 
@@ -178,11 +178,11 @@
 }
 
 .availability.available {
-  color: #10b981;
+  color: var(--color-primary);
 }
 
 .availability.busy {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .last-used {
@@ -222,7 +222,7 @@
 .form-error {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #ef4444;
+  color: var(--color-error);
   padding: var(--space-md);
   border-radius: var(--radius-md);
   font-size: 0.9rem;
@@ -318,3 +318,4 @@
     width: 100%;
   }
 }
+

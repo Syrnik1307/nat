@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { getTeacherStatsSummary, getGroups, getLessons, startLesson, startLessonNew, createLesson } from '../apiService';
+import { getCached } from '../utils/dataCache';
 import LessonAttendance from './LessonAttendance';
+import { Notification } from '../shared/components';
+import useNotification from '../shared/hooks/useNotification';
+import { useNotifications } from '../shared/context/NotificationContext';
 import { useAuth } from '../auth';
 
 const TeacherDashboard = () => {
+  const { notification, showNotification, closeNotification } = useNotification();
+  const { toast } = useNotifications();
   const { logout } = useAuth();
   const [stats, setStats] = useState(null);
   const [groups, setGroups] = useState([]);
@@ -18,12 +24,16 @@ const TeacherDashboard = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [statsRes, groupsRes, lessonsRes] = await Promise.all([
-          getTeacherStatsSummary(),
+        // Use cached stats with deduplication
+        const [statsData, groupsRes, lessonsRes] = await Promise.all([
+          getCached('teacher:stats', async () => {
+            const res = await getTeacherStatsSummary();
+            return res.data;
+          }, 30000),
           getGroups(),
           getLessons({}),
         ]);
-        setStats(statsRes.data);
+        setStats(statsData);
         setGroups(Array.isArray(groupsRes.data) ? groupsRes.data : groupsRes.data.results || []);
         setLessons(Array.isArray(lessonsRes.data) ? lessonsRes.data : lessonsRes.data.results || []);
       } catch (e) {
@@ -40,17 +50,17 @@ const TeacherDashboard = () => {
       let res;
       try {
         res = await startLessonNew(id);
-        alert('Урок запущен (new pool)\nStart URL: ' + (res.data.zoom_start_url || res.data.start_url));
+        showNotification('success', 'Урок запущен', 'Start URL: ' + (res.data.zoom_start_url || res.data.start_url));
       } catch (e) {
         // Fallback legacy
         res = await startLesson(id);
-        alert(res.data.message + '\nStart URL: ' + res.data.start_url);
+        showNotification('success', 'Урок запущен', res.data.message + '\nStart URL: ' + res.data.start_url);
       }
       // Refresh lessons to reflect zoom links
       const newLessons = await getLessons({});
       setLessons(Array.isArray(newLessons.data) ? newLessons.data : newLessons.data.results || []);
     } catch (e) {
-      alert(e.response?.data?.message || 'Ошибка запуска');
+      showNotification('error', 'Ошибка', e.response?.data?.message || 'Ошибка запуска');
     } finally {
       setStartingLessonId(null);
     }
@@ -84,7 +94,7 @@ const TeacherDashboard = () => {
       setShowNewLesson(false);
       setNewLesson({ title:'', group:'', start_time:'', end_time:'', topics:'' });
     } catch (e) {
-      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка создания');
+      toast.error(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка создания');
     } finally {
       setCreating(false);
     }
@@ -98,14 +108,14 @@ const TeacherDashboard = () => {
       </div>
       {error && <div style={{ color:'red' }}>{error}</div>}
       {stats && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:'1rem', marginBottom:'2rem' }}>
+        <div data-tour="teacher-stats" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:'1rem', marginBottom:'2rem' }}>
           <StatCard label="Всего уроков" value={stats.total_lessons} />
           <StatCard label="Средняя длит. (сек)" value={stats.average_duration_seconds ?? '—'} />
           <StatCard label="Записано" value={`${stats.recorded_lessons} (${stats.recording_ratio_percent}%)`} />
           <StatCard label="Учеников" value={stats.total_students} />
         </div>
       )}
-      <section style={{ marginBottom:'2rem' }}>
+      <section data-tour="teacher-groups" style={{ marginBottom:'2rem' }}>
         <h3>Группы <span style={{fontSize:'0.75rem', fontWeight:400}}>| <a href="/groups/manage" style={{color:'#2563eb', textDecoration:'none'}}>Управление →</a></span></h3>
         <div style={{ display:'flex', flexWrap:'wrap', gap:'0.75rem' }}>
           {groups.map(g => (
@@ -120,8 +130,8 @@ const TeacherDashboard = () => {
       <section>
         <h3>Уроки <span style={{fontSize:'0.8rem', fontWeight:400}}>| <a href="/homework/manage" style={{color:'#2563eb', textDecoration:'none'}}>Домашние задания →</a> | <a href="/recurring-lessons/manage" style={{color:'#2563eb', textDecoration:'none'}}>Регулярные уроки →</a></span></h3>
         <div style={{ marginBottom:'0.75rem' }}>
-          <button onClick={()=>setShowNewLesson(s=>!s)} style={{ background:'#10b981', color:'#fff', border:'none', padding:'0.45rem 0.9rem', borderRadius:6 }}>
-            {showNewLesson ? 'Отмена' : '➕ Новый урок'}
+          <button data-tour="teacher-new-lesson" onClick={()=>setShowNewLesson(s=>!s)} style={{ background:'#10b981', color:'#fff', border:'none', padding:'0.45rem 0.9rem', borderRadius:6 }}>
+            {showNewLesson ? 'Отмена' : 'Новый урок'}
           </button>
         </div>
         {showNewLesson && (
@@ -158,7 +168,7 @@ const TeacherDashboard = () => {
             </div>
           </form>
         )}
-        <table style={{ width:'100%', borderCollapse:'collapse' }}>
+        <table data-tour="teacher-lessons" style={{ width:'100%', borderCollapse:'collapse' }}>
           <thead>
             <tr style={{ textAlign:'left', borderBottom:'1px solid #ddd' }}>
               <th>Название</th>
@@ -198,6 +208,14 @@ const TeacherDashboard = () => {
       {attendanceLessonId && (
         <LessonAttendance lessonId={attendanceLessonId} onClose={closeAttendance} />
       )}
+
+      <Notification
+        isOpen={notification.isOpen}
+        onClose={closeNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
     </div>
   );
 };

@@ -1,0 +1,404 @@
+/* Teacher Analytics Modal */
+.teacher-analytics-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: taFadeIn 0.2s ease-out;
+}
+
+@keyframes taFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.teacher-analytics-modal {
+  background: white;
+  border-radius: 16px;
+  width: 95%;
+  max-width: 800px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: taSlideUp 0.3s ease-out;
+  overflow: hidden;
+}
+
+@keyframes taSlideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Header */
+.ta-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-light, #e5e7eb);
+  background: linear-gradient(135deg, var(--primary-600, #1e3a8a) 0%, var(--primary-700, #1e40af) 100%);
+  color: white;
+}
+
+.ta-header-info h2 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.ta-header-info p {
+  margin: 0;
+  opacity: 0.85;
+  font-size: 0.9rem;
+}
+
+.ta-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  font-size: 1.25rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.ta-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+/* Content */
+.ta-content {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Loading */
+.ta-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.ta-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-light, #e5e7eb);
+  border-top-color: var(--primary-600, #1e3a8a);
+  border-radius: 50%;
+  animation: taSpin 0.8s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes taSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error */
+.ta-error {
+  padding: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  text-align: center;
+}
+
+/* Sections */
+.ta-section {
+  margin-bottom: 1.5rem;
+}
+
+.ta-section:last-child {
+  margin-bottom: 0;
+}
+
+.ta-section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #6b7280);
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+
+/* Grid for stats */
+.ta-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+/* Stat Card */
+.ta-stat-card {
+  background: var(--bg-app, #f9fafb);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid var(--border-light, #e5e7eb);
+  transition: all 0.2s;
+}
+
+.ta-stat-card:hover {
+  border-color: var(--primary-200, #c7d2fe);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.ta-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b7280);
+  font-weight: 500;
+}
+
+.ta-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+}
+
+.ta-stat-sub {
+  font-size: 0.75rem;
+  color: var(--text-light, #9ca3af);
+}
+
+/* Integration Status */
+.ta-integrations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ta-integration-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  background: var(--bg-app, #f9fafb);
+  border-radius: 10px;
+  border: 1px solid var(--border-light, #e5e7eb);
+}
+
+.ta-integration-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ta-integration-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  background: var(--primary-100, #dbeafe);
+  color: var(--primary-600, #1e3a8a);
+}
+
+.ta-integration-icon.zoom {
+  background: #e0f4ff;
+  color: #0b5cff;
+}
+
+.ta-integration-icon.meet {
+  background: #e8f5e9;
+  color: #34a853;
+}
+
+.ta-integration-icon.telegram {
+  background: #e3f2fd;
+  color: #0088cc;
+}
+
+.ta-integration-name {
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  font-size: 0.95rem;
+}
+
+.ta-integration-detail {
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.ta-status-badge {
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ta-status-badge.connected {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.ta-status-badge.disconnected {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.ta-status-badge.verified {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+/* Finance Section */
+.ta-finance-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.ta-finance-card {
+  flex: 1;
+  min-width: 200px;
+  background: linear-gradient(135deg, var(--primary-50, #eff6ff) 0%, white 100%);
+  border-radius: 12px;
+  padding: 1.25rem;
+  border: 1px solid var(--primary-100, #dbeafe);
+}
+
+.ta-finance-label {
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 0.5rem;
+}
+
+.ta-finance-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--primary-700, #1e40af);
+}
+
+.ta-finance-sub {
+  font-size: 0.8rem;
+  color: var(--text-light, #9ca3af);
+  margin-top: 0.25rem;
+}
+
+/* Subscription Status */
+.ta-subscription-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-light, #e5e7eb);
+}
+
+.ta-subscription-row:last-child {
+  border-bottom: none;
+}
+
+.ta-subscription-row .label {
+  flex: 0 0 140px;
+  font-size: 0.875rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.ta-subscription-row .value {
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+/* Subscription Status Pills */
+.ta-sub-status {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ta-sub-status.active {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.ta-sub-status.pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.ta-sub-status.expired {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.ta-sub-status.cancelled {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.ta-sub-status.trial {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+/* Meta info */
+.ta-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b7280);
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border-light, #e5e7eb);
+  margin-top: 1rem;
+}
+
+.ta-meta-row span:last-child {
+  font-weight: 500;
+  color: var(--text-primary, #111827);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .ta-header {
+    padding: 1rem;
+  }
+  
+  .ta-header-info h2 {
+    font-size: 1.15rem;
+  }
+  
+  .ta-content {
+    padding: 1rem;
+  }
+  
+  .ta-stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .ta-finance-card {
+    min-width: 100%;
+  }
+}

@@ -44,6 +44,7 @@ const FillBlanksQuestion = ({ question, onChange }) => {
         <label className="form-label">Текст с пропусками</label>
         <textarea
           className="form-textarea"
+          data-tour="q-fillblanks-template"
           rows={4}
           value={template}
           onChange={(event) => updateConfig({ template: event.target.value })}
@@ -52,7 +53,7 @@ const FillBlanksQuestion = ({ question, onChange }) => {
         <small className="gm-hint">Количество полей ответов обновляется автоматически при изменении шаблона.</small>
       </div>
 
-      <div className="form-group">
+      <div className="form-group" data-tour="q-fillblanks-settings">
         <label className="form-label">Настройки проверки</label>
         <div className="hc-inline-fields">
           <label className="hc-inline-switch">
@@ -75,7 +76,7 @@ const FillBlanksQuestion = ({ question, onChange }) => {
       </div>
 
       {answers.length > 0 && (
-        <div className="hc-subsection">
+        <div className="hc-subsection" data-tour="q-fillblanks-answers">
           <div className="hc-subsection-header">
             <span>Ответы ({answers.length})</span>
           </div>

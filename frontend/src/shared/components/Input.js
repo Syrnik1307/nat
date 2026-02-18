@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import EyeIcon from '../../components/icons/EyeIcon';
 
 /**
  * Переиспользуемый компонент поля ввода
@@ -31,31 +32,34 @@ const Input = ({
   const [showPassword, setShowPassword] = useState(false);
 
   const containerStyles = {
-    marginBottom: '1rem',
+    marginBottom: 'var(--space-lg)',
     width: '100%',
   };
 
   const labelStyles = {
     display: 'block',
-    marginBottom: '0.5rem',
+    marginBottom: '8px',
     fontSize: '0.875rem',
     fontWeight: '500',
-    color: '#374151',
+    color: '#1E293B', /* Slate-800 */
+    letterSpacing: '0',
+    fontFamily: 'Plus Jakarta Sans, sans-serif',
   };
 
   const inputBaseStyles = {
     width: '100%',
-    padding: 'var(--space-sm) var(--space-md)',
-    fontSize: '0.9375rem',
-    border: `1px solid ${error ? 'var(--error-500)' : focused ? 'var(--accent-500)' : '#cbd5f5'}`,
-    borderRadius: 'var(--radius-lg)',
+    padding: '13px 16px',
+    fontSize: '1rem', /* 16px base */
+    border: error ? '1px solid #F43F5E' : (focused ? '1px solid #4F46E5' : '1px solid transparent'),
+    borderRadius: '16px',
     outline: 'none',
-    transition: 'all var(--transition-base)',
-    backgroundColor: disabled ? '#e2e8f0' : '#ffffff',
-    color: disabled ? '#94a3b8' : '#0f172a',
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    backgroundColor: disabled ? '#F1F5F9' : (focused ? '#FFFFFF' : '#F1F5F9'),
+    color: disabled ? '#94A3B8' : '#1E293B', /* Slate-800 */
     cursor: disabled ? 'not-allowed' : 'text',
-    boxShadow: focused ? '0 0 0 3px rgba(37, 99, 235, 0.12)' : 'none',
-    fontFamily: 'inherit',
+    boxShadow: focused ? (error ? '0 0 0 3px rgba(244, 63, 94, 0.12)' : '0 0 0 3px rgba(79, 70, 229, 0.12)') : 'none',
+    fontFamily: 'Plus Jakarta Sans, Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+    minHeight: '48px',
   };
 
   const passwordContainerStyles = {
@@ -65,27 +69,29 @@ const Input = ({
 
   const togglePasswordStyles = {
     position: 'absolute',
-    right: '0.75rem',
+    right: 'var(--space-md)',
     top: '50%',
     transform: 'translateY(-50%)',
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    fontSize: '0.875rem',
-    color: focused ? 'var(--accent-600)' : '#6b7280',
-    padding: '0.25rem',
+    fontSize: 'var(--text-sm)',
+    color: focused ? 'var(--primary-600)' : 'var(--text-secondary)',
+    padding: 'var(--space-xs)',
+    transition: 'color var(--transition-base)',
   };
 
   const errorStyles = {
-    marginTop: '0.25rem',
+    marginTop: '6px',
     fontSize: '0.75rem',
-    color: '#ef4444',
+    color: '#F43F5E', /* Rose-500 */
+    fontWeight: '500',
   };
 
   const helperStyles = {
-    marginTop: '0.25rem',
+    marginTop: '6px',
     fontSize: '0.75rem',
-    color: '#6b7280',
+    color: '#64748B', /* Slate-500 */
   };
 
   const handleChange = (e) => {
@@ -139,7 +145,7 @@ const Input = ({
             style={togglePasswordStyles}
             tabIndex={-1}
           >
-            {showPassword ? '👁️' : '👁️‍🗨️'}
+            <EyeIcon open={showPassword} />
           </button>
         </div>
       );
@@ -167,7 +173,7 @@ const Input = ({
       {label && (
         <label style={labelStyles}>
           {label}
-          {required && <span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span>}
+          {required && <span style={{ color: 'var(--error-500)', marginLeft: 'var(--space-xs)' }}>*</span>}
         </label>
       )}
       {renderInput()}

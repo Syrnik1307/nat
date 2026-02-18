@@ -29,10 +29,10 @@ const MatchingQuestion = ({ question, onChange }) => {
 
   return (
     <div className="hc-question-editor">
-      <div className="hc-subsection">
+      <div className="hc-subsection" data-tour="q-matching-pairs">
         <div className="hc-subsection-header">
           <span>Пары ({pairs.length})</span>
-          <button type="button" className="gm-btn-surface" onClick={addPair}>
+          <button type="button" className="gm-btn-surface" onClick={addPair} data-tour="q-matching-add">
             + Добавить пару
           </button>
         </div>
@@ -79,7 +79,7 @@ const MatchingQuestion = ({ question, onChange }) => {
         )}
       </div>
 
-      <label className="hc-inline-switch">
+      <label className="hc-inline-switch" data-tour="q-matching-shuffle">
         <input
           type="checkbox"
           checked={Boolean(config.shuffleRightColumn)}

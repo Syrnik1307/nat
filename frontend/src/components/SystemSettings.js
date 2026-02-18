@@ -62,11 +62,11 @@ const SystemSettings = ({ onClose }) => {
   }
 
   const tabs = [
-    { id: 'email', label: 'Email', icon: '📧' },
-    { id: 'notifications', label: 'Уведомления', icon: '🔔' },
-    { id: 'zoom', label: 'Zoom', icon: '🎥' },
-    { id: 'schedule', label: 'Расписание', icon: '📅' },
-    { id: 'branding', label: 'Брендинг', icon: '🎨' },
+    { id: 'email', label: 'Email', icon: '✉' },
+    { id: 'notifications', label: 'Уведомления', icon: '⊙' },
+    { id: 'zoom', label: 'Zoom', icon: '◉' },
+    { id: 'schedule', label: 'Расписание', icon: '□' },
+    { id: 'branding', label: 'Брендинг', icon: '■' },
   ];
 
   return (
@@ -266,7 +266,7 @@ const SystemSettings = ({ onClose }) => {
                   type="text"
                   value={settings.platform_name}
                   onChange={e => handleChange('platform_name', e.target.value)}
-                  placeholder="Teaching Panel"
+                  placeholder="Lectio Space"
                 />
               </div>
 

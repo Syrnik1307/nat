@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Modal, Button } from '../shared/components';
+import { useNotifications } from '../shared/context/NotificationContext';
 import './GroupChatModal.css';
 
 /**
@@ -8,6 +9,7 @@ import './GroupChatModal.css';
  * Преподаватель выбирает группу и участников
  */
 const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
+  const { toast } = useNotifications();
   const [mode, setMode] = useState('group'); // 'group' или 'custom'
   const [groups, setGroups] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
@@ -19,24 +21,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    if (isOpen) {
-      loadGroups();
-      loadAllUsers();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (selectedGroup) {
-      loadGroupStudents();
-      // Автоматическое название группы
-      if (!chatName) {
-        setChatName(`Группа ${selectedGroup.name}`);
-      }
-    }
-  }, [selectedGroup]);
-
-  const loadGroups = async () => {
+  const loadGroups = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
@@ -49,16 +34,15 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadAllUsers = async () => {
+  const loadAllUsers = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
       const response = await axios.get('/api/users/', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Фильтруем текущего пользователя
       const currentUserId = JSON.parse(localStorage.getItem('user'))?.id;
       const users = response.data.filter(u => u.id !== currentUserId);
       setAllUsers(users);
@@ -67,11 +51,17 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadGroupStudents = async () => {
+  useEffect(() => {
+    if (isOpen) {
+      loadGroups();
+      loadAllUsers();
+    }
+  }, [isOpen, loadGroups, loadAllUsers]);
+
+  const loadGroupStudents = useCallback(async () => {
     if (!selectedGroup?.id) return;
-    
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
@@ -80,14 +70,22 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setGroupStudents(response.data);
-      // Автоматически выбираем всех студентов
       setSelectedStudents(response.data.map(s => s.id));
     } catch (error) {
       console.error('Ошибка загрузки студентов группы:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedGroup]);
+
+  useEffect(() => {
+    if (selectedGroup) {
+      loadGroupStudents();
+      if (!chatName) {
+        setChatName(`Группа ${selectedGroup.name}`);
+      }
+    }
+  }, [selectedGroup, chatName, loadGroupStudents]);
 
   const toggleStudent = (studentId) => {
     setSelectedStudents(prev => 
@@ -133,7 +131,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
       handleClose();
     } catch (error) {
       console.error('Ошибка создания группового чата:', error);
-      alert('Ошибка создания чата. Попробуйте еще раз.');
+      toast.error('Ошибка создания чата. Попробуйте еще раз.');
     } finally {
       setCreating(false);
     }
@@ -169,7 +167,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
                 setChatName('');
               }}
             >
-              📚 Из учебной группы
+              Из учебной группы
             </button>
             <button
               className={`mode-tab ${mode === 'custom' ? 'active' : ''}`}
@@ -208,7 +206,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
           
           {loading && !selectedGroup ? (
             <div className="loading-indicator">
-              <span className="loader-icon">🔄</span>
+              <span className="loader-icon">...</span>
               Загрузка групп...
             </div>
           ) : (
@@ -219,7 +217,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
                   className={`group-card ${selectedGroup?.id === group.id ? 'selected' : ''}`}
                   onClick={() => setSelectedGroup(group)}
                 >
-                  <div className="group-card-icon">👥</div>
+                  <div className="group-card-icon">⚠</div>
                   <div className="group-card-name">{group.name}</div>
                   <div className="group-card-meta">
                     Уровень: {group.level}
@@ -259,20 +257,20 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
                 className="select-all-button"
                 onClick={toggleAllStudents}
               >
-                {selectedStudents.length === (mode === 'custom' ? filteredUsers : groupStudents).length ? '❌' : '✅'}
+                {selectedStudents.length === (mode === 'custom' ? filteredUsers : groupStudents).length ? '○' : '●'}
                 {selectedStudents.length === (mode === 'custom' ? filteredUsers : groupStudents).length ? 'Снять все' : 'Выбрать все'}
               </button>
             </div>
 
             {loading ? (
               <div className="loading-indicator">
-                <span className="loader-icon">🔄</span>
+                <span className="loader-icon">●</span>
                 {mode === 'custom' ? 'Загрузка пользователей...' : 'Загрузка студентов...'}
               </div>
             ) : mode === 'custom' ? (
               filteredUsers.length === 0 ? (
                 <div className="no-students">
-                  <span className="empty-icon">🔍</span>
+                  <span className="empty-icon">○</span>
                   <p>{searchQuery ? 'Пользователи не найдены' : 'Введите запрос для поиска'}</p>
                 </div>
               ) : (
@@ -284,7 +282,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
                       onClick={() => toggleStudent(user.id)}
                     >
                       <div className="student-checkbox">
-                        {selectedStudents.includes(user.id) ? '✅' : '⬜'}
+                        {selectedStudents.includes(user.id) ? '☑' : '☐'}
                       </div>
                       
                       <div className="student-avatar">
@@ -299,7 +297,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
                           {user.email}
                         </div>
                         <div className="student-role">
-                          {user.role === 'teacher' ? '👨‍🏫 Преподаватель' : '👨‍🎓 Студент'}
+                          {user.role === 'teacher' ? 'Преподаватель' : 'Студент'}
                         </div>
                       </div>
                     </div>
@@ -308,7 +306,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
               )
             ) : groupStudents.length === 0 ? (
               <div className="no-students">
-                <span className="empty-icon">👥</span>
+                <span className="empty-icon">○</span>
                 <p>В группе пока нет студентов</p>
               </div>
             ) : (
@@ -320,7 +318,7 @@ const GroupChatModal = ({ isOpen, onClose, onSuccess }) => {
                     onClick={() => toggleStudent(student.id)}
                   >
                     <div className="student-checkbox">
-                      {selectedStudents.includes(student.id) ? '✅' : '⬜'}
+                      {selectedStudents.includes(student.id) ? '☑' : '☐'}
                     </div>
                     
                     <div className="student-avatar">

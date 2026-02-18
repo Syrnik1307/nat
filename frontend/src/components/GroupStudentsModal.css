@@ -1,0 +1,362 @@
+/**
+ * GroupStudentsModal.css
+ * Стили для модалки управления учениками группы
+ */
+
+.gsm-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.gsm-group-name {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* Empty state */
+.gsm-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  text-align: center;
+}
+
+.gsm-empty-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.gsm-empty h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gsm-empty p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* Toolbar */
+.gsm-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+}
+
+.gsm-count {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.gsm-count strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.gsm-select-all {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.gsm-select-all:hover {
+  background: rgba(79, 70, 229, 0.08);
+}
+
+/* Student list */
+.gsm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.gsm-student {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gsm-student:hover {
+  background: var(--bg-surface);
+  border-color: var(--border-light);
+}
+
+.gsm-student.selected {
+  background: rgba(79, 70, 229, 0.08);
+  border-color: var(--color-primary);
+}
+
+.gsm-checkbox {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: 2px solid var(--border-medium);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.gsm-student.selected .gsm-checkbox {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.gsm-avatar {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.gsm-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.gsm-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gsm-email {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gsm-id {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
+
+/* Tip */
+.gsm-tip {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+/* Footer */
+.gsm-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+}
+
+.gsm-footer-info {
+  flex: 1;
+}
+
+.gsm-selected-count {
+  font-size: 0.875rem;
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.gsm-footer-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Buttons */
+.gsm-btn {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gsm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gsm-btn-primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.gsm-btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.gsm-btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.gsm-btn-secondary:hover:not(:disabled) {
+  background: var(--bg-surface);
+}
+
+.gsm-btn-danger {
+  background: var(--color-error);
+  color: white;
+}
+
+.gsm-btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+/* Scrollbar */
+.gsm-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.gsm-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.gsm-list::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 3px;
+}
+
+.gsm-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Transfer panel */
+.gsm-transfer-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.gsm-transfer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.gsm-transfer-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.gsm-transfer-close:hover {
+  color: var(--text-primary);
+  background: rgba(79, 70, 229, 0.08);
+}
+
+/* Shared Select inside transfer panel */
+.gsm-transfer-select {
+  width: 100%;
+}
+
+.gsm-transfer-confirm {
+  align-self: flex-end;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .gsm-footer {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .gsm-footer-info {
+    text-align: center;
+  }
+
+  .gsm-footer-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .gsm-btn {
+    width: 100%;
+  }
+
+  .gsm-student {
+    padding: 0.625rem;
+  }
+
+  .gsm-avatar {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    font-size: 0.75rem;
+  }
+
+  .gsm-transfer-confirm {
+    width: 100%;
+  }
+}

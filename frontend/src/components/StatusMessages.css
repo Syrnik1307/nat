@@ -59,7 +59,7 @@
 }
 
 .sm-close:hover {
-  background: var(--bg-gray);
+  background: var(--gray-100);
   color: var(--text-primary);
 }
 
@@ -175,13 +175,13 @@
 }
 
 .form-error {
-  background: #fee2e2;
+  background: var(--color-error-light);
   border: 1px solid #fca5a5;
   color: var(--error-red);
 }
 
 .form-success {
-  background: #d1fae5;
+  background: var(--color-success-light);
   border: 1px solid #6ee7b7;
   color: var(--success-green);
 }
@@ -197,7 +197,7 @@
 
 /* Create Form */
 .sm-create-form {
-  background: var(--bg-gray);
+  background: var(--gray-100);
   padding: 1.5rem;
   border-radius: var(--radius-md);
 }
@@ -307,7 +307,7 @@
 }
 
 .sm-message-item {
-  background: var(--bg-gray);
+  background: var(--gray-100);
   border: 1px solid var(--border-gray);
   border-radius: var(--radius-md);
   padding: 0.875rem;
@@ -387,3 +387,4 @@
     grid-template-columns: 1fr;
   }
 }
+

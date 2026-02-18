@@ -1,0 +1,121 @@
+.media-preview {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-app);
+  padding: 1rem;
+}
+
+.media-preview-empty,
+.media-preview-error,
+.media-preview-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  min-height: 150px;
+}
+
+.media-preview-icon {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 0.5rem;
+  color: var(--text-muted);
+}
+
+.error-icon {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 0.5rem;
+  color: var(--text-muted);
+}
+
+.media-preview-empty p,
+.media-preview-error p,
+.media-preview-loading p {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Spinner */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border-light);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Кнопка повтора */
+.btn-retry {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.btn-retry:hover {
+  background: #E5501C;
+  transform: translateY(-2px);
+}
+
+.btn-retry:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+}
+
+/* Изображение */
+.media-preview-image {
+  position: relative;
+}
+
+.media-preview-img {
+  width: 100%;
+  height: auto;
+  max-height: 500px;
+  object-fit: contain;
+  border-radius: 8px;
+  display: block;
+}
+
+/* Аудио */
+.media-preview-audio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.media-preview-audio-player {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  border-radius: 8px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .media-preview {
+    padding: 0.75rem;
+  }
+
+  .media-preview-img {
+    max-height: 300px;
+  }
+}
+

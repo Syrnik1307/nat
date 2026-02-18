@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getHomeworkList, createHomework, deleteHomework, getGroups } from '../apiService';
+import { useNotifications } from '../shared/context/NotificationContext';
 
 const HomeworkManage = () => {
   const navigate = useNavigate();
+  const { toast, showConfirm } = useNotifications();
   const [items, setItems] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,19 +54,26 @@ const HomeworkManage = () => {
       setFormOpen(false);
       load();
     } catch (er) {
-      alert(er.response?.data ? JSON.stringify(er.response.data) : 'Ошибка создания');
+      toast.error(er.response?.data ? JSON.stringify(er.response.data) : 'Ошибка создания');
     } finally {
       setCreating(false);
     }
   };
 
   const remove = async (id) => {
-    if (!window.confirm('Удалить задание?')) return;
+    const confirmed = await showConfirm({
+      title: 'Удаление задания',
+      message: 'Удалить задание?',
+      variant: 'danger',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена'
+    });
+    if (!confirmed) return;
     try {
       await deleteHomework(id);
       load();
     } catch (er) {
-      alert('Ошибка удаления');
+      toast.error('Ошибка удаления');
     }
   };
 

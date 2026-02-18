@@ -1,33 +1,59 @@
 import React, { useEffect, useState } from 'react';
-import { getGroups, getRecurringLessons, createRecurringLesson, updateRecurringLesson, deleteRecurringLesson, generateLessonsFromRecurring, getLessons } from '../apiService';
+import './RecurringLessonsManage.css';
+import {
+  getGroups,
+  getRecurringLessons,
+  createRecurringLesson,
+  updateRecurringLesson,
+  deleteRecurringLesson,
+} from '../apiService';
+import Button from '../shared/components/Button';
+import Input from '../shared/components/Input';
+import Badge from '../shared/components/Badge';
+import Select from '../shared/components/Select';
+import TimePicker from '../shared/components/TimePicker';
+import DatePicker from '../shared/components/DatePicker';
+import { Notification, ConfirmModal } from '../shared/components';
+import useNotification from '../shared/hooks/useNotification';
 
-const initialForm = { title:'', group_id:'', day_of_week:'', week_type:'ALL', start_time:'', end_time:'', start_date:'', end_date:'', topics:'', location:'' };
+const initialForm = {
+  title: '',
+  group_id: '',
+  day_of_week: '',
+  week_type: 'ALL',
+  start_time: '',
+  end_time: '',
+  start_date: '',
+  end_date: '',
+};
 
 const dayOptions = [
-  { value:0, label:'Понедельник' },
-  { value:1, label:'Вторник' },
-  { value:2, label:'Среда' },
-  { value:3, label:'Четверг' },
-  { value:4, label:'Пятница' },
-  { value:5, label:'Суббота' },
-  { value:6, label:'Воскресенье' },
+  { value: 0, label: 'Понедельник' },
+  { value: 1, label: 'Вторник' },
+  { value: 2, label: 'Среда' },
+  { value: 3, label: 'Четверг' },
+  { value: 4, label: 'Пятница' },
+  { value: 5, label: 'Суббота' },
+  { value: 6, label: 'Воскресенье' },
 ];
 
 const weekTypeOptions = [
-  { value:'ALL', label:'Каждая' },
-  { value:'UPPER', label:'Верхняя' },
-  { value:'LOWER', label:'Нижняя' },
+  { value: 'ALL', label: 'Каждая неделя' },
+  { value: 'UPPER', label: 'Верхняя неделя' },
+  { value: 'LOWER', label: 'Нижняя неделя' },
 ];
 
 const RecurringLessonsManage = () => {
+  const { notification, confirm, showNotification, closeNotification, showConfirm, closeConfirm } = useNotification();
   const [groups, setGroups] = useState([]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState({ ...initialForm });
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -52,21 +78,78 @@ const RecurringLessonsManage = () => {
     setItems(Array.isArray(res.data) ? res.data : res.data.results || []);
   };
 
+  // Функция для нормализации даты в формат YYYY-MM-DD
+  const normalizeDateToISO = (dateStr) => {
+    if (!dateStr) return '';
+    // Уже в формате YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
+    }
+    // Формат DD.MM.YYYY -> YYYY-MM-DD
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateStr)) {
+      const [day, month, year] = dateStr.split('.');
+      return `${year}-${month}-${day}`;
+    }
+    // Попробуем распарсить как Date
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+    return dateStr; // Возвращаем как есть
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.group_id || form.day_of_week === '') {
+      showNotification('warning', 'Внимание', 'Заполните все обязательные поля');
+      return;
+    }
+
     setSaving(true);
     try {
-      const payload = { ...form, day_of_week: parseInt(form.day_of_week, 10) };
+      const payload = {
+        ...form,
+        day_of_week: parseInt(form.day_of_week, 10),
+        start_date: normalizeDateToISO(form.start_date),
+        end_date: normalizeDateToISO(form.end_date),
+      };
       if (editingId) {
         await updateRecurringLesson(editingId, payload);
+        showNotification('success', 'Успешно', 'Регулярный урок обновлен');
       } else {
         await createRecurringLesson(payload);
+        showNotification('success', 'Успешно', 'Регулярный урок создан');
       }
       await refresh();
-      setForm(initialForm);
+      setForm({ ...initialForm });
       setEditingId(null);
+      setShowForm(false);
     } catch (e) {
-      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка сохранения');
+      // Парсим ошибки валидации от бэкенда
+      let errorMessage = 'Ошибка сохранения';
+      if (e.response?.data) {
+        const data = e.response.data;
+        if (typeof data === 'object') {
+          // Преобразуем {field: [errors]} в читаемый текст
+          const messages = [];
+          for (const [field, errors] of Object.entries(data)) {
+            const errorText = Array.isArray(errors) ? errors.join(', ') : String(errors);
+            // Человекочитаемые названия полей
+            const fieldNames = {
+              end_time: 'Время окончания',
+              start_time: 'Время начала',
+              group_id: 'Группа',
+              day_of_week: 'День недели',
+            };
+            const fieldName = fieldNames[field] || field;
+            messages.push(`${fieldName}: ${errorText}`);
+          }
+          errorMessage = messages.join('\n') || JSON.stringify(data);
+        } else {
+          errorMessage = String(data);
+        }
+      }
+      showNotification('error', 'Ошибка', errorMessage);
     } finally {
       setSaving(false);
     }
@@ -76,224 +159,275 @@ const RecurringLessonsManage = () => {
     setEditingId(item.id);
     setForm({
       title: item.title,
-      group_id: item.group?.id || item.group_id,
-      day_of_week: item.day_of_week,
+      group_id: String(item.group?.id || item.group_id || ''),
+      day_of_week: String(item.day_of_week),
       week_type: item.week_type,
-      start_time: item.start_time.slice(0,5),
-      end_time: item.end_time.slice(0,5),
+      start_time: item.start_time.slice(0, 5),
+      end_time: item.end_time.slice(0, 5),
       start_date: item.start_date,
       end_date: item.end_date,
-      topics: item.topics || '',
-      location: item.location || '',
     });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm(initialForm);
+    setForm({ ...initialForm });
+    setShowForm(false);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Удалить регулярный урок?')) return;
+    const confirmed = await showConfirm({
+      title: 'Удаление регулярного урока',
+      message: 'Вы уверены, что хотите удалить регулярный урок?',
+      variant: 'danger',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена'
+    });
+    if (!confirmed) return;
     try {
       await deleteRecurringLesson(id);
       await refresh();
+      showNotification('success', 'Успешно', 'Регулярный урок удален');
     } catch (e) {
-      alert('Ошибка удаления');
+      showNotification('error', 'Ошибка', 'Не удалось удалить регулярный урок');
     }
   };
 
-  if (loading) return <div style={styles.loading}>Загрузка...</div>;
-  if (error) return <div style={styles.error}>{error}</div>;
+  const filteredItems = items.filter(item => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'upper') return item.week_type === 'UPPER' || item.week_type === 'ALL';
+    if (activeFilter === 'lower') return item.week_type === 'LOWER' || item.week_type === 'ALL';
+    return true;
+  });
+
+  if (loading) return <div className="rl-loading">Загрузка...</div>;
+  if (error) return <div className="rl-error">{error}</div>;
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1 className="page-title">Регулярные уроки</h1>
-        <div className="filter-tabs">
-          <button className={`filter-tab ${activeFilter === 'all' ? 'active' : ''}`} onClick={() => setActiveFilter('all')}>Все</button>
-          <button className={`filter-tab ${activeFilter === 'upper' ? 'active' : ''}`} onClick={() => setActiveFilter('upper')}>Верхняя неделя</button>
-          <button className={`filter-tab ${activeFilter === 'lower' ? 'active' : ''}`} onClick={() => setActiveFilter('lower')}>Нижняя неделя</button>
-        </div>
+    <div className="rl-container">
+      {/* Header */}
+      <div className="rl-header">
+        <h1 className="rl-title">Регулярные уроки</h1>
+        <Button 
+          variant="primary" 
+          onClick={() => {
+            setShowForm(!showForm);
+            if (showForm) cancelEdit();
+          }}
+        >
+          {showForm ? 'Скрыть форму' : 'Добавить урок'}
+        </Button>
       </div>
-      
-      <form onSubmit={handleSubmit} className="form-modern">
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Название занятия</label>
-            <input className="form-input" required value={form.title} onChange={e=>setForm({ ...form, title:e.target.value })} placeholder="Введите название" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Группа</label>
-            <select className="form-select" required value={form.group_id} onChange={e=>setForm({ ...form, group_id:e.target.value })}>
-              <option value="" disabled>Выберите группу</option>
-              {groups.map(g=> <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-          </div>
+
+      {/* Filter Tabs */}
+      <div className="rl-filters">
+        <button 
+          className={`rl-filter ${activeFilter === 'all' ? 'active' : ''}`}
+          onClick={() => setActiveFilter('all')}
+        >
+          Все уроки
+        </button>
+        <button 
+          className={`rl-filter ${activeFilter === 'upper' ? 'active' : ''}`}
+          onClick={() => setActiveFilter('upper')}
+        >
+          Верхняя неделя
+        </button>
+        <button 
+          className={`rl-filter ${activeFilter === 'lower' ? 'active' : ''}`}
+          onClick={() => setActiveFilter('lower')}
+        >
+          Нижняя неделя
+        </button>
+      </div>
+
+      {/* Form */}
+      {showForm && (
+        <div className="rl-form-card">
+          <h2 className="rl-form-title">
+            {editingId ? 'Редактировать урок' : 'Создать новый урок'}
+          </h2>
+          <form onSubmit={handleSubmit} className="rl-form">
+            <div className="rl-form-grid">
+              <Select
+                label="Группа"
+                required
+                value={form.group_id}
+                onChange={(e) => setForm({ ...form, group_id: e.target.value })}
+                options={groups.map(g => ({ value: String(g.id), label: g.name }))}
+                placeholder="Выберите группу"
+              />
+
+              <Input
+                label="Тема урока (необязательно)"
+                type="text"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="Если не указано, будет использовано имя группы"
+              />
+
+              <Select
+                label="День недели"
+                required
+                value={form.day_of_week}
+                onChange={(e) => setForm({ ...form, day_of_week: e.target.value })}
+                options={dayOptions.map(d => ({ value: String(d.value), label: d.label }))}
+                placeholder="Выберите день"
+              />
+
+              <Select
+                label="Периодичность"
+                required
+                value={form.week_type}
+                onChange={(e) => setForm({ ...form, week_type: e.target.value })}
+                options={weekTypeOptions}
+                placeholder="Выберите периодичность"
+              />
+
+              <TimePicker
+                label="Время начала"
+                required
+                value={form.start_time}
+                onChange={(e) => setForm({ ...form, start_time: e.target.value })}
+              />
+
+              <TimePicker
+                label="Время окончания"
+                required
+                value={form.end_time}
+                onChange={(e) => setForm({ ...form, end_time: e.target.value })}
+              />
+
+              <DatePicker
+                label="Дата начала"
+                required
+                value={form.start_date}
+                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+              />
+
+              <DatePicker
+                label="Дата окончания"
+                required
+                value={form.end_date}
+                onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+              />
+            </div>
+
+            {/* TODO: Telegram-уведомления (временно скрыты) */}
+
+            <div className="rl-form-actions">
+              <Button type="submit" variant="primary" disabled={saving}>
+                {saving ? 'Сохранение...' : editingId ? 'Сохранить' : 'Создать'}
+              </Button>
+              {editingId && (
+                <Button type="button" variant="secondary" onClick={cancelEdit}>
+                  Отмена
+                </Button>
+              )}
+            </div>
+          </form>
         </div>
-        
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">День недели</label>
-            <select className="form-select" required value={form.day_of_week} onChange={e=>setForm({ ...form, day_of_week:e.target.value })}>
-              <option value="" disabled>Выберите день</option>
-              {dayOptions.map(d=> <option key={d.value} value={d.value}>{d.label}</option>)}
-            </select>
+      )}
+
+      {/* List */}
+      <div className="rl-list">
+        {filteredItems.length === 0 ? (
+          <div className="rl-empty">
+            <p>Нет регулярных уроков</p>
           </div>
-          <div className="form-group">
-            <label className="form-label">Периодичность</label>
-            <select className="form-select" required value={form.week_type} onChange={e=>setForm({ ...form, week_type:e.target.value })}>
-              {weekTypeOptions.map(w=> <option key={w.value} value={w.value}>{w.label}</option>)}
-            </select>
-          </div>
-        </div>
-        
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Время начала</label>
-            <input className="form-input" type="time" required value={form.start_time} onChange={e=>setForm({ ...form, start_time:e.target.value })} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Время окончания</label>
-            <input className="form-input" type="time" required value={form.end_time} onChange={e=>setForm({ ...form, end_time:e.target.value })} />
-          </div>
-        </div>
-        
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Дата начала</label>
-            <input className="form-input" type="date" required value={form.start_date} onChange={e=>setForm({ ...form, start_date:e.target.value })} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Дата окончания</label>
-            <input className="form-input" type="date" required value={form.end_date} onChange={e=>setForm({ ...form, end_date:e.target.value })} />
-          </div>
-        </div>
-        
-        {/* Темы занятия удалены по запросу */}
-        
-        <div style={styles.formActions}>
-          <button disabled={saving} type="submit" style={styles.btnPrimary}>
-            {saving ? 'Сохранение...' : editingId ? '✓ Сохранить изменения' : '+ Добавить урок'}
-          </button>
-          {editingId && (
-            <button type="button" onClick={cancelEdit} style={styles.btnSecondary}>Отмена</button>
-          )}
-        </div>
-      </form>
-      
-      <div style={{ marginTop:'2rem' }}>
-        <h2 style={styles.sectionTitle}>Список регулярных уроков</h2>
-        <table className="table-modern">
-          <thead>
-            <tr>
-              <th>Название</th>
-              <th>Группа</th>
-              <th>День недели</th>
-              <th>Неделя</th>
-              <th>Время</th>
-              <th>Период</th>
-              <th>Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map(item => (
-              <tr key={item.id}>
-                <td style={{ fontWeight:600 }}>{item.title}</td>
-                <td>
-                  <span className="badge badge-blue">{item.group?.name || '—'}</span>
-                </td>
-                <td>{item.day_of_week_display}</td>
-                <td>
-                  <span className={`badge ${item.week_type === 'ALL' ? 'badge-gray' : 'badge-orange'}`}>
-                    {item.week_type_display}
-                  </span>
-                </td>
-                <td style={{ color:'#2563eb', fontWeight:600 }}>{item.start_time.slice(0,5)}–{item.end_time.slice(0,5)}</td>
-                <td style={{ fontSize:'0.85rem', color:'#6b7280' }}>{item.start_date} → {item.end_date}</td>
-                <td>
-                  <div style={{ display:'flex', gap:'0.5rem' }}>
-                    <button onClick={()=>startEdit(item)} className="btn-icon" title="Редактировать">✏️</button>
-                    <button onClick={()=>handleDelete(item.id)} className="btn-icon" title="Удалить">🗑️</button>
-                    <button onClick={()=>{
-                      const until = window.prompt('Сгенерировать занятия до даты (YYYY-MM-DD):');
-                      if (!until) return;
-                      const dry = window.confirm('Только посмотреть (dry-run)? OK=Да, Cancel=Создать');
-                      generateLessonsFromRecurring(item.id, { until_date: until, dry_run: dry })
-                        .then(async res=>{
-                          alert(dry ? `Будет создано: ${res.data.would_create_count}` : `Создано занятий: ${res.data.created_count}`);
-                          if (!dry) {
-                            // Refresh calendar lessons implicitly (not auto-creating zoom meetings)
-                            await getLessons({ group: item.group?.id || item.group_id });
-                          }
-                        })
-                        .catch(err=>{
-                          alert(err.response?.data?.detail || 'Ошибка генерации');
-                        });
-                    }} className="btn-icon" title="Сгенерировать занятия (без авто Zoom)">🔄</button>
+        ) : (
+          <div className="rl-cards">
+            {filteredItems.map(item => (
+              <div key={item.id} className="rl-card">
+                <div className="rl-card-header">
+                  <h3 className="rl-card-title">{item.display_name || item.title || item.group?.name || 'Урок'}</h3>
+                  <Badge variant="info">
+                    {item.group?.name || '—'}
+                  </Badge>
+                </div>
+
+                <div className="rl-card-body">
+                  {item.title && (
+                    <div className="rl-card-row">
+                      <span className="rl-card-label">Тема:</span>
+                      <span className="rl-card-value">{item.title}</span>
+                    </div>
+                  )}
+                  
+                  <div className="rl-card-row">
+                    <span className="rl-card-label">День:</span>
+                    <span className="rl-card-value">{item.day_of_week_display}</span>
                   </div>
-                </td>
-              </tr>
+                  
+                  <div className="rl-card-row">
+                    <span className="rl-card-label">Время:</span>
+                    <span className="rl-card-value">
+                      {item.start_time.slice(0, 5)} — {item.end_time.slice(0, 5)}
+                    </span>
+                  </div>
+
+                  <div className="rl-card-row">
+                    <span className="rl-card-label">Период:</span>
+                    <span className="rl-card-value">
+                      {item.start_date} — {item.end_date}
+                    </span>
+                  </div>
+
+                  <div className="rl-card-row">
+                    <span className="rl-card-label">Неделя:</span>
+                    <Badge 
+                      variant={item.week_type === 'ALL' ? 'neutral' : item.week_type === 'UPPER' ? 'success' : 'warning'}
+                      size="small"
+                    >
+                      {item.week_type_display}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="rl-card-actions">
+                  <Button 
+                    variant="outline" 
+                    size="small"
+                    onClick={() => startEdit(item)}
+                  >
+                    Редактировать
+                  </Button>
+                  <Button 
+                    variant="danger" 
+                    size="small"
+                    onClick={() => handleDelete(item.id)}
+                  >
+                    Удалить
+                  </Button>
+                </div>
+              </div>
             ))}
-            {items.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign:'center', padding:'2rem', color:'#9ca3af' }}>Нет регулярных уроков</td></tr>
-            )}
-          </tbody>
-        </table>
+          </div>
+        )}
       </div>
+
+      <Notification
+        isOpen={notification.isOpen}
+        onClose={closeNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
+
+      <ConfirmModal
+        isOpen={confirm.isOpen}
+        onClose={closeConfirm}
+        onConfirm={confirm.onConfirm}
+        title={confirm.title}
+        message={confirm.message}
+        variant={confirm.variant}
+        confirmText={confirm.confirmText}
+        cancelText={confirm.cancelText}
+      />
     </div>
   );
-};
-
-const styles = {
-  loading: {
-    textAlign:'center',
-    padding:'3rem',
-    color:'#6b7280'
-  },
-  error: {
-    textAlign:'center',
-    padding:'2rem',
-    color:'#dc2626',
-    background:'#fef2f2',
-    border:'1px solid #fecaca',
-    borderRadius:12,
-    margin:'2rem'
-  },
-  sectionTitle: {
-    fontSize:'1.25rem',
-    fontWeight:600,
-    color:'#111827',
-    marginBottom:'1rem'
-  },
-  formActions: {
-    display:'flex',
-    gap:'0.75rem',
-    alignItems:'center',
-    marginTop:'0.5rem'
-  },
-  btnPrimary: {
-    background:'#2563eb',
-    color:'#fff',
-    border:'none',
-    padding:'0.75rem 1.5rem',
-    borderRadius:8,
-    fontSize:'0.95rem',
-    cursor:'pointer',
-    fontWeight:600,
-    transition:'all 0.2s ease'
-  },
-  btnSecondary: {
-    background:'#f3f4f6',
-    color:'#374151',
-    border:'1px solid #e5e7eb',
-    padding:'0.75rem 1.5rem',
-    borderRadius:8,
-    fontSize:'0.95rem',
-    cursor:'pointer',
-    fontWeight:500,
-    transition:'all 0.2s ease'
-  }
 };
 
 export default RecurringLessonsManage;

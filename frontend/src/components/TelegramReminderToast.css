@@ -1,0 +1,150 @@
+/* =========================================
+   Telegram Hint Bar (top)
+   Узкая, аккуратная, не мешает контенту
+   ========================================= */
+
+:root {
+  --tg-hint-height: 38px;
+}
+
+.tg-hint-spacer {
+  height: var(--tg-hint-height);
+}
+
+.tg-hint {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--tg-hint-height);
+  z-index: 1100;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+
+  background: rgba(238, 242, 255, 0.92);
+  border-bottom: 1px solid rgba(79, 70, 229, 0.12);
+  color: var(--text-main, #1E293B);
+  backdrop-filter: blur(10px);
+
+  animation: tgHintIn 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.tg-hint.closing {
+  animation: tgHintOut 160ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes tgHintIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tgHintOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.tg-hint-text {
+  font-size: 13px;
+  color: var(--text-muted, #475569);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.tg-hint-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary, #4F46E5);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 10px;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.tg-hint-link:hover {
+  background: rgba(79, 70, 229, 0.10);
+}
+
+.tg-hint-later,
+.tg-hint-never {
+  font-size: 13px;
+  color: var(--text-muted, #64748B);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 10px;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.tg-hint-never {
+  color: var(--text-light, #94A3B8);
+}
+
+.tg-hint-later:hover,
+.tg-hint-never:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--text-main, #1E293B);
+}
+
+.tg-hint-dismiss {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 10px;
+  color: var(--text-light, #94A3B8);
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.tg-hint-dismiss:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--text-muted, #64748B);
+}
+
+@media (max-width: 720px) {
+  :root {
+    --tg-hint-height: 44px;
+  }
+  .tg-hint {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px 12px;
+  }
+  .tg-hint-spacer {
+    height: 56px;
+  }
+  .tg-hint-text {
+    flex-basis: 100%;
+    white-space: normal;
+    line-height: 1.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tg-hint,
+  .tg-hint.closing {
+    animation: none;
+  }
+}

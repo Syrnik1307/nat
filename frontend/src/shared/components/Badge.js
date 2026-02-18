@@ -16,9 +16,9 @@ const Badge = ({
 }) => {
   const variants = {
     primary: {
-      backgroundColor: '#fff5f2',
-      color: '#FF6B35',
-      border: '1px solid #ffd4c5',
+      backgroundColor: '#f0f9ff',
+      color: '#1e3a8a',
+      border: '1px solid #bae6fd',
     },
     success: {
       backgroundColor: '#ecfdf5',
@@ -36,9 +36,9 @@ const Badge = ({
       border: '1px solid #fecaca',
     },
     info: {
-      backgroundColor: '#eff6ff',
-      color: '#2563eb',
-      border: '1px solid #bfdbfe',
+      backgroundColor: '#f0f9ff',
+      color: '#1e3a8a',
+      border: '1px solid #bae6fd',
     },
     neutral: {
       backgroundColor: '#f9fafb',

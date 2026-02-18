@@ -1,0 +1,242 @@
+/* 🌨️ Winter Magic Modal - Frosted Glass Design */
+
+.confirm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal-backdrop);
+  animation: fadeInOverlay 0.3s ease-out;
+}
+
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+.confirm-modal-content {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-3xl);
+  padding: var(--space-xl);
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 
+    0 25px 50px -12px rgba(79, 70, 229, 0.25), 
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 0 40px rgba(79, 70, 229, 0.15);
+  animation: slideUpModal 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  position: relative;
+  overflow: hidden;
+}
+
+.confirm-modal-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #4f46e5 0%, #818CF8 50%, #4f46e5 100%);
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.4);
+}
+
+@keyframes slideUpModal {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.confirm-modal-indicator {
+  width: 90px;
+  height: 90px;
+  margin: 0 auto var(--space-lg) auto;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  font-size: 3rem;
+  transition: transform var(--transition-base);
+  border: 3px solid rgba(251, 191, 36, 0.2);
+}
+
+.confirm-modal-content:hover .confirm-modal-indicator {
+  transform: scale(1.05);
+}
+
+.confirm-modal-indicator span {
+  display: none;
+}
+
+/* Warning - Яркое золотое */
+.confirm-modal-indicator-warning {
+  background: linear-gradient(135deg, #fbbf24, var(--color-warning));
+  color: var(--text-main);
+  box-shadow: 0 0 40px rgba(251, 191, 36, 0.7);
+}
+
+.confirm-modal-indicator-warning::before {
+  content: "⚠";
+}
+
+/* Danger - Мягкое красное */
+.confirm-modal-indicator-danger {
+  background: var(--color-error-light);
+  color: var(--color-error);
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.28);
+}
+
+.confirm-modal-indicator-danger::before {
+  content: "⚠";
+}
+
+/* Info - Холодный синий */
+.confirm-modal-indicator-info {
+  background: var(--color-info-light);
+  color: var(--color-info);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.confirm-modal-indicator-info::before {
+  content: "ℹ";
+}
+
+.confirm-modal-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0 0 var(--space-md) 0;
+  letter-spacing: -0.3px;
+  text-transform: uppercase;
+}
+
+.confirm-modal-message {
+  font-size: var(--text-base);
+  color: var(--text-main);
+  line-height: var(--leading-relaxed);
+  margin: 0 0 var(--space-xl) 0;
+  font-weight: 500;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+}
+
+.confirm-modal-btn {
+  padding: 12px var(--space-lg);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  border: none;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  min-width: 120px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirm-modal-btn-cancel {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+}
+
+.confirm-modal-btn-cancel:hover {
+  background: var(--bg-snow);
+  border-color: var(--border-dark);
+}
+
+.confirm-modal-btn-confirm {
+  color: var(--text-white);
+  font-weight: var(--font-semibold);
+}
+
+/* Warning Button - Янтарное свечение */
+.confirm-modal-btn-warning {
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%);
+  box-shadow: var(--glow-accent);
+}
+
+.confirm-modal-btn-warning:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glow-accent-strong);
+}
+
+/* Danger Button - Мягкое красное */
+.confirm-modal-btn-danger {
+  background: var(--color-error);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.confirm-modal-btn-danger:hover {
+  background: var(--color-error);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+}
+
+/* Info Button - Холодный синий */
+.confirm-modal-btn-info {
+  background: var(--color-info);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.confirm-modal-btn-info:hover {
+  background: var(--color-info);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+/* Responsive для мобильных */
+@media (max-width: 640px) {
+  .confirm-modal-content {
+    padding: var(--space-lg);
+    max-width: 95%;
+  }
+  
+  .confirm-modal-indicator {
+    width: 64px;
+    height: 64px;
+    font-size: 2rem;
+  }
+  
+  .confirm-modal-title {
+    font-size: var(--text-xl);
+  }
+  
+  .confirm-modal-actions {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+  
+  .confirm-modal-btn {
+    width: 100%;
+    min-width: unset;
+  }
+}

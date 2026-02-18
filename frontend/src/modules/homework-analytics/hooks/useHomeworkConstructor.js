@@ -68,15 +68,18 @@ export const useHomeworkConstructor = () => {
     async (meta, questions, existingId = null) => {
       const validation = checkBeforeSave(meta, questions);
       if (!validation.ok) {
-        return { saved: false, validation };
+        return { saved: false, validation, homeworkData: null };
       }
 
+      let homeworkData = null;
       if (existingId) {
-        await homeworkService.update(existingId, meta, questions);
-        return { saved: true, validation };
+        const response = await homeworkService.update(existingId, meta, questions);
+        homeworkData = response?.data || response;
+      } else {
+        const response = await homeworkService.create(meta, questions);
+        homeworkData = response?.data || response;
       }
-      await homeworkService.create(meta, questions);
-      return { saved: true, validation };
+      return { saved: true, validation, homeworkData };
     },
     [checkBeforeSave]
   );

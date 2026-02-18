@@ -1,0 +1,467 @@
+/*
+ * FastVideoModal - Быстрое модальное окно для просмотра записей
+ * 
+ * Дизайн в стиле Lectio Space:
+ * - Темная тема с gradient overlays
+ * - Glass morphism эффекты
+ * - Плавные анимации (используем smooth-transitions токены)
+ * - Минималистичный интерфейс для быстрой загрузки
+ */
+
+/* ========================================
+   BACKDROP & CONTAINER
+   ======================================== */
+
+.fast-video-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  
+  /* Темный фон с blur */
+  background: rgba(2, 6, 23, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  
+  /* Мгновенная анимация появления */
+  animation: fastModalFadeIn 150ms var(--ease-out-soft, cubic-bezier(0.33, 1, 0.68, 1)) forwards;
+}
+
+@keyframes fastModalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fast-video-container {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  
+  /* Glass card стиль */
+  background: linear-gradient(
+    165deg,
+    rgba(15, 23, 42, 0.95) 0%,
+    rgba(30, 41, 59, 0.90) 50%,
+    rgba(51, 65, 85, 0.85) 100%
+  );
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 32px 64px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  overflow: hidden;
+  
+  /* Анимация контейнера */
+  animation: fastModalScaleIn 200ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) forwards;
+}
+
+@keyframes fastModalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ========================================
+   CLOSE BUTTON
+   ======================================== */
+
+.fast-video-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+  
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: rgba(248, 250, 252, 0.9);
+  cursor: pointer;
+  
+  transition: 
+    background-color 80ms var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1)),
+    border-color 80ms var(--ease-smooth),
+    transform 80ms var(--ease-smooth);
+}
+
+.fast-video-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.fast-video-close:hover {
+  background: rgba(239, 68, 68, 0.9);
+  border-color: rgba(239, 68, 68, 0.5);
+  transform: scale(1.05);
+}
+
+.fast-video-close:active {
+  transform: scale(0.95);
+}
+
+/* ========================================
+   HEADER
+   ======================================== */
+
+.fast-video-header {
+  padding: 1.25rem 4rem 1rem 1.5rem;
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.15) 0%,
+    rgba(99, 102, 241, 0.1) 100%
+  );
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.fast-video-title {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+  font-weight: 600;
+  color: #f8fafc;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.fast-video-group {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  color: rgba(148, 163, 184, 0.9);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+}
+
+/* ========================================
+   VIDEO PLAYER
+   ======================================== */
+
+.fast-video-player {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: 16 / 9;
+  max-height: 70vh;
+  background: #020617;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fast-video-element {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  outline: none;
+}
+
+/* Google Drive iframe embed */
+.fast-video-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #000;
+  transition: opacity 300ms ease;
+}
+
+/* Кастомный стиль для video controls */
+.fast-video-element::-webkit-media-controls-panel {
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+}
+
+/* ========================================
+   LOADING OVERLAY
+   ======================================== */
+
+.fast-video-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  color: rgba(226, 232, 240, 0.92);
+  background: radial-gradient(
+    circle at 50% 30%,
+    rgba(2, 6, 23, 0.75) 0%,
+    rgba(2, 6, 23, 0.92) 55%,
+    rgba(2, 6, 23, 0.96) 100%
+  );
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.fast-video-loading-spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 3px solid rgba(148, 163, 184, 0.28);
+  border-top-color: rgba(99, 102, 241, 0.95);
+  animation: fastVideoSpin 900ms linear infinite;
+}
+
+@keyframes fastVideoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fast-video-loading-text {
+  max-width: 520px;
+}
+
+.fast-video-loading-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.fast-video-loading-hint {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: rgba(148, 163, 184, 0.95);
+}
+
+/* ========================================
+   ERROR STATE
+   ======================================== */
+
+.fast-video-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem;
+  text-align: center;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.fast-video-error-icon {
+  width: 64px;
+  height: 64px;
+  color: rgba(239, 68, 68, 0.7);
+}
+
+.fast-video-error-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.fast-video-error p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.fast-video-retry {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #f8fafc;
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 
+    transform 80ms var(--ease-smooth),
+    box-shadow 80ms var(--ease-smooth);
+}
+
+.fast-video-retry:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+}
+
+.fast-video-retry:active {
+  transform: translateY(0);
+}
+
+/* ========================================
+   FOOTER (lazy-loaded details)
+   ======================================== */
+
+.fast-video-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: rgba(15, 23, 42, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  
+  /* Анимация появления */
+  animation: fastFooterSlideIn 200ms var(--ease-out-soft) forwards;
+}
+
+@keyframes fastFooterSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fast-video-stats {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.fast-video-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+}
+
+.stat-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.stat-label {
+  font-size: 0.8125rem;
+  color: rgba(148, 163, 184, 0.7);
+}
+
+.fast-video-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.fast-video-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 
+    background-color 80ms var(--ease-smooth),
+    transform 80ms var(--ease-smooth);
+}
+
+.fast-video-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.fast-video-btn.secondary {
+  color: rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fast-video-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 768px) {
+  .fast-video-modal {
+    padding: 0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(2, 6, 23, 0.97);
+  }
+  
+  .fast-video-container {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .fast-video-header {
+    padding: 1rem 3.5rem 0.875rem 1rem;
+  }
+  
+  .fast-video-title {
+    font-size: 1.125rem;
+  }
+  
+  .fast-video-close {
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 40px;
+    height: 40px;
+  }
+  
+  .fast-video-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+  }
+  
+  .fast-video-stats {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .fast-video-actions {
+    width: 100%;
+  }
+  
+  .fast-video-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* ========================================
+   REDUCED MOTION
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .fast-video-modal,
+  .fast-video-container,
+  .fast-video-footer {
+    animation: none;
+  }
+
+  .fast-video-modal,
+  .fast-video-loading {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  
+  .fast-video-close,
+  .fast-video-btn,
+  .fast-video-retry {
+    transition: none;
+  }
+}

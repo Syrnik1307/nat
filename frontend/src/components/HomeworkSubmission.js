@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { getHomework, createSubmission, getSubmissions } from '../apiService';
 import { useParams } from 'react-router-dom';
+import { useNotifications } from '../shared/context/NotificationContext';
 
 const HomeworkSubmission = () => {
   const { id } = useParams();
+  const { toast } = useNotifications();
   const [homework, setHomework] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,7 +40,7 @@ const HomeworkSubmission = () => {
       await createSubmission({ homework: parseInt(id,10), answers: [{ question_id: null, response_text: answer }] });
       setSubmitted(true);
     } catch (er) {
-      alert(er.response?.data ? JSON.stringify(er.response.data) : 'Ошибка отправки');
+      toast.error(er.response?.data ? JSON.stringify(er.response.data) : 'Ошибка отправки');
     } finally {
       setSubmitting(false);
     }

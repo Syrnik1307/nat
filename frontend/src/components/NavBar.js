@@ -1,21 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
-import './Navbar.css';
+import { getAccessToken, getTeacherStatsSummary } from '../apiService';
+import { getCached } from '../utils/dataCache';
+import './NavBar.css';
 
 const NavBar = () => {
   const { accessTokenValid, role, logout } = useAuth();
   const [messages, setMessages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hideStatus, setHideStatus] = useState(false);
+  const [pendingHomeworkCount, setPendingHomeworkCount] = useState(0);
 
   useEffect(() => {
     if (accessTokenValid) {
-      loadMessages();
+      // Delay initial load to not block first render
+      const timer = setTimeout(loadMessages, 2000);
       const interval = setInterval(loadMessages, 30000);
-      return () => clearInterval(interval);
+      return () => {
+        clearTimeout(timer);
+        clearInterval(interval);
+      };
     }
   }, [accessTokenValid]);
+
+  useEffect(() => {
+    if (!accessTokenValid || role !== 'teacher') return;
+
+    let isMounted = true;
+    const loadPendingHomework = async () => {
+      try {
+        // Use cached data with 30s TTL - deduplicates with TeacherHomePage
+        const statsData = await getCached('teacher:stats', async () => {
+          const res = await getTeacherStatsSummary();
+          return res.data;
+        }, 30000);
+        const pending = Number(statsData?.pending_submissions || 0);
+        if (isMounted) setPendingHomeworkCount(pending);
+      } catch (error) {
+        if (isMounted) setPendingHomeworkCount(0);
+      }
+    };
+
+    // Delay initial load to allow TeacherHomePage to load first (it needs stats more)
+    const timer = setTimeout(loadPendingHomework, 500);
+    const interval = setInterval(loadPendingHomework, 60000);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [accessTokenValid, role]);
 
   useEffect(() => {
     if (messages.length > 1) {
@@ -28,7 +63,7 @@ const NavBar = () => {
 
   const loadMessages = async () => {
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       console.log('Loading messages, token:', token ? 'exists' : 'missing');
       const response = await fetch('/accounts/api/status-messages/', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -48,32 +83,88 @@ const NavBar = () => {
 
   return (
     <>
-      <nav style={styles.nav}>
-        <div style={styles.container}>
-          <div style={styles.left}>
-            📚 Teaching Panel
+      <nav className="navbar-new">
+        <div className="navbar-container">
+          {/* Left: Brand Logo - STYLED LIKE AUTH PAGE */}
+          <div className="navbar-logo">
+            <h1>
+              <span className="brand-primary">Lectio</span>
+              <span className="brand-secondary">Space</span>
+            </h1>
           </div>
-          <div style={styles.center}>
-            <Link style={styles.link} to="/">🏠 Главная</Link>
-            {accessTokenValid && role === 'teacher' && <Link style={styles.link} to="/teacher">👨‍🏫 Преподаватель</Link>}
-            {accessTokenValid && role === 'teacher' && <Link style={styles.linkHighlight} to="/groups/manage">👥 Группы и ученики</Link>}
-            {accessTokenValid && role === 'teacher' && <Link style={styles.link} to="/homework/manage">📝 Домашки</Link>}
-            {accessTokenValid && role === 'teacher' && <Link style={styles.link} to="/recurring-lessons/manage">📅 Расписание</Link>}
-            {accessTokenValid && role === 'teacher' && <Link style={styles.link} to="/calendar">📆 Календарь</Link>}
-            {accessTokenValid && role === 'student' && <Link style={styles.link} to="/student">📚 Ученик</Link>}
-            {accessTokenValid && role === 'student' && <Link style={styles.link} to="/homework">📝 Мои ДЗ</Link>}
-            {accessTokenValid && role === 'student' && <Link style={styles.link} to="/calendar">📆 Календарь</Link>}
-            {accessTokenValid && role === 'admin' && <Link style={styles.linkHighlight} to="/admin">🔧 Админ-панель</Link>}
+
+          {/* Center: Navigation Links */}
+          <div className="navbar-center">
+            <Link className="navbar-link" to="/">Главная</Link>
+            {accessTokenValid && role === 'teacher' && (
+              <>
+                <Link className="navbar-link" to="/groups/manage" data-tour="nav-groups">Занятия</Link>
+                <Link className="navbar-link" to="/homework/manage" data-tour="nav-homework">
+                  ДЗ
+                  {pendingHomeworkCount > 0 && (
+                    <span className="navbar-link-badge">{pendingHomeworkCount}</span>
+                  )}
+                </Link>
+                <Link className="navbar-link" to="/recurring-lessons/manage" data-tour="nav-schedule">Расписание</Link>
+                <Link className="navbar-link" to="/calendar" data-tour="nav-calendar">Календарь</Link>
+                <Link className="navbar-link" to="/teacher-recordings" data-tour="nav-recordings">Записи</Link>
+                <Link className="navbar-link" to="/analytics" data-tour="nav-analytics">Аналитика</Link>
+                <Link className="navbar-link" to="/finance" data-tour="nav-finance">Финансы</Link>
+              </>
+            )}
+            {accessTokenValid && role === 'student' && (
+              <>
+                <Link className="navbar-link" to="/student">Мои курсы</Link>
+                <Link className="navbar-link" to="/homework">ДЗ</Link>
+                <Link className="navbar-link" to="/calendar">Календарь</Link>
+              </>
+            )}
+            {accessTokenValid && role === 'admin' && (
+              <>
+                <Link className="navbar-link" to="/admin-home">Панель</Link>
+                <Link className="navbar-link" to="/groups/manage">Группы</Link>
+              </>
+            )}
           </div>
-          <div style={styles.right}>
-            {!accessTokenValid && <Link style={styles.loginBtn} to="/login">Войти</Link>}
-            {!accessTokenValid && <Link style={styles.registerBtn} to="/register">Регистрация</Link>}
+
+          {/* Right: Actions & Profile */}
+          <div className="navbar-right">
+            {!accessTokenValid && (
+              <>
+                <Link className="navbar-link" to="/login">Войти</Link>
+              </>
+            )}
             {accessTokenValid && (
-              <div style={styles.userSection}>
-                <div style={styles.avatar}>
-                  <span style={styles.avatarText}>👤</span>
+              <>
+                {/* Notifications Icon */}
+                <button className="navbar-icon-button" title="Уведомления">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                  <span className="navbar-icon-badge"></span>
+                </button>
+
+                {/* Messages Icon */}
+                <button className="navbar-icon-button" title="Сообщения">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </button>
+
+                {/* Profile */}
+                <div className="navbar-profile">
+                  <button className="navbar-profile-button">
+                    <span className="navbar-profile-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Z" />
+                        <path d="M3 21c0-4.5 3.5-6.5 9-6.5s9 2 9 6.5" />
+                      </svg>
+                    </span>
+                    <span>Профиль</span>
+                  </button>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -94,104 +185,6 @@ const NavBar = () => {
       )}
     </>
   );
-};
-
-const styles = {
-  nav: { 
-    background:'#fff', 
-    borderBottom:'1px solid #e5e7eb',
-    position:'sticky', 
-    top:0, 
-    zIndex:100,
-    boxShadow:'0 1px 3px rgba(0,0,0,0.05)'
-  },
-  container: {
-    display:'flex', 
-    alignItems:'center', 
-    justifyContent:'space-between', 
-    padding:'0.75rem 2rem',
-    maxWidth:'1400px',
-    margin:'0 auto'
-  },
-  left: { 
-    display:'flex',
-    alignItems:'center',
-    fontWeight:600,
-    fontSize:'1.1rem',
-    color:'#111827'
-  },
-  center: { 
-    display:'flex', 
-    gap:'2rem',
-    alignItems:'center'
-  },
-  right: { 
-    display:'flex', 
-    gap:'1rem',
-    alignItems:'center'
-  },
-  link: { 
-    color:'#374151', 
-    textDecoration:'none', 
-    fontSize:'0.95rem',
-    fontWeight:500,
-    transition:'color 0.2s ease',
-    ':hover': {
-      color:'#FF6B35'
-    }
-  },
-  linkHighlight: {
-    color:'#FF6B35',
-    textDecoration:'none',
-    fontSize:'0.95rem',
-    fontWeight:600,
-    padding:'0.5rem 1rem',
-    background:'#fff7ed',
-    borderRadius:8,
-    border:'1px solid #ffedd5',
-    transition:'all 0.2s ease'
-  },
-  loginBtn: { 
-    color:'#fff', 
-    background:'#FF6B35', 
-    padding:'0.5rem 1.25rem', 
-    textDecoration:'none', 
-    borderRadius:8,
-    fontSize:'0.9rem',
-    fontWeight:500,
-    transition:'all 0.2s ease'
-  },
-  registerBtn: {
-    color:'#FF6B35',
-    background:'transparent',
-    border:'1px solid #FF6B35',
-    padding:'0.5rem 1.25rem',
-    textDecoration:'none',
-    borderRadius:8,
-    fontSize:'0.9rem',
-    fontWeight:500,
-    transition:'all 0.2s ease'
-  },
-  userSection: {
-    display:'flex',
-    alignItems:'center',
-    gap:'0.75rem'
-  },
-  avatar: {
-    width:'36px',
-    height:'36px',
-    borderRadius:'50%',
-    background:'#f3f4f6',
-    display:'flex',
-    alignItems:'center',
-    justifyContent:'center',
-    cursor:'pointer',
-    border:'2px solid #e5e7eb',
-    transition:'all 0.2s ease'
-  },
-  avatarText: {
-    fontSize:'1.25rem'
-  }
 };
 
 export default NavBar;

@@ -1,0 +1,342 @@
+/* Минималистичный дизайн для страницы регулярных уроков */
+
+.rl-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  position: relative;
+  min-height: 100vh;
+  /* Aurora Background */
+  background: radial-gradient(circle at 20% 20%, rgba(224, 231, 255, 0.5), transparent 40%),
+              radial-gradient(circle at 80% 10%, rgba(221, 214, 254, 0.45), transparent 40%),
+              radial-gradient(circle at 40% 80%, rgba(191, 219, 254, 0.35), transparent 45%),
+              #f8fafc;
+}
+
+/* Header */
+.rl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rl-title {
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* Filters */
+.rl-filters {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.rl-filter {
+  background: var(--bg-app);
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
+  padding: 0.625rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rl-filter:hover {
+  background: var(--bg-surface);
+  color: var(--text-main);
+}
+
+.rl-filter.active {
+  background: var(--text-main);
+  color: white;
+  border-color: var(--text-main);
+}
+
+/* Form Card */
+.rl-form-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-2xl);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.12), 
+              0 10px 25px -5px rgba(0, 0, 0, 0.06),
+              0 0 20px rgba(79, 70, 229, 0.08);
+  /* PERF: GPU-ускоренные свойства */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rl-form-card:hover {
+  box-shadow: 0 30px 60px -14px rgba(79, 70, 229, 0.18),
+              0 0 25px rgba(79, 70, 229, 0.15);
+}
+
+.rl-form-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 1.5rem 0;
+}
+
+.rl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.rl-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.25rem;
+}
+
+.rl-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* List */
+.rl-list {
+  margin-top: 2rem;
+}
+
+.rl-empty {
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.rl-empty p {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Cards Grid */
+.rl-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.rl-card {
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.rl-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.rl-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--bg-surface);
+}
+
+.rl-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+  flex: 1;
+}
+
+.rl-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.rl-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.rl-card-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.rl-card-value {
+  color: var(--text-main);
+  font-weight: 500;
+  text-align: right;
+}
+
+.rl-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--bg-surface);
+  flex-wrap: wrap;
+}
+
+/* Loading & Error */
+.rl-loading,
+.rl-error {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.rl-loading {
+  color: var(--text-muted);
+}
+
+.rl-error {
+  color: var(--color-error);
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error-light);
+  border-radius: 8px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .rl-container {
+    padding: 1.5rem 1rem;
+  }
+
+  .rl-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .rl-title {
+    font-size: 1.5rem;
+  }
+
+  .rl-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rl-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .rl-card-actions {
+    flex-direction: column;
+  }
+}
+
+/* ===== Telegram-уведомления секция ===== */
+.rl-form-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.rl-form-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rl-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.875rem;
+  color: var(--text-main);
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+}
+
+.rl-checkbox-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.rl-notify-settings {
+  margin-left: 1.5rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.rl-notify-targets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rl-notify-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+/* Warning banner for missing Zoom PMI */
+.rl-warning-banner {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rl-warning-banner a {
+  color: #b45309;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.rl-warning-banner a:hover {
+  color: #92400e;
+}
+
+/* Disabled checkbox style */
+.rl-checkbox-row input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rl-checkbox-row input[type="checkbox"]:disabled + span {
+  opacity: 0.6;
+}
+

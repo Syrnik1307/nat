@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { getAccessToken } from '../apiService';
+import { useNotifications } from '../shared/context/NotificationContext';
 import './StatusMessages.css';
 
 const StatusMessages = ({ onClose }) => {
+  const { toast, showConfirm } = useNotifications();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newMessage, setNewMessage] = useState('');
@@ -15,7 +18,7 @@ const StatusMessages = ({ onClose }) => {
 
   const loadMessages = async () => {
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch('/accounts/api/admin/status-messages/', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -47,7 +50,7 @@ const StatusMessages = ({ onClose }) => {
     }
 
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch('/accounts/api/admin/status-messages/', {
         method: 'POST',
         headers: {
@@ -77,12 +80,17 @@ const StatusMessages = ({ onClose }) => {
   };
 
   const handleDeleteMessage = async (messageId) => {
-    if (!window.confirm('Удалить это сообщение?')) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: 'Удаление сообщения',
+      message: 'Удалить это сообщение?',
+      variant: 'danger',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена'
+    });
+    if (!confirmed) return;
 
     try {
-      const token = localStorage.getItem('tp_access_token');
+      const token = getAccessToken();
       const response = await fetch(`/accounts/api/admin/status-messages/${messageId}/`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -94,15 +102,15 @@ const StatusMessages = ({ onClose }) => {
 
       await loadMessages();
     } catch (error) {
-      alert('Ошибка: ' + error.message);
+      toast.error(error.message);
     }
   };
 
   const getTargetLabel = (target) => {
     switch (target) {
       case 'teachers': return '👨‍🏫 Учителя';
-      case 'students': return '🎓 Ученики';
-      case 'all': return '👥 Все';
+      case 'students': return 'Ученики';
+      case 'all': return 'Все';
       default: return target;
     }
   };
@@ -154,7 +162,7 @@ const StatusMessages = ({ onClose }) => {
                       className={`target-btn ${target === 'all' ? 'active' : ''}`}
                       onClick={() => setTarget('all')}
                     >
-                      👥 Все
+                      Все
                     </button>
                     <button
                       type="button"
@@ -168,7 +176,7 @@ const StatusMessages = ({ onClose }) => {
                       className={`target-btn ${target === 'students' ? 'active' : ''}`}
                       onClick={() => setTarget('students')}
                     >
-                      🎓 Ученики
+                      Ученики
                     </button>
                   </div>
                 </div>

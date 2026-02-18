@@ -1,0 +1,160 @@
+/* Минималистичный дизайн страницы домашних заданий */
+.homework-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+}
+
+.homework-header {
+  margin-bottom: 2rem;
+}
+
+.homework-title {
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.02em;
+}
+
+.homework-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Табы */
+.homework-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.homework-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color var(--duration-fast) var(--ease-smooth),
+    background var(--duration-fast) var(--ease-smooth),
+    border-color var(--duration-fast) var(--ease-smooth),
+    transform var(--duration-fast) var(--ease-smooth);
+}
+
+.homework-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.homework-tab.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.tab-icon {
+  font-size: 1rem;
+}
+
+.tab-label {
+  font-size: 0.875rem;
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  margin-left: 2px;
+  transition: transform var(--duration-fast) var(--ease-smooth),
+    background var(--duration-fast) var(--ease-smooth);
+}
+
+.homework-tab.active .tab-badge {
+  background: #ffffff;
+  color: #4f46e5;
+}
+
+/* Контент */
+.homework-content {
+  background: var(--bg-paper);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  min-height: 400px;
+}
+
+.homework-tab-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  gap: 0.75rem;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-light);
+  border-radius: 10px;
+}
+
+.homework-tab-loading::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border-light);
+  border-top-color: var(--color-primary);
+  animation: homeworkSpin 0.7s linear infinite;
+}
+
+@keyframes homeworkSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .homework-page {
+    padding: 1.5rem 1rem;
+  }
+
+  .homework-title {
+    font-size: 1.5rem;
+  }
+
+  .homework-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .homework-tab {
+    padding: 0.5rem 0.875rem;
+    white-space: nowrap;
+  }
+
+  .tab-icon {
+    font-size: 0.875rem;
+  }
+
+  .homework-content {
+    padding: 1rem;
+  }
+}
+

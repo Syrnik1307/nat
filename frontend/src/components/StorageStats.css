@@ -1,0 +1,265 @@
+.storage-stats-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.storage-stats-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 1400px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.storage-stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 30px;
+  border-bottom: 1px solid #e0e0e0;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+}
+
+.storage-stats-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 32px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  line-height: 1;
+  padding: 0;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Drive Quota Section */
+.drive-quota-section {
+  padding: 20px 30px;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8f5e9 100%);
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.drive-quota-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.quota-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.quota-status {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+.quota-status.ok {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.quota-status.warning {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.quota-status.critical {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.drive-quota-bar {
+  height: 12px;
+  background: #e0e0e0;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.drive-quota-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50, #8bc34a);
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.drive-quota-fill.warning {
+  background: linear-gradient(90deg, #ff9800, #ffc107);
+}
+
+.drive-quota-fill.critical {
+  background: linear-gradient(90deg, #f44336, #ff5722);
+}
+
+.drive-quota-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #555;
+}
+
+.drive-quota-details strong {
+  color: #333;
+}
+
+.trash-info {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #888;
+  font-style: italic;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  padding: 30px;
+  background: #f8f9fa;
+}
+
+.summary-card {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.card-label {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.teachers-table-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 30px 30px;
+}
+
+.teachers-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.teachers-table thead {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+}
+
+.teachers-table th {
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid var(--color-primary);
+  white-space: nowrap;
+}
+
+.teachers-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.teachers-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.teacher-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.teacher-email {
+  color: #666;
+  font-size: 13px;
+}
+
+.size-cell {
+  font-size: 15px;
+  color: var(--color-primary);
+}
+
+.breakdown-cell {
+  font-size: 13px;
+  color: #666;
+}
+
+.file-count {
+  color: #999;
+  margin-left: 4px;
+  font-size: 12px;
+}
+
+.loading, .error-message {
+  padding: 40px;
+  text-align: center;
+  font-size: 16px;
+  color: #666;
+}
+
+.error-message {
+  color: #dc3545;
+}
+
+@media (max-width: 768px) {
+  .summary-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .teachers-table {
+    font-size: 12px;
+  }
+  
+  .teachers-table th,
+  .teachers-table td {
+    padding: 8px 4px;
+  }
+}
+

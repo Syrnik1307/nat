@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getLesson, markLessonAttendance } from '../apiService';
+import { Notification } from '../shared/components';
+import useNotification from '../shared/hooks/useNotification';
 
 const STATUS_OPTIONS = [
   { value: 'present', label: 'Присутствовал' },
@@ -8,6 +10,7 @@ const STATUS_OPTIONS = [
 ];
 
 const LessonAttendance = ({ lessonId, onClose }) => {
+  const { notification, showNotification, closeNotification } = useNotification();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [students, setStudents] = useState([]);
@@ -63,9 +66,10 @@ const LessonAttendance = ({ lessonId, onClose }) => {
         notes: val.notes,
       }));
       await markLessonAttendance(lessonId, payload);
+      showNotification('success', 'Успешно', 'Посещаемость сохранена');
       onClose(true);
     } catch (e) {
-      alert(e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка сохранения');
+      showNotification('error', 'Ошибка', e.response?.data ? JSON.stringify(e.response.data) : 'Ошибка сохранения');
     } finally {
       setSaving(false);
     }
@@ -82,7 +86,7 @@ const LessonAttendance = ({ lessonId, onClose }) => {
     <ModalFrame title="Посещаемость" onClose={()=>onClose(false)}>
       {zoomInfo && (
         <div style={{ marginBottom:'0.75rem', padding:'0.5rem 0.75rem', background:'#f1f5f9', borderRadius:8, fontSize:'0.8rem' }}>
-          <strong>Zoom статус:</strong> {zoomInfo.started ? 'создана ✅' : 'не создана'}
+          <strong>Zoom статус:</strong> {zoomInfo.started ? 'создана' : 'не создана'}
           {zoomInfo.started && (
             <>
               <div style={{ marginTop:'0.35rem' }}>
@@ -146,6 +150,13 @@ const ModalFrame = ({ title, children, onClose }) => (
         <button onClick={()=>onClose(false)} style={closeBtn}>×</button>
       </div>
       <div>{children}</div>
+      <Notification
+        isOpen={notification.isOpen}
+        onClose={closeNotification}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
     </div>
   </div>
 );

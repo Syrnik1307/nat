@@ -1,0 +1,602 @@
+/* Стили для компонента управления учебными материалами учителя */
+
+.materials-manager-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.3s ease;
+}
+
+.materials-manager-modal {
+    background: white;
+    border-radius: 16px;
+    max-width: 1200px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.3s ease;
+    padding: 0;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* Заголовок */
+.materials-manager-header {
+    background: var(--primary-600);
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--primary-700);
+    position: relative;
+}
+
+.materials-manager-header h2 {
+    margin: 0 0 8px 0;
+    color: white;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.materials-manager-header .lesson-title {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 16px;
+}
+
+.btn-close-icon {
+    position: absolute;
+    top: 24px;
+    right: 32px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 32px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.btn-close-icon:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+/* Статистика */
+.materials-statistics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    padding: 24px 32px;
+    background: rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 16px;
+    border-radius: 12px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Действия */
+.materials-actions {
+    padding: 16px 32px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-add-material {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-add-material:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Форма загрузки */
+.upload-form {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 24px 32px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from { max-height: 0; opacity: 0; }
+    to { max-height: 800px; opacity: 1; }
+}
+
+.upload-form h3 {
+    margin: 0 0 16px 0;
+    color: white;
+    font-size: 20px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.form-group small {
+    display: block;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.form-actions {
+    margin-top: 16px;
+}
+
+.btn-submit {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    color: white;
+    border: none;
+    padding: 12px 32px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Контент материалов */
+.materials-content {
+    padding: 32px;
+}
+
+.materials-section {
+    margin-bottom: 32px;
+}
+
+.materials-section:last-child {
+    margin-bottom: 0;
+}
+
+.materials-section h3 {
+    color: white;
+    font-size: 22px;
+    margin: 0 0 16px 0;
+    font-weight: 700;
+}
+
+.no-materials {
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    text-align: center;
+    padding: 32px;
+}
+
+.materials-list {
+    display: grid;
+    gap: 16px;
+}
+
+/* Карточка материала */
+.material-card {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.material-card:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.material-info {
+    flex: 1;
+}
+
+.material-info h4 {
+    margin: 0 0 8px 0;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.material-description {
+    margin: 0 0 12px 0;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.material-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.material-meta span {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+}
+
+.material-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-left: 16px;
+}
+
+.material-actions button,
+.material-actions a {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    border: none;
+}
+
+.btn-statistics {
+    background: rgba(59, 130, 246, 0.3);
+    color: white;
+    border: 1px solid rgba(59, 130, 246, 0.5);
+}
+
+.btn-statistics:hover {
+    background: rgba(59, 130, 246, 0.5);
+}
+
+.btn-view {
+    background: rgba(16, 185, 129, 0.3);
+    color: white;
+    border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+.btn-view:hover {
+    background: rgba(16, 185, 129, 0.5);
+}
+
+.btn-delete {
+    background: rgba(239, 68, 68, 0.3);
+    color: white;
+    border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
+.btn-delete:hover {
+    background: rgba(239, 68, 68, 0.5);
+}
+
+/* Модальное окно просмотров */
+.views-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    animation: fadeIn 0.3s ease;
+}
+
+.views-modal {
+    background: white;
+    border-radius: 16px;
+    max-width: 900px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.3s ease;
+}
+
+.views-modal-header {
+    background: var(--primary-600);
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--primary-700);
+    position: relative;
+}
+
+.views-modal-header h3 {
+    margin: 0 0 8px 0;
+    color: white;
+    font-size: 24px;
+}
+
+.views-modal-header p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+}
+
+.views-content {
+    padding: 24px 32px;
+}
+
+/* Сводка */
+.views-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.summary-item {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 16px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.summary-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+}
+
+.summary-value {
+    color: white;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.summary-value.success {
+    color: var(--color-primary);
+}
+
+.summary-value.danger {
+    color: var(--color-error);
+}
+
+/* Таблица учеников */
+.students-table-container {
+    overflow-x: auto;
+}
+
+.students-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.students-table thead {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.students-table th {
+    padding: 12px 16px;
+    text-align: left;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.students-table tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: background 0.3s ease;
+}
+
+.students-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.students-table tbody tr.viewed {
+    background: rgba(30, 58, 138, 0.1);
+}
+
+.students-table tbody tr.not-viewed {
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.students-table td {
+    padding: 12px 16px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: rgba(30, 58, 138, 0.3);
+    color: var(--color-primary);
+    border: 1px solid rgba(30, 58, 138, 0.5);
+}
+
+.badge-danger {
+    background: rgba(239, 68, 68, 0.3);
+    color: var(--color-error);
+    border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
+/* Загрузка и ошибка */
+.loading {
+    text-align: center;
+    padding: 48px;
+    color: white;
+    font-size: 18px;
+}
+
+.error-message {
+    text-align: center;
+    padding: 48px;
+    color: var(--color-error);
+    font-size: 16px;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 8px;
+    margin: 24px;
+}
+
+.btn-close {
+    display: block;
+    margin: 16px auto 0;
+    padding: 10px 24px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .materials-manager-modal {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .materials-manager-header,
+    .materials-statistics,
+    .materials-actions,
+    .upload-form,
+    .materials-content,
+    .views-content {
+        padding: 16px;
+    }
+    
+    .materials-statistics {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .material-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .material-actions {
+        margin-left: 0;
+        margin-top: 12px;
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .views-summary {
+        grid-template-columns: 1fr;
+    }
+    
+    .students-table {
+        font-size: 12px;
+    }
+    
+    .students-table th,
+    .students-table td {
+        padding: 8px;
+    }
+}
+

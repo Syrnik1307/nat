@@ -1,0 +1,254 @@
+/* Compact individual invites view embedded into Groups page */
+
+.individual-invites-manage {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.iim-form-card .gm-actions {
+  margin-top: 0.25rem;
+}
+
+.iim-list-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.iim-code-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+}
+
+.iim-code-label {
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.iim-code-value {
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 1.5px;
+  color: var(--color-primary);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(59, 130, 246, 0.06) 100%);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-md);
+  font-family: 'Roboto Mono', 'SF Mono', monospace;
+}
+
+.iim-loading {
+  padding: 1.25rem;
+  color: var(--text-secondary);
+}
+
+.iim-error-text {
+  color: var(--error-600);
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0;
+}
+
+/* Edit input */
+.iim-edit-input {
+  width: 100%;
+  max-width: 300px;
+}
+
+/* Student modal */
+.iim-student-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.iim-student-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.iim-student-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary) 0%, #6366f1 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.iim-student-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.iim-student-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.iim-student-email {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.iim-student-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.iim-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.iim-meta-label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.iim-meta-value {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .iim-code-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .iim-student-info {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  /* Ensure buttons in individual invites cards are mobile-friendly */
+  .individual-invites-manage .gm-group-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .individual-invites-manage .gm-group-card-actions .gm-btn-primary,
+  .individual-invites-manage .gm-group-card-actions .gm-btn-surface,
+  .individual-invites-manage .gm-group-card-actions .gm-btn-danger {
+    min-height: 44px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.9rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .individual-invites-manage .gm-group-card-actions .gm-btn-danger {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .individual-invites-manage .gm-group-card-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .individual-invites-manage .gm-group-card-actions .gm-btn-primary,
+  .individual-invites-manage .gm-group-card-actions .gm-btn-surface,
+  .individual-invites-manage .gm-group-card-actions .gm-btn-danger {
+    min-height: 48px;
+    font-size: 0.95rem;
+  }
+}
+
+/* Mini student row in card */
+.iim-student-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  margin: 0.5rem 0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(59, 130, 246, 0.04) 100%);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  transition: all 0.2s ease;
+}
+
+.iim-student-row:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(59, 130, 246, 0.08) 100%);
+  border-color: rgba(99, 102, 241, 0.18);
+}
+
+.iim-student-mini-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.iim-student-mini-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* Muted badge for waiting status */
+.gm-badge-muted {
+  background: var(--bg-secondary);
+  color: var(--text-tertiary);
+}
+
+/* Card with student highlight */
+.gm-group-card.has-student {
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(238, 242, 255, 0.3) 100%);
+}
+
+.gm-group-card.has-student:hover {
+  border-color: rgba(99, 102, 241, 0.25);
+  box-shadow: var(--shadow-md), 0 0 20px rgba(99, 102, 241, 0.08);
+}
+
+/* Modal footer */
+.iim-modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+/* Transfer modal */
+.iim-transfer-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.iim-transfer-info {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.iim-transfer-info strong {
+  color: var(--text-primary);
+}

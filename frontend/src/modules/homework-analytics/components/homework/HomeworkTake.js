@@ -3,6 +3,7 @@ import Confetti from '../gamification/Confetti';
 import { useNavigate, useParams } from 'react-router-dom';
 import useHomeworkSession from '../../hooks/useHomeworkSession';
 import QuestionRenderer from '../student/QuestionRenderer';
+import QuestionAttachments from './QuestionAttachments';
 import ProgressBar from '../student/ProgressBar';
 import QuestionNav from '../student/QuestionNav';
 import './HomeworkTake.css';
@@ -165,6 +166,14 @@ const HomeworkTake = () => {
                 <span className="ht-question-type">{currentQuestion.question_type}</span>
               </div>
               <h2 className="ht-question-text">{currentQuestion.question_text}</h2>
+
+              {/* Вложения вопроса (только чтение для студента) */}
+              {currentQuestion.id && (
+                <QuestionAttachments
+                  questionId={currentQuestion.id}
+                  readOnly={true}
+                />
+              )}
 
               <QuestionRenderer
                 question={currentQuestion}

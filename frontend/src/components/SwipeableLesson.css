@@ -1,0 +1,301 @@
+/* 🎨 Clean Minimalist Design */
+
+.swipeable-lesson-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Card */
+.lesson-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1.25rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+/* Time block */
+.lesson-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+}
+
+.lesson-time .time {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.5px;
+}
+
+.lesson-time .duration {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+/* Info section */
+.lesson-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.lesson-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.lesson-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.lesson-topic {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-light);
+  font-weight: 600;
+}
+
+.lesson-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.meta-pill {
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--color-primary-dark);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+.meta-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.meta-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  transition: all 0.2s ease;
+}
+
+.meta-link:hover {
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--color-primary-dark);
+}
+
+/* Actions */
+.lesson-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Delete button (gear icon) */
+.delete-menu-container {
+  position: relative;
+}
+
+.delete-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-app);
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.delete-btn:hover {
+  background: var(--bg-surface);
+  border-color: var(--border-medium);
+  transform: rotate(15deg);
+}
+
+.delete-btn:active {
+  transform: rotate(15deg) scale(0.95);
+}
+
+/* Delete menu */
+.delete-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99;
+}
+
+.delete-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.delete-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: white;
+  color: #1f2937;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.delete-menu-item:hover:not(:disabled) {
+  background: var(--bg-app);
+}
+
+.delete-menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.delete-menu-item.single {
+  border-bottom: 1px solid var(--bg-surface);
+  color: var(--text-muted);
+}
+
+.delete-menu-item.single:hover:not(:disabled) {
+  color: var(--text-main);
+}
+
+.delete-menu-item.recurring {
+  color: var(--color-error);
+}
+
+.delete-menu-item.recurring:hover:not(:disabled) {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+/* Messages */
+.lesson-message {
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lesson-message.error {
+  color: var(--color-error);
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error-light);
+}
+
+.lesson-message.success {
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .lesson-card {
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+  }
+
+  .lesson-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .lesson-time {
+    min-width: 80px;
+    padding: 0.6rem 0.9rem;
+  }
+
+  .lesson-time .time {
+    font-size: 1.2rem;
+  }
+
+  .lesson-time .duration {
+    font-size: 0.7rem;
+  }
+
+  .lesson-title {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .lesson-card {
+    padding: 0.9rem;
+    gap: 0.8rem;
+  }
+
+  .lesson-meta {
+    gap: 0.5rem;
+  }
+
+  .meta-pill,
+  .meta-link {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.6rem;
+  }
+
+  .delete-btn {
+    width: 36px;
+    height: 36px;
+  }
+}
+

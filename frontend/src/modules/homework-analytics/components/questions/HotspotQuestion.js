@@ -1,4 +1,5 @@
 import React from 'react';
+import FileUploader from './FileUploader';
 
 const clampPercent = (value) => {
   const number = Number(value);
@@ -8,7 +9,7 @@ const clampPercent = (value) => {
   return Math.round(number * 10) / 10;
 };
 
-const HotspotQuestion = ({ question, onChange }) => {
+const HotspotQuestion = React.memo(({ question, onChange }) => {
   const { config = {} } = question;
   const hotspots = Array.isArray(config.hotspots) ? config.hotspots : [];
 
@@ -50,24 +51,27 @@ const HotspotQuestion = ({ question, onChange }) => {
 
   return (
     <div className="hc-question-editor">
-      <div className="form-group">
-        <label className="form-label">Ссылка на изображение</label>
-        <input
-          className="form-input"
-          placeholder="https://example.com/image.png"
-          value={config.imageUrl || ''}
-          onChange={(event) => updateConfig({ imageUrl: event.target.value })}
+      <div className="form-group" data-tour="q-hotspot-image">
+        <label className="form-label">Изображение для задания</label>
+        <FileUploader
+          fileType="image"
+          currentUrl={config.imageUrl || ''}
+          onUploadSuccess={(url, fileData) => updateConfig({
+            imageUrl: url,
+            imageFileId: fileData?.file_id || null,
+          })}
+          accept="image/*"
         />
-        <small className="gm-hint">Мы добавим визуальную разметку, когда подключим react-image-annotate.</small>
+        <small className="gm-hint">Загрузите изображение (JPG, PNG, GIF, WebP, до 50 МБ)</small>
       </div>
 
       {config.imageUrl && (
-        <div className="hc-image-preview">
+        <div className="hc-image-preview" data-tour="q-hotspot-image-preview">
           <img src={config.imageUrl} alt="Предпросмотр задания" />
         </div>
       )}
 
-      <div className="form-group">
+      <div className="form-group" data-tour="q-hotspot-attempts">
         <label className="form-label">Попыток на ответ</label>
         <input
           className="form-input"
@@ -78,10 +82,10 @@ const HotspotQuestion = ({ question, onChange }) => {
         />
       </div>
 
-      <div className="hc-subsection">
+      <div className="hc-subsection" data-tour="q-hotspot-areas">
         <div className="hc-subsection-header">
           <span>Области ({hotspots.length})</span>
-          <button type="button" className="gm-btn-surface" onClick={addHotspot}>
+          <button type="button" className="gm-btn-surface" onClick={addHotspot} data-tour="q-hotspot-add">
             + Добавить область
           </button>
         </div>
@@ -90,7 +94,7 @@ const HotspotQuestion = ({ question, onChange }) => {
         ) : (
           <div className="hc-sublist">
             {hotspots.map((hotspot, index) => (
-              <div key={hotspot.id} className="hc-subitem">
+              <div key={hotspot.id} className="hc-subitem" data-tour="q-hotspot-area-item">
                 <div className="hc-subitem-header">
                   <strong>{hotspot.label || `Область ${index + 1}`}</strong>
                   <div className="hc-inline-actions">
@@ -168,6 +172,10 @@ const HotspotQuestion = ({ question, onChange }) => {
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  return prevProps.question.id === nextProps.question.id &&
+         JSON.stringify(prevProps.question.config) === JSON.stringify(nextProps.question.config) &&
+         prevProps.question.question_text === nextProps.question.question_text;
+});
 
 export default HotspotQuestion;

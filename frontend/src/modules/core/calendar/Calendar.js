@@ -1,55 +1,97 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import apiService from '../../../apiService';
-import { Button, Modal, Input, Badge } from '../../../shared/components';
+import { Button, Modal, Badge, ConfirmModal } from '../../../shared/components';
+import { useAuth } from '../../../auth';
+
+const PALETTE = {
+  primary: '#1e3a8a', // deep blue
+  primaryDark: '#0f1f4b',
+  primaryLight: '#3b82f6',
+  secondary: '#e0e7ff',
+  surface: '#f5f7ff',
+  text: '#0f172a',
+  muted: '#475569',
+  success: '#22c55e',
+  danger: '#ef4444',
+  warning: '#f59e0b',
+};
+
+const formatStatus = (status) => {
+  switch (status) {
+    case 'in_progress':
+      return 'Идет';
+    case 'completed':
+      return 'Завершено';
+    case 'cancelled':
+      return 'Отменено';
+    default:
+      return 'Запланировано';
+  }
+};
 
 /**
  * Календарь занятий с тремя видами: месяц, неделя, день
  * Поддержка drag-and-drop для переноса занятий
  */
 const Calendar = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const userRole = user?.role || 'student';
+  const isStudent = userRole === 'student';
   const [view, setView] = useState('timeGridWeek'); // 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay'
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [activeGroup, setActiveGroup] = useState('all');
   const calendarRef = useRef(null);
-
-  // Форма создания занятия
-  const [newEvent, setNewEvent] = useState({
-    title: '',
-    group: '',
-    start: '',
-    duration: 60,
-    description: '',
-  });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmText: 'Да, удалить', cancelText: 'Отмена', variant: 'danger' });
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', confirmText: 'ОК', variant: 'info' });
 
   // Загрузка занятий
   const loadLessons = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await apiService.get('/api/schedule/lessons/');
+      // Получаем диапазон дат: текущий месяц + 2 месяца вперед
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endDate = new Date(now.getFullYear(), now.getMonth() + 3, 0);
+      
+      const startISOString = startDate.toISOString().split('T')[0];
+      const endISOString = endDate.toISOString().split('T')[0];
+
+      const response = await apiService.get('/schedule/lessons/', {
+        params: {
+          include_recurring: true,
+          start: startISOString,
+          end: endISOString,
+        }
+      });
+      
       const resolveColor = (status) => {
         switch (status) {
           case 'scheduled':
-            return '#1d4ed8';
+            return PALETTE.primary;
           case 'in_progress':
-            return '#2563eb';
+            return PALETTE.primaryDark;
           case 'completed':
-            return '#1e40af';
+            return PALETTE.success;
           case 'cancelled':
-            return '#ef4444';
+            return PALETTE.danger;
           default:
-            return '#2563eb';
+            return PALETTE.primary;
         }
       };
-      const formattedEvents = response.data.map(lesson => {
-        const color = resolveColor(lesson.status);
+      
+      // Обработка ответа (может быть массив или пагинированный объект)
+      const lessons = Array.isArray(response.data) ? response.data : (response.data.results || []);
+      
+      const formattedEvents = lessons.map(lesson => {
+        const color = resolveColor(lesson.status || 'scheduled');
         return {
           id: lesson.id,
           title: lesson.group_name || lesson.title,
@@ -63,6 +105,10 @@ const Calendar = () => {
             zoom_join_url: lesson.zoom_join_url,
             status: lesson.status,
             description: lesson.description,
+            is_recurring: lesson.is_recurring || false,
+            recurring_lesson_id: lesson.recurring_lesson_id || null,
+            recording_id: lesson.recording_id || null,
+            homework_id: lesson.homework_id || null,
           },
         };
       });
@@ -104,11 +150,8 @@ const Calendar = () => {
   }, [events]);
 
   const filteredEvents = useMemo(() => {
-    if (activeGroup === 'all') {
-      return events;
-    }
-    return events.filter(evt => evt.extendedProps?.group === activeGroup);
-  }, [events, activeGroup]);
+    return events;
+  }, [events]);
 
 
   // Клик на занятие
@@ -123,23 +166,18 @@ const Calendar = () => {
     setShowEventModal(true);
   };
 
-  // Клик на дату (создание нового занятия)
+  // Клик на дату (редирект на регулярные занятия)
   const handleDateClick = (info) => {
-    setNewEvent({
-      ...newEvent,
-      start: info.dateStr,
-    });
-    setShowCreateModal(true);
+    navigate('/recurring-lessons/manage');
   };
 
   // Перетаскивание занятия
   const handleEventDrop = async (info) => {
     try {
-      await apiService.patch(`/api/schedule/lessons/${info.event.id}/`, {
+      await apiService.patch(`/schedule/lessons/${info.event.id}/`, {
         start_time: info.event.start.toISOString(),
         end_time: info.event.end.toISOString(),
       });
-      console.log('Занятие перенесено');
     } catch (error) {
       console.error('Ошибка переноса занятия:', error);
       info.revert(); // Откатить изменения при ошибке
@@ -149,50 +187,64 @@ const Calendar = () => {
   // Изменение размера занятия
   const handleEventResize = async (info) => {
     try {
-      await apiService.patch(`/api/schedule/lessons/${info.event.id}/`, {
+      await apiService.patch(`/schedule/lessons/${info.event.id}/`, {
         end_time: info.event.end.toISOString(),
       });
-      console.log('Длительность занятия изменена');
     } catch (error) {
       console.error('Ошибка изменения длительности:', error);
       info.revert();
     }
   };
 
-  // Создание нового занятия
+  // Создание нового занятия - удалено, теперь редирект на регулярные
   const handleCreateLesson = async () => {
-    try {
-      const endTime = new Date(newEvent.start);
-      endTime.setMinutes(endTime.getMinutes() + newEvent.duration);
-
-      await apiService.post('/api/schedule/lessons/', {
-        group: newEvent.group,
-        start_time: newEvent.start,
-        end_time: endTime.toISOString(),
-        description: newEvent.description,
-      });
-
-      setShowCreateModal(false);
-      setNewEvent({ title: '', group: '', start: '', duration: 60, description: '' });
-      loadLessons();
-    } catch (error) {
-      console.error('Ошибка создания занятия:', error);
-    }
+    // Это не используется больше
   };
 
   // Удаление занятия
-  const handleDeleteLesson = async (lessonId) => {
-    if (!window.confirm('Вы уверены, что хотите удалить это занятие?')) {
-      return;
-    }
+  const handleDeleteLesson = async (lesson) => {
+    const isRecurring = lesson?.is_recurring || (typeof lesson?.id === 'string' && lesson.id.startsWith('recurring-'));
+    const recurringIdFromString = isRecurring && typeof lesson?.id === 'string' ? lesson.id.split('-')[1] : null;
+    const recurringId = lesson?.recurring_lesson_id || recurringIdFromString;
+    const targetTitle = isRecurring ? 'Удалить серию занятий' : 'Удалить занятие';
+    const targetMessage = isRecurring
+      ? 'Это повторяющееся занятие. Будет удалена вся серия. Продолжить?'
+      : 'Вы уверены, что хотите удалить это занятие? Это действие нельзя отменить.';
 
-    try {
-      await apiService.delete(`/api/schedule/lessons/${lessonId}/`);
-      setShowEventModal(false);
-      loadLessons();
-    } catch (error) {
-      console.error('Ошибка удаления занятия:', error);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: targetTitle,
+      message: targetMessage,
+      confirmText: isRecurring ? 'Удалить серию' : 'Удалить',
+      cancelText: 'Отмена',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          if (isRecurring) {
+            if (!recurringId) {
+              throw new Error('Recurring lesson id is missing');
+            }
+            await apiService.delete(`/recurring-lessons/${recurringId}/`);
+          } else {
+            await apiService.delete(`/schedule/lessons/${lesson.id}/`);
+          }
+          setShowEventModal(false);
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+          loadLessons();
+          setAlertModal({
+            isOpen: true,
+            title: isRecurring ? 'Серия удалена' : 'Занятие удалено',
+            message: isRecurring ? 'Серия регулярных занятий удалена.' : 'Занятие успешно удалено из календаря.',
+            confirmText: 'ОК',
+            variant: 'info'
+          });
+        } catch (error) {
+          console.error('Ошибка удаления занятия:', error);
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+          setAlertModal({ isOpen: true, title: 'Ошибка', message: 'Не удалось удалить занятие. Попробуйте позже.', confirmText: 'Понятно', variant: 'danger' });
+        }
+      }
+    });
   };
 
   return (
@@ -221,41 +273,37 @@ const Calendar = () => {
               </button>
             ))}
           </div>
-          <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-            + Новое занятие
+          <Button
+            variant="secondary"
+            size="small"
+            onClick={() => navigate('/calendar/settings')}
+            className="calendar-settings-btn"
+          >
+            Добавить в календарь
           </Button>
         </div>
       </div>
 
-      <div className="calendar-layout">
-        <aside className="calendar-sidebar" aria-label="Фильтр групп">
-          <div className="sidebar-header">
-            <span className="sidebar-title">Группы</span>
-            <Badge variant="neutral">{groupOptions.length}</Badge>
-          </div>
-          <div className="group-list">
-            <button
-              type="button"
-              className={`group-item ${activeGroup === 'all' ? 'active' : ''}`}
-              onClick={() => setActiveGroup('all')}
-            >
-              <span className="group-name">Все группы</span>
-              <span className="group-meta">{events.length}</span>
-            </button>
-            {groupOptions.map(group => (
-              <button
-                type="button"
-                key={group.id}
-                className={`group-item ${activeGroup === group.id ? 'active' : ''}`}
-                onClick={() => setActiveGroup(group.id)}
-              >
-                <span className="group-name">{group.name}</span>
-                <span className="group-meta">{group.count}</span>
-              </button>
-            ))}
-          </div>
-        </aside>
+      {/* Подсказка о синхронизации с телефоном */}
+      {!localStorage.getItem('lectio_connected_calendar') && !localStorage.getItem('lectio_sync_tip_hidden') && (
+        <div className="calendar-sync-tip">
+          <span className="calendar-sync-tip-text">
+            <strong>Совет:</strong> Добавьте расписание в свой календарь для автоматической синхронизации
+          </span>
+          <button 
+            className="calendar-sync-tip-close"
+            onClick={() => {
+              localStorage.setItem('lectio_sync_tip_hidden', 'true');
+              window.location.reload();
+            }}
+            aria-label="Закрыть подсказку"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
+      <div className="calendar-layout" style={{ gridTemplateColumns: '1fr' }}>
         <div className="calendar-container">
           {loading ? (
             <div className="calendar-loading">Загрузка календаря...</div>
@@ -282,7 +330,7 @@ const Calendar = () => {
               slotDuration="00:30:00"
               slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
               slotMinTime="08:00:00"
-              slotMaxTime="22:00:00"
+              slotMaxTime="24:00:00"
               nowIndicator
               dayMaxEvents={4}
               eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
@@ -307,126 +355,155 @@ const Calendar = () => {
         size="medium"
       >
         {selectedEvent && (
-          <div>
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                {selectedEvent.title}
-              </h3>
-              <Badge variant={selectedEvent.status === 'scheduled' ? 'success' : 'neutral'}>
-                {selectedEvent.status}
-              </Badge>
+          <div className="tp-modal">
+            <div className="tp-modal-header">
+              <div>
+                <p className="tp-eyebrow">Детали занятия</p>
+                <h3 className="tp-modal-title">{selectedEvent.title}</h3>
+              </div>
+              <div className="tp-chip-row">
+                <span className={`tp-chip tp-chip-${selectedEvent.status || 'scheduled'}`}>
+                  {formatStatus(selectedEvent.status)}
+                </span>
+                {selectedEvent.is_recurring && (
+                  <span className="tp-chip tp-chip-info">Повторяется</span>
+                )}
+              </div>
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <strong style={{ color: '#6b7280', fontSize: '0.875rem' }}>Группа:</strong>
-              <div style={{ marginTop: '0.25rem' }}>{selectedEvent.group_name}</div>
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <strong style={{ color: '#6b7280', fontSize: '0.875rem' }}>Время:</strong>
-              <div style={{ marginTop: '0.25rem' }}>
-                {new Date(selectedEvent.start).toLocaleString('ru-RU')}
-                {selectedEvent.end && ` - ${new Date(selectedEvent.end).toLocaleTimeString('ru-RU')}`}
+            <div className="tp-meta">
+              <div className="tp-meta-item">
+                <span className="tp-meta-label">Время</span>
+                <span className="tp-meta-value">
+                  {new Date(selectedEvent.start).toLocaleString('ru-RU')}
+                  {selectedEvent.end && ` — ${new Date(selectedEvent.end).toLocaleTimeString('ru-RU')}`}
+                </span>
+              </div>
+              <div className="tp-meta-item">
+                <span className="tp-meta-label">Группа</span>
+                <span className="tp-meta-value">{selectedEvent.group_name}</span>
               </div>
             </div>
 
             {selectedEvent.description && (
-              <div style={{ marginBottom: '1rem' }}>
-                <strong style={{ color: '#6b7280', fontSize: '0.875rem' }}>Описание:</strong>
-                <div style={{ marginTop: '0.25rem' }}>{selectedEvent.description}</div>
+              <div className="tp-section">
+                <span className="tp-meta-label">Описание</span>
+                <p className="tp-description">{selectedEvent.description}</p>
               </div>
             )}
 
-            {selectedEvent.zoom_join_url && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                <Button
-                  variant="primary"
-                  onClick={() => window.open(selectedEvent.zoom_join_url, '_blank')}
-                  style={{ width: '100%' }}
-                >
-                  🎥 Присоединиться к Zoom
-                </Button>
-              </div>
-            )}
+            {/* Кнопки действий для урока */}
+            {(() => {
+              const now = new Date();
+              const lessonEnd = selectedEvent.end ? new Date(selectedEvent.end) : new Date(selectedEvent.start);
+              const isPast = lessonEnd < now;
+              
+              if (isStudent && isPast) {
+                // Прошедший урок для студента: показываем запись и ДЗ (если есть)
+                const hasRecording = !!selectedEvent.recording_id;
+                const hasHomework = !!selectedEvent.homework_id;
+                
+                if (!hasRecording && !hasHomework) {
+                  return null; // Нет ни записи, ни ДЗ
+                }
+                
+                return (
+                  <div className="tp-section tp-action-buttons">
+                    {hasRecording && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => navigate(`/recordings/${selectedEvent.recording_id}`)}
+                        style={{ flex: 1 }}
+                      >
+                        📹 Запись урока
+                      </Button>
+                    )}
+                    {hasHomework && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => navigate(`/homework/${selectedEvent.homework_id}/solve`)}
+                        style={{ flex: 1 }}
+                      >
+                        📝 Домашнее задание
+                      </Button>
+                    )}
+                  </div>
+                );
+              } else if (!isPast && selectedEvent.zoom_join_url) {
+                // Предстоящий/текущий урок с Zoom ссылкой
+                return (
+                  <div className="tp-section">
+                    <Button
+                      variant="primary"
+                      onClick={() => window.open(selectedEvent.zoom_join_url, '_blank')}
+                      style={{ width: '100%' }}
+                    >
+                      Присоединиться к Zoom
+                    </Button>
+                  </div>
+                );
+              } else if (!isPast && selectedEvent.google_meet_link) {
+                // Предстоящий/текущий урок с Google Meet ссылкой
+                return (
+                  <div className="tp-section">
+                    <Button
+                      variant="primary"
+                      onClick={() => window.open(selectedEvent.google_meet_link, '_blank')}
+                      style={{ width: '100%', background: 'linear-gradient(135deg, #00ac47 0%, #00832d 100%)' }}
+                    >
+                      Присоединиться к Google Meet
+                    </Button>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <div className="tp-modal-footer">
               <Button
-                variant="secondary"
+                variant="primary"
                 onClick={() => setShowEventModal(false)}
                 style={{ flex: 1 }}
               >
                 Закрыть
               </Button>
-              <Button
-                variant="danger"
-                onClick={() => handleDeleteLesson(selectedEvent.id)}
-                style={{ flex: 1 }}
-              >
-                Удалить
-              </Button>
+              {!isStudent && (
+                <Button
+                  variant="danger"
+                  onClick={() => handleDeleteLesson(selectedEvent)}
+                  style={{ flex: 1 }}
+                >
+                  Удалить
+                </Button>
+              )}
             </div>
           </div>
         )}
       </Modal>
 
       {/* Модальное окно создания занятия */}
-      <Modal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        title="Создать новое занятие"
-        size="medium"
-      >
-        <Input
-          label="Группа (ID)"
-          type="number"
-          value={newEvent.group}
-          onChange={(e) => setNewEvent({ ...newEvent, group: e.target.value })}
-          placeholder="1"
-          required
-        />
+      {/* УДАЛЕНО: редирект на /recurring-lessons/manage */}
 
-        <Input
-          label="Дата и время начала"
-          type="datetime-local"
-          value={newEvent.start}
-          onChange={(e) => setNewEvent({ ...newEvent, start: e.target.value })}
-          required
-        />
-
-        <Input
-          label="Длительность (минуты)"
-          type="number"
-          value={newEvent.duration}
-          onChange={(e) => setNewEvent({ ...newEvent, duration: parseInt(e.target.value) })}
-          placeholder="60"
-          required
-        />
-
-        <Input
-          label="Описание (опционально)"
-          type="textarea"
-          value={newEvent.description}
-          onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-          placeholder="Дополнительная информация о занятии"
-        />
-
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
-          <Button
-            variant="secondary"
-            onClick={() => setShowCreateModal(false)}
-            style={{ flex: 1 }}
-          >
-            Отмена
-          </Button>
-          <Button
-            variant="success"
-            onClick={handleCreateLesson}
-            style={{ flex: 1 }}
-          >
-            Создать
-          </Button>
-        </div>
-      </Modal>
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        variant={confirmModal.variant}
+      />
+      <ConfirmModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+        title={alertModal.title}
+        message={alertModal.message}
+        confirmText={alertModal.confirmText}
+        hideCancel
+        variant={alertModal.variant}
+      />
 
       <style>
         {`
@@ -437,6 +514,8 @@ const Calendar = () => {
             display: flex;
             flex-direction: column;
             gap: 1.75rem;
+            position: relative;
+            z-index: 1;
           }
 
           .calendar-header {
@@ -446,11 +525,52 @@ const Calendar = () => {
             gap: 1.5rem;
           }
 
+          /* Sync Tip Banner */
+          .calendar-sync-tip {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 2px solid #f59e0b;
+            border-radius: 14px;
+            padding: 14px 18px;
+            margin-bottom: -0.5rem;
+          }
+
+          .calendar-sync-tip-icon {
+            font-size: 20px;
+          }
+
+          .calendar-sync-tip-text {
+            flex: 1;
+            font-size: 14px;
+            color: #92400e;
+          }
+
+          .calendar-sync-tip-text strong {
+            color: #78350f;
+          }
+
+          .calendar-sync-tip-close {
+            background: transparent;
+            border: none;
+            font-size: 16px;
+            color: #92400e;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+          }
+
+          .calendar-sync-tip-close:hover {
+            background: rgba(0,0,0,0.1);
+          }
+
           .calendar-title h1 {
             margin: 0;
             font-size: 2rem;
             font-weight: 700;
-            color: #1e293b;
+            color: ${PALETTE.text};
           }
 
           .calendar-title p {
@@ -467,7 +587,7 @@ const Calendar = () => {
 
           .view-toggle {
             display: inline-flex;
-            background: #e0e7ff;
+            background: ${PALETTE.secondary};
             padding: 0.25rem;
             border-radius: 999px;
             gap: 0.25rem;
@@ -476,7 +596,7 @@ const Calendar = () => {
           .view-toggle button {
             border: none;
             background: transparent;
-            color: #1e3a8a;
+            color: ${PALETTE.text};
             font-weight: 600;
             font-size: 0.9rem;
             padding: 0.45rem 1.1rem;
@@ -486,9 +606,9 @@ const Calendar = () => {
           }
 
           .view-toggle button.active {
-            background: #2563eb;
+            background: linear-gradient(135deg, ${PALETTE.primary}, ${PALETTE.primaryDark});
             color: white;
-            box-shadow: 0 8px 16px -12px rgba(37, 99, 235, 0.7);
+            box-shadow: 0 8px 16px -12px rgba(30, 58, 138, 0.65);
           }
 
           .calendar-layout {
@@ -537,21 +657,21 @@ const Calendar = () => {
             justify-content: space-between;
             border-radius: 12px;
             padding: 0.55rem 0.85rem;
-            color: #475569;
+            color: ${PALETTE.muted};
             font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.2s ease;
           }
 
           .group-item:hover {
-            background: #eff6ff;
-            color: #2563eb;
+            background: rgba(30, 58, 138, 0.08);
+            color: ${PALETTE.primary};
           }
 
           .group-item.active {
-            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            background: linear-gradient(135deg, ${PALETTE.primary}, ${PALETTE.primaryDark});
             color: white;
-            box-shadow: 0 12px 24px -12px rgba(37, 99, 235, 0.7);
+            box-shadow: 0 12px 24px -12px rgba(30, 58, 138, 0.7);
           }
 
           .group-item.active .group-meta {
@@ -569,7 +689,7 @@ const Calendar = () => {
             background: #e2e8f0;
             font-weight: 600;
             font-size: 0.8rem;
-            color: #1e293b;
+            color: ${PALETTE.text};
           }
 
           .calendar-container {
@@ -589,8 +709,8 @@ const Calendar = () => {
           /* FULLCALENDAR THEME */
           .fc {
             --fc-border-color: #e2e8f0;
-            --fc-page-bg-color: #f8fafc;
-            --fc-today-bg-color: rgba(37, 99, 235, 0.08);
+            --fc-page-bg-color: ${PALETTE.surface};
+            --fc-today-bg-color: rgba(30, 58, 138, 0.08);
             font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           }
 
@@ -598,15 +718,24 @@ const Calendar = () => {
             margin-bottom: 1.5rem;
           }
 
+          /* Hide any extra toolbar chunk on the right (artifacts) */
+          .calendar-container .fc .fc-toolbar .fc-toolbar-chunk:last-child {
+            display: none !important;
+          }
+          /* Defensive: ensure only left (prev/next/today) and center (title) remain */
+          .calendar-container .fc .fc-toolbar > .fc-toolbar-chunk:nth-child(n+3) {
+            display: none !important;
+          }
+
           .fc .fc-button-primary {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            background: linear-gradient(135deg, ${PALETTE.primary}, ${PALETTE.primaryDark});
             border: none;
             border-radius: 10px;
-            box-shadow: 0 12px 24px -14px rgba(37, 99, 235, 0.65);
+            box-shadow: 0 12px 24px -14px rgba(30, 58, 138, 0.65);
           }
 
           .fc .fc-button-primary:hover {
-            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+            background: linear-gradient(135deg, ${PALETTE.primaryDark}, ${PALETTE.primary});
           }
 
           .fc .fc-button-primary:disabled {
@@ -620,8 +749,8 @@ const Calendar = () => {
           }
 
           .fc .fc-col-header-cell {
-            background: #f1f5f9;
-            color: #1d4ed8;
+            background: #eef2ff;
+            color: ${PALETTE.primaryDark};
             font-weight: 600;
             padding: 0.75rem 0;
           }
@@ -653,7 +782,7 @@ const Calendar = () => {
             border: none !important;
             border-radius: 14px !important;
             padding: 0.35rem 0.5rem !important;
-            box-shadow: 0 12px 24px -16px rgba(37, 99, 235, 0.75);
+            box-shadow: 0 12px 24px -16px rgba(30, 58, 138, 0.45);
           }
 
           .fc-event:hover {
@@ -686,6 +815,155 @@ const Calendar = () => {
           .fc .fc-scrollgrid {
             border-radius: 16px;
             overflow: hidden;
+          }
+
+          /* MODALS */
+          .tp-modal {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+          }
+
+          .tp-modal-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+          }
+
+          .tp-eyebrow {
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: ${PALETTE.muted};
+            font-size: 0.75rem;
+            font-weight: 700;
+          }
+
+          .tp-modal-title {
+            margin: 0.15rem 0 0 0;
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: ${PALETTE.text};
+          }
+
+          .tp-chip-row {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+          }
+
+          .tp-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.4rem 0.9rem;
+            border-radius: 999px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            background: rgba(30, 58, 138, 0.16);
+            color: ${PALETTE.primaryDark};
+            border: 1px solid rgba(30, 58, 138, 0.35);
+          }
+
+          .tp-chip-info {
+            background: rgba(30, 58, 138, 0.18);
+            color: ${PALETTE.primary};
+            border-color: rgba(30, 58, 138, 0.45);
+          }
+
+          .tp-chip-scheduled { background: rgba(30, 58, 138, 0.18); color: ${PALETTE.primary}; border-color: rgba(30, 58, 138, 0.5); }
+          .tp-chip-in_progress { background: rgba(59, 130, 246, 0.18); color: ${PALETTE.primaryDark}; border-color: rgba(59, 130, 246, 0.5); }
+          .tp-chip-completed { background: rgba(34, 197, 94, 0.2); color: ${PALETTE.success}; border-color: ${PALETTE.success}; }
+          .tp-chip-cancelled { background: rgba(239, 68, 68, 0.2); color: ${PALETTE.danger}; border-color: ${PALETTE.danger}; }
+
+          .tp-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(30,58,138,0.04), rgba(30,58,138,0.02));
+          }
+
+          .tp-meta-item { display: flex; flex-direction: column; gap: 0.25rem; }
+          .tp-meta-label { color: #64748b; font-size: 0.85rem; font-weight: 600; }
+          .tp-meta-value { color: ${PALETTE.text}; font-weight: 600; }
+
+          .tp-section { display: flex; flex-direction: column; gap: 0.35rem; }
+          .tp-description { margin: 0; color: ${PALETTE.muted}; line-height: 1.55; }
+
+          .tp-action-buttons {
+            display: flex;
+            flex-direction: row;
+            gap: 0.75rem;
+          }
+
+          .tp-modal-footer {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 0.75rem;
+            align-items: center;
+          }
+
+          /* Локально фиксируем стили кнопок модалки, чтобы всегда были как в дизайн-системе */
+          .tp-modal-footer button,
+          .tp-section button,
+          .tp-action-buttons button {
+            background: linear-gradient(135deg, #0b2b65 0%, #0a1f4d 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            padding: 0.7rem 1rem;
+            font-weight: 700;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.9rem;
+            box-shadow: 0 8px 20px -10px rgba(30, 58, 138, 0.45);
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+
+          .tp-modal-footer button:hover,
+          .tp-section button:hover,
+          .tp-action-buttons button:hover {
+            background: linear-gradient(135deg, #103779 0%, #0c265b 100%);
+            transform: translateY(-1px);
+          }
+
+          /* Опасная кнопка (удалить) */
+          .tp-modal-footer button:nth-child(2) {
+            background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+            box-shadow: 0 6px 16px -10px rgba(239, 68, 68, 0.45);
+          }
+
+          .tp-modal-footer button:nth-child(2):hover {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+          }
+
+          .tp-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+          }
+
+          /* Confirm modal overrides (local) */
+          .confirm-modal-content {
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 16px 40px -24px rgba(15, 23, 42, 0.35);
+            padding: 1.75rem;
+          }
+
+          .confirm-modal-btn-confirm {
+            background: linear-gradient(135deg, ${PALETTE.primary}, ${PALETTE.primaryDark});
+            box-shadow: 0 8px 20px -14px rgba(30, 58, 138, 0.4);
+          }
+
+          .confirm-modal-btn-danger {
+            background: linear-gradient(135deg, ${PALETTE.danger}, '#b91c1c');
+          }
+
+          .confirm-modal-btn-cancel {
+            border: 1px solid #e2e8f0;
           }
 
           @media (max-width: 1100px) {

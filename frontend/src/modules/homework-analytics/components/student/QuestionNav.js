@@ -11,7 +11,7 @@ const QuestionNav = ({ questions = [], currentIndex = 0, answers = {}, onSelect 
     if (question.question_type === 'SINGLE_CHOICE') {
       return value ? 'answered' : 'pending';
     }
-    if (question.question_type === 'MULTIPLE_CHOICE') {
+    if (question.question_type === 'MULTI_CHOICE') {
       return Array.isArray(value) && value.length ? 'answered' : 'pending';
     }
     if (question.question_type === 'LISTENING') {

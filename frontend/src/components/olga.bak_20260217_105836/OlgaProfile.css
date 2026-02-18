@@ -1,0 +1,153 @@
+/* ================================================
+   OLGA PROFILE
+   ================================================ */
+
+.olga-profile-page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+  font-family: 'Georgia', 'Palatino Linotype', serif;
+}
+
+.olga-profile-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  box-shadow: 0 2px 16px rgba(139, 94, 60, 0.08);
+  text-align: center;
+}
+
+/* Аватар */
+.olga-profile-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ddc4a6, #c49a6c);
+  margin-bottom: 1rem;
+}
+
+.olga-avatar-letter {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.olga-profile-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #3d2e1f;
+  margin: 0 0 0.25rem;
+}
+
+.olga-profile-email {
+  font-size: 0.9rem;
+  color: #7a6a5a;
+  margin: 0 0 2rem;
+}
+
+/* Форма */
+.olga-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  text-align: left;
+}
+
+.olga-pf-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.olga-pf-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.olga-pf-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #3d2e1f;
+}
+
+.olga-pf-hint {
+  font-size: 0.75rem;
+  color: #a0917f;
+  font-style: italic;
+}
+
+/* Перезаписываем Input-стили */
+.olga-profile-form input {
+  background: #faf6f1 !important;
+  color: #3d2e1f !important;
+  border: 1.5px solid #e0d5c7 !important;
+  border-radius: 10px !important;
+  font-family: 'Georgia', serif !important;
+}
+
+.olga-profile-form input:focus {
+  border-color: #c49a6c !important;
+  box-shadow: 0 0 0 3px rgba(196, 154, 108, 0.15) !important;
+}
+
+.olga-profile-form input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Кнопка сохранения */
+.olga-profile-save {
+  margin-top: 0.5rem;
+  padding: 0.8rem 1.5rem !important;
+  background: linear-gradient(135deg, #c49a6c, #8b5e3c) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 10px !important;
+  font-family: 'Georgia', serif !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 16px rgba(196, 154, 108, 0.25);
+}
+
+.olga-profile-save:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(196, 154, 108, 0.35);
+}
+
+/* Мои курсы */
+.olga-profile-courses {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e0d5c7;
+  text-align: left;
+}
+
+.olga-profile-courses h3 {
+  font-size: 1.1rem;
+  color: #8b5e3c;
+  margin: 0 0 0.5rem;
+}
+
+.olga-pf-courses-hint {
+  font-size: 0.85rem;
+  color: #a0917f;
+  font-style: italic;
+  margin: 0;
+}
+
+/* Адаптивность */
+@media (max-width: 480px) {
+  .olga-profile-card {
+    padding: 1.75rem 1.25rem;
+  }
+
+  .olga-pf-row {
+    grid-template-columns: 1fr;
+  }
+}

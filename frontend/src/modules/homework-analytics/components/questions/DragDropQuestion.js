@@ -46,10 +46,10 @@ const DragDropQuestion = ({ question, onChange }) => {
 
   return (
     <div className="hc-question-editor">
-      <div className="hc-subsection">
+      <div className="hc-subsection" data-tour="q-dragdrop-items">
         <div className="hc-subsection-header">
           <span>Элементы ({items.length})</span>
-          <button type="button" className="gm-btn-surface" onClick={addItem}>
+          <button type="button" className="gm-btn-surface" onClick={addItem} data-tour="q-dragdrop-add">
             + Добавить элемент
           </button>
         </div>
@@ -61,7 +61,7 @@ const DragDropQuestion = ({ question, onChange }) => {
               <div key={item.id} className="hc-subitem">
                 <div className="hc-subitem-header">
                   <strong>Элемент {index + 1}</strong>
-                  <div className="hc-inline-actions">
+                  <div className="hc-inline-actions" data-tour="q-dragdrop-reorder">
                     <button
                       type="button"
                       className="gm-btn-icon"
@@ -95,6 +95,7 @@ const DragDropQuestion = ({ question, onChange }) => {
                   value={item.text}
                   onChange={(event) => updateItemText(item.id, event.target.value)}
                   placeholder="Текст элемента"
+                  data-tour="q-dragdrop-item-text"
                 />
               </div>
             ))}

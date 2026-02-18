@@ -1,0 +1,522 @@
+/*
+ * 🌨️ Winter Magic Button System
+ * Унифицированная система кнопок с магическим свечением
+ */
+
+/* === BASE BUTTON === */
+.btn,
+[class^="gm-btn-"],
+[class*=" gm-btn-"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: 12px var(--space-lg);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  line-height: 1.5;
+  text-align: center;
+  text-decoration: none;
+  border: none;
+  border-radius: var(--radius-button);
+  cursor: pointer;
+  /* PERF: GPU-ускоренные свойства вместо all */
+  transition: transform var(--transition-base), 
+              box-shadow var(--transition-base),
+              background-color var(--transition-base),
+              border-color var(--transition-base),
+              color var(--transition-base);
+  outline: none;
+  user-select: none;
+  min-height: 48px;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.btn:focus-visible,
+[class^="gm-btn-"]:focus-visible,
+[class*=" gm-btn-"]:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.btn:disabled,
+[class^="gm-btn-"]:disabled,
+[class*=" gm-btn-"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* === SIZES === */
+.btn-sm {
+  padding: 8px var(--space-md);
+  font-size: var(--text-sm);
+  min-height: 40px;
+}
+
+.btn-md {
+  padding: 12px var(--space-lg);
+  font-size: var(--text-base);
+  min-height: 48px;
+}
+
+.btn-lg {
+  padding: 16px var(--space-xl);
+  font-size: var(--text-lg);
+  min-height: 56px;
+}
+
+/* === PRIMARY BUTTONS - Магический янтарный === */
+.btn-primary,
+.gm-btn-primary {
+  background: linear-gradient(to right, var(--color-warning), var(--color-warning));
+  color: var(--bg-paper);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+}
+
+.btn-primary:hover:not(:disabled),
+.gm-btn-primary:hover:not(:disabled) {
+  transform: translateY(-4px) scale(1.02);
+  background: linear-gradient(135deg, var(--color-warning) 0%, var(--color-warning) 100%);
+  color: var(--text-main);
+  box-shadow: 0 12px 40px rgba(251, 191, 36, 0.6), 0 0 80px rgba(251, 191, 36, 0.3);
+}
+
+.btn-primary:active:not(:disabled),
+.gm-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* === SECONDARY BUTTONS - Прозрачный с границей === */
+.btn-secondary,
+.sr-btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 2px solid var(--border-medium);
+}
+
+.btn-secondary:hover:not(:disabled),
+.sr-btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: var(--border-dark);
+}
+
+/* === OUTLINE BUTTONS === */
+.btn-outline,
+.gm-btn-outline {
+  background: transparent;
+  color: var(--accent-primary);
+  border: 2px solid var(--accent-primary);
+}
+
+.btn-outline:hover:not(:disabled),
+.gm-btn-outline:hover:not(:disabled) {
+  background: var(--accent-primary-light);
+  border-color: var(--accent-primary-hover);
+  color: var(--accent-primary-hover);
+}
+
+/* === SURFACE BUTTONS === */
+.btn-surface,
+.gm-btn-surface {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+}
+
+.btn-surface:hover:not(:disabled),
+.gm-btn-surface:hover:not(:disabled) {
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-hover);
+}
+
+/* === DANGER BUTTONS === */
+.btn-danger,
+.btn-delete {
+  background: var(--color-error);
+  color: var(--text-white);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.btn-danger:hover:not(:disabled),
+.btn-delete:hover:not(:disabled) {
+  background: var(--color-error);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+}
+
+/* === SUCCESS BUTTONS === */
+.btn-success,
+.sr-btn-done {
+  background: var(--color-success);
+  color: var(--text-white);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.btn-success:hover:not(:disabled),
+.sr-btn-done:hover:not(:disabled) {
+  background: var(--color-success);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+}
+
+/* === ICON BUTTONS === */
+.btn-icon {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xl);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon.btn-sm {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  font-size: var(--text-lg);
+}
+
+.btn-close-icon,
+.modal-close {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: var(--radius-full);
+  font-size: var(--text-2xl);
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close-icon:hover,
+.modal-close:hover {
+  background: var(--bg-snow);
+  color: var(--text-primary);
+}
+
+/* === TEXT BUTTONS === */
+.btn-text {
+  background: transparent;
+  color: var(--accent-primary);
+  border: none;
+  box-shadow: none;
+  padding: 8px var(--space-md);
+}
+
+.btn-text:hover:not(:disabled) {
+  color: var(--accent-primary-hover);
+  text-decoration: underline;
+  transform: none;
+}
+
+/* === SPECIFIC BUTTONS === */
+.btn-close {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  padding: 12px var(--space-lg);
+  border-radius: var(--radius-button);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  min-height: 48px;
+}
+
+.btn-close:hover {
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-card);
+}
+
+.btn-submit {
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%);
+  color: var(--text-white);
+  border: none;
+  padding: 12px var(--space-xl);
+  border-radius: var(--radius-button);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  box-shadow: var(--glow-accent);
+  transition: all var(--transition-base);
+  min-height: 48px;
+}
+
+.btn-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--glow-accent-strong);
+}
+
+.btn-retry,
+.sl-btn-retry,
+.teacher-retry-btn,
+.storage-retry-btn,
+.error-retry {
+  background: var(--accent-primary);
+  color: var(--text-white);
+  border: none;
+  padding: 12px var(--space-lg);
+  border-radius: var(--radius-button);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  box-shadow: var(--glow-accent);
+  transition: all var(--transition-base);
+  min-height: 48px;
+}
+
+.btn-retry:hover:not(:disabled),
+.sl-btn-retry:hover:not(:disabled),
+.teacher-retry-btn:hover:not(:disabled),
+.storage-retry-btn:hover,
+.error-retry:hover {
+  background: var(--primary-600);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-refresh,
+.sl-btn-refresh,
+.teacher-refresh-btn,
+.storage-refresh-btn,
+.refresh-btn {
+  background: var(--bg-primary);
+  color: var(--primary-500);
+  border: 1px solid var(--primary-500);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.btn-refresh:hover:not(:disabled),
+.sl-btn-refresh:hover,
+.teacher-refresh-btn:hover,
+.storage-refresh-btn:hover,
+.refresh-btn:hover:not(:disabled) {
+  background: var(--primary-50);
+  border-color: var(--primary-600);
+  color: var(--primary-600);
+}
+
+.sr-back-btn {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.sr-back-btn:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+/* DateTimePicker buttons */
+.dtp-trigger {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-base);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.dtp-trigger:hover {
+  border-color: var(--primary-500);
+  box-shadow: var(--shadow-sm);
+}
+
+.dtp-clear {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: var(--space-xs);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.dtp-clear:hover {
+  background: var(--gray-100);
+  color: var(--error-500);
+}
+
+/* Admin buttons */
+.admin-quick-action {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-align: left;
+  width: 100%;
+}
+
+.admin-quick-action:hover {
+  border-color: var(--primary-500);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* Storage buttons */
+.storage-small-button {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.storage-small-button:hover:not(:disabled) {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.storage-small-button.primary {
+  background: var(--primary-500);
+  color: white;
+  border: none;
+}
+
+.storage-small-button.primary:hover:not(:disabled) {
+  background: var(--primary-600);
+}
+
+.storage-link-button {
+  background: transparent;
+  border: none;
+  color: var(--primary-500);
+  padding: var(--space-sm);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color var(--transition-base);
+}
+
+.storage-link-button:hover {
+  color: var(--primary-600);
+}
+
+/* Teacher Modal Close */
+.teacher-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--text-2xl);
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  line-height: 1;
+}
+
+.teacher-modal-close:hover {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
+
+/* Recording Player Close */
+.recording-player-close {
+  background: var(--error-500);
+  color: white;
+  border: none;
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.recording-player-close:hover {
+  background: var(--error-600);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* === BUTTON GROUPS === */
+.btn-group {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+.btn-group-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* === LOADING STATE === */
+.btn.loading {
+  position: relative;
+  color: transparent;
+  pointer-events: none;
+}
+
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 640px) {
+  .btn {
+    padding: var(--space-sm) var(--space-md);
+    font-size: var(--text-sm);
+  }
+  
+  .btn-lg {
+    padding: var(--space-md) var(--space-xl);
+    font-size: var(--text-base);
+  }
+}
+

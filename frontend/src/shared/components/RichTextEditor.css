@@ -1,0 +1,90 @@
+.tp-rich-editor {
+  --editor-bg: var(--bg-surface);
+  --editor-border: var(--border-light);
+  --editor-text: var(--text-main);
+  --editor-muted: var(--text-muted);
+
+  border: 1px solid var(--editor-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--editor-bg);
+}
+
+.tp-rich-editor .ql-toolbar.ql-snow {
+  border: 0;
+  border-bottom: 1px solid var(--editor-border);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.tp-rich-editor .ql-container.ql-snow {
+  border: 0;
+}
+
+.tp-rich-editor .ql-editor {
+  min-height: 280px;
+  padding: 16px 18px;
+  color: var(--editor-text);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.tp-rich-editor .ql-editor.ql-blank::before {
+  color: var(--editor-muted);
+  font-style: normal;
+}
+
+.tp-rich-editor.is-readonly .ql-toolbar {
+  display: none;
+}
+
+.tp-rich-editor.is-readonly .ql-editor {
+  min-height: auto;
+  padding: 0;
+}
+
+/* Custom toolbar button: attachment */
+.tp-rich-editor .ql-snow .ql-toolbar button.ql-attachment,
+.tp-rich-editor .ql-snow.ql-toolbar button.ql-attachment {
+  width: 28px;
+}
+
+.tp-rich-editor .ql-snow .ql-toolbar button.ql-attachment::before,
+.tp-rich-editor .ql-snow.ql-toolbar button.ql-attachment::before {
+  content: "";
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: 0 auto;
+  background-color: currentColor;
+  -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-8.49 8.49a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.49-8.49"/></svg>') center / contain no-repeat;
+  mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-8.49 8.49a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.49-8.49"/></svg>') center / contain no-repeat;
+}
+
+/* Improve content typography */
+.tp-rich-editor .ql-editor h2 {
+  font-size: 20px;
+  margin: 0.6em 0 0.4em;
+}
+
+.tp-rich-editor .ql-editor h3 {
+  font-size: 17px;
+  margin: 0.6em 0 0.35em;
+}
+
+.tp-rich-editor .ql-editor blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+  color: var(--text-secondary);
+}
+
+.tp-rich-editor .ql-editor img {
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+}
+
+.tp-rich-editor .ql-editor a {
+  color: var(--accent);
+}

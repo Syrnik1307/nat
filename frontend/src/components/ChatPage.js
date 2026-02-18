@@ -51,8 +51,6 @@ const ChatPage = () => {
     setShowGroupModal(false);
   };
 
-  const isTeacher = currentUser?.role === 'teacher';
-
   // Мобильная версия: показываем либо список, либо тред
   if (isMobile) {
     return (
@@ -64,7 +62,7 @@ const ChatPage = () => {
                 variant="primary"
                 onClick={() => setShowGroupModal(true)}
               >
-                👥 Создать групповой чат
+                Создать групповой чат
               </Button>
             </div>
             
@@ -101,7 +99,7 @@ const ChatPage = () => {
             size="medium"
             onClick={() => setShowGroupModal(true)}
           >
-            👥 Создать групповой чат
+            Создать групповой чат
           </Button>
         </div>
         

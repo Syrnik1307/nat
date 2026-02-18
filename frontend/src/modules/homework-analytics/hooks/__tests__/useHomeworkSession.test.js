@@ -5,8 +5,7 @@ global.window = dom.window;
 global.document = dom.window.document;
 global.navigator = { userAgent: 'node.js' };
 
-const { renderHook, act } = require('@testing-library/react-hooks');
-const { waitFor } = require('@testing-library/react');
+const { renderHook, act, waitFor } = require('@testing-library/react');
 
 const mockHomework = {
   id: 1,
@@ -18,33 +17,46 @@ const mockHomework = {
 };
 
 const mockService = {
-  fetchHomework: jest.fn(async () => mockHomework),
-  startSubmission: jest.fn(async () => ({ id: 123 })),
-  saveProgress: jest.fn(async () => true),
-  submit: jest.fn(async () => ({ data: { score: 100, percent: 100 } })),
+  fetchHomework: jest.fn(),
+  fetchSubmissions: jest.fn(),
+  startSubmission: jest.fn(),
+  saveProgress: jest.fn(),
+  submit: jest.fn(),
 };
 
 const hookModule = require('../useHomeworkSession');
 const useHomeworkSession = hookModule.default || hookModule;
 
 describe('useHomeworkSession hook', () => {
+  beforeEach(() => {
+    mockService.fetchHomework.mockResolvedValue({ data: mockHomework });
+    mockService.fetchSubmissions.mockResolvedValue({ data: { results: [] } });
+    mockService.startSubmission.mockResolvedValue({ data: { id: 123, status: 'in_progress' } });
+    mockService.saveProgress.mockResolvedValue(true);
+    mockService.submit.mockResolvedValue({ data: { id: 123, status: 'submitted', score: 100, percent: 100 } });
+  });
+
   it('loads homework and initializes answers', async () => {
     const { result } = renderHook(() => useHomeworkSession(1, mockService));
     await waitFor(() => expect(mockService.fetchHomework).toHaveBeenCalled());
+    await waitFor(() => expect(result.current.loading).toBe(false));
     await waitFor(() => expect(result.current.answers).toHaveProperty('q1'));
     expect(result.current.answers.q1).toBeDefined();
   });
 
   it('records answers and saves progress', async () => {
     const { result } = renderHook(() => useHomeworkSession(1, mockService));
+    await waitFor(() => expect(result.current.loading).toBe(false));
     await waitFor(() => expect(result.current.answers).toHaveProperty('q1'));
     act(() => result.current.recordAnswer('q1', 'Ответ'));
+    await waitFor(() => expect(result.current.answers.q1).toBe('Ответ'));
     await act(async () => { await result.current.saveProgress(); });
-    expect(result.current.answers.q1).toBe('Ответ');
+    expect(mockService.saveProgress).toHaveBeenCalled();
   });
 
   it('submits homework and returns result', async () => {
     const { result } = renderHook(() => useHomeworkSession(1, mockService));
+    await waitFor(() => expect(result.current.loading).toBe(false));
     await waitFor(() => expect(result.current.submission).toBeTruthy());
     await act(async () => { await result.current.submitHomework(); });
     expect(mockService.submit).toHaveBeenCalled();
