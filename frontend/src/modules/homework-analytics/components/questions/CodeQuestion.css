@@ -1,0 +1,41 @@
+.code-question .code-textarea {
+  font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  tab-size: 4;
+  white-space: pre;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.code-test-case {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.code-tc-num {
+  font-weight: 600;
+  min-width: 28px;
+  color: var(--text-secondary, #888);
+}
+
+.code-test-case .form-input {
+  flex: 1;
+}
+
+.code-test-case .btn-icon.danger {
+  background: none;
+  border: none;
+  color: var(--danger, #e74c3c);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.code-test-case .btn-icon.danger:hover {
+  background: rgba(231, 76, 60, 0.1);
+}
