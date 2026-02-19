@@ -1,0 +1,249 @@
+# =============================================================
+# Deploy to Production — Деплой на lectiospace.ru
+# Триггер: пуш в ветку stable-prod
+# ВАЖНО: требует ручного подтверждения (environment protection)
+# =============================================================
+name: Deploy Production
+
+on:
+  push:
+    branches: [stable-prod]
+
+# Только один деплой одновременно, не отменяем текущий
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  # Сначала проверяем код (CI)
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: ci
+    # ВАЖНО: environment "production" требует ручного approve в GitHub Settings
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # --- Подготовка SSH ---
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      # --- Бэкап перед деплоем ---
+      - name: Backup database & code
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          ssh ${SERVER_USER}@${SERVER_HOST} << 'ENDSSH'
+            set -e
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            BACKUP_DIR="/var/backups/teaching_panel"
+            mkdir -p "$BACKUP_DIR"
+            
+            echo "=== Pre-deploy backup: $TIMESTAMP ==="
+            
+            # Backup database
+            PGPASSWORD="${DB_PASSWORD}" pg_dump -h 127.0.0.1 -U teaching_panel -d teaching_panel \
+              | gzip > "$BACKUP_DIR/db_predeploy_$TIMESTAMP.sql.gz"
+            echo "DB backup: $(du -h $BACKUP_DIR/db_predeploy_$TIMESTAMP.sql.gz | cut -f1)"
+            
+            # Save current commit hash for rollback
+            cd /var/www/teaching_panel
+            echo "$(git rev-parse HEAD)" > "$BACKUP_DIR/prev_commit_$TIMESTAMP.txt"
+            
+            # Cleanup old backups (keep last 10)
+            ls -t "$BACKUP_DIR"/db_predeploy_* 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
+            
+            echo "=== Backup complete ==="
+          ENDSSH
+
+      # --- Деплой бэкенда ---
+      - name: Deploy backend
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          ssh ${SERVER_USER}@${SERVER_HOST} << 'ENDSSH'
+            set -e
+            echo "=== [PROD] Backend deploy started ==="
+            
+            cd /var/www/teaching_panel
+            
+            # Запоминаем текущий коммит для отката
+            PREV_COMMIT=$(git rev-parse HEAD)
+            echo "Previous commit: $PREV_COMMIT"
+            
+            # Pull latest code
+            git fetch origin stable-prod
+            git checkout stable-prod
+            git pull origin stable-prod --ff-only
+            
+            # Install dependencies
+            source venv/bin/activate
+            pip install -r requirements.txt --quiet
+            
+            # Django checks (КРИТИЧНО — блокируем деплой при ошибках)
+            cd teaching_panel
+            python manage.py check
+            
+            # Migrations
+            python manage.py migrate --noinput
+            
+            # Collect static
+            python manage.py collectstatic --noinput --clear 2>&1 | tail -3
+            
+            # Restart all services
+            systemctl restart teaching_panel
+            systemctl restart celery
+            systemctl restart celery-beat
+            sleep 5
+            
+            # === HEALTH CHECK ===
+            HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 http://127.0.0.1:8000/api/health/ 2>/dev/null)
+            if [ "$HTTP_CODE" != "200" ]; then
+              echo "CRITICAL: Health check failed (HTTP $HTTP_CODE)!"
+              echo "=== ROLLING BACK to $PREV_COMMIT ==="
+              
+              cd /var/www/teaching_panel
+              git checkout $PREV_COMMIT
+              source venv/bin/activate
+              pip install -r requirements.txt --quiet 2>/dev/null
+              cd teaching_panel
+              python manage.py migrate --noinput 2>/dev/null
+              
+              systemctl restart teaching_panel
+              systemctl restart celery
+              systemctl restart celery-beat
+              sleep 3
+              
+              # Verify rollback
+              ROLLBACK_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/health/ 2>/dev/null)
+              echo "Rollback health check: HTTP $ROLLBACK_CODE"
+              
+              exit 1
+            fi
+            
+            echo "Health check: HTTP $HTTP_CODE ✓"
+            echo "=== [PROD] Backend deploy OK ==="
+          ENDSSH
+
+      # --- Деплой фронтенда ---
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          CI=false PUBLIC_URL="/" npm run build
+
+      - name: Validate build
+        working-directory: frontend
+        run: |
+          # Проверяем критические файлы
+          test -f build/index.html || (echo "ERROR: index.html missing!" && exit 1)
+          ls build/static/js/main.*.js > /dev/null 2>&1 || (echo "ERROR: main JS missing!" && exit 1)
+          
+          # Проверяем что пути абсолютные (не относительные)
+          if grep -q 'href="./static' build/index.html; then
+            echo "ERROR: Relative paths in index.html! Must be absolute."
+            exit 1
+          fi
+          
+          # Проверяем наличие olga-маршрутов после сборки
+          if ! grep -q 'olga' build/static/js/main.*.js; then
+            echo "WARNING: 'olga' not found in bundle (may be code-split)"
+          fi
+          
+          echo "Build validation OK ✓"
+          echo "Build size: $(du -sh build/ | cut -f1)"
+
+      - name: Upload frontend build
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          # Бэкап текущего билда
+          ssh ${SERVER_USER}@${SERVER_HOST} << 'ENDSSH'
+            if [ -d /var/www/teaching_panel/frontend/build ]; then
+              TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+              cp -a /var/www/teaching_panel/frontend/build \
+                    /var/www/teaching_panel/backups/build_prod_${TIMESTAMP}
+              echo "Frontend backup: build_prod_${TIMESTAMP}"
+            fi
+          ENDSSH
+          
+          # Загружаем новый билд
+          rsync -avz --delete \
+            frontend/build/ \
+            ${SERVER_USER}@${SERVER_HOST}:/var/www/teaching_panel/frontend/build/
+
+      - name: Finalize frontend deploy
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          ssh ${SERVER_USER}@${SERVER_HOST} << 'ENDSSH'
+            set -e
+            
+            # Fix permissions
+            chown -R www-data:www-data /var/www/teaching_panel/frontend/build
+            chmod -R 755 /var/www/teaching_panel/frontend/build
+            
+            # Test nginx config before reload
+            nginx -t
+            systemctl reload nginx
+            
+            # Final verification — проверяем что сайт доступен
+            sleep 2
+            HTTP_MAIN=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 https://lectiospace.ru/ 2>/dev/null || echo "000")
+            HTTP_OLGA=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 https://olga.lectiospace.ru/olga/auth 2>/dev/null || echo "000")
+            
+            echo "Main site: HTTP $HTTP_MAIN"
+            echo "Olga site: HTTP $HTTP_OLGA"
+            
+            if [ "$HTTP_MAIN" != "200" ]; then
+              echo "WARNING: Main site not returning 200!"
+            fi
+            
+            echo "=== [PROD] Frontend deploy OK ==="
+          ENDSSH
+
+      # --- Уведомление ---
+      - name: Notify Telegram
+        if: always()
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          STATUS="${{ job.status }}"
+          if [ "$STATUS" = "success" ]; then
+            EMOJI="✅"
+            TEXT="Deploy successful"
+          else
+            EMOJI="🚨"
+            TEXT="Deploy FAILED — check logs!"
+          fi
+          
+          MSG="${EMOJI} *PRODUCTION Deploy: ${STATUS}*
+          
+          ${TEXT}
+          Branch: \`stable-prod\`
+          Commit: \`$(echo ${{ github.sha }} | cut -c1-7)\`
+          By: ${{ github.actor }}
+          
+          [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          
+          if [ -n "$TELEGRAM_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+              -d chat_id="${TELEGRAM_CHAT_ID}" \
+              -d parse_mode="Markdown" \
+              -d text="${MSG}" > /dev/null 2>&1 || true
+          fi

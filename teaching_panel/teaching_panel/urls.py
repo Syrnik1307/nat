@@ -26,6 +26,7 @@ from analytics.views import ControlPointViewSet, ControlPointResultViewSet, Grad
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from accounts.jwt_views import LogoutView, RegisterView, CaseInsensitiveTokenObtainPairView
 from accounts.api_views import MeView
+from accounts.simple_reset_views import simple_password_reset
 
 # Create a router and register our viewsets with it.
 router = DefaultRouter()
@@ -44,14 +45,24 @@ router.register(r'control-point-results', ControlPointResultViewSet, basename='c
 router.register(r'teacher-stats', TeacherStatsViewSet, basename='teacher-stats')
 
 def health(request):
+    """Health check endpoint — используется CI/CD для проверки работоспособности."""
+    from django.db import connection
+    db_ok = True
+    try:
+        connection.ensure_connection()
+    except Exception:
+        db_ok = False
+
     return JsonResponse({
-        'status': 'ok',
+        'status': 'ok' if db_ok else 'degraded',
         'service': 'teaching_panel_backend',
+        'database': 'ok' if db_ok else 'error',
         'message': 'Backend running. React frontend is on port 3000.',
-    })
+    }, status=200 if db_ok else 503)
 
 urlpatterns = [
     path('', health, name='root'),
+    path('api/health/', health, name='health-check'),
     path('admin/', admin.site.urls),
     
     # Test page for email verification
@@ -78,4 +89,7 @@ urlpatterns = [
     path('api/jwt/verify/', TokenVerifyView.as_view(), name='jwt-verify'),
     path('api/jwt/logout/', LogoutView.as_view(), name='jwt-logout'),
     path('api/jwt/register/', RegisterView.as_view(), name='jwt-register'),
+    
+    # Simple password reset (direct API)
+    path('api/simple-reset/', simple_password_reset, name='api-simple-password-reset'),
 ]
