@@ -9,6 +9,7 @@ on:
     branches: [main, stable-prod, staging, develop]
   pull_request:
     branches: [main, stable-prod]
+  workflow_call:  # Позволяет вызывать этот workflow из других (deploy-staging, deploy-production)
 
 # Отменяем предыдущие запуски этого же workflow для той же ветки
 concurrency:
