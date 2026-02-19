@@ -134,6 +134,28 @@ class GroupViewSet(viewsets.ModelViewSet):
             'message': 'Новый код приглашения создан'
         })
     
+    @action(detail=False, methods=['get'], url_path='preview_by_code',
+            permission_classes=[permissions.IsAuthenticated])
+    def preview_by_code(self, request):
+        """Предпросмотр группы по коду приглашения (перед присоединением)"""
+        invite_code = request.query_params.get('code', '').strip().upper()
+        if not invite_code:
+            return Response(
+                {'error': 'Код приглашения не указан'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            group = Group.objects.get(invite_code=invite_code)
+        except Group.DoesNotExist:
+            return Response(
+                {'error': 'Группа с таким кодом не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = self.get_serializer(group)
+        return Response(serializer.data)
+
     @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def join_by_code(self, request):
         """Присоединиться к группе по коду приглашения"""
@@ -925,4 +947,133 @@ def zoom_webhook_receiver(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
+
+class IndividualInviteCodeViewSet(viewsets.ModelViewSet):
+    """ViewSet для управления индивидуальными инвайт-кодами"""
+    from .serializers import IndividualInviteCodeSerializer
+    serializer_class = IndividualInviteCodeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        from .models import IndividualInviteCode
+        user = self.request.user
+        if getattr(user, 'role', None) == 'teacher':
+            return IndividualInviteCode.objects.filter(teacher=user)
+        return IndividualInviteCode.objects.none()
+
+    def perform_create(self, serializer):
+        serializer.save(teacher=self.request.user)
+
+    @action(detail=False, methods=['get'], url_path='preview_by_code',
+            permission_classes=[permissions.IsAuthenticated])
+    def preview_by_code(self, request):
+        """Предпросмотр индивидуального инвайт-кода"""
+        from .models import IndividualInviteCode
+        invite_code = request.query_params.get('code', '').strip().upper()
+        if not invite_code:
+            return Response(
+                {'error': 'Код приглашения не указан'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            code_obj = IndividualInviteCode.objects.get(invite_code=invite_code)
+        except IndividualInviteCode.DoesNotExist:
+            return Response(
+                {'error': 'Код приглашения не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if code_obj.is_used:
+            return Response(
+                {'error': 'Этот код уже был использован'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response({
+            'id': code_obj.id,
+            'subject': code_obj.subject,
+            'teacher': {
+                'id': code_obj.teacher.id,
+                'first_name': code_obj.teacher.get_full_name(),
+                'email': code_obj.teacher.email,
+            },
+            'invite_code': code_obj.invite_code,
+        })
+
+    @action(detail=False, methods=['post'], url_path='join_by_code',
+            permission_classes=[permissions.IsAuthenticated])
+    def join_by_code(self, request):
+        """Присоединиться по индивидуальному инвайт-коду"""
+        from .models import IndividualInviteCode, Group
+        from accounts.models import CustomUser
+        from django.utils import timezone
+
+        invite_code = request.data.get('invite_code', '').strip().upper()
+        if not invite_code:
+            return Response(
+                {'error': 'Код приглашения не указан'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            code_obj = IndividualInviteCode.objects.get(invite_code=invite_code)
+        except IndividualInviteCode.DoesNotExist:
+            return Response(
+                {'error': 'Код приглашения не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if code_obj.is_used:
+            return Response(
+                {'error': 'Этот код уже был использован'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = request.user
+        if user.role != 'student':
+            return Response(
+                {'error': 'Только ученики могут использовать коды приглашения'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Создаём или находим индивидуальную группу
+        group_name = f"Без расписания \u2022 {user.get_full_name()}"
+        tenant = getattr(request, 'tenant', None)
+        group, created = Group.objects.get_or_create(
+            teacher=code_obj.teacher,
+            name=group_name,
+            defaults={'tenant': tenant, 'description': f'Индивидуальные занятия: {code_obj.subject}'}
+        )
+        group.students.add(user)
+
+        # Помечаем код как использованный
+        code_obj.is_used = True
+        code_obj.used_by = user
+        code_obj.used_at = timezone.now()
+        code_obj.save()
+
+        return Response({
+            'message': f'Вы успешно присоединились к занятиям по предмету "{code_obj.subject}"',
+            'group': {
+                'id': group.id,
+                'name': group.name,
+            }
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='regenerate',
+            permission_classes=[permissions.IsAuthenticated])
+    def regenerate(self, request):
+        """Перегенерировать инвайт-код"""
+        from .models import IndividualInviteCode
+        code_id = request.data.get('id')
+        if not code_id:
+            return Response({'error': 'ID не указан'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            code_obj = IndividualInviteCode.objects.get(id=code_id, teacher=request.user)
+        except IndividualInviteCode.DoesNotExist:
+            return Response({'error': 'Код не найден'}, status=status.HTTP_404_NOT_FOUND)
+        new_code = code_obj.generate_invite_code()
+        return Response({'invite_code': new_code, 'message': 'Код обновлён'})
 

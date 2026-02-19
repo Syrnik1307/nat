@@ -373,3 +373,93 @@
   .navbar-status .status-inner, .admin-status .status-split {padding:.35rem 1rem;}
 }
 
+/* =============== Мобильный bottom nav =============== */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Скрыть десктопное горизонтальное меню */
+  .navbar-menu {
+    display: none !important;
+  }
+
+  /* Скрыть имя и шеврон в профиле, оставить только аватар */
+  .profile-name,
+  .chevron {
+    display: none !important;
+  }
+
+  .profile-button {
+    padding: .35rem !important;
+    border: none !important;
+    background: transparent !important;
+  }
+
+  /* Показать нижний мобильный навбар */
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1100;
+    background: var(--bg-base);
+    border-top: 1px solid var(--border-soft);
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+    justify-content: space-around;
+    align-items: stretch;
+    padding: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    height: 56px;
+  }
+
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: .65rem;
+    font-weight: 500;
+    gap: 2px;
+    padding: 4px 0;
+    transition: color .15s ease;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+
+  .mobile-nav-item.active {
+    color: var(--accent);
+  }
+
+  .mobile-nav-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 25%;
+    right: 25%;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 0 0 2px 2px;
+  }
+
+  .mobile-nav-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .mobile-nav-label {
+    font-size: .65rem;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  /* Отступ снизу для контента, чтобы не перекрывался навбаром */
+  body {
+    padding-bottom: 60px;
+  }
+}
+

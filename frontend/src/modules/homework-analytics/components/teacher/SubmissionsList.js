@@ -12,7 +12,7 @@ const SubmissionsList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [submissions, setSubmissions] = useState([]);
-  const [filter, setFilter] = useState('all'); // all, submitted, graded
+  const [filter, setFilter] = useState('submitted'); // all, submitted, in_progress, graded
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -70,6 +70,7 @@ const SubmissionsList = () => {
   });
 
   const needsReview = submissions.filter(s => s.status === 'submitted').length;
+  const inProgress = submissions.filter(s => s.status === 'in_progress').length;
   const graded = submissions.filter(s => s.status === 'graded').length;
 
   if (loading) {
@@ -97,8 +98,8 @@ const SubmissionsList = () => {
         <div>
           <h1 className="sl-title">Проверка работ</h1>
           <div className="sl-stats">
-            <span className="sl-stat">Всего работ: {submissions.length}</span>
             <span className="sl-stat sl-stat-warning">На проверке: {needsReview}</span>
+            <span className="sl-stat">В работе: {inProgress}</span>
             <span className="sl-stat sl-stat-success">Проверено: {graded}</span>
           </div>
         </div>
@@ -120,31 +121,39 @@ const SubmissionsList = () => {
 
         <div className="sl-filters">
           <button
-            className={`sl-filter-btn ${filter === 'all' ? 'active' : ''}`}
-            onClick={() => setFilter('all')}
-          >
-            Все
-          </button>
-          <button
             className={`sl-filter-btn ${filter === 'submitted' ? 'active' : ''}`}
             onClick={() => setFilter('submitted')}
           >
-            На проверке
+            На проверке{needsReview > 0 && <span className="sl-filter-count sl-filter-count-warning">{needsReview}</span>}
+          </button>
+          <button
+            className={`sl-filter-btn ${filter === 'in_progress' ? 'active' : ''}`}
+            onClick={() => setFilter('in_progress')}
+          >
+            В работе{inProgress > 0 && <span className="sl-filter-count sl-filter-count-muted">{inProgress}</span>}
           </button>
           <button
             className={`sl-filter-btn ${filter === 'graded' ? 'active' : ''}`}
             onClick={() => setFilter('graded')}
           >
-            Проверено
+            Проверено{graded > 0 && <span className="sl-filter-count sl-filter-count-success">{graded}</span>}
+          </button>
+          <button
+            className={`sl-filter-btn ${filter === 'all' ? 'active' : ''}`}
+            onClick={() => setFilter('all')}
+          >
+            Все
           </button>
         </div>
       </div>
 
       {filteredSubmissions.length === 0 ? (
         <div className="sl-empty">
-          {searchTerm || filter !== 'all' 
-            ? 'Работ по выбранным фильтрам не найдено'
-            : 'Пока нет работ для проверки'}
+          {filter === 'submitted' && !searchTerm
+            ? 'Нет работ на проверке — все проверено! 🎉'
+            : searchTerm || filter !== 'all'
+              ? 'Работ по выбранным фильтрам не найдено'
+              : 'Пока нет работ для проверки'}
         </div>
       ) : (
         <div className="sl-table-container">

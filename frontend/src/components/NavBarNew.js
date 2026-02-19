@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { apiClient } from '../apiService';
 import Logo from './Logo';
 import './NavBar.css';
 
@@ -25,8 +26,10 @@ import './NavBar.css';
 const NavBar = () => {
   const { accessTokenValid, role, logout, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLessonsMenu, setShowLessonsMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [bannerVisible, setBannerVisible] = useState(true);
   const [messages, setMessages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -50,14 +53,13 @@ const NavBar = () => {
 
   const loadMessages = async () => {
     try {
-      const token = localStorage.getItem('tp_access_token');
-      const response = await fetch('/accounts/api/status-messages/', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
+      const response = await apiClient.get('/accounts/api/status-messages/');
+      const data = Array.isArray(response.data) ? response.data : [];
       const activeMessages = data.filter(msg => msg.is_active);
       setMessages(activeMessages);
     } catch (error) {
+      // 401/403 — токен истёк или невалиден, не спамим в консоль
+      if (error?.response?.status === 401 || error?.response?.status === 403) return;
       console.error('Ошибка загрузки сообщений:', error);
     }
   };
@@ -205,7 +207,7 @@ const NavBar = () => {
                 <span>Управление учениками</span>
               </Link>
               
-              <Link to="/materials" className="nav-link">
+              <Link to="/teacher/materials" className="nav-link">
                 <span className="nav-icon">📚</span>
                 <span>Материалы</span>
               </Link>
@@ -312,6 +314,68 @@ const NavBar = () => {
         </div>
       </div>
       </nav>
+
+      {/* Мобильное нижнее меню */}
+      {accessTokenValid && (
+        <nav className="mobile-bottom-nav">
+          {role === 'student' && (
+            <>
+              <Link to="/student" className={`mobile-nav-item${location.pathname === '/student' ? ' active' : ''}`}>
+                <span className="mobile-nav-icon">🏠</span>
+                <span className="mobile-nav-label">Главная</span>
+              </Link>
+              <Link to="/homework" className={`mobile-nav-item${location.pathname === '/homework' ? ' active' : ''}`}>
+                <span className="mobile-nav-icon">📝</span>
+                <span className="mobile-nav-label">ДЗ</span>
+              </Link>
+              <Link to="/calendar" className={`mobile-nav-item${location.pathname === '/calendar' ? ' active' : ''}`}>
+                <span className="mobile-nav-icon">📆</span>
+                <span className="mobile-nav-label">Календарь</span>
+              </Link>
+              <Link to="/profile" className={`mobile-nav-item${location.pathname === '/profile' ? ' active' : ''}`}>
+                <span className="mobile-nav-icon">👤</span>
+                <span className="mobile-nav-label">Профиль</span>
+              </Link>
+            </>
+          )}
+          {role === 'teacher' && (
+            <>
+              <Link to="/home-new" className={`mobile-nav-item${location.pathname === '/home-new' ? ' active' : ''}`}>
+                <span className="mobile-nav-icon">🏠</span>
+                <span className="mobile-nav-label">Главная</span>
+              </Link>
+              <Link to="/calendar" className={`mobile-nav-item${location.pathname === '/calendar' ? ' active' : ''}`}>
+                <span className="mobile-nav-icon">📅</span>
+                <span className="mobile-nav-label">Занятия</span>
+              </Link>
+              <Link to="/homework/manage" className={`mobile-nav-item${location.pathname === '/homework/manage' ? ' active' : ''}`}>
+                <span className="mobile-nav-icon">📝</span>
+                <span className="mobile-nav-label">ДЗ</span>
+              </Link>
+              <Link to="/groups/manage" className={`mobile-nav-item${location.pathname === '/groups/manage' ? ' active' : ''}`}>
+                <span className="mobile-nav-icon">👥</span>
+                <span className="mobile-nav-label">Ученики</span>
+              </Link>
+              <Link to="/profile" className={`mobile-nav-item${location.pathname === '/profile' ? ' active' : ''}`}>
+                <span className="mobile-nav-icon">👤</span>
+                <span className="mobile-nav-label">Профиль</span>
+              </Link>
+            </>
+          )}
+          {role === 'admin' && (
+            <>
+              <Link to="/admin" className={`mobile-nav-item${location.pathname === '/admin' ? ' active' : ''}`}>
+                <span className="mobile-nav-icon">🏠</span>
+                <span className="mobile-nav-label">Главная</span>
+              </Link>
+              <Link to="/profile" className={`mobile-nav-item${location.pathname === '/profile' ? ' active' : ''}`}>
+                <span className="mobile-nav-icon">👤</span>
+                <span className="mobile-nav-label">Профиль</span>
+              </Link>
+            </>
+          )}
+        </nav>
+      )}
     </>
   );
 };

@@ -118,17 +118,18 @@ export const AuthProvider = ({ children }) => {
       first_name: firstName,
       last_name: lastName,
       phone: phone || '',
-      role: initialRole,
+      role: initialRole || 'student',   // FIX: гарантируем что role не null/undefined
       birth_date: birthDate || null,
-      recaptcha_token: null,
     });
 
     // 2. Очистим устаревшие ключи (совместимость со старым кодом)
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
 
-    // 3. Сохраняем первичные токены регистрации (может отличаться по срокам) 
-    setTokens({ access: regRes.data.access, refresh: regRes.data.refresh });
+    // 3. Сохраняем токены из ответа регистрации (бэкенд теперь возвращает их)
+    if (regRes.data.access && regRes.data.refresh) {
+      setTokens({ access: regRes.data.access, refresh: regRes.data.refresh });
+    }
 
     // 4. Дополнительно вызываем login для гарантии корректного формата токена
     try {
@@ -149,7 +150,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     // 6. Определяем роль: из токена или из переданной initialRole
-    const userRole = getRoleFromToken() || initialRole || null;
+    const userRole = getRoleFromToken() || initialRole || 'student';
     setRole(userRole);
 
     // 7. Загружаем профиль (роль может уточниться)

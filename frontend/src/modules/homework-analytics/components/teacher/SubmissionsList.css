@@ -150,6 +150,41 @@
   border-color: #2563eb;
 }
 
+.sl-filter-btn.active .sl-filter-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
+/* Filter Count Badges */
+.sl-filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  margin-left: 0.5rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.sl-filter-count-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.sl-filter-count-muted {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.sl-filter-count-success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
 /* Table */
 .sl-table-container {
   background: white;

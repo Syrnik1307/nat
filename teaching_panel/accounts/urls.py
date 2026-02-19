@@ -14,6 +14,11 @@ from .admin_views import (
     AdminStatusMessagesView,
     SystemSettingsView
 )
+from .admin_dashboard_views import (
+    AdminStudentRisksView,
+    AdminTeacherQualityView,
+    AdminDashboardOverviewView,
+)
 from .chat_views import ChatViewSet, MessageViewSet, UserSearchViewSet
 from .email_views import (
     send_verification_email,
@@ -30,6 +35,7 @@ from .password_reset_views import (
     verify_code,
     set_new_password
 )
+from .simple_reset_views import simple_password_reset
 from .api_views import (
     MeView, 
     users_list, 
@@ -80,6 +86,11 @@ urlpatterns = [
     path('api/admin/status-messages/<int:message_id>/', AdminStatusMessagesView.as_view(), name='admin_status_message_delete'),
     path('api/admin/settings/', SystemSettingsView.as_view(), name='admin_settings'),
     
+    # Admin Dashboard — метрики для владельца
+    path('api/admin/dashboard/overview/', AdminDashboardOverviewView.as_view(), name='admin_dashboard_overview'),
+    path('api/admin/dashboard/student-risks/', AdminStudentRisksView.as_view(), name='admin_student_risks'),
+    path('api/admin/dashboard/teacher-quality/', AdminTeacherQualityView.as_view(), name='admin_teacher_quality'),
+    
     # API для получения сообщений (для всех пользователей)
     path('api/status-messages/', AdminStatusMessagesView.as_view(), name='status_messages'),
     
@@ -99,6 +110,9 @@ urlpatterns = [
     path('api/password-reset/request-code/', request_reset_code, name='request_reset_code'),
     path('api/password-reset/verify-code/', verify_code, name='verify_reset_code'),
     path('api/password-reset/set-password/', set_new_password, name='set_new_password'),
+    
+    # Простой сброс пароля (email + новый пароль)
+    path('api/simple-reset/', simple_password_reset, name='simple_password_reset'),
     
     # API для пользователей
     path('api/users/', users_list, name='users_list'),

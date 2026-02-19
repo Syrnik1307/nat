@@ -1,0 +1,146 @@
+/* Branding CSS Variables */
+:root {
+  /* Default colors (can be overridden by BrandingContext) */
+  --primary-color: #2563eb;
+  --secondary-color: #1e40af;
+  --accent-color: #3b82f6;
+  --text-color: #1f2937;
+  --bg-color: #ffffff;
+  --link-color: #2563eb;
+  --button-hover-color: #1e40af;
+}
+
+/* Apply branding colors to common elements */
+body {
+  color: var(--text-color);
+  background-color: var(--bg-color);
+}
+
+/* Links */
+a {
+  color: var(--link-color);
+}
+
+a:hover {
+  color: var(--button-hover-color);
+}
+
+/* Buttons */
+.btn {
+  background-color: var(--primary-color);
+  color: #ffffff;
+  border-color: var(--primary-color);
+}
+
+.btn:hover {
+  background-color: var(--button-hover-color);
+  border-color: var(--button-hover-color);
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+  background-color: var(--button-hover-color);
+  border-color: var(--button-hover-color);
+}
+
+.btn-outline-primary {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+/* Cards */
+.card {
+  background-color: var(--bg-color);
+  border-color: var(--accent-color);
+}
+
+/* Navigation */
+.navbar-brand,
+nav {
+  background-color: var(--primary-color);
+}
+
+.nav-link:hover {
+  color: var(--link-color) !important;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-color);
+}
+
+/* Form elements */
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
+}
+
+.form-check-input:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+/* Badges */
+.badge-primary {
+  background-color: var(--primary-color);
+}
+
+/* Alerts */
+.alert-info {
+  background-color: var(--accent-color);
+  color: #ffffff;
+}
+
+/* Tables */
+table {
+  color: var(--text-color);
+}
+
+table thead {
+  background-color: var(--accent-color);
+  color: #ffffff;
+}
+
+table tbody tr:hover {
+  background-color: var(--accent-color);
+}
+
+/* Modals */
+.modal-content {
+  background-color: var(--bg-color);
+}
+
+.modal-header {
+  background-color: var(--primary-color);
+  color: #ffffff;
+  border-color: var(--primary-color);
+}
+
+.modal-footer {
+  background-color: #f8f9fa;
+  border-color: var(--accent-color);
+}
+
+/* Pagination */
+.pagination .page-link {
+  color: var(--primary-color);
+}
+
+.pagination .page-link:hover {
+  background-color: var(--accent-color);
+  border-color: var(--primary-color);
+}
+
+.pagination .page-item.active .page-link {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}

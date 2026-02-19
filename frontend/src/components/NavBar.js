@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { apiClient } from '../apiService';
 import './Navbar.css';
 
 const NavBar = () => {
@@ -28,18 +29,12 @@ const NavBar = () => {
 
   const loadMessages = async () => {
     try {
-      const token = localStorage.getItem('tp_access_token');
-      console.log('Loading messages, token:', token ? 'exists' : 'missing');
-      const response = await fetch('/accounts/api/status-messages/', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      console.log('Response status:', response.status);
-      const data = await response.json();
-      console.log('Messages data:', data);
+      const response = await apiClient.get('/accounts/api/status-messages/');
+      const data = Array.isArray(response.data) ? response.data : [];
       const activeMessages = data.filter(msg => msg.is_active);
-      console.log('Active messages:', activeMessages);
       setMessages(activeMessages);
     } catch (error) {
+      if (error?.response?.status === 401 || error?.response?.status === 403) return;
       console.error('Ошибка загрузки сообщений:', error);
     }
   };

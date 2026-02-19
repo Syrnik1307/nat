@@ -5,7 +5,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.crypto import get_random_string
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def password_reset_request(request):
     """
@@ -85,6 +86,7 @@ def password_reset_request(request):
 
 
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def password_reset_confirm(request):
     """
@@ -138,6 +140,7 @@ def password_reset_confirm(request):
 
 
 @api_view(['GET'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def password_reset_validate_token(request, uid, token):
     """
@@ -173,6 +176,7 @@ from django.utils import timezone
 
 
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def request_reset_code(request):
     """
@@ -219,6 +223,7 @@ def request_reset_code(request):
 
 
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def verify_code(request):
     """
@@ -256,6 +261,7 @@ def verify_code(request):
 
 
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def set_new_password(request):
     """

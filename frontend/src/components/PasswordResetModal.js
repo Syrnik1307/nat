@@ -13,6 +13,8 @@ const PasswordResetModal = ({ isOpen, onClose }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  // Режим: 'choose' (выбор метода), 'email' (простой email-сброс), 'code' (через Telegram/WhatsApp)
+  const [resetMode, setResetMode] = useState('choose');
 
   const resetForm = () => {
     setStep(1);
@@ -25,11 +27,64 @@ const PasswordResetModal = ({ isOpen, onClose }) => {
     setToken('');
     setError('');
     setSuccessMessage('');
+    setResetMode('choose');
   };
 
   const handleClose = () => {
     resetForm();
     onClose();
+  };
+
+  /**
+   * Извлекает текст ошибки из ответа API (поддерживает data.error, data.detail, data.message)
+   */
+  const extractError = (data) => {
+    return data?.error || data?.detail || data?.message || 'Неизвестная ошибка';
+  };
+
+  /**
+   * Простой email-сброс: генерирует временный пароль и отправляет на email
+   */
+  const handleEmailReset = async () => {
+    setError('');
+    setLoading(true);
+
+    if (!email) {
+      setError('Введите email');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/accounts/api/password-reset/request/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        console.error('[PasswordReset] Не удалось прочитать тело ответа, статус:', response.status);
+        setError(`Ошибка сервера (HTTP ${response.status}). Попробуйте позже.`);
+        return;
+      }
+
+      if (response.ok) {
+        setSuccessMessage(data.message || 'Новый пароль отправлен на ваш email. Проверьте почту (включая папку Спам).');
+        setStep(5); // Успех
+      } else {
+        const errMsg = extractError(data);
+        setError(errMsg);
+        console.error('[PasswordReset] Ошибка email-сброса:', errMsg);
+      }
+    } catch (err) {
+      console.error('[PasswordReset] Сетевая ошибка:', err);
+      setError('Ошибка соединения с сервером. Проверьте интернет.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRequestCode = async () => {
@@ -49,16 +104,26 @@ const PasswordResetModal = ({ isOpen, onClose }) => {
         body: JSON.stringify({ email, phone, method })
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        console.error('[PasswordReset] Не удалось прочитать тело ответа, статус:', response.status);
+        setError(`Ошибка сервера (HTTP ${response.status}). Попробуйте позже.`);
+        return;
+      }
 
       if (data.success) {
         setSuccessMessage(`Код отправлен через ${method === 'telegram' ? 'Telegram' : 'WhatsApp'}`);
         setStep(3); // Переход к вводу кода
       } else {
-        setError(data.error || 'Не удалось отправить код');
+        const errMsg = extractError(data);
+        setError(errMsg);
+        console.error('[PasswordReset] Ошибка запроса кода:', errMsg);
       }
     } catch (err) {
-      setError('Ошибка соединения с сервером');
+      console.error('[PasswordReset] Сетевая ошибка:', err);
+      setError('Ошибка соединения с сервером. Проверьте интернет.');
     } finally {
       setLoading(false);
     }
@@ -81,17 +146,27 @@ const PasswordResetModal = ({ isOpen, onClose }) => {
         body: JSON.stringify({ email, code })
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        console.error('[PasswordReset] Не удалось прочитать тело ответа, статус:', response.status);
+        setError(`Ошибка сервера (HTTP ${response.status}). Попробуйте позже.`);
+        return;
+      }
 
       if (data.success) {
         setToken(data.token);
         setSuccessMessage('Код подтверждён! Установите новый пароль');
         setStep(4); // Переход к установке пароля
       } else {
-        setError(data.error || 'Неверный код');
+        const errMsg = extractError(data);
+        setError(errMsg);
+        console.error('[PasswordReset] Ошибка проверки кода:', errMsg);
       }
     } catch (err) {
-      setError('Ошибка соединения с сервером');
+      console.error('[PasswordReset] Сетевая ошибка:', err);
+      setError('Ошибка соединения с сервером. Проверьте интернет.');
     } finally {
       setLoading(false);
     }
@@ -126,7 +201,14 @@ const PasswordResetModal = ({ isOpen, onClose }) => {
         body: JSON.stringify({ token, new_password: newPassword })
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        console.error('[PasswordReset] Не удалось прочитать тело ответа, статус:', response.status);
+        setError(`Ошибка сервера (HTTP ${response.status}). Попробуйте позже.`);
+        return;
+      }
 
       if (data.success) {
         setSuccessMessage('Пароль успешно изменён! Теперь вы можете войти с новым паролем');
@@ -134,10 +216,13 @@ const PasswordResetModal = ({ isOpen, onClose }) => {
           handleClose();
         }, 2000);
       } else {
-        setError(data.error || 'Не удалось изменить пароль');
+        const errMsg = extractError(data);
+        setError(errMsg);
+        console.error('[PasswordReset] Ошибка установки пароля:', errMsg);
       }
     } catch (err) {
-      setError('Ошибка соединения с сервером');
+      console.error('[PasswordReset] Сетевая ошибка:', err);
+      setError('Ошибка соединения с сервером. Проверьте интернет.');
     } finally {
       setLoading(false);
     }
@@ -152,10 +237,57 @@ const PasswordResetModal = ({ isOpen, onClose }) => {
         
         <h2>Восстановление пароля</h2>
 
-        {/* Шаг 1: Ввод email и телефона */}
-        {step === 1 && (
+        {/* Ошибка — всегда сверху для видимости */}
+        {error && (
+          <div className="error-message" role="alert">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {/* Шаг выбора метода восстановления */}
+        {step === 1 && resetMode === 'choose' && (
           <div className="step-content">
-            <p>Введите ваш email и номер телефона</p>
+            <p>Выберите способ восстановления пароля</p>
+            <input
+              type="email"
+              placeholder="Введите ваш email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+            />
+            <button
+              onClick={() => { setResetMode('email'); handleEmailReset(); }}
+              disabled={loading || !email}
+              className="email-reset-btn"
+            >
+              📧 Получить новый пароль на email
+            </button>
+            <div className="divider-text">или</div>
+            <button
+              onClick={() => setResetMode('code')}
+              disabled={loading || !email}
+              className="telegram-reset-btn"
+            >
+              📱 Восстановить через Telegram / WhatsApp
+            </button>
+          </div>
+        )}
+
+        {/* Режим email — успех */}
+        {step === 5 && (
+          <div className="step-content">
+            <div className="success-icon-block">✅</div>
+            <p className="success-text">{successMessage}</p>
+            <button onClick={handleClose}>
+              Закрыть
+            </button>
+          </div>
+        )}
+
+        {/* Шаг 1 (Telegram/WhatsApp): Ввод телефона */}
+        {step === 1 && resetMode === 'code' && (
+          <div className="step-content">
+            <p>Введите номер телефона, указанный при регистрации</p>
             <input
               type="email"
               placeholder="Email"
@@ -170,9 +302,14 @@ const PasswordResetModal = ({ isOpen, onClose }) => {
               onChange={(e) => setPhone(e.target.value)}
               disabled={loading}
             />
-            <button onClick={() => setStep(2)} disabled={loading || !email || !phone}>
-              Далее
-            </button>
+            <div className="button-group">
+              <button onClick={() => setResetMode('choose')} disabled={loading} className="back-button">
+                Назад
+              </button>
+              <button onClick={() => setStep(2)} disabled={loading || !email || !phone}>
+                Далее
+              </button>
+            </div>
           </div>
         )}
 
@@ -264,8 +401,7 @@ const PasswordResetModal = ({ isOpen, onClose }) => {
           </div>
         )}
 
-        {error && <div className="error-message">{error}</div>}
-        {successMessage && <div className="success-message">{successMessage}</div>}
+        {successMessage && step !== 5 && <div className="success-message">{successMessage}</div>}
       </div>
     </div>
   );

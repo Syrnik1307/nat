@@ -1,0 +1,303 @@
+/* ================================================
+   OLGA COURSE CATALOG
+   ================================================ */
+
+.olga-catalog {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  font-family: 'Georgia', 'Palatino Linotype', serif;
+}
+
+/* --- Hero --- */
+.olga-catalog-hero {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  padding-top: 1rem;
+}
+
+.olga-catalog-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #8b5e3c;
+  margin: 0 0 0.5rem;
+}
+
+.olga-catalog-subtitle {
+  font-size: 1rem;
+  color: #7a6a5a;
+  font-style: italic;
+  margin: 0;
+}
+
+/* --- Controls --- */
+.olga-catalog-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.olga-search-wrap {
+  display: flex;
+  align-items: center;
+  background: #faf6f1;
+  border: 1.5px solid #e0d5c7;
+  border-radius: 12px;
+  padding: 0 1rem;
+  flex: 1;
+  max-width: 400px;
+  transition: border-color 0.2s;
+}
+
+.olga-search-wrap:focus-within {
+  border-color: #c49a6c;
+  box-shadow: 0 0 0 3px rgba(196, 154, 108, 0.12);
+}
+
+.olga-search-icon {
+  font-size: 1rem;
+  margin-right: 0.5rem;
+  opacity: 0.5;
+}
+
+.olga-search-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: 'Georgia', serif;
+  font-size: 0.9rem;
+  color: #3d2e1f;
+  padding: 0.65rem 0;
+  outline: none;
+}
+
+.olga-search-input::placeholder {
+  color: #7a6a5a;
+  opacity: 0.6;
+}
+
+.olga-course-count {
+  font-size: 0.85rem;
+  color: #7a6a5a;
+  white-space: nowrap;
+}
+
+/* --- Grid --- */
+.olga-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.75rem;
+}
+
+/* --- Course Card --- */
+.olga-course-card {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(139, 94, 60, 0.08);
+  cursor: pointer;
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+
+.olga-course-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(139, 94, 60, 0.14);
+}
+
+.olga-course-card:focus {
+  outline: 2px solid #c49a6c;
+  outline-offset: 2px;
+}
+
+.olga-course-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: linear-gradient(135deg, #f5f0eb, #e8ddd0);
+}
+
+.olga-course-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.olga-course-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: #c49a6c;
+  opacity: 0.4;
+}
+
+.olga-course-badge {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.3rem 0.65rem;
+  border-radius: 8px;
+  letter-spacing: 0.01em;
+}
+
+.olga-course-badge.purchased {
+  background: #d4edda;
+  color: #27ae60;
+}
+
+.olga-course-badge.price {
+  background: rgba(255, 255, 255, 0.92);
+  color: #8b5e3c;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.olga-course-info {
+  padding: 1.25rem;
+}
+
+.olga-course-title {
+  font-family: 'Georgia', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #3d2e1f;
+  margin: 0 0 0.5rem;
+  line-height: 1.35;
+}
+
+.olga-course-desc {
+  font-size: 0.85rem;
+  color: #7a6a5a;
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.olga-course-meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.olga-meta-item {
+  font-size: 0.8rem;
+  color: #a0917f;
+}
+
+/* --- Loading / Empty --- */
+.olga-catalog-loading,
+.olga-catalog-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  color: #7a6a5a;
+}
+
+.olga-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e0d5c7;
+  border-top-color: #c49a6c;
+  border-radius: 50%;
+  animation: olga-spin 0.7s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes olga-spin {
+  to { transform: rotate(360deg); }
+}
+
+.olga-empty-icon {
+  font-size: 3rem;
+  color: #c49a6c;
+  opacity: 0.4;
+  margin-bottom: 0.5rem;
+}
+
+/* --- Адаптивность --- */
+@media (max-width: 768px) {
+  .olga-catalog {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .olga-catalog-title {
+    font-size: 1.6rem;
+  }
+
+  .olga-catalog-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .olga-search-wrap {
+    max-width: none;
+  }
+
+  .olga-catalog-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .olga-course-info {
+    padding: 1rem;
+  }
+
+  .olga-course-title {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .olga-catalog {
+    padding: 1rem 0.75rem 2rem;
+  }
+
+  .olga-catalog-hero {
+    margin-bottom: 1.5rem;
+  }
+
+  .olga-catalog-title {
+    font-size: 1.35rem;
+  }
+
+  .olga-catalog-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .olga-catalog-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .olga-search-input {
+    font-size: 16px;  /* предотвращает zoom на iOS */
+  }
+
+  .olga-search-wrap {
+    padding: 0 0.75rem;
+  }
+
+  .olga-course-card {
+    border-radius: 12px;
+  }
+
+  .olga-course-desc {
+    -webkit-line-clamp: 2;
+  }
+
+  .olga-course-meta {
+    gap: 0.5rem;
+  }
+}

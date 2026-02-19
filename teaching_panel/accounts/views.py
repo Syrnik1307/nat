@@ -54,15 +54,22 @@ def register_user(request):
 
     email = data.get('email')
     password = data.get('password')
-    role = data.get('role', 'student')
-    first_name = data.get('first_name', '')
-    last_name = data.get('last_name', '')
-    middle_name = data.get('middle_name', '')
-    phone = data.get('phone', '')  # Телефон для связи через мессенджеры
+    role = data.get('role') or 'student'  # FIX: обработка null
+    first_name = data.get('first_name') or ''
+    last_name = data.get('last_name') or ''
+    middle_name = data.get('middle_name') or ''
+    phone = data.get('phone') or ''  # Телефон для связи через мессенджеры
     birth_date_raw = data.get('birth_date')
 
     if not email or not password:
         return JsonResponse({'detail': 'Email и пароль обязательны'}, status=400)
+    
+    email = email.strip().lower()
+    
+    # Валидация роли
+    if role not in ('student', 'teacher', 'admin'):
+        role = 'student'
+    
     if CustomUser.objects.filter(email__iexact=email).exists():
         return JsonResponse({'detail': 'Пользователь с таким email уже существует'}, status=400)
 
@@ -88,14 +95,14 @@ def register_user(request):
         
         # Сохраняем телефон для связи через мессенджеры
         if phone:
-            user.phone = phone
-            user.save()
+            user.phone_number = phone  # FIX: правильное имя поля
+            user.save(update_fields=['phone_number'])
         
         if birth_date_raw:
             bd = parse_date(birth_date_raw)
             if bd:
-                user.birth_date = bd
-                user.save()
+                user.date_of_birth = bd  # FIX: правильное имя поля
+                user.save(update_fields=['date_of_birth'])
         
         print(f"✅ DEBUG: Пользователь успешно создан: {user.email} (ID: {user.id})")
         

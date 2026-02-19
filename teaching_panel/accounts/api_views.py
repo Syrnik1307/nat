@@ -1,7 +1,7 @@
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework import status
 from django.utils import timezone
 
@@ -154,6 +154,8 @@ def unlink_telegram(request):
 
 
 @api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
 def request_password_reset(request):
     """Запрос на восстановление пароля (публичный endpoint)"""
     email = request.data.get('email', '').strip().lower()
@@ -199,6 +201,8 @@ def request_password_reset(request):
 
 
 @api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
 def reset_password_with_token(request):
     """Сброс пароля по токену из Telegram"""
     token = request.data.get('token', '').strip()

@@ -1,13 +1,19 @@
+import os
+import logging
+
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
 from core.models import AuditLog
 from .models import Homework, StudentSubmission, Answer
 from .serializers import HomeworkSerializer, StudentSubmissionSerializer
 from .permissions import IsTeacherHomework, IsStudentSubmission
 from .tasks import notify_student_graded
+
+logger = logging.getLogger(__name__)
 
 
 class HomeworkViewSet(viewsets.ModelViewSet):
@@ -141,3 +147,23 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         # Возвращаем обновленные данные
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
+
+
+class HomeworkViewSetUploadMixin:
+    """upload_student_answer action added to HomeworkViewSet on prod."""
+    pass
+
+
+# ── upload-student-answer action (added to HomeworkViewSet on prod) ──
+# This action is defined here for local reference; on production it lives
+# inside HomeworkViewSet directly.
+#
+# @action(detail=False, methods=['post'], url_path='upload-student-answer',
+#         permission_classes=[IsAuthenticated],
+#         parser_classes=[MultiPartParser, FormParser])
+# def upload_student_answer(self, request):
+#     ...
+#
+# The action saves uploaded files to media/homework_files/ and returns
+# { url, file_id, file_name, mime_type, size }.
+# Nginx serves them via /media/ location.

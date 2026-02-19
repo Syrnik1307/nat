@@ -1,0 +1,458 @@
+/* ================================================
+   OLGA AUTH PAGE — ТЁПЛАЯ ФАРФОРОВАЯ ТЕМА
+   ================================================ */
+
+/* --- Цветовые токены Ольги --- */
+:root {
+  --olga-primary: #c49a6c;
+  --olga-primary-dark: #a47d52;
+  --olga-primary-light: #ddc4a6;
+  --olga-accent: #8b5e3c;
+  --olga-bg: #f5f0eb;
+  --olga-bg-warm: #faf6f1;
+  --olga-text: #3d2e1f;
+  --olga-text-secondary: #7a6a5a;
+  --olga-border: #e0d5c7;
+  --olga-border-focus: #c49a6c;
+  --olga-error: #c0392b;
+  --olga-success: #27ae60;
+  --olga-shadow: rgba(139, 94, 60, 0.12);
+  --olga-font: 'Georgia', 'Palatino Linotype', 'Book Antiqua', serif;
+}
+
+/* --- Страница целиком --- */
+.olga-auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  position: relative;
+  overflow: hidden;
+  font-family: var(--olga-font);
+  background: var(--olga-bg);
+}
+
+/* --- Декоративный фон --- */
+.olga-auth-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.olga-auth-pattern {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(196, 154, 108, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(139, 94, 60, 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(196, 154, 108, 0.04) 0%, transparent 70%);
+}
+
+.olga-auth-glow {
+  position: absolute;
+  top: -30%;
+  right: -20%;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(196, 154, 108, 0.12) 0%, transparent 60%);
+  animation: olga-float 12s ease-in-out infinite;
+}
+
+@keyframes olga-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-40px, 30px) scale(1.05); }
+}
+
+/* --- Карточка --- */
+.olga-auth-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  box-shadow:
+    0 4px 24px var(--olga-shadow),
+    0 1px 4px rgba(0, 0, 0, 0.04);
+  animation: olga-card-in 0.6s ease-out;
+}
+
+@keyframes olga-card-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Заголовок / логотип --- */
+.olga-auth-header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.olga-logo-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--olga-primary-light), var(--olga-primary));
+  margin-bottom: 0.75rem;
+  box-shadow: 0 4px 16px rgba(196, 154, 108, 0.3);
+}
+
+.olga-logo-flower {
+  font-size: 2rem;
+  color: #fff;
+  line-height: 1;
+}
+
+.olga-auth-title {
+  font-family: var(--olga-font);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--olga-accent);
+  margin: 0 0 0.15rem 0;
+  letter-spacing: 0.02em;
+}
+
+.olga-auth-tagline {
+  font-size: 1rem;
+  color: var(--olga-primary);
+  font-style: italic;
+  margin: 0 0 0.75rem 0;
+  letter-spacing: 0.05em;
+}
+
+.olga-auth-desc {
+  font-size: 0.9rem;
+  color: var(--olga-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* --- Табы Вход/Регистрация --- */
+.olga-auth-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--olga-border);
+  margin-bottom: 1.5rem;
+  gap: 0;
+}
+
+.olga-tab {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  font-family: var(--olga-font);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--olga-text-secondary);
+  cursor: pointer;
+  transition: color 0.25s, border-color 0.25s;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+
+.olga-tab:hover {
+  color: var(--olga-primary-dark);
+}
+
+.olga-tab.active {
+  color: var(--olga-accent);
+  border-bottom-color: var(--olga-primary);
+}
+
+/* --- Форма --- */
+.olga-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.olga-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.olga-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.olga-form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--olga-text);
+  letter-spacing: 0.01em;
+}
+
+/* Перезаписываем стили Input внутри Olga-формы */
+.olga-auth-form input[type="text"],
+.olga-auth-form input[type="email"],
+.olga-auth-form input[type="tel"],
+.olga-auth-form input[type="password"] {
+  background: var(--olga-bg-warm) !important;
+  color: var(--olga-text) !important;
+  border: 1.5px solid var(--olga-border) !important;
+  border-radius: 10px !important;
+  font-family: var(--olga-font) !important;
+  font-size: 0.95rem;
+  padding: 0.7rem 0.9rem;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.olga-auth-form input:focus {
+  border-color: var(--olga-border-focus) !important;
+  box-shadow: 0 0 0 3px rgba(196, 154, 108, 0.15) !important;
+  outline: none;
+}
+
+.olga-auth-form input::placeholder {
+  color: var(--olga-text-secondary);
+  opacity: 0.6;
+}
+
+/* --- Пароль --- */
+.olga-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.olga-toggle-password {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--olga-text-secondary);
+  padding: 0.25rem;
+  z-index: 2;
+  transition: color 0.2s;
+}
+
+.olga-toggle-password:hover {
+  color: var(--olga-primary-dark);
+}
+
+.olga-toggle-password svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* --- Опции формы --- */
+.olga-form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -0.25rem;
+}
+
+.olga-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--olga-text-secondary);
+  cursor: pointer;
+}
+
+.olga-checkbox-label input[type="checkbox"] {
+  accent-color: var(--olga-primary);
+  width: 1rem;
+  height: 1rem;
+}
+
+.olga-link-btn {
+  background: transparent;
+  border: none;
+  color: var(--olga-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--olga-font);
+  transition: color 0.2s;
+}
+
+.olga-link-btn:hover {
+  color: var(--olga-accent);
+  text-decoration: underline;
+}
+
+.olga-link-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- Ошибка --- */
+.olga-error-msg {
+  padding: 0.75rem 1rem;
+  background: #fdf0ef;
+  border: 1px solid #e8c4c0;
+  border-radius: 10px;
+  color: var(--olga-error);
+  font-size: 0.85rem;
+  text-align: center;
+  animation: olga-shake 0.4s ease-out;
+}
+
+@keyframes olga-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+/* --- Кнопка отправки --- */
+.olga-submit-btn {
+  width: 100%;
+  padding: 0.85rem 1.5rem !important;
+  background: linear-gradient(135deg, var(--olga-primary), var(--olga-accent)) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 10px !important;
+  font-family: var(--olga-font) !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+  box-shadow: 0 4px 16px rgba(196, 154, 108, 0.3);
+  letter-spacing: 0.02em;
+}
+
+.olga-submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(196, 154, 108, 0.4);
+}
+
+.olga-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.olga-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- Подвал --- */
+.olga-auth-footer {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--olga-border);
+  text-align: center;
+}
+
+.olga-footer-text {
+  font-size: 0.8rem;
+  color: var(--olga-text-secondary);
+  font-style: italic;
+  margin: 0;
+  letter-spacing: 0.03em;
+}
+
+/* --- Honeypot (скрытое поле) --- */
+.olga-auth-form .honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ================================================
+   АДАПТИВНОСТЬ
+   ================================================ */
+
+@media (max-width: 768px) {
+  .olga-auth-page {
+    padding: 1.5rem 1rem;
+  }
+
+  .olga-auth-glow {
+    width: 300px;
+    height: 300px;
+  }
+
+  .olga-auth-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .olga-auth-title {
+    font-size: 1.75rem;
+  }
+
+  .olga-submit-btn {
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  .olga-auth-page {
+    padding: 1rem 0.5rem;
+    align-items: flex-start;
+    padding-top: 2rem;
+  }
+
+  .olga-auth-glow {
+    display: none;  /* Скрываем декоративный элемент — экономим GPU */
+  }
+
+  .olga-auth-card {
+    padding: 1.75rem 1.25rem;
+    border-radius: 14px;
+    max-width: none;
+    width: 100%;
+  }
+
+  .olga-auth-title {
+    font-size: 1.6rem;
+  }
+
+  .olga-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .olga-form-options {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .olga-auth-form input[type="text"],
+  .olga-auth-form input[type="email"],
+  .olga-auth-form input[type="tel"],
+  .olga-auth-form input[type="password"] {
+    font-size: 16px;  /* предотвращает zoom на iOS */
+    min-height: 44px;
+    padding: 0.75rem 0.9rem;
+  }
+
+  .olga-tab {
+    padding: 0.65rem 0.5rem;
+    font-size: 0.9rem;
+    min-height: 44px;
+  }
+
+  .olga-submit-btn {
+    min-height: 48px;
+    font-size: 1rem !important;
+  }
+
+  .olga-logo-mark {
+    width: 56px;
+    height: 56px;
+  }
+
+  .olga-logo-flower {
+    font-size: 1.7rem;
+  }
+}

@@ -1,0 +1,34 @@
+[Unit]
+Description=Log Agent v3 — Production Monitor + Telegram Bot
+After=network.target teaching_panel.service redis-server.service postgresql.service
+Wants=teaching_panel.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/var/www/teaching_panel/teaching_panel
+ExecStart=/var/www/teaching_panel/venv/bin/python log_agent.py
+Restart=always
+RestartSec=10
+
+# Env
+EnvironmentFile=/etc/log_agent.env
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=log-agent
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/log/teaching_panel /var/www/teaching_panel/teaching_panel/logs
+ProtectHome=true
+
+# Resources
+MemoryMax=256M
+CPUQuota=20%
+
+[Install]
+WantedBy=multi-user.target

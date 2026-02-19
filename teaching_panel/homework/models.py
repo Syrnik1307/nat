@@ -94,6 +94,9 @@ class StudentSubmission(models.Model):
         self.save(update_fields=['total_score'])
         return total
 
+    # Алиас для обратной совместимости (используется в ai_callback_views)
+    recalculate_total = compute_auto_score
+
 
 class Answer(models.Model):
     submission = models.ForeignKey(StudentSubmission, on_delete=models.CASCADE, related_name='answers')

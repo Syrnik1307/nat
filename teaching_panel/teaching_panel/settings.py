@@ -267,10 +267,11 @@ SIMPLE_JWT = {
 }
 
 # Zoom API settings (Server-to-Server OAuth)
-ZOOM_ACCOUNT_ID = os.environ.get('ZOOM_ACCOUNT_ID', '6w5GrnCgSgaHwMFFbhmlKw')
-ZOOM_CLIENT_ID = os.environ.get('ZOOM_CLIENT_ID', 'vNl9EzZTy6h2UifsGVERg')
-ZOOM_CLIENT_SECRET = os.environ.get('ZOOM_CLIENT_SECRET', 'jqMJb4R3UgOQ1Q2FEHtkv6Tkz3CxNX87')
-ZOOM_WEBHOOK_SECRET_TOKEN = os.environ.get('ZOOM_WEBHOOK_SECRET_TOKEN', '2ocO-3htS8Sl1tVpEtZ2_A')
+# SECURITY: Never put real credentials as defaults! Use .env file.
+ZOOM_ACCOUNT_ID = os.environ.get('ZOOM_ACCOUNT_ID', '')
+ZOOM_CLIENT_ID = os.environ.get('ZOOM_CLIENT_ID', '')
+ZOOM_CLIENT_SECRET = os.environ.get('ZOOM_CLIENT_SECRET', '')
+ZOOM_WEBHOOK_SECRET_TOKEN = os.environ.get('ZOOM_WEBHOOK_SECRET_TOKEN', '')
 
 # Legacy JWT settings (deprecated by Zoom, but kept for backwards compatibility)
 ZOOM_API_KEY = os.environ.get('ZOOM_API_KEY', '')

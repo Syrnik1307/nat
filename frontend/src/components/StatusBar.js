@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth';
+import { apiClient } from '../apiService';
 import './StatusBar.css';
 
 const StatusBar = () => {
-  const { user } = useAuth();
+  const { user, accessTokenValid } = useAuth();
   const [messages, setMessages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
+    if (!accessTokenValid) return;
     loadMessages();
     // Обновляем сообщения каждые 30 секунд
     const interval = setInterval(loadMessages, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [accessTokenValid]);
 
   useEffect(() => {
     if (messages.length > 1) {
@@ -26,15 +28,12 @@ const StatusBar = () => {
 
   const loadMessages = async () => {
     try {
-      const token = localStorage.getItem('tp_access_token');
-      const response = await fetch('/accounts/api/status-messages/', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      // Фильтруем только активные сообщения
+      const response = await apiClient.get('/accounts/api/status-messages/');
+      const data = Array.isArray(response.data) ? response.data : [];
       const activeMessages = data.filter(msg => msg.is_active);
       setMessages(activeMessages);
     } catch (error) {
+      if (error?.response?.status === 401 || error?.response?.status === 403) return;
       console.error('Ошибка загрузки сообщений статус-бара:', error);
     }
   };
