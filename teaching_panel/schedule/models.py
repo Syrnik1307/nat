@@ -391,6 +391,54 @@ class RecurringLesson(models.Model):
         return f"{self.title} - {day_name} {self.start_time.strftime('%H:%M')} ({week_type})"
 
 
+class IndividualInviteCode(models.Model):
+    """Индивидуальный инвайт-код для приглашения одного ученика"""
+
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='individual_invite_codes',
+        limit_choices_to={'role': 'teacher'},
+        verbose_name=_('преподаватель'),
+    )
+    subject = models.CharField(
+        _('предмет'), max_length=200,
+        help_text='Название предмета/дисциплины',
+    )
+    invite_code = models.CharField(
+        _('код приглашения'), max_length=8, unique=True, db_index=True,
+        help_text='Уникальный 8-символьный код для приглашения одного ученика',
+    )
+    is_used = models.BooleanField(
+        _('использован'), default=False, db_index=True,
+        help_text='Был ли код использован для приглашения ученика',
+    )
+    used_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='joined_individual_subjects',
+        limit_choices_to={'role': 'student'},
+        verbose_name=_('использован учеником'),
+    )
+    used_at = models.DateTimeField(_('дата использования'), null=True, blank=True)
+    created_at = models.DateTimeField(_('дата создания'), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('индивидуальный инвайт-код')
+        verbose_name_plural = _('индивидуальные инвайт-коды')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['teacher', 'is_used'], name='schedule_in_teacher_7762a6_idx'),
+            models.Index(fields=['used_by'], name='schedule_in_used_by_6295cc_idx'),
+            models.Index(fields=['invite_code'], name='schedule_in_invite__befbc6_idx'),
+        ]
+
+    def __str__(self):
+        status = 'использован' if self.is_used else 'активен'
+        return f"{self.invite_code} ({self.subject}) — {status}"
+
+
 class AuditLog(models.Model):
     """Журнал аудита действий пользователей"""
     

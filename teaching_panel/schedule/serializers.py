@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Group, Lesson, Attendance, ZoomAccount, RecurringLesson, LessonRecording
+from .models import Group, Lesson, Attendance, ZoomAccount, RecurringLesson, LessonRecording, IndividualInviteCode
 from accounts.models import CustomUser
 
 
@@ -358,3 +358,17 @@ class RecurringLessonSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError('Нельзя установить группу: вы не её преподаватель')
         return super().update(instance, validated_data)
 
+
+class IndividualInviteCodeSerializer(serializers.ModelSerializer):
+    """Сериализатор для индивидуальных инвайт-кодов"""
+    teacher_email = serializers.EmailField(source='teacher.email', read_only=True)
+    used_by_email = serializers.EmailField(source='used_by.email', read_only=True, default=None)
+
+    class Meta:
+        model = IndividualInviteCode
+        fields = [
+            'id', 'teacher', 'teacher_email', 'subject',
+            'invite_code', 'is_used', 'used_by', 'used_by_email',
+            'used_at', 'created_at',
+        ]
+        read_only_fields = ['invite_code', 'is_used', 'used_by', 'used_at', 'created_at']
