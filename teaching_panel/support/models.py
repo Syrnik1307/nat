@@ -73,6 +73,12 @@ class SupportTicket(models.Model):
     updated_at = models.DateTimeField('Обновлено', auto_now=True)
     resolved_at = models.DateTimeField('Решено', null=True, blank=True)
     
+    tenant = models.ForeignKey(
+        'tenants.Tenant', on_delete=models.CASCADE,
+        null=True, blank=True, related_name='support_tickets',
+        verbose_name='Тенант',
+    )
+
     # Технические данные
     user_agent = models.TextField('User Agent', blank=True, default='')
     page_url = models.TextField('URL страницы', blank=True, default='')
@@ -209,6 +215,11 @@ class QuickSupportResponse(models.Model):
     category = models.CharField('Категория', max_length=50, blank=True, default='')
     usage_count = models.IntegerField('Использований', default=0)
     is_active = models.BooleanField('Активен', default=True)
+    tenant = models.ForeignKey(
+        'tenants.Tenant', on_delete=models.CASCADE,
+        null=True, blank=True, related_name='quick_support_responses',
+        verbose_name='Тенант',
+    )
     
     created_at = models.DateTimeField('Создано', auto_now_add=True)
     updated_at = models.DateTimeField('Обновлено', auto_now=True)

@@ -285,20 +285,24 @@ class FinanceService:
         return txn
 
     @staticmethod
-    def get_or_create_wallet(student, teacher) -> StudentFinancialProfile:
+    def get_or_create_wallet(student, teacher, tenant=None) -> StudentFinancialProfile:
         """
         Получить или создать кошелёк для пары ученик-учитель.
 
         Новый кошелёк создаётся с нулевым балансом и нулевой ценой урока.
         Учитель должен сам установить цену.
         """
+        defaults = {
+            'balance': Decimal('0.00'),
+            'default_lesson_price': Decimal('0.00'),
+        }
+        if tenant:
+            defaults['tenant'] = tenant
+        
         wallet, created = StudentFinancialProfile.objects.get_or_create(
             student=student,
             teacher=teacher,
-            defaults={
-                'balance': Decimal('0.00'),
-                'default_lesson_price': Decimal('0.00')
-            }
+            defaults=defaults,
         )
 
         if created:

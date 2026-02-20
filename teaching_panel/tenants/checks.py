@@ -39,6 +39,7 @@ def check_viewsets_have_tenant_mixin(app_configs, **kwargs):
             'TenantViewSet',           # Управление самими тенантами
             'UserViewSet',             # Управление пользователями
             'TenantMembershipViewSet', # Управление членством
+            'ZoomAccountViewSet',      # Shared resource, cross-tenant
         }
 
         import importlib

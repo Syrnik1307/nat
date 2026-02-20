@@ -58,10 +58,23 @@ class HomeworkSerializer(serializers.ModelSerializer):
 
 
 class AnswerSerializer(serializers.ModelSerializer):
-    selected_choices = serializers.PrimaryKeyRelatedField(queryset=Choice.objects.all(), many=True, required=False)
+    selected_choices = serializers.PrimaryKeyRelatedField(
+        queryset=Choice.objects.none(), many=True, required=False,
+    )
     question_text = serializers.CharField(source='question.prompt', read_only=True)
     question_type = serializers.CharField(source='question.question_type', read_only=True)
     question_points = serializers.IntegerField(source='question.points', read_only=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        tenant = getattr(request, 'tenant', None) if request else None
+        if tenant:
+            self.fields['selected_choices'].queryset = Choice.objects.filter(
+                question__homework__tenant=tenant,
+            )
+        else:
+            self.fields['selected_choices'].queryset = Choice.objects.all()
     
     class Meta:
         model = Answer

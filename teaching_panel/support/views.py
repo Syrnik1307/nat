@@ -2,7 +2,9 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.db import models as db_models
 from django.utils import timezone
+from tenants.mixins import TenantViewSetMixin
 
 from .models import SupportTicket, SupportMessage, QuickSupportResponse
 from .serializers import (
@@ -13,8 +15,11 @@ from .serializers import (
 )
 
 
-class SupportTicketViewSet(viewsets.ModelViewSet):
+class SupportTicketViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """API для работы с тикетами поддержки"""
+    queryset = SupportTicket.objects.all()
+    tenant_field = 'tenant'
+    tenant_required = False  # Анонимные тикеты допустимы
     
     def get_permissions(self):
         if self.action == 'create':
@@ -32,12 +37,15 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return SupportTicket.objects.none()
         
-        # Админы и учителя видят все тикеты
+        # Базовый queryset с tenant-фильтрацией через mixin
+        qs = super().get_queryset()
+        
+        # Админы и учителя видят все тикеты тенанта
         if user.role in ['admin', 'teacher']:
-            return SupportTicket.objects.all().order_by('-created_at')
+            return qs.order_by('-created_at')
         
         # Обычные пользователи видят только свои
-        return SupportTicket.objects.filter(user=user).order_by('-created_at')
+        return qs.filter(user=user).order_by('-created_at')
     
     @action(detail=True, methods=['post'])
     def add_message(self, request, pk=None):
@@ -132,6 +140,9 @@ def get_quick_responses(request):
         )
     
     responses = QuickSupportResponse.objects.filter(is_active=True)
+    tenant = getattr(request, 'tenant', None)
+    if tenant:
+        responses = responses.filter(db_models.Q(tenant=tenant) | db_models.Q(tenant__isnull=True))
     serializer = QuickSupportResponseSerializer(responses, many=True)
     return Response(serializer.data)
 
@@ -141,14 +152,23 @@ def get_quick_responses(request):
 def get_unread_count(request):
     """Получить количество непрочитанных сообщений поддержки"""
     user = request.user
+    tenant = getattr(request, 'tenant', None)
     
     if user.role in ['admin', 'teacher']:
         # Для админов - новые тикеты и непрочитанные сообщения
-        new_tickets = SupportTicket.objects.filter(status='new').count()
-        unread_messages = SupportMessage.objects.filter(
+        tickets_qs = SupportTicket.objects.all()
+        if tenant:
+            tickets_qs = tickets_qs.filter(tenant=tenant)
+        
+        new_tickets = tickets_qs.filter(status='new').count()
+        
+        messages_qs = SupportMessage.objects.filter(
             is_staff_reply=False,
             read_by_staff=False
-        ).count()
+        )
+        if tenant:
+            messages_qs = messages_qs.filter(ticket__tenant=tenant)
+        unread_messages = messages_qs.count()
         
         return Response({
             'new_tickets': new_tickets,

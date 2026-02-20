@@ -28,6 +28,7 @@ from .serializers import (
     RecurringLessonSerializer
 )
 from .zoom_client import my_zoom_api_client
+from tenants.mixins import TenantViewSetMixin
 
 logger = logging.getLogger(__name__)
 
@@ -63,23 +64,24 @@ def log_audit(user, action, resource_type, resource_id=None, request=None, detai
         resource_id=resource_id,
         ip_address=ip_address,
         user_agent=user_agent,
-        details=details or {}
+        details=details or {},
+        tenant=getattr(request, 'tenant', None) if request else None,
     )
 
 
-class GroupViewSet(viewsets.ModelViewSet):
+class GroupViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """
     ViewSet для работы с группами.
     Преподаватели могут создавать и управлять своими группами.
     """
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
-    # Базовая аутентификация включится позже; сейчас ограничим по роли
     permission_classes = [IsGroupOwnerOrReadOnly]
+    tenant_field = 'tenant'
     
     def get_queryset(self):
-        """Фильтруем группы по преподавателю для аутентифицированных пользователей"""
-        queryset = super().get_queryset()
+        """Фильтруем группы по преподавателю и tenant"""
+        queryset = super().get_queryset()  # TenantViewSetMixin фильтрует по tenant
         user = self.request.user
         if user.is_authenticated:
             if getattr(user, 'role', None) == 'teacher':
@@ -198,7 +200,7 @@ class GroupViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
 
-class LessonViewSet(viewsets.ModelViewSet):
+class LessonViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """
     ViewSet для работы с занятиями.
     Поддерживает создание, редактирование, удаление занятий.
@@ -206,6 +208,7 @@ class LessonViewSet(viewsets.ModelViewSet):
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
     permission_classes = [IsLessonOwnerOrReadOnly]
+    tenant_field = 'group__tenant'
     
     def get_queryset(self):
         """Фильтрация по параметрам запроса"""
@@ -598,18 +601,34 @@ class LessonViewSet(viewsets.ModelViewSet):
             return Response({'detail': f'Ошибка при создании встречи: {e}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class AttendanceViewSet(viewsets.ModelViewSet):
+class AttendanceViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """
     ViewSet для работы с посещаемостью.
     Требует аутентификации для всех операций.
+    Учитель видит посещаемость своих групп, студент — только свою.
     """
     queryset = Attendance.objects.all()
     serializer_class = AttendanceSerializer
-    permission_classes = [IsAuthenticated]  # ✅ FIXED: Restored authentication
+    permission_classes = [IsAuthenticated]
+    tenant_field = 'lesson__group__tenant'
     
     def get_queryset(self):
-        """Фильтрация посещаемости"""
+        """Фильтрация посещаемости с изоляцией по пользователю"""
         queryset = super().get_queryset()
+        user = self.request.user
+        
+        if not user.is_authenticated:
+            return queryset.none()
+        
+        # Изоляция: учитель видит только посещаемость своих групп
+        role = getattr(user, 'role', None)
+        if role == 'teacher':
+            queryset = queryset.filter(lesson__teacher=user)
+        elif role == 'student':
+            queryset = queryset.filter(student=user)
+        elif not (user.is_staff or user.is_superuser):
+            # Неизвестная роль — ничего не показываем
+            return queryset.none()
         
         # Фильтр по занятию
         lesson_id = self.request.query_params.get('lesson')
@@ -633,9 +652,11 @@ class ZoomAccountViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet для просмотра состояния Zoom аккаунтов
     Только для чтения (создание/редактирование через админку)
+    Доступ только аутентифицированным пользователям.
     """
     queryset = ZoomAccount.objects.all()
     serializer_class = ZoomAccountSerializer
+    permission_classes = [IsAuthenticated]
     
     @action(detail=False, methods=['get'])
     def status_summary(self, request):
@@ -654,12 +675,13 @@ class ZoomAccountViewSet(viewsets.ReadOnlyModelViewSet):
         })
 
 
-class RecurringLessonViewSet(viewsets.ModelViewSet):
+class RecurringLessonViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """
     ViewSet для управления регулярными уроками
     """
     queryset = RecurringLesson.objects.all()
     serializer_class = RecurringLessonSerializer
+    tenant_field = 'group__tenant'
     
     def get_queryset(self):
         """Фильтрация регулярных уроков"""
@@ -949,11 +971,12 @@ def zoom_webhook_receiver(request):
         }, status=500)
 
 
-class IndividualInviteCodeViewSet(viewsets.ModelViewSet):
+class IndividualInviteCodeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """ViewSet для управления индивидуальными инвайт-кодами"""
     from .serializers import IndividualInviteCodeSerializer
     serializer_class = IndividualInviteCodeSerializer
     permission_classes = [permissions.IsAuthenticated]
+    tenant_field = 'tenant'
 
     def get_queryset(self):
         from .models import IndividualInviteCode

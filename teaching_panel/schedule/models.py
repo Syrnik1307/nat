@@ -38,6 +38,15 @@ class ZoomAccount(models.Model):
 class Group(models.Model):
     """Учебная группа"""
     
+    tenant = models.ForeignKey(
+        'tenants.Tenant',
+        on_delete=models.CASCADE,
+        related_name='groups',
+        verbose_name=_('тенант'),
+        null=True,
+        blank=True,
+        db_index=True,
+    )
     name = models.CharField(_('название группы'), max_length=200)
     teacher = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -394,6 +403,15 @@ class RecurringLesson(models.Model):
 class IndividualInviteCode(models.Model):
     """Индивидуальный инвайт-код для приглашения одного ученика"""
 
+    tenant = models.ForeignKey(
+        'tenants.Tenant',
+        on_delete=models.CASCADE,
+        related_name='individual_invite_codes',
+        verbose_name=_('тенант'),
+        null=True,
+        blank=True,
+        db_index=True,
+    )
     teacher = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -442,6 +460,15 @@ class IndividualInviteCode(models.Model):
 class AuditLog(models.Model):
     """Журнал аудита действий пользователей"""
     
+    tenant = models.ForeignKey(
+        'tenants.Tenant',
+        on_delete=models.CASCADE,
+        related_name='schedule_audit_logs',
+        verbose_name=_('тенант'),
+        null=True,
+        blank=True,
+        db_index=True,
+    )
     ACTION_CHOICES = [
         ('lesson_start', 'Запуск урока'),
         ('lesson_create', 'Создание урока'),

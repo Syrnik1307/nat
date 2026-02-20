@@ -8,11 +8,13 @@ from .models import ControlPoint, ControlPointResult
 from .serializers import ControlPointSerializer, ControlPointResultSerializer
 from schedule.models import Attendance, Group
 from homework.models import StudentSubmission
+from tenants.mixins import TenantViewSetMixin
 
-class ControlPointViewSet(viewsets.ModelViewSet):
+class ControlPointViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset = ControlPoint.objects.all().select_related('teacher', 'group', 'lesson')
     serializer_class = ControlPointSerializer
     permission_classes = [IsAuthenticated]
+    tenant_field = 'group__tenant'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -24,10 +26,11 @@ class ControlPointViewSet(viewsets.ModelViewSet):
                 return qs.filter(group__students=user)
         return qs.none()
 
-class ControlPointResultViewSet(viewsets.ModelViewSet):
+class ControlPointResultViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset = ControlPointResult.objects.all().select_related('control_point', 'student')
     serializer_class = ControlPointResultSerializer
     permission_classes = [IsAuthenticated]
+    tenant_field = 'control_point__group__tenant'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -51,6 +54,21 @@ class GradebookViewSet(viewsets.ViewSet):
             group = Group.objects.get(id=group_id)
         except Group.DoesNotExist:
             return Response({'detail': 'Группа не найдена'}, status=404)
+
+        # Проверка tenant-изоляции
+        tenant = getattr(request, 'tenant', None)
+        if tenant and group.tenant_id and group.tenant_id != tenant.id:
+            return Response({'detail': 'Нет доступа к этой группе'}, status=403)
+
+        # Проверка доступа: только учитель группы или студент группы, или admin
+        user = request.user
+        role = getattr(user, 'role', None)
+        is_admin = user.is_staff or user.is_superuser or role == 'admin'
+        if not is_admin:
+            if role == 'teacher' and group.teacher != user:
+                return Response({'detail': 'Нет доступа к этой группе'}, status=403)
+            elif role == 'student' and not group.students.filter(id=user.id).exists():
+                return Response({'detail': 'Нет доступа к этой группе'}, status=403)
 
         students = group.students.all()
         attendance_stats = Attendance.objects.filter(lesson__group=group).values('student').annotate(
@@ -150,7 +168,11 @@ class TeacherStatsViewSet(viewsets.ViewSet):
         from schedule.models import Group, Lesson, Attendance
         from homework.models import Homework, StudentSubmission
 
+        # Tenant filtering
+        tenant = getattr(request, 'tenant', None)
         groups = Group.objects.filter(teacher=user).prefetch_related('students')
+        if tenant:
+            groups = groups.filter(tenant=tenant)
         group_data = []
         student_rows = []
         for g in groups:

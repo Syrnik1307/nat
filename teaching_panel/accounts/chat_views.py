@@ -92,8 +92,11 @@ class ChatViewSet(viewsets.ModelViewSet):
             group_id=group_id if group_id else None
         )
         
-        # Добавляем участников
+        # Добавляем участников (только из того же тенанта)
         if participant_ids:
+            tenant_ids = _tenant_user_ids(request)
+            if tenant_ids is not None:
+                participant_ids = [pid for pid in participant_ids if int(pid) in tenant_ids]
             chat.participants.set(participant_ids)
         
         # Добавляем создателя
@@ -121,6 +124,10 @@ class ChatViewSet(viewsets.ModelViewSet):
             return Response({'error': 'participant_ids обязателен'}, status=status.HTTP_400_BAD_REQUEST)
         
         users = CustomUser.objects.filter(id__in=participant_ids)
+        # Фильтр по тенанту
+        tenant_ids = _tenant_user_ids(request)
+        if tenant_ids is not None:
+            users = users.filter(id__in=tenant_ids)
         chat.participants.add(*users)
         
         serializer = self.get_serializer(chat)

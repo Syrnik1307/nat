@@ -36,7 +36,7 @@ if SECRET_KEY == 'django-insecure-your-secret-key-change-this-in-production':
     )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',')
 
@@ -77,6 +77,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'tenants.middleware.TenantMiddleware',  # Определяет request.tenant по hostname
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.RequestMetricsMiddleware',  # Метрики запросов
@@ -140,12 +141,13 @@ else:
 if os.environ.get('REDIS_URL'):
     CACHES = {
         'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'BACKEND': 'django_redis.cache.RedisCache',
             'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1'),
             'OPTIONS': {
                 'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'IGNORE_EXCEPTIONS': True,
                 'CONNECTION_POOL_KWARGS': {
-                    'max_connections': 50,
+                    'max_connections': 100,
                     'retry_on_timeout': True,
                 },
                 'SOCKET_CONNECT_TIMEOUT': 5,
@@ -163,6 +165,12 @@ else:
             'LOCATION': 'teaching-panel-cache',
         }
     }
+    if not DEBUG:
+        import warnings
+        warnings.warn(
+            "WARNING: Running production without Redis cache! Set REDIS_URL env var.",
+            RuntimeWarning
+        )
 
 
 # Password validation
@@ -248,6 +256,7 @@ REST_FRAMEWORK = {
         'anon': '50/hour',     # Stricter for anonymous users
         'submissions': '100/hour',  # Specific rate for homework submissions
         'grading': '500/hour',      # Higher rate for teacher grading
+        'login': '10/minute',       # Limit login attempts
     },
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
@@ -437,17 +446,18 @@ SMSRU_FROM_NAME = os.environ.get('SMSRU_FROM_NAME', 'Teaching Panel')
 # =============================================================================
 # Enable these settings in production by setting environment variables
 
-# HTTPS/SSL Redirect
-SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False').lower() in ('true', '1', 'yes')
+# HTTPS/SSL Redirect — auto-enable when not DEBUG unless explicitly set
+_not_debug = not DEBUG
+SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', str(_not_debug)).lower() in ('true', '1', 'yes')
 
-# HTTP Strict Transport Security (HSTS)
-SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '0'))
-SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'False').lower() in ('true', '1', 'yes')
-SECURE_HSTS_PRELOAD = os.environ.get('SECURE_HSTS_PRELOAD', 'False').lower() in ('true', '1', 'yes')
+# HTTP Strict Transport Security (HSTS) — 1 year by default in production
+SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '31536000' if _not_debug else '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', str(_not_debug)).lower() in ('true', '1', 'yes')
+SECURE_HSTS_PRELOAD = os.environ.get('SECURE_HSTS_PRELOAD', str(_not_debug)).lower() in ('true', '1', 'yes')
 
-# Secure cookies (enable in production with HTTPS)
-SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() in ('true', '1', 'yes')
-CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', 'False').lower() in ('true', '1', 'yes')
+# Secure cookies — auto-enable when not DEBUG
+SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', str(_not_debug)).lower() in ('true', '1', 'yes')
+CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', str(_not_debug)).lower() in ('true', '1', 'yes')
 SESSION_COOKIE_HTTPONLY = True  # Always True - prevents JavaScript access
 CSRF_COOKIE_HTTPONLY = True
 

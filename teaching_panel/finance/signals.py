@@ -155,7 +155,8 @@ def create_wallet_on_group_join(sender, instance, action, pk_set, **kwargs):
             student = CustomUser.objects.get(pk=student_id)
             wallet = FinanceService.get_or_create_wallet(
                 student=student,
-                teacher=teacher
+                teacher=teacher,
+                tenant=getattr(group, 'tenant', None),
             )
             logger.info(
                 f'Кошелёк при добавлении в группу: '

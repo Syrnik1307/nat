@@ -1,13 +1,17 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from tenants.mixins import TenantViewSetMixin
 from .models import Course
 from .serializers import CourseSerializer
 
 
-class CourseViewSet(viewsets.ModelViewSet):
+class CourseViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
+    permission_classes = [IsAuthenticated]
+    tenant_field = 'tenant'
 
     def get_queryset(self):
         qs = super().get_queryset()

@@ -4,6 +4,15 @@ from schedule.models import Lesson
 
 
 class Homework(models.Model):
+    tenant = models.ForeignKey(
+        'tenants.Tenant',
+        on_delete=models.CASCADE,
+        related_name='homeworks',
+        verbose_name='Тенант',
+        null=True,
+        blank=True,
+        db_index=True,
+    )
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='homeworks', limit_choices_to={'role': 'teacher'})
     lesson = models.ForeignKey(Lesson, on_delete=models.SET_NULL, null=True, blank=True, related_name='homeworks')
     title = models.CharField(max_length=255)
@@ -62,10 +71,19 @@ class StudentSubmission(models.Model):
     )
     homework = models.ForeignKey(Homework, on_delete=models.CASCADE, related_name='submissions')
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='homework_submissions', limit_choices_to={'role': 'student'})
+    tenant = models.ForeignKey(
+        'tenants.Tenant',
+        on_delete=models.CASCADE,
+        related_name='student_submissions',
+        verbose_name='Тенант',
+        null=True,
+        blank=True,
+        db_index=True,
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='submitted')
     total_score = models.IntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    submitted_at = models.DateTimeField(auto_now_add=True)
+    submitted_at = models.DateTimeField(auto_now_add=True, null=True)
     graded_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:

@@ -12,14 +12,16 @@ from .models import Homework, StudentSubmission, Answer
 from .serializers import HomeworkSerializer, StudentSubmissionSerializer
 from .permissions import IsTeacherHomework, IsStudentSubmission
 from .tasks import notify_student_graded
+from tenants.mixins import TenantViewSetMixin
 
 logger = logging.getLogger(__name__)
 
 
-class HomeworkViewSet(viewsets.ModelViewSet):
+class HomeworkViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset = Homework.objects.all().select_related('teacher', 'lesson')
     serializer_class = HomeworkSerializer
     permission_classes = [IsTeacherHomework]
+    tenant_field = 'tenant'
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -32,10 +34,11 @@ class HomeworkViewSet(viewsets.ModelViewSet):
         return qs.none()
 
 
-class StudentSubmissionViewSet(viewsets.ModelViewSet):
+class StudentSubmissionViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset = StudentSubmission.objects.all().select_related('homework', 'student')
     serializer_class = StudentSubmissionSerializer
     permission_classes = [IsStudentSubmission]
+    tenant_field = 'tenant'
 
     def get_queryset(self):
         qs = super().get_queryset()
