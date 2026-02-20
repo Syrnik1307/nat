@@ -8,6 +8,17 @@ from .models import Chat, Message, MessageReadStatus, CustomUser
 from .chat_serializers import ChatSerializer, MessageSerializer, MessageReadStatusSerializer, UserUsernameSerializer
 
 
+def _tenant_user_ids(request):
+    """Возвращает список ID пользователей текущего тенанта или None если тенант не определён."""
+    tenant = getattr(request, 'tenant', None)
+    if tenant:
+        from tenants.models import TenantMembership
+        return list(TenantMembership.objects.filter(
+            tenant=tenant, is_active=True
+        ).values_list('user_id', flat=True))
+    return None
+
+
 class ChatViewSet(viewsets.ModelViewSet):
     """API для управления чатами"""
     
@@ -31,6 +42,11 @@ class ChatViewSet(viewsets.ModelViewSet):
         try:
             other_user = CustomUser.objects.get(id=other_user_id)
         except CustomUser.DoesNotExist:
+            return Response({'error': 'Пользователь не найден'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Проверка: пользователь должен быть в том же тенанте
+        tenant_ids = _tenant_user_ids(request)
+        if tenant_ids is not None and other_user.id not in tenant_ids:
             return Response({'error': 'Пользователь не найден'}, status=status.HTTP_404_NOT_FOUND)
         
         # Проверяем, есть ли уже личный чат между этими пользователями
@@ -217,9 +233,16 @@ class UserSearchViewSet(viewsets.ReadOnlyModelViewSet):
         if not query:
             return CustomUser.objects.none()
         
-        return CustomUser.objects.filter(
+        qs = CustomUser.objects.filter(
             Q(username_handle__icontains=query) |
             Q(first_name__icontains=query) |
             Q(last_name__icontains=query) |
             Q(email__icontains=query)
-        ).exclude(id=self.request.user.id)[:20]
+        ).exclude(id=self.request.user.id)
+        
+        # Фильтрация по тенанту: ищем только среди участников тенанта
+        tenant_ids = _tenant_user_ids(self.request)
+        if tenant_ids is not None:
+            qs = qs.filter(id__in=tenant_ids)
+        
+        return qs[:20]

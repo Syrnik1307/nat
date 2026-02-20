@@ -26,6 +26,25 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+def _tenant_user_qs(request, base_qs=None):
+    """Фильтрует queryset пользователей по текущему тенанту."""
+    if base_qs is None:
+        base_qs = User.objects.all()
+    tenant = getattr(request, 'tenant', None)
+    if tenant:
+        from tenants.models import TenantMembership
+        tenant_user_ids = TenantMembership.objects.filter(
+            tenant=tenant, is_active=True
+        ).values_list('user_id', flat=True)
+        return base_qs.filter(id__in=tenant_user_ids)
+    return base_qs
+
+
+def _tenant_teacher_ids(request):
+    """Возвращает ID учителей текущего тенанта."""
+    return list(_tenant_user_qs(request).filter(role='teacher').values_list('id', flat=True))
+
+
 def _require_admin(request):
     """Возвращает Response(403) если пользователь не admin, иначе None."""
     if getattr(request.user, 'role', None) != 'admin':
@@ -56,7 +75,7 @@ class AdminStudentRisksView(APIView):
             return denied
 
         now = timezone.now()
-        students = User.objects.filter(role='student', is_active=True)
+        students = _tenant_user_qs(request).filter(role='student', is_active=True)
 
         from schedule.models import Attendance, Lesson
         from homework.models import StudentSubmission, Homework
@@ -219,7 +238,7 @@ class AdminTeacherQualityView(APIView):
         now = timezone.now()
         month_ago = now - timedelta(days=30)
         week_ago = now - timedelta(days=7)
-        teachers = User.objects.filter(role='teacher', is_active=True)
+        teachers = _tenant_user_qs(request).filter(role='teacher', is_active=True)
 
         from schedule.models import Lesson, Attendance, Group, AuditLog
         from homework.models import StudentSubmission
@@ -391,17 +410,20 @@ class AdminDashboardOverviewView(APIView):
         from schedule.models import Attendance, Lesson, AuditLog
         from homework.models import StudentSubmission
 
-        total_students = User.objects.filter(role='student', is_active=True).count()
-        total_teachers = User.objects.filter(role='teacher', is_active=True).count()
+        total_students = _tenant_user_qs(request).filter(role='student', is_active=True).count()
+        total_teachers = _tenant_user_qs(request).filter(role='teacher', is_active=True).count()
 
-        # Пропуски за неделю
+        # Пропуски за неделю (только учителя тенанта)
+        teacher_ids = _tenant_teacher_ids(request)
         absences_week = Attendance.objects.filter(
             lesson__start_time__gte=week_ago,
+            lesson__teacher_id__in=teacher_ids,
             status='absent',
         ).count()
 
         total_attendance_week = Attendance.objects.filter(
             lesson__start_time__gte=week_ago,
+            lesson__teacher_id__in=teacher_ids,
         ).count()
 
         attendance_rate_week = round(
@@ -409,7 +431,10 @@ class AdminDashboardOverviewView(APIView):
         ) if total_attendance_week else None
 
         # Средняя посещаемость за месяц
-        att_month = Attendance.objects.filter(lesson__start_time__gte=month_ago)
+        att_month = Attendance.objects.filter(
+            lesson__start_time__gte=month_ago,
+            lesson__teacher_id__in=teacher_ids,
+        )
         att_month_total = att_month.count()
         att_month_present = att_month.filter(status='present').count()
         attendance_rate_month = round(
@@ -421,21 +446,25 @@ class AdminDashboardOverviewView(APIView):
         unchecked_overdue = StudentSubmission.objects.filter(
             status='submitted',
             submitted_at__lte=three_days_ago,
+            homework__teacher_id__in=teacher_ids,
         ).count()
 
         # Всего непроверенных
         unchecked_total = StudentSubmission.objects.filter(
             status='submitted',
+            homework__teacher_id__in=teacher_ids,
         ).count()
 
         # Уроки за неделю
         lessons_week = Lesson.objects.filter(
             start_time__gte=week_ago,
             start_time__lte=now,
+            teacher_id__in=teacher_ids,
         ).count()
         started_week = Lesson.objects.filter(
             start_time__gte=week_ago,
             start_time__lte=now,
+            teacher_id__in=teacher_ids,
             zoom_meeting_id__isnull=False,
         ).exclude(zoom_meeting_id='').count()
 
@@ -443,6 +472,7 @@ class AdminDashboardOverviewView(APIView):
         lesson_starts = AuditLog.objects.filter(
             action='lesson_start',
             timestamp__gte=month_ago,
+            user_id__in=teacher_ids,
         ).values('resource_id', 'timestamp', 'user_id')
 
         late_teacher_ids = set()
@@ -457,7 +487,7 @@ class AdminDashboardOverviewView(APIView):
 
         # Ученики не заходившие >7 дней
         inactive_threshold = now - timedelta(days=7)
-        inactive_students = User.objects.filter(
+        inactive_students = _tenant_user_qs(request).filter(
             role='student',
             is_active=True,
         ).filter(

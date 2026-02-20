@@ -18,6 +18,23 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+def _tenant_user_qs(request, base_qs=None):
+    """Фильтрует queryset пользователей по текущему тенанту.
+    Если тенант есть — возвращает только участников этого тенанта.
+    Если нет — возвращает исходный queryset (backward compat).
+    """
+    if base_qs is None:
+        base_qs = User.objects.all()
+    tenant = getattr(request, 'tenant', None)
+    if tenant:
+        from tenants.models import TenantMembership
+        tenant_user_ids = TenantMembership.objects.filter(
+            tenant=tenant, is_active=True
+        ).values_list('user_id', flat=True)
+        return base_qs.filter(id__in=tenant_user_ids)
+    return base_qs
+
+
 class AdminStatsView(APIView):
     """Статистика для админ панели"""
     
@@ -31,27 +48,29 @@ class AdminStatsView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Подсчет пользователей
-        total_users = User.objects.count()
-        teachers = User.objects.filter(role='teacher').count()
-        students = User.objects.filter(role='student').count()
+        # Подсчет пользователей (только тенанта)
+        tenant_users = _tenant_user_qs(request)
+        total_users = tenant_users.count()
+        teachers = tenant_users.filter(role='teacher').count()
+        students = tenant_users.filter(role='student').count()
         
         # Онлайн пользователи (активность за последние 15 минут)
         online_threshold = timezone.now() - timedelta(minutes=15)
-        teachers_online = User.objects.filter(
+        teachers_online = tenant_users.filter(
             role='teacher',
             last_login__gte=online_threshold
         ).count()
-        students_online = User.objects.filter(
+        students_online = tenant_users.filter(
             role='student',
             last_login__gte=online_threshold
         ).count()
         
-        # Группы
-        groups = ScheduleGroup.objects.count()
+        # Группы (только по учителям тенанта)
+        teacher_ids = tenant_users.filter(role='teacher').values_list('id', flat=True)
+        groups = ScheduleGroup.objects.filter(teacher_id__in=teacher_ids).count()
         
-        # Занятия
-        lessons = Lesson.objects.count()
+        # Занятия (только по учителям тенанта)
+        lessons = Lesson.objects.filter(teacher_id__in=teacher_ids).count()
         
         # Zoom аккаунты
         from zoom_pool.models import ZoomAccount
@@ -68,15 +87,16 @@ class AdminStatsView(APIView):
         growth_periods = []
         for key, label, range_label, delta in period_specs:
             period_start = now - delta
-            teacher_growth = User.objects.filter(
+            teacher_growth = tenant_users.filter(
                 role='teacher',
                 created_at__gte=period_start
             ).count()
-            student_growth = User.objects.filter(
+            student_growth = tenant_users.filter(
                 role='student',
                 created_at__gte=period_start
             ).count()
             lesson_growth = Lesson.objects.filter(
+                teacher_id__in=teacher_ids,
                 start_time__gte=period_start,
                 start_time__lte=now
             ).count()
@@ -194,7 +214,7 @@ class AdminTeachersListView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        teachers = User.objects.filter(role='teacher').order_by('last_name', 'first_name')
+        teachers = _tenant_user_qs(request).filter(role='teacher').order_by('last_name', 'first_name')
         
         teachers_data = []
         for teacher in teachers:
@@ -231,7 +251,7 @@ class AdminUpdateTeacherZoomView(APIView):
             )
         
         try:
-            teacher = User.objects.get(id=teacher_id, role='teacher')
+            teacher = _tenant_user_qs(request).get(id=teacher_id, role='teacher')
         except User.DoesNotExist:
             return Response(
                 {'error': 'Учитель не найден'},
@@ -272,7 +292,7 @@ class AdminDeleteTeacherView(APIView):
             )
         
         try:
-            teacher = User.objects.get(id=teacher_id, role='teacher')
+            teacher = _tenant_user_qs(request).get(id=teacher_id, role='teacher')
         except User.DoesNotExist:
             return Response(
                 {'error': 'Учитель не найден'},
@@ -302,7 +322,7 @@ class AdminStudentsListView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        students = User.objects.filter(role='student').order_by('last_name', 'first_name')
+        students = _tenant_user_qs(request).filter(role='student').order_by('last_name', 'first_name')
         
         students_data = []
         for student in students:
@@ -333,7 +353,7 @@ class AdminUpdateStudentView(APIView):
             )
         
         try:
-            student = User.objects.get(id=student_id, role='student')
+            student = _tenant_user_qs(request).get(id=student_id, role='student')
         except User.DoesNotExist:
             return Response(
                 {'error': 'Ученик не найден'},
@@ -369,7 +389,7 @@ class AdminDeleteStudentView(APIView):
             )
         
         try:
-            student = User.objects.get(id=student_id, role='student')
+            student = _tenant_user_qs(request).get(id=student_id, role='student')
         except User.DoesNotExist:
             return Response(
                 {'error': 'Ученик не найден'},
