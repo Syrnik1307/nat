@@ -104,6 +104,17 @@ INSTALLED_APPS = [
     'django_celery_beat',
 ]
 
+# SAFETY: Multi-tenant system is BANNED (broke production 2026-02-08)
+# This check prevents anyone from re-adding it
+_BANNED_APPS = ['tenants']
+for _banned in _BANNED_APPS:
+    if _banned in INSTALLED_APPS:
+        raise RuntimeError(
+            f"BANNED APP '{_banned}' found in INSTALLED_APPS! "
+            f"Multi-tenant system is FORBIDDEN. It broke production on 2026-02-08. "
+            f"Remove it immediately."
+        )
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -116,6 +127,15 @@ MIDDLEWARE = [
     'core.middleware.RequestMetricsMiddleware',  # Метрики запросов
     'accounts.bot_protection.BotProtectionMiddleware',  # Защита от ботов по fingerprint
 ]
+
+# SAFETY: TenantMiddleware is BANNED
+_BANNED_MIDDLEWARE = ['tenants.middleware.TenantMiddleware']
+for _banned_mw in _BANNED_MIDDLEWARE:
+    if _banned_mw in MIDDLEWARE:
+        raise RuntimeError(
+            f"BANNED MIDDLEWARE '{_banned_mw}' found! "
+            f"Multi-tenant system is FORBIDDEN."
+        )
 
 ROOT_URLCONF = 'teaching_panel.urls'
 
@@ -254,9 +274,10 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# File upload settings for large video files (up to 10GB)
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024 * 1024  # 10GB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024 * 1024  # 10GB
+# File upload settings — limit in-memory size to prevent OOM
+# Large files (videos) should use streaming/chunked upload, not memory
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -270,10 +291,11 @@ _CORS_DEFAULTS = [
     "http://localhost:3001",
     "http://127.0.0.1:3001",
 ]
-# Include server host/IP for remote access (React build served on :3000 or proxied via Nginx)
-_SERVER_HOST = os.environ.get('SERVER_HOST', '72.56.81.163')
-_CORS_DEFAULTS.append(f"http://{_SERVER_HOST}:3000")
-_CORS_DEFAULTS.append(f"http://{_SERVER_HOST}")
+# Include server host/IP for remote access — only if explicitly set in env
+_SERVER_HOST = os.environ.get('SERVER_HOST', '')
+if _SERVER_HOST:
+    _CORS_DEFAULTS.append(f"http://{_SERVER_HOST}:3000")
+    _CORS_DEFAULTS.append(f"http://{_SERVER_HOST}")
 
 # Allow override / extension via env var CORS_EXTRA (comma-separated)
 _CORS_EXTRA = [h for h in os.environ.get('CORS_EXTRA', '').split(',') if h]
@@ -317,8 +339,8 @@ REST_FRAMEWORK = {
 
 from datetime import timedelta
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=12),
-    'REFRESH_TOKEN_LIFETIME': timedelta(hours=12),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'TOKEN_OBTAIN_SERIALIZER': 'accounts.serializers.CustomTokenObtainPairSerializer',

@@ -70,6 +70,28 @@ if ($DryRun) {
 }
 
 # ===================================================================
+# GUARD: Блокировка tenant-кода (ЗАПРЕЩЕНО!)
+# ===================================================================
+Write-Step "X" 9 "Проверка на запрещённый tenant-код..."
+
+$tenantCheck = git diff HEAD --name-only | Select-String -Pattern "tenant" -Quiet
+$tenantDir = Test-Path "teaching_panel\tenants"
+$tenantImports = git grep -l "from tenants" -- "teaching_panel/*.py" 2>$null
+
+if ($tenantCheck -or $tenantDir -or $tenantImports) {
+    Write-Fail "TENANT-КОД ОБНАРУЖЕН! Деплой ЗАПРЕЩЁН!"
+    Write-Host ""
+    if ($tenantDir) { Write-Host "  teaching_panel/tenants/ директория существует!" -ForegroundColor Red }
+    if ($tenantCheck) { Write-Host "  Файлы с 'tenant' в имени в diff!" -ForegroundColor Red }
+    if ($tenantImports) { Write-Host "  Файлы с import tenants: $tenantImports" -ForegroundColor Red }
+    Write-Host ""
+    Write-Host "Система мультитенантности ЗАПРЕЩЕНА. Она сломала прод 2026-02-08." -ForegroundColor Red
+    Write-Host "Удалите весь tenant-код перед деплоем." -ForegroundColor Red
+    exit 1
+}
+Write-OK "Нет запрещённого tenant-кода"
+
+# ===================================================================
 # ШАГ 0: Проверка production - ОН ДОЛЖЕН РАБОТАТЬ ДО НАЧАЛА
 # ===================================================================
 Write-Step 0 9 "Проверка текущего состояния production..."

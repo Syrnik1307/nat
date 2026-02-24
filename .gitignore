@@ -73,6 +73,14 @@ yarn-error.log*
 # React build
 frontend/build/
 
+# BANNED: Multi-tenant system (broke prod 2026-02-08, never again)
+teaching_panel/tenants/
+**/tenants/
+tenant_fix_*.py
+test_*_tenant*.py
+*tenant*.sql
+MULTITENANT_AUDIT.md
+
 # Local prod-smoke artifacts (generated files)
 prod_join_remote_script_preview.sh
 prod_join_temp_lesson_script_preview.sh
