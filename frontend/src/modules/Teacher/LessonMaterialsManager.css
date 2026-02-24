@@ -100,14 +100,14 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.stat-value {
+.materials-statistics .stat-value {
     font-size: 32px;
     font-weight: 700;
     color: white;
     margin-bottom: 4px;
 }
 
-.stat-label {
+.materials-statistics .stat-label {
     font-size: 12px;
     color: rgba(255, 255, 255, 0.8);
     text-transform: uppercase;

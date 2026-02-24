@@ -295,17 +295,17 @@
   flex: 1;
 }
 
-.stat-icon {
+.recording-stats .stat-icon {
   font-size: 1.3rem;
 }
 
-.stat-value {
+.recording-stats .stat-value {
   font-size: 1.1rem;
   font-weight: 700;
   color: #333;
 }
 
-.stat-label {
+.recording-stats .stat-label {
   font-size: 0.75rem;
   color: #999;
   text-transform: uppercase;
@@ -445,15 +445,15 @@
     padding: 0.625rem 0;
   }
 
-  .stat-icon {
+  .recording-stats .stat-icon {
     font-size: 1.1rem;
   }
 
-  .stat-value {
+  .recording-stats .stat-value {
     font-size: 1rem;
   }
 
-  .stat-label {
+  .recording-stats .stat-label {
     font-size: 0.7rem;
   }
 

@@ -340,13 +340,13 @@
   gap: 0.375rem;
 }
 
-.stat-value {
+.fast-video-stat .stat-value {
   font-size: 1.125rem;
   font-weight: 600;
   color: #f8fafc;
 }
 
-.stat-label {
+.fast-video-stat .stat-label {
   font-size: 0.8125rem;
   color: rgba(148, 163, 184, 0.7);
 }

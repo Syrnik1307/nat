@@ -89,26 +89,26 @@
   gap: 0.4rem;
 }
 
-.stat-label {
+.attendance-stat-card .stat-label {
   font-size: 0.85rem;
   color: var(--text-muted);
 }
 
-.stat-value {
+.attendance-stat-card .stat-value {
   font-size: 1.9rem;
   font-weight: 700;
   color: var(--text-main);
 }
 
-.stat-value.accent {
+.attendance-stat-card .stat-value.accent {
   color: var(--color-primary);
 }
 
-.stat-value.danger {
+.attendance-stat-card .stat-value.danger {
   color: var(--color-error);
 }
 
-.stat-hint {
+.attendance-stat-card .stat-hint {
   font-size: 0.8rem;
   color: var(--text-light);
 }

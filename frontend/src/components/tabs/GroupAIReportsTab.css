@@ -135,12 +135,12 @@
   gap: 0.25rem;
 }
 
-.stat-label {
+.quick-stats .stat-label {
   font-size: 0.75rem;
   color: #64748b;
 }
 
-.stat-value {
+.quick-stats .stat-value {
   font-size: 1rem;
   font-weight: 600;
   color: #1e293b;

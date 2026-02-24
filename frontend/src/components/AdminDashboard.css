@@ -166,7 +166,7 @@
   letter-spacing: 0.5px;
 }
 
-.stat-value {
+.admin-dashboard .stat-value {
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--text-primary);

@@ -271,12 +271,12 @@
     align-items: center;
 }
 
-.stat-label {
+.stats-list .stat-label {
     font-size: 14px;
     color: #64748b;
 }
 
-.stat-value {
+.stats-list .stat-value {
     font-size: 16px;
     font-weight: 600;
     color: #0f172a;

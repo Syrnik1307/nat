@@ -81,7 +81,7 @@
   gap: 0.5rem;
 }
 
-.stat-label {
+.rating-stats-card .stat-label {
   font-size: 0.85rem;
   color: var(--text-muted);
   font-weight: 500;
@@ -89,7 +89,7 @@
   letter-spacing: 0.02em;
 }
 
-.stat-value {
+.rating-stats-card .stat-value {
   font-size: 1.75rem;
   font-weight: 700;
   color: var(--color-primary);
@@ -379,7 +379,7 @@
     padding: 1rem;
   }
 
-  .stat-value {
+  .rating-stats-card .stat-value {
     font-size: 1.5rem;
   }
 

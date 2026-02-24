@@ -202,7 +202,7 @@
   font-size: 2.25rem !important;
 }
 
-.stat-label {
+.student-card-modal .stat-label {
   font-size: 0.8rem;
   color: var(--text-muted);
   font-weight: 500;
@@ -210,7 +210,7 @@
   letter-spacing: 0.02em;
 }
 
-.stat-value {
+.student-card-modal .stat-value {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--color-primary);
@@ -451,11 +451,11 @@
     padding: 1rem 0.75rem;
   }
 
-  .stat-icon {
+  .student-card-modal .stat-icon {
     font-size: 1.5rem;
   }
 
-  .stat-value {
+  .student-card-modal .stat-value {
     font-size: 1.25rem;
   }
 
@@ -510,15 +510,15 @@
     font-size: 1.25rem;
   }
 
-  .stat-label {
+  .student-card-modal .stat-label {
     font-size: 0.7rem;
   }
 
-  .stat-value {
+  .student-card-modal .stat-value {
     font-size: 1.1rem;
   }
 
-  .stat-detail {
+  .student-card-modal .stat-detail {
     font-size: 0.7rem;
   }
 
