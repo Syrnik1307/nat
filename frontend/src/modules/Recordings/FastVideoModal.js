@@ -16,13 +16,17 @@ function FastVideoModal({ recording, onClose }) {
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [iframeError, setIframeError] = useState(false);
 
+  // Determine video source type
+  const hasGdrive = !!recording?.gdrive_file_id;
+  const localVideoUrl = !hasGdrive ? (recording?.play_url || recording?.download_url || null) : null;
+
   // Google Drive embed URL
-  const embedUrl = recording?.gdrive_file_id 
+  const embedUrl = hasGdrive
     ? `https://drive.google.com/file/d/${recording.gdrive_file_id}/preview`
     : null;
 
   // Fallback: direct download link
-  const downloadUrl = recording?.gdrive_file_id
+  const downloadUrl = hasGdrive
     ? `https://drive.google.com/uc?export=download&id=${recording.gdrive_file_id}`
     : recording?.download_url || null;
 
@@ -59,11 +63,14 @@ function FastVideoModal({ recording, onClose }) {
     setIframeLoaded(true);
   }, []);
 
-  // Открыть в новой вкладке (Google Drive viewer)
+  // Открыть в новой вкладке
   const handleOpenInNewTab = useCallback(() => {
-    if (!recording?.gdrive_file_id) return;
-    window.open(`https://drive.google.com/file/d/${recording.gdrive_file_id}/view`, '_blank', 'noopener,noreferrer');
-  }, [recording?.gdrive_file_id]);
+    if (recording?.gdrive_file_id) {
+      window.open(`https://drive.google.com/file/d/${recording.gdrive_file_id}/view`, '_blank', 'noopener,noreferrer');
+    } else if (recording?.play_url || recording?.download_url) {
+      window.open(recording.play_url || recording.download_url, '_blank', 'noopener,noreferrer');
+    }
+  }, [recording?.gdrive_file_id, recording?.play_url, recording?.download_url]);
 
   // Получаем базовую информацию
   const title = recording?.title || recording?.lesson_info?.subject || 'Запись урока';
@@ -104,7 +111,7 @@ function FastVideoModal({ recording, onClose }) {
           )}
         </header>
 
-        {/* Видеоплеер (Google Drive Embed) */}
+        {/* Видеоплеер */}
         <div className="fast-video-player">
           {embedUrl ? (
             <>
@@ -112,7 +119,7 @@ function FastVideoModal({ recording, onClose }) {
                 <div className="fast-video-loading" role="status" aria-live="polite">
                   <div className="fast-video-loading-spinner" aria-hidden="true" />
                   <div className="fast-video-loading-text">
-                    <div className="fast-video-loading-title">Загрузка видео…</div>
+                    <div className="fast-video-loading-title">Загрузка видео...</div>
                   </div>
                 </div>
               )}
@@ -128,6 +135,16 @@ function FastVideoModal({ recording, onClose }) {
                 title={title}
               />
             </>
+          ) : localVideoUrl ? (
+            <video
+              className="fast-video-native"
+              src={localVideoUrl}
+              controls
+              controlsList="nodownload"
+              playsInline
+              preload="metadata"
+              style={{ width: '100%', height: '100%', backgroundColor: '#000', borderRadius: '8px' }}
+            />
           ) : (
             <div className="fast-video-error">
               <div className="fast-video-error-icon">
