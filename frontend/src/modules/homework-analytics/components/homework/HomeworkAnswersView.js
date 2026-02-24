@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Modal } from '../../../../shared/components';
 import { apiClient } from '../../../../apiService';
@@ -31,22 +31,35 @@ const HomeworkAnswersView = () => {
   const [data, setData] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imagePreview, setImagePreview] = useState({ open: false, url: '' });
+  const abortRef = useRef(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     const fetchAnswers = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await apiClient.get(`/homework/${id}/my-answers/`);
-        setData(response.data);
+        const response = await apiClient.get(`/homework/${id}/my-answers/`, {
+          signal: controller.signal
+        });
+        if (!controller.signal.aborted) {
+          setData(response.data);
+        }
       } catch (err) {
-        const msg = err.response?.data?.error || err.response?.data?.detail || 'Не удалось загрузить ответы';
-        setError(msg);
+        if (!controller.signal.aborted) {
+          const msg = err.response?.data?.error || err.response?.data?.detail || 'Не удалось загрузить ответы';
+          setError(msg);
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
     fetchAnswers();
+    return () => controller.abort();
   }, [id]);
 
   const questions = useMemo(() => data?.questions || [], [data]);

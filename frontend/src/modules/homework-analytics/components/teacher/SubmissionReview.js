@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../../../apiService';
 import { Notification } from '../../../../shared/components';
@@ -20,23 +20,39 @@ const SubmissionReview = () => {
   const [editingAnswerId, setEditingAnswerId] = useState(null);
   const [editValues, setEditValues] = useState({});
   const [saving, setSaving] = useState(false);
+  const abortRef = useRef(null);
 
   const loadSubmission = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get(`submissions/${submissionId}/`);
-      setSubmission(response.data);
+      const response = await apiClient.get(`submissions/${submissionId}/`, {
+        signal: controller.signal
+      });
+      if (!controller.signal.aborted) {
+        setSubmission(response.data);
+      }
     } catch (err) {
-      console.error('Ошибка загрузки работы:', err);
-      setError(err.response?.data?.error || 'Не удалось загрузить работу');
+      if (!controller.signal.aborted) {
+        console.error('Ошибка загрузки работы:', err);
+        setError(err.response?.data?.error || 'Не удалось загрузить работу');
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [submissionId]);
 
   useEffect(() => {
     loadSubmission();
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
   }, [loadSubmission]);
 
   const startEditing = (answer) => {

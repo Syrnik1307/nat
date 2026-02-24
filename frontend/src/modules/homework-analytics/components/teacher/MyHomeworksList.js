@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getHomeworkList, deleteHomework, updateHomework, getGroups, getHomework, duplicateAndAssignHomework } from '../../../../apiService';
 import { Button, Modal, Select } from '../../../../shared/components';
 import { useNotifications } from '../../../../shared/context/NotificationContext';
+import { getCached, invalidateCache, TTL } from '../../../../utils/dataCache';
 import StudentPicker from '../homework/StudentPicker';
 import './MyHomeworksList.css';
 
@@ -232,30 +233,50 @@ const MyHomeworksList = ({ onEditHomework }) => {
   const [filter, setFilter] = useState('all'); // 'all' | 'published' | 'draft' | 'archived'
   const [reassignHomework, setReassignHomework] = useState(null);
 
-  const loadData = useCallback(async () => {
+  const abortRef = useRef(null);
+
+  const loadData = useCallback(async (forceRefresh = false) => {
+    // Отменяем предыдущий запрос
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
-      const [hwRes, groupsRes] = await Promise.all([
-        getHomeworkList(),
-        getGroups()
+      const opts = forceRefresh ? { forceRefresh: true } : {};
+      const [hwData, groupsData] = await Promise.all([
+        getCached('teacher:homework:list', async () => {
+          const res = await getHomeworkList();
+          return Array.isArray(res.data) ? res.data : res.data?.results || [];
+        }, TTL.MEDIUM, opts),
+        getCached('teacher:groups', async () => {
+          const res = await getGroups();
+          return Array.isArray(res.data) ? res.data : res.data?.results || [];
+        }, TTL.MEDIUM, opts),
       ]);
       
-      const hwData = hwRes.data?.results || hwRes.data || [];
-      setHomeworks(Array.isArray(hwData) ? hwData : []);
-      
-      const groupsData = groupsRes.data?.results || groupsRes.data || [];
-      setGroups(Array.isArray(groupsData) ? groupsData : []);
+      if (!controller.signal.aborted) {
+        setHomeworks(Array.isArray(hwData) ? hwData : []);
+        setGroups(Array.isArray(groupsData) ? groupsData : []);
+      }
     } catch (err) {
-      console.error('Failed to load homeworks:', err);
-      setError('Не удалось загрузить домашние задания');
+      if (!controller.signal.aborted) {
+        console.error('Failed to load homeworks:', err);
+        setError('Не удалось загрузить домашние задания');
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     loadData();
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
   }, [loadData]);
 
   // Фильтрация ДЗ
@@ -283,10 +304,13 @@ const MyHomeworksList = ({ onEditHomework }) => {
 
     try {
       await deleteHomework(homework.id);
+      // Optimistic: убираем из локального стейта без перезагрузки
+      setHomeworks(prev => prev.filter(h => h.id !== homework.id));
+      invalidateCache('teacher:homework');
       toast.success('Домашнее задание удалено');
-      loadData();
     } catch (err) {
       toast.error('Ошибка удаления');
+      loadData(true); // Перезагружаем при ошибке
     }
   };
 
@@ -304,10 +328,13 @@ const MyHomeworksList = ({ onEditHomework }) => {
 
     try {
       await updateHomework(homework.id, { status: 'archived' });
+      // Optimistic: обновляем статус локально
+      setHomeworks(prev => prev.map(h => h.id === homework.id ? { ...h, status: 'archived' } : h));
+      invalidateCache('teacher:homework');
       toast.success('ДЗ архивировано');
-      loadData();
     } catch (err) {
       toast.error('Ошибка архивации');
+      loadData(true);
     }
   };
 
@@ -522,7 +549,7 @@ const MyHomeworksList = ({ onEditHomework }) => {
           homework={reassignHomework}
           groups={groups}
           onClose={() => setReassignHomework(null)}
-          onSave={() => loadData()}
+          onSave={() => { invalidateCache('teacher:homework'); loadData(true); }}
           toast={toast}
         />
       )}

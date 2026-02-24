@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient, getSubmissions } from '../../../../apiService';
+import { getCached, TTL } from '../../../../utils/dataCache';
 import { Select } from '../../../../shared/components';
 import './SubmissionsList.css';
 
 const SubmissionsList = ({ filterStatus = 'submitted' }) => {
   const navigate = useNavigate();
+  const abortRef = useRef(null);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,8 +18,10 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
 
   const loadGroups = useCallback(async () => {
     try {
-      const response = await apiClient.get('/groups/');
-      const data = Array.isArray(response.data) ? response.data : response.data.results || [];
+      const data = await getCached('teacher:groups', async () => {
+        const response = await apiClient.get('/groups/');
+        return Array.isArray(response.data) ? response.data : response.data.results || [];
+      }, TTL.MEDIUM);
       setGroups(data);
     } catch (err) {
       console.error('Error loading groups:', err);
@@ -56,6 +60,11 @@ const SubmissionsList = ({ filterStatus = 'submitted' }) => {
 
   useEffect(() => {
     loadSubmissions();
+    return () => {
+      // Copy ref to local var to avoid stale ref in cleanup
+      const controller = abortRef.current;
+      if (controller) controller.abort();
+    };
   }, [loadSubmissions]);
 
   useEffect(() => {

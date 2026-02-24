@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { getAccessToken, getLessons, getGroups, getHomeworkList, getTeacherStatsSummary } from '../apiService';
-import { prefetch, TTL } from '../utils/dataCache';
+import { prefetch, getCached, TTL } from '../utils/dataCache';
 import Logo from './Logo';
 import './NavBar.css';
 
@@ -134,30 +134,30 @@ const NavBar = () => {
 
   const loadMessages = async () => {
     try {
-      const token = getAccessToken();
-      const response = await fetch('/accounts/api/status-messages/', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      // Проверяем статус ответа
-      if (!response.ok) {
-        console.warn('Статус-сообщения недоступны:', response.status);
-        return;
-      }
-      
-      // Проверяем, что ответ действительно JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        console.warn('Получен не-JSON ответ от /accounts/api/status-messages/');
-        return;
-      }
-      
-      const data = await response.json();
-      const activeMessages = Array.isArray(data) ? data.filter(msg => msg.is_active) : [];
+      const activeMessages = await getCached('nav:status-messages', async () => {
+        const token = getAccessToken();
+        const response = await fetch('/accounts/api/status-messages/', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+          console.warn('Статус-сообщения недоступны:', response.status);
+          return [];
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Получен не-JSON ответ от /accounts/api/status-messages/');
+          return [];
+        }
+        
+        const data = await response.json();
+        return Array.isArray(data) ? data.filter(msg => msg.is_active) : [];
+      }, TTL.MEDIUM);
       setMessages(activeMessages);
     } catch (error) {
       console.error('Ошибка загрузки сообщений:', error);
-      setMessages([]); // Устанавливаем пустой массив при ошибке
+      setMessages([]);
     }
   };
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { getHomeworkList, getSubmissions, getGroups } from '../apiService';
 import { getCached } from '../utils/dataCache';
 import { Link } from 'react-router-dom';
@@ -82,11 +82,20 @@ const HomeworkList = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const abortRef = useRef(null);
+
   useEffect(() => {
     loadData();
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
   }, []);
 
   const loadData = async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     const cacheTTL = 30000; // 30 секунд
     setLoading(true);
     try {
@@ -117,14 +126,20 @@ const HomeworkList = () => {
         ),
       ]);
       
-      setItems(hwList);
-      setSubmissions(subList);
-      setGroups(groupsList);
+      if (!controller.signal.aborted) {
+        setItems(hwList);
+        setSubmissions(subList);
+        setGroups(groupsList);
+      }
     } catch (e) {
-      console.error('Error loading homework:', e);
-      setError('Ошибка загрузки домашних заданий');
+      if (!controller.signal.aborted) {
+        console.error('Error loading homework:', e);
+        setError('Ошибка загрузки домашних заданий');
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   };
 
