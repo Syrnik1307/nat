@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../auth';
 import { apiClient } from '../apiService';
 import { getFinanceDashboard, getFinanceWallets, depositToWallet, chargeFromWallet, adjustWalletBalance, getWalletTransactions } from '../financeService';
+import { getCached, TTL, isCached, invalidateCache } from '../utils/dataCache';
 import './FinancePage.css';
 
 // SVG Icons
@@ -564,16 +565,26 @@ const FinancePage = () => {
     
     const loadData = useCallback(async () => {
         try {
-            setLoading(true);
-            const [walletsRes, dashboardRes, groupsRes] = await Promise.all([
-                getFinanceWallets(),
-                getFinanceDashboard(),
-                apiClient.get('/groups/'),
+            const hasCachedData = isCached('finance:wallets', TTL.SHORT);
+            if (!hasCachedData) setLoading(true);
+            const [walletsData, dashboardData, groupsData] = await Promise.all([
+                getCached('finance:wallets', async () => {
+                    const res = await getFinanceWallets();
+                    return res.data.results || res.data || [];
+                }, TTL.SHORT),
+                getCached('finance:dashboard', async () => {
+                    const res = await getFinanceDashboard();
+                    return res.data;
+                }, TTL.SHORT),
+                getCached('finance:groups', async () => {
+                    const res = await apiClient.get('/groups/');
+                    return res.data.results || res.data || [];
+                }, TTL.MEDIUM),
             ]);
             
-            setWallets(walletsRes.data.results || walletsRes.data || []);
-            setDashboard(dashboardRes.data);
-            setGroups(groupsRes.data.results || groupsRes.data || []);
+            setWallets(walletsData);
+            setDashboard(dashboardData);
+            setGroups(groupsData);
         } catch (err) {
             console.error('Error loading finance data:', err);
         } finally {
@@ -586,6 +597,7 @@ const FinancePage = () => {
     }, [loadData]);
     
     const handleRefresh = () => {
+        invalidateCache('finance');
         loadData();
     };
     

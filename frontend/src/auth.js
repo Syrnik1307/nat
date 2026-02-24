@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { Navigate } from 'react-router-dom';
 import {
   login as apiLogin,
@@ -303,8 +303,13 @@ export const AuthProvider = ({ children }) => {
 
   const refreshSubscription = useCallback(async () => loadSubscription(), [loadSubscription]);
 
+  const contextValue = useMemo(() => ({
+    accessTokenValid, role, loading, user, subscription,
+    login, logout, refreshUser, register, refreshSubscription
+  }), [accessTokenValid, role, loading, user, subscription, login, logout, refreshUser, register, refreshSubscription]);
+
   return (
-    <AuthContext.Provider value={{ accessTokenValid, role, loading, user, subscription, login, logout, refreshUser, register, refreshSubscription }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

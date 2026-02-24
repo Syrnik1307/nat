@@ -1,12 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useAuth } from '../auth';
 // useAuth provides user object with id
 import { apiClient, getTeacherEarlyWarnings, getTeacherMonthlyDynamics, getTeacherSlaDetails, getTeacherStudentRisks, getTeacherWeeklyDynamics } from '../apiService';
 import { Link, useSearchParams } from 'react-router-dom';
-import StudentDetailAnalytics from './StudentDetailAnalytics';
-import GroupDetailAnalytics from './GroupDetailAnalytics';
+import { getCached, TTL, isCached } from '../utils/dataCache';
 import { AnalyticsOnboarding } from './Onboarding';
 import './AnalyticsPage.css';
+
+// Lazy-loaded sub-panels
+const StudentDetailAnalytics = lazy(() => import('./StudentDetailAnalytics'));
+const GroupDetailAnalytics = lazy(() => import('./GroupDetailAnalytics'));
 
 // SVG Icons - чистые иконки без эмодзи
 const IconOverview = () => (
@@ -110,27 +113,46 @@ const AnalyticsPage = () => {
     const [monthlyDynamics, setMonthlyDynamics] = useState(null);
     const [weeklyDynamics, setWeeklyDynamics] = useState(null);
 
-    const loadData = useCallback(async () => {
-        try {
-            setLoading(true);
-            const [groupsRes, slaRes, risksRes, ewsRes] = await Promise.all([
-                apiClient.get('/groups/'),
-                getTeacherSlaDetails().catch(() => ({ data: null })),
-                getTeacherStudentRisks().catch(() => ({ data: null })),
-                getTeacherEarlyWarnings({ lessons: 5 }).catch(() => ({ data: null })),
-            ]);
-            setSlaDetails(slaRes.data);
-            setStudentRisks(risksRes.data);
-            setEarlyWarnings(ewsRes.data);
-            // Динамика — не критично, грузим отдельным запросом и не валим весь экран
-            getTeacherMonthlyDynamics({ months: 3 })
-                .then((res) => setMonthlyDynamics(res.data))
-                .catch(() => setMonthlyDynamics(null));
+    const abortRef = useRef(null);
 
-            getTeacherWeeklyDynamics({ weeks: 8 })
-                .then((res) => setWeeklyDynamics(res.data))
-                .catch(() => setWeeklyDynamics(null));
-            const groupsList = groupsRes.data.results || groupsRes.data || [];
+    const loadData = useCallback(async () => {
+        // If data is cached, skip loading indicator
+        const hasCachedData = isCached('analytics:groups', TTL.MEDIUM);
+        if (!hasCachedData) setLoading(true);
+        
+        try {
+            const [groupsData, slaData, risksData, ewsData] = await Promise.all([
+                getCached('analytics:groups', async () => {
+                    const res = await apiClient.get('/groups/');
+                    return res.data.results || res.data || [];
+                }, TTL.MEDIUM),
+                getCached('analytics:sla', async () => {
+                    const res = await getTeacherSlaDetails().catch(() => ({ data: null }));
+                    return res.data;
+                }, TTL.MEDIUM),
+                getCached('analytics:risks', async () => {
+                    const res = await getTeacherStudentRisks().catch(() => ({ data: null }));
+                    return res.data;
+                }, TTL.MEDIUM),
+                getCached('analytics:warnings', async () => {
+                    const res = await getTeacherEarlyWarnings({ lessons: 5 }).catch(() => ({ data: null }));
+                    return res.data;
+                }, TTL.MEDIUM),
+            ]);
+            setSlaDetails(slaData);
+            setStudentRisks(risksData);
+            setEarlyWarnings(ewsData);
+            // Динамика — не критично, грузим в фоне
+            getCached('analytics:monthly', async () => {
+                const res = await getTeacherMonthlyDynamics({ months: 3 });
+                return res.data;
+            }, TTL.MEDIUM).then(d => setMonthlyDynamics(d)).catch(() => setMonthlyDynamics(null));
+
+            getCached('analytics:weekly', async () => {
+                const res = await getTeacherWeeklyDynamics({ weeks: 8 });
+                return res.data;
+            }, TTL.MEDIUM).then(d => setWeeklyDynamics(d)).catch(() => setWeeklyDynamics(null));
+            const groupsList = groupsData;
             setGroups(groupsList);
             const allStudents = [];
             const seen = new Set();
@@ -153,6 +175,9 @@ const AnalyticsPage = () => {
 
     useEffect(() => {
         loadData();
+        return () => {
+            if (abortRef.current) abortRef.current.abort();
+        };
     }, [loadData]);
 
     useEffect(() => {
@@ -662,10 +687,12 @@ const AnalyticsPage = () => {
                         <IconArrowLeft />
                         <span>К списку учеников</span>
                     </button>
+                    <Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Загрузка аналитики...</div>}>
                     <StudentDetailAnalytics 
                         studentId={selectedStudent.id} 
                         groupId={selectedStudent.groupId}
                     />
+                    </Suspense>
                 </div>
             );
         }
@@ -743,7 +770,9 @@ const AnalyticsPage = () => {
                         <IconArrowLeft />
                         <span>К списку групп</span>
                     </button>
+                    <Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Загрузка аналитики...</div>}>
                     <GroupDetailAnalytics groupId={selectedGroup.id} />
+                    </Suspense>
                 </div>
             );
         }

@@ -40,6 +40,9 @@ const HomeworkPage = () => {
   const [activeTab, setActiveTab] = useState(getActiveTabFromPath());
   const [pendingReviewCount, setPendingReviewCount] = useState(0);
   
+  // Track which tabs have been visited to keep them mounted
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set([getActiveTabFromPath()]));
+  
   // Состояние для редактирования ДЗ
   const [editingHomework, setEditingHomework] = useState(null);
   const [isDuplicating, setIsDuplicating] = useState(false);
@@ -88,6 +91,7 @@ const HomeworkPage = () => {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
+    setVisitedTabs(prev => new Set(prev).add(tab));
     // Сбрасываем редактируемое ДЗ при переходе на другую вкладку
     if (tab !== 'constructor') {
       setEditingHomework(null);
@@ -171,22 +175,36 @@ const HomeworkPage = () => {
         </button>
       </div>
 
-      {/* Контент вкладок */}
+      {/* Контент вкладок — visited tabs stay mounted (hidden via CSS) for instant switching */}
       <div className="homework-content">
         <Suspense fallback={<div className="homework-tab-loading">Загрузка раздела...</div>}>
-          {activeTab === 'constructor' && (
-            <HomeworkConstructor 
-              editingHomework={editingHomework}
-              isDuplicating={isDuplicating}
-              onClearEditing={() => {
-                setEditingHomework(null);
-                setIsDuplicating(false);
-              }}
-            />
+          {visitedTabs.has('constructor') && (
+            <div style={{ display: activeTab === 'constructor' ? 'block' : 'none' }}>
+              <HomeworkConstructor 
+                editingHomework={editingHomework}
+                isDuplicating={isDuplicating}
+                onClearEditing={() => {
+                  setEditingHomework(null);
+                  setIsDuplicating(false);
+                }}
+              />
+            </div>
           )}
-          {activeTab === 'my' && <MyHomeworksList onEditHomework={handleEditHomework} />}
-          {activeTab === 'review' && <SubmissionsList filterStatus="submitted" />}
-          {activeTab === 'graded' && <GradedSubmissionsList />}
+          {visitedTabs.has('my') && (
+            <div style={{ display: activeTab === 'my' ? 'block' : 'none' }}>
+              <MyHomeworksList onEditHomework={handleEditHomework} />
+            </div>
+          )}
+          {visitedTabs.has('review') && (
+            <div style={{ display: activeTab === 'review' ? 'block' : 'none' }}>
+              <SubmissionsList filterStatus="submitted" />
+            </div>
+          )}
+          {visitedTabs.has('graded') && (
+            <div style={{ display: activeTab === 'graded' ? 'block' : 'none' }}>
+              <GradedSubmissionsList />
+            </div>
+          )}
         </Suspense>
       </div>
     </div>

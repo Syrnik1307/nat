@@ -1,10 +1,9 @@
-import React, { Suspense, lazy, useEffect, memo } from 'react';
+import React, { Suspense, lazy, useEffect, memo, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import './App.css';
 import { AuthProvider, useAuth, Protected } from './auth';
 import { NotificationProvider } from './shared/context/NotificationContext';
 import { AuthCheckingSkeleton } from './shared/components';
-import SubmissionReview from './modules/homework-analytics/components/teacher/SubmissionReview';
 
 // Навбары загружаются синхронно - они нужны сразу
 // Мемоизируем их чтобы избежать ререндеров при смене страницы
@@ -107,6 +106,7 @@ const AnalyticsPage = lazy(analyticsImport);
 const HomeworkManage = lazy(() => import('./components/HomeworkManage'));
 const HomeworkPage = lazy(homeworkPageImport);
 const SubmissionsList = lazy(() => import('./modules/homework-analytics/components/teacher/SubmissionsList'));
+const SubmissionReview = lazy(() => import('./modules/homework-analytics/components/teacher/SubmissionReview'));
 const RecurringLessonsManage = lazy(() => import('./components/RecurringLessonsManage'));
 const GroupsManage = lazy(groupsManageImport);
 const StudentAIReports = lazy(() => import('./components/StudentAIReports'));
@@ -175,6 +175,16 @@ const RoleRouter = () => {
   return <div style={{ padding:'2rem' }}>Роль не поддерживается: {role}</div>;
 };
 
+const RootRedirect = () => {
+  const { accessTokenValid, role, loading } = useAuth();
+  if (loading) return <AuthCheckingSkeleton />;
+  if (!accessTokenValid) return <Navigate to="/auth-new" replace />;
+  if (role === 'teacher') return <Navigate to="/home-new" replace />;
+  if (role === 'student') return <Navigate to="/student" replace />;
+  if (role === 'admin') return <Navigate to="/admin-home" replace />;
+  return <Navigate to="/auth-new" replace />;
+};
+
 const AppRoutes = () => {
   const location = useLocation();
   const { accessTokenValid, role } = useAuth();
@@ -193,15 +203,6 @@ const AppRoutes = () => {
     }
   }, [accessTokenValid, role]);
 
-  const RootRedirect = () => {
-    const { accessTokenValid, role, loading } = useAuth();
-    if (loading) return <AuthCheckingSkeleton />;
-    if (!accessTokenValid) return <Navigate to="/auth-new" replace />;
-    if (role === 'teacher') return <Navigate to="/home-new" replace />;
-    if (role === 'student') return <Navigate to="/student" replace />;
-    if (role === 'admin') return <Navigate to="/admin-home" replace />;
-    return <Navigate to="/auth-new" replace />;
-  };
   return (
     <>
       {shouldShowStudentNav && <StudentNavBar />}
