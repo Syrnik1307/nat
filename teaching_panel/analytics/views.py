@@ -302,26 +302,24 @@ class TeacherStatsViewSet(viewsets.ViewSet):
         time_saved_minutes = auto_graded_answers * 2
         
         # 5. % учеников, сдающих ДЗ вовремя
-        # Берём ДЗ с дедлайном за последние 30 дней и считаем долю учеников,
-        # которые не просрочили ни одной сдачи в этом окне.
-        deadline_window_homeworks = teacher_homeworks.filter(
-            deadline__isnull=False,
-            deadline__gte=thirty_days_ago,
-            deadline__lte=now,
-        )
-        deadline_submissions = StudentSubmission.objects.filter(
-            homework__in=deadline_window_homeworks,
-            submitted_at__isnull=False,
-        )
-        student_deadline_stats = list(
-            deadline_submissions.values('student').annotate(
-                total=Count('id'),
-                on_time=Count('id', filter=Q(submitted_at__lte=F('homework__deadline'))),
+        # Считаем по всем ДЗ за 30 дней. Если дедлайн не задан — сдача
+        # автоматически считается «вовремя». Если задан — проверяем
+        # submitted_at <= deadline.
+        all_recent_submissions = submissions_30d.select_related('homework')
+        student_on_time_map = {}  # student_id -> {'total': int, 'on_time': int}
+        for sub in all_recent_submissions:
+            sid = sub.student_id
+            if sid not in student_on_time_map:
+                student_on_time_map[sid] = {'total': 0, 'on_time': 0}
+            student_on_time_map[sid]['total'] += 1
+            if sub.homework.deadline is None or sub.submitted_at <= sub.homework.deadline:
+                student_on_time_map[sid]['on_time'] += 1
+
+        if student_on_time_map:
+            on_time_students = sum(
+                1 for s in student_on_time_map.values() if s['on_time'] == s['total']
             )
-        )
-        if student_deadline_stats:
-            on_time_students = sum(1 for row in student_deadline_stats if row.get('on_time') == row.get('total'))
-            on_time_percent = round((on_time_students / len(student_deadline_stats)) * 100)
+            on_time_percent = round((on_time_students / len(student_on_time_map)) * 100)
         else:
             on_time_percent = 0
         
