@@ -120,8 +120,10 @@
   flex-direction: column;
   gap: var(--spacing-sm, 8px);
   overflow-y: auto;
-  max-height: clamp(420px, 65vh, 860px);
+  max-height: clamp(260px, 40vh, 500px);
   padding: var(--spacing-xs, 4px);
+  /* Prevent picker from pushing sidebar content out of view */
+  flex-shrink: 1;
 }
 
 .student-picker-empty {
@@ -156,9 +158,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-md, 14px) var(--spacing-lg, 16px);
-  min-height: 56px;
-  gap: var(--spacing-md, 12px);
+  padding: var(--spacing-sm, 10px) var(--spacing-md, 14px);
+  min-height: 44px;
+  gap: var(--spacing-sm, 8px);
 }
 
 .sp-group-checkbox {
@@ -269,10 +271,10 @@
 
 /* Содержимое группы (ученики) */
 .sp-group-students {
-  padding: var(--spacing-lg, 16px);
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md, 12px);
+  gap: var(--spacing-sm, 8px);
   border-top: 1px solid var(--color-border-light, #f0f0f0);
   background: linear-gradient(to bottom, #fafafa, #f5f5f5);
 }
@@ -288,9 +290,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-md, 12px);
-  padding: 12px 14px;
-  border-radius: var(--radius-lg, 10px);
+  gap: var(--spacing-sm, 8px);
+  padding: 8px 12px;
+  border-radius: var(--radius-md, 8px);
   background: var(--color-surface, #fff);
   border: 1px solid var(--color-border, #e0e0e0);
 }
@@ -304,13 +306,13 @@
   border: none;
   background: var(--color-primary, #4F46E5);
   color: var(--color-text-on-primary, #fff);
-  padding: 9px 12px;
-  border-radius: 10px;
-  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--duration-fast, 180ms) var(--ease-smooth, ease);
-  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.18);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.18);
   flex-shrink: 0;
 }
 
@@ -435,9 +437,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-md, 12px);
-  padding: 12px 14px;
-  border-radius: var(--radius-lg, 10px);
+  gap: var(--spacing-sm, 8px);
+  padding: 8px 12px;
+  border-radius: var(--radius-md, 8px);
   background: var(--color-surface, #fff);
   border: 1px solid var(--color-border, #e0e0e0);
 }

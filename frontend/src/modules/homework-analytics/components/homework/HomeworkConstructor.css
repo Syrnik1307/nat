@@ -253,11 +253,15 @@
 
 .hc-params-row.hc-params-row--picker {
   align-items: stretch;
+  /* Prevent picker from growing beyond available space */
+  overflow: visible;
+  min-height: 0;
 }
 
 .hc-params-row-fill {
   flex: 1;
   min-width: 0;
+  min-height: 0;
 }
 
 /* Checkbox group styles */
