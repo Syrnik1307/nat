@@ -126,6 +126,30 @@ class Homework(models.Model):
         help_text='Разрешить ученику просматривать свои ответы после сдачи (для КР лучше отключить)'
     )
 
+    # Доработка: связь с оригинальным ДЗ
+    revision_of = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='revisions',
+        help_text='Оригинальное ДЗ, из которого создана доработка'
+    )
+    revision_for_student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='revision_homeworks',
+        limit_choices_to={'role': 'student'},
+        help_text='Ученик, для которого создана доработка'
+    )
+    revision_comment = models.TextField(
+        blank=True,
+        default='',
+        help_text='Комментарий учителя при отправке на доработку'
+    )
+
     class Meta:
         ordering = ['-created_at']
         verbose_name = 'домашнее задание'
@@ -768,7 +792,7 @@ class HomeworkFile(models.Model):
     )
     original_name = models.CharField(max_length=255)
     mime_type = models.CharField(max_length=100)
-    size = models.PositiveIntegerField()
+    size = models.BigIntegerField(help_text='Размер файла в байтах')
     
     # Где хранится файл
     storage = models.CharField(

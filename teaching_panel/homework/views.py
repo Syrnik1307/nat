@@ -15,7 +15,7 @@ from .permissions import IsTeacherHomework, IsStudentSubmission
 
 
 class HomeworkViewSet(viewsets.ModelViewSet):
-    queryset = Homework.objects.all().select_related('teacher', 'lesson', 'lesson__group')
+    queryset = Homework.objects.all().select_related('teacher', 'lesson', 'lesson__group', 'revision_for_student')
     serializer_class = HomeworkSerializer
     permission_classes = [IsTeacherHomework]
 
@@ -314,31 +314,31 @@ class HomeworkViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='upload-document-direct')
     def upload_document_direct(self, request):
         """
-        Прямая загрузка документа на Google Drive.
+        Загрузка файла (любого типа) для прикрепления к вопросу ДЗ.
         
-        Для документов (PDF, DOCX, и т.д.) загрузка идёт сразу на GDrive,
-        чтобы не занимать место на сервере и не создавать нагрузку при
-        массовых загрузках.
+        Файл сохраняется локально для скорости, затем cron job 
+        migrate_homework_files перегружает его на Google Drive и 
+        удаляет локальную копию только после тройной верификации.
+        
+        Принимает ВСЕ типы файлов до 2 ГБ.
         
         POST /api/homework/homeworks/upload-document-direct/
         Body (multipart/form-data):
-            - file: файл документа
+            - file: файл любого типа
         
         Returns:
             {
-                'url': 'https://drive.google.com/...',
+                'url': '/api/homework/file/<file_id>/',
                 'file_id': 'unique_file_id',
-                'file_name': 'document.pdf',
-                'mime_type': 'application/pdf',
+                'file_name': 'filename.ext',
+                'mime_type': 'application/...',
                 'size': 12345
             }
         """
         import logging
         import os
         import uuid
-        import tempfile
         from django.conf import settings as django_settings
-        from django.core.cache import cache
         from .models import HomeworkFile
         
         logger = logging.getLogger(__name__)
@@ -358,137 +358,67 @@ class HomeworkViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        mime_type = uploaded_file.content_type
+        mime_type = uploaded_file.content_type or 'application/octet-stream'
         
-        # Разрешённые типы документов
-        allowed_document_types = [
-            # PDF
-            'application/pdf',
-            # Word
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            # Excel
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            # PowerPoint
-            'application/vnd.ms-powerpoint',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            # Text
-            'text/plain',
-            'text/csv',
-            # Archives (для материалов)
-            'application/zip',
-            'application/x-rar-compressed',
-            'application/x-7z-compressed',
-        ]
+        # Принимаем ВСЕ типы файлов — никаких ограничений по MIME-type
         
-        if mime_type not in allowed_document_types:
-            return Response(
-                {'detail': f'Неподдерживаемый тип документа: {mime_type}. '
-                           f'Разрешены: PDF, Word, Excel, PowerPoint, TXT, CSV, ZIP'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Проверка размера файла (макс 100 MB для документов)
-        max_size = 100 * 1024 * 1024
+        # Проверка размера файла (макс 2 GB)
+        max_size = 2 * 1024 * 1024 * 1024  # 2 GB
         if uploaded_file.size > max_size:
             return Response(
-                {'detail': 'Файл слишком большой. Максимум: 100 MB'},
+                {'detail': 'Файл слишком большой. Максимум: 2 GB'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         try:
-            from schedule.gdrive_utils import get_gdrive_manager
-            
             # Генерируем уникальный ID
             file_id = uuid.uuid4().hex
             
-            # Получаем GDrive manager
-            gdrive = get_gdrive_manager()
+            # Сохраняем локально (быстро для пользователя)
+            homework_media_dir = os.path.join(django_settings.MEDIA_ROOT, 'homework_files')
+            os.makedirs(homework_media_dir, exist_ok=True)
             
-            # Получаем/создаём папку Uploads учителя
-            teacher_folders = gdrive.get_or_create_teacher_folder(request.user)
-            homework_root_folder_id = teacher_folders.get('homework')
-            
-            # Кешируем uploads folder ID
-            uploads_cache_key = f"gdrive_uploads_folder_{request.user.id}"
-            uploads_folder_id = cache.get(uploads_cache_key)
-            
-            if not uploads_folder_id:
-                try:
-                    query = (
-                        f"name='Uploads' and mimeType='application/vnd.google-apps.folder' "
-                        f"and trashed=false and '{homework_root_folder_id}' in parents"
-                    )
-                    results = gdrive.service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
-                    items = results.get('files', [])
-                    if items:
-                        uploads_folder_id = items[0]['id']
-                    else:
-                        uploads_folder_id = gdrive.create_folder('Uploads', homework_root_folder_id)
-                except Exception:
-                    uploads_folder_id = gdrive.create_folder('Uploads', homework_root_folder_id)
-                
-                cache.set(uploads_cache_key, uploads_folder_id, 86400)
-            
-            # Сохраняем во временный файл для загрузки
             ext = os.path.splitext(uploaded_file.name)[1].lower() or '.bin'
-            storage_name = f"hw_{file_id}_{uploaded_file.name}"
+            local_filename = f"{file_id}{ext}"
+            local_path = os.path.join(homework_media_dir, local_filename)
             
-            with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+            with open(local_path, 'wb+') as destination:
                 for chunk in uploaded_file.chunks():
-                    tmp.write(chunk)
-                tmp_path = tmp.name
+                    destination.write(chunk)
             
-            try:
-                # Загружаем на GDrive
-                with open(tmp_path, 'rb') as f:
-                    result = gdrive.upload_file(
-                        f,
-                        storage_name,
-                        folder_id=uploads_folder_id,
-                        mime_type=mime_type,
-                        teacher=request.user
-                    )
-                
-                gdrive_file_id = result['file_id']
-                gdrive_url = gdrive.get_direct_download_link(gdrive_file_id)
-                
-                # Создаём запись в БД (сразу на GDrive)
-                hw_file = HomeworkFile.objects.create(
-                    id=file_id,
-                    teacher=request.user,
-                    original_name=uploaded_file.name,
-                    mime_type=mime_type,
-                    size=uploaded_file.size,
-                    storage=HomeworkFile.STORAGE_GDRIVE,
-                    gdrive_file_id=gdrive_file_id,
-                    gdrive_url=gdrive_url,
-                )
-                
-                logger.info(
-                    f"Teacher {request.user.email} uploaded document directly to GDrive: "
-                    f"{uploaded_file.name} -> {gdrive_file_id} ({uploaded_file.size} bytes)"
-                )
-                
-                return Response({
-                    'status': 'success',
-                    'url': gdrive_url,
-                    'download_url': gdrive_url,
-                    'file_id': file_id,
-                    'gdrive_file_id': gdrive_file_id,
-                    'file_name': uploaded_file.name,
-                    'mime_type': mime_type,
-                    'size': uploaded_file.size
-                }, status=status.HTTP_201_CREATED)
-                
-            finally:
-                # Удаляем временный файл
-                if os.path.exists(tmp_path):
-                    os.remove(tmp_path)
+            # Создаём запись в БД (storage=LOCAL, cron мигрирует на GDrive)
+            hw_file = HomeworkFile.objects.create(
+                id=file_id,
+                teacher=request.user,
+                original_name=uploaded_file.name,
+                mime_type=mime_type,
+                size=uploaded_file.size,
+                storage=HomeworkFile.STORAGE_LOCAL,
+                local_path=local_path,
+            )
+            
+            proxy_url = hw_file.get_proxy_url()
+            
+            logger.info(
+                f"Teacher {request.user.email} uploaded document locally: "
+                f"{uploaded_file.name} -> {file_id} ({uploaded_file.size} bytes)"
+            )
+            
+            # Миграция на GDrive происходит через cron job migrate_homework_files
+            # с тройной верификацией перед удалением локального файла
+            
+            return Response({
+                'status': 'success',
+                'url': proxy_url,
+                'download_url': proxy_url,
+                'file_id': file_id,
+                'file_name': uploaded_file.name,
+                'mime_type': mime_type,
+                'size': uploaded_file.size
+            }, status=status.HTTP_201_CREATED)
         
         except Exception as e:
-            logger.error(f"Failed to upload document to GDrive: {e}", exc_info=True)
+            logger.error(f"Failed to upload document: {e}", exc_info=True)
             return Response(
                 {'detail': f'Ошибка загрузки документа: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -1826,6 +1756,160 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(submission)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated],
+            url_path='send_for_revision')
+    def send_for_revision(self, request, pk=None):
+        """
+        Отправить работу на доработку: создать новое ДЗ из ошибочных вопросов.
+        
+        POST /api/submissions/{id}/send_for_revision/
+        {
+            "question_ids": [1, 3, 7],   // ID вопросов для включения в доработку
+            "comment": "Повторите тему...",  // Комментарий учителя (опционально)
+            "deadline": "2026-03-10T23:59:00Z"  // Дедлайн (опционально)
+        }
+        
+        Создаёт новый Homework с копией выбранных вопросов,
+        назначает конкретному ученику и сразу публикует.
+        """
+        from django.db import transaction
+        import copy as pycopy
+
+        submission = self.get_object()
+        
+        # Проверяем права: только учитель этого задания
+        if request.user != submission.homework.teacher:
+            return Response(
+                {'error': 'Только учитель, создавший задание, может отправлять на доработку'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Проверяем статус: можно отправлять на доработку только submitted/graded
+        if submission.status not in ('submitted', 'graded'):
+            return Response(
+                {'error': 'Работа должна быть сдана или проверена для отправки на доработку'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        question_ids = request.data.get('question_ids', [])
+        comment = request.data.get('comment', '')
+        deadline_raw = request.data.get('deadline')
+        
+        if not question_ids:
+            return Response(
+                {'error': 'Выберите хотя бы один вопрос для доработки'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        homework = submission.homework
+        student = submission.student
+        
+        # Валидируем что вопросы принадлежат этому ДЗ
+        from .models import Question as QModel, Choice as CModel
+        source_questions = QModel.objects.filter(
+            homework=homework, id__in=question_ids
+        ).prefetch_related('choices')
+        
+        if source_questions.count() != len(question_ids):
+            return Response(
+                {'error': 'Некоторые вопросы не принадлежат этому заданию'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Парсим дедлайн
+        from django.utils.dateparse import parse_datetime
+        deadline = parse_datetime(deadline_raw) if deadline_raw else None
+        
+        with transaction.atomic():
+            # Считаем номер доработки для заголовка
+            revision_count = Homework.objects.filter(
+                revision_of=homework,
+                revision_for_student=student
+            ).count()
+            revision_num = revision_count + 1
+            revision_title = f"Доработка #{revision_num}: {homework.title}"
+            
+            # Создаём новое ДЗ
+            new_hw = Homework.objects.create(
+                teacher=homework.teacher,
+                lesson=None,
+                title=revision_title,
+                description=comment or homework.description,
+                status='published',
+                published_at=timezone.now(),
+                deadline=deadline,
+                max_score=sum(q.points for q in source_questions),
+                is_template=False,
+                ai_grading_enabled=homework.ai_grading_enabled,
+                ai_provider=homework.ai_provider,
+                ai_grading_prompt=homework.ai_grading_prompt,
+                allow_view_answers=homework.allow_view_answers,
+                student_instructions=comment if comment else homework.student_instructions,
+                # Связь с оригиналом
+                revision_of=homework,
+                revision_for_student=student,
+                revision_comment=comment,
+            )
+            
+            # Назначаем конкретному ученику
+            new_hw.assigned_students.add(student)
+            
+            # Копируем выбранные вопросы
+            for order_idx, q in enumerate(source_questions.order_by('order')):
+                cfg = pycopy.deepcopy(q.config) if isinstance(q.config, dict) else {}
+                
+                created_q = QModel.objects.create(
+                    homework=new_hw,
+                    prompt=q.prompt,
+                    question_type=q.question_type,
+                    points=q.points,
+                    order=order_idx,
+                    config=cfg,
+                    explanation=q.explanation,
+                )
+                for c in q.choices.all():
+                    CModel.objects.create(
+                        question=created_q,
+                        text=c.text,
+                        is_correct=c.is_correct
+                    )
+        
+        # Telegram-уведомление ученику
+        teacher_name = self._format_display_name(homework.teacher)
+        message = (
+            f"Задание на доработку\n"
+            f"Преподаватель {teacher_name} вернул задание '{homework.title}' на доработку.\n"
+        )
+        if comment:
+            message += f"Комментарий: {comment}\n"
+        message += "Зайдите в Lectio Space, чтобы выполнить задание."
+        send_telegram_notification(student, 'homework_revision', message)
+        
+        # Аудит-лог
+        AuditLog.log(
+            user=request.user,
+            action='send_for_revision',
+            content_object=submission,
+            description=f'Отправлено на доработку: {len(question_ids)} вопросов → ДЗ #{new_hw.id}',
+            metadata={
+                'original_homework_id': homework.id,
+                'new_homework_id': new_hw.id,
+                'student_id': student.id,
+                'question_ids': question_ids,
+                'comment': comment,
+            },
+            request=request
+        )
+        
+        return Response({
+            'status': 'success',
+            'message': f'Доработка создана и отправлена ученику',
+            'new_homework_id': new_hw.id,
+            'new_homework_title': new_hw.title,
+            'questions_count': source_questions.count(),
+            'student_name': self._format_display_name(student),
+        }, status=status.HTTP_201_CREATED)
 
 
 # ============================================================

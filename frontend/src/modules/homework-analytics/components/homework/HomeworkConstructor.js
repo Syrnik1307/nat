@@ -1181,15 +1181,15 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                                 <label className="hc-attachment-upload-btn hc-attachment-document">
                                   <input
                                     type="file"
-                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z"
+                                    accept="*/*"
                                     style={{ display: 'none' }}
                                     onChange={async (e) => {
                                       const file = e.target.files?.[0];
                                       if (!file) return;
                                       
-                                      // Проверка размера (100 MB max)
-                                      if (file.size > 100 * 1024 * 1024) {
-                                        setFeedback({ type: 'error', message: 'Файл слишком большой. Максимум: 100 MB' });
+                                      // Проверка размера (2 GB max)
+                                      if (file.size > 2 * 1024 * 1024 * 1024) {
+                                        setFeedback({ type: 'error', message: 'Файл слишком большой. Максимум: 2 GB' });
                                         e.target.value = '';
                                         return;
                                       }

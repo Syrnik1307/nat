@@ -274,10 +274,14 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# File upload settings — limit in-memory size to prevent OOM
-# Large files (videos) should use streaming/chunked upload, not memory
-DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100MB
+# File upload settings — large files stream to tmp dir, not memory
+# Django automatically uses UploadedFile -> tmp file for files > 2.5MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024 * 1024 + 1024  # ~2GB (slightly over for headers)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5MB — files larger than this go to /tmp (disk)
+# Ensure large files always stream to disk, not memory
+FILE_UPLOAD_HANDLERS = [
+    'django.core.files.uploadhandler.TemporaryFileUploadHandler',
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

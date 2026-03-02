@@ -466,7 +466,14 @@ const MyHomeworksList = ({ onEditHomework }) => {
             <div key={homework.id} className={`myhw-card ${homework.status}`}>
               <div className="myhw-card-header">
                 <h3 className="myhw-title">{homework.title}</h3>
-                {getStatusBadge(homework.status)}
+                <div className="myhw-badges">
+                  {homework.revision_of && (
+                    <span className="myhw-status-badge revision">
+                      Доработка{homework.revision_for_student_name ? ` — ${homework.revision_for_student_name}` : ''}
+                    </span>
+                  )}
+                  {getStatusBadge(homework.status)}
+                </div>
               </div>
 
               {homework.description && (

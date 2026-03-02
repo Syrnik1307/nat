@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiClient } from '../../../../apiService';
+import { apiClient, sendForRevision } from '../../../../apiService';
 import { Notification } from '../../../../shared/components';
 import useNotification from '../../../../shared/hooks/useNotification';
 import './SubmissionReview.css';
@@ -21,6 +21,13 @@ const SubmissionReview = () => {
   const [editValues, setEditValues] = useState({});
   const [saving, setSaving] = useState(false);
   const abortRef = useRef(null);
+
+  // Состояние для модалки "На доработку"
+  const [revisionModalOpen, setRevisionModalOpen] = useState(false);
+  const [revisionSelectedIds, setRevisionSelectedIds] = useState([]);
+  const [revisionComment, setRevisionComment] = useState('');
+  const [revisionDeadline, setRevisionDeadline] = useState('');
+  const [revisionSending, setRevisionSending] = useState(false);
 
   const loadSubmission = useCallback(async () => {
     if (abortRef.current) abortRef.current.abort();
@@ -386,6 +393,59 @@ const SubmissionReview = () => {
     }
   };
 
+  // === Доработка ===
+  const getIncorrectQuestions = () => {
+    if (!submission) return [];
+    const items = getReviewItems();
+    return items.filter(item => {
+      if (!item.hasAnswer) return true; // без ответа = ошибка
+      const score = item.teacher_score ?? item.auto_score;
+      if (score === null || score === undefined) return true; // не проверено
+      return score < item.question_points; // не полный балл
+    });
+  };
+
+  const openRevisionModal = () => {
+    const incorrect = getIncorrectQuestions();
+    setRevisionSelectedIds(incorrect.map(q => q.questionId));
+    setRevisionComment('');
+    setRevisionDeadline('');
+    setRevisionModalOpen(true);
+  };
+
+  const toggleRevisionQuestion = (questionId) => {
+    setRevisionSelectedIds(prev =>
+      prev.includes(questionId)
+        ? prev.filter(id => id !== questionId)
+        : [...prev, questionId]
+    );
+  };
+
+  const handleSendRevision = async () => {
+    if (revisionSelectedIds.length === 0) {
+      showNotification('error', 'Ошибка', 'Выберите хотя бы один вопрос');
+      return;
+    }
+    try {
+      setRevisionSending(true);
+      const payload = {
+        question_ids: revisionSelectedIds,
+        comment: revisionComment,
+      };
+      if (revisionDeadline) {
+        payload.deadline = new Date(revisionDeadline).toISOString();
+      }
+      const res = await sendForRevision(submissionId, payload);
+      showNotification('success', 'Отправлено', res.data.message || 'Доработка отправлена ученику');
+      setRevisionModalOpen(false);
+    } catch (err) {
+      console.error('Ошибка отправки на доработку:', err);
+      showNotification('error', 'Ошибка', err.response?.data?.error || 'Не удалось отправить на доработку');
+    } finally {
+      setRevisionSending(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="sr-container">
@@ -692,14 +752,110 @@ const SubmissionReview = () => {
         <div className="sr-total-score">
           <strong>Итоговый балл:</strong> {submission.total_score || 0}
         </div>
-        <button 
-          className="sr-btn-done" 
-          onClick={completeReview}
-          disabled={saving}
-        >
-          {saving ? 'Завершение...' : 'Завершить проверку'}
-        </button>
+        <div className="sr-footer-actions">
+          {getIncorrectQuestions().length > 0 && (
+            <button
+              className="sr-btn-revision"
+              onClick={openRevisionModal}
+              disabled={saving || revisionSending}
+            >
+              На доработку ({getIncorrectQuestions().length})
+            </button>
+          )}
+          <button 
+            className="sr-btn-done" 
+            onClick={completeReview}
+            disabled={saving}
+          >
+            {saving ? 'Завершение...' : 'Завершить проверку'}
+          </button>
+        </div>
       </div>
+
+      {/* Модальное окно "На доработку" */}
+      {revisionModalOpen && (
+        <div className="sr-revision-overlay" onClick={() => setRevisionModalOpen(false)}>
+          <div className="sr-revision-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="sr-revision-header">
+              <h2>Отправить на доработку</h2>
+              <button className="sr-revision-close" onClick={() => setRevisionModalOpen(false)}>
+                &times;
+              </button>
+            </div>
+
+            <p className="sr-revision-subtitle">
+              Ученик: <strong>{submission.student_name}</strong>
+            </p>
+
+            <div className="sr-revision-questions">
+              <p className="sr-revision-label">Вопросы для доработки:</p>
+              {getReviewItems().map((item) => {
+                const score = item.teacher_score ?? item.auto_score;
+                const isIncorrect = !item.hasAnswer || score === null || score === undefined || score < item.question_points;
+                const isChecked = revisionSelectedIds.includes(item.questionId);
+                return (
+                  <label
+                    key={item.questionId}
+                    className={`sr-revision-question-row ${isIncorrect ? 'is-incorrect' : 'is-correct'}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleRevisionQuestion(item.questionId)}
+                    />
+                    <span className="sr-revision-q-num">#{item.index + 1}</span>
+                    <span className="sr-revision-q-text">
+                      {item.question_text?.substring(0, 80) || '(Без текста)'}
+                      {item.question_text?.length > 80 ? '...' : ''}
+                    </span>
+                    <span className={`sr-revision-q-score ${isIncorrect ? 'bad' : 'good'}`}>
+                      {score ?? '?'}/{item.question_points}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div className="sr-revision-field">
+              <label className="sr-label">Комментарий для ученика:</label>
+              <textarea
+                className="sr-textarea"
+                rows="3"
+                value={revisionComment}
+                onChange={(e) => setRevisionComment(e.target.value)}
+                placeholder="Повторите тему, обратите внимание на..."
+              />
+            </div>
+
+            <div className="sr-revision-field">
+              <label className="sr-label">Дедлайн (опционально):</label>
+              <input
+                type="datetime-local"
+                className="sr-input"
+                value={revisionDeadline}
+                onChange={(e) => setRevisionDeadline(e.target.value)}
+              />
+            </div>
+
+            <div className="sr-revision-footer">
+              <button
+                className="sr-btn-secondary"
+                onClick={() => setRevisionModalOpen(false)}
+                disabled={revisionSending}
+              >
+                Отмена
+              </button>
+              <button
+                className="sr-btn-primary"
+                onClick={handleSendRevision}
+                disabled={revisionSending || revisionSelectedIds.length === 0}
+              >
+                {revisionSending ? 'Отправка...' : `Отправить (${revisionSelectedIds.length})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Notification
         isOpen={notification.isOpen}

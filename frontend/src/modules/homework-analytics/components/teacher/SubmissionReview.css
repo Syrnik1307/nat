@@ -609,3 +609,225 @@
   border: 1px solid var(--border-light, #e2e8f0);
   border-radius: 4px;
 }
+
+/* Footer actions */
+.sr-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Кнопка "На доработку" */
+.sr-btn-revision {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: 2px solid #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all var(--duration-fast, 180ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.sr-btn-revision:hover:not(:disabled) {
+  background: #fef3c7;
+  border-color: #d97706;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+}
+
+.sr-btn-revision:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* === Модалка доработки === */
+.sr-revision-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: srRevisionFadeIn var(--duration-normal, 280ms) var(--ease-smooth, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+@keyframes srRevisionFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sr-revision-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 600px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: srRevisionScaleIn var(--duration-slow, 400ms) var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+
+@keyframes srRevisionScaleIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.sr-revision-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.sr-revision-header h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-main, #1e293b);
+  margin: 0;
+}
+
+.sr-revision-close {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.sr-revision-close:hover {
+  color: var(--text-main, #1e293b);
+}
+
+.sr-revision-subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary, #475569);
+  margin: 0 0 1.25rem;
+}
+
+.sr-revision-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary, #475569);
+  margin: 0 0 0.75rem;
+}
+
+.sr-revision-questions {
+  margin-bottom: 1.5rem;
+}
+
+.sr-revision-question-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 0.375rem;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+}
+
+.sr-revision-question-row:hover {
+  background: var(--bg-secondary, #f8f9fa);
+}
+
+.sr-revision-question-row.is-incorrect {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.sr-revision-question-row.is-correct {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.sr-revision-question-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary, #4F46E5);
+  flex-shrink: 0;
+}
+
+.sr-revision-q-num {
+  font-weight: 700;
+  font-size: 0.8125rem;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+  min-width: 28px;
+}
+
+.sr-revision-q-text {
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--text-main, #1e293b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sr-revision-q-score {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sr-revision-q-score.bad {
+  color: #dc2626;
+}
+
+.sr-revision-q-score.good {
+  color: #16a34a;
+}
+
+.sr-revision-field {
+  margin-bottom: 1rem;
+}
+
+.sr-revision-field .sr-label {
+  display: block;
+  margin-bottom: 0.375rem;
+}
+
+.sr-revision-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-light, #e2e8f0);
+}
+
+/* Responsive: revision modal */
+@media (max-width: 768px) {
+  .sr-revision-modal {
+    width: 95%;
+    padding: 1.25rem;
+    max-height: 90vh;
+  }
+
+  .sr-revision-question-row {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .sr-revision-q-text {
+    white-space: normal;
+  }
+
+  .sr-footer-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .sr-btn-revision,
+  .sr-footer-actions .sr-btn-done {
+    width: 100%;
+  }
+}

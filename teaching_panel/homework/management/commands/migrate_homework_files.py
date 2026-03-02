@@ -224,27 +224,30 @@ class Command(BaseCommand):
 
     def _migrate_file(self, hw_file: HomeworkFile):
         """
-        Мигрировать один файл на GDrive.
+        Мигрировать один файл на GDrive с тройной верификацией.
         
-        Использует retry_on_error декоратор из gdrive_utils для автоматических
-        повторных попыток при таймаутах и сетевых ошибках.
+        Тройное рукопожатие перед удалением локального файла:
+        1. Upload на GDrive → получаем gdrive_file_id
+        2. Запрос метаданных файла с GDrive → проверяем что файл существует и размер совпадает
+        3. Обновляем БД → помечаем storage=gdrive
+        Только после всех 3 шагов удаляем локальный файл.
         """
         from schedule.gdrive_utils import get_gdrive_manager, TimeoutError
         
         if not hw_file.local_path or not os.path.exists(hw_file.local_path):
             raise FileNotFoundError(f'Local file not found: {hw_file.local_path}')
         
+        local_size = os.path.getsize(hw_file.local_path)
+        
         gdrive = get_gdrive_manager()
         
         # Для файлов учителей используем их папку, для студентов - общую папку
         if hw_file.teacher:
-            # get_or_create_teacher_folder уже обёрнут в retry_on_error с таймаутом
             teacher_folders = gdrive.get_or_create_teacher_folder(hw_file.teacher)
             homework_root_folder_id = teacher_folders.get('homework')
             uploads_cache_key = f"gdrive_uploads_folder_{hw_file.teacher.id}"
             folder_name = 'Uploads'
         else:
-            # Студенческие файлы загружаются в общую папку StudentUploads в корне
             uploads_cache_key = "gdrive_student_uploads_folder"
             homework_root_folder_id = gdrive.root_folder_id
             folder_name = 'StudentUploads'
@@ -252,7 +255,6 @@ class Command(BaseCommand):
         uploads_folder_id = cache.get(uploads_cache_key)
         
         if not uploads_folder_id:
-            # Создаём/находим подпапку Uploads или StudentUploads
             try:
                 query = (
                     f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' "
@@ -272,7 +274,7 @@ class Command(BaseCommand):
             
             cache.set(uploads_cache_key, uploads_folder_id, 86400)
         
-        # Загружаем файл на GDrive
+        # === ШАГ 1: Upload на GDrive ===
         storage_name = f"hw_{hw_file.id}_{hw_file.original_name}"
         
         with open(hw_file.local_path, 'rb') as f:
@@ -287,14 +289,50 @@ class Command(BaseCommand):
         gdrive_file_id = result['file_id']
         gdrive_url = gdrive.get_direct_download_link(gdrive_file_id)
         
-        # Обновляем запись в БД
+        # === ШАГ 2: Верификация — файл реально на GDrive и размер совпадает ===
+        try:
+            file_meta = gdrive.service.files().get(
+                fileId=gdrive_file_id,
+                fields='id, name, size, trashed'
+            ).execute()
+            
+            gdrive_size = int(file_meta.get('size', 0))
+            is_trashed = file_meta.get('trashed', False)
+            
+            if is_trashed:
+                raise RuntimeError(
+                    f'GDrive file {gdrive_file_id} is trashed after upload! '
+                    f'NOT deleting local file.'
+                )
+            
+            if gdrive_size != local_size:
+                raise RuntimeError(
+                    f'GDrive file size mismatch! '
+                    f'Local: {local_size}, GDrive: {gdrive_size}. '
+                    f'NOT deleting local file.'
+                )
+            
+            logger.info(
+                f'migrate_homework_files: verified {hw_file.id} on GDrive: '
+                f'size={gdrive_size}, trashed={is_trashed}'
+            )
+        except RuntimeError:
+            raise  # Пробрасываем наши ошибки верификации
+        except Exception as e:
+            # Если не удалось верифицировать — НЕ удаляем локальный файл
+            raise RuntimeError(
+                f'Failed to verify file {gdrive_file_id} on GDrive: {e}. '
+                f'NOT deleting local file.'
+            )
+        
+        # === ШАГ 3: Обновляем БД (файл подтверждён на GDrive) ===
         hw_file.storage = HomeworkFile.STORAGE_GDRIVE
         hw_file.gdrive_file_id = gdrive_file_id
         hw_file.gdrive_url = gdrive_url
         hw_file.migrated_at = timezone.now()
         hw_file.save(update_fields=['storage', 'gdrive_file_id', 'gdrive_url', 'migrated_at'])
         
-        # Удаляем локальный файл
+        # === Только после тройной верификации удаляем локальный файл ===
         hw_file.delete_local_file()
         
-        logger.info(f'migrate_homework_files: {hw_file.id} -> GDrive {gdrive_file_id}')
+        logger.info(f'migrate_homework_files: {hw_file.id} -> GDrive {gdrive_file_id} (verified, local deleted)')

@@ -491,10 +491,10 @@ export const uploadHomeworkDocument = async (file, onProgress) => {
   const formData = new FormData();
   formData.append('file', file);
   
-  // Документы загружаются напрямую на GDrive (дольше, но не нагружает сервер)
+  // Файлы сохраняются на сервере, затем cron мигрирует на GDrive
   return apiClient.post('homework/upload-document-direct/', formData, {
     headers: { 'Content-Type': undefined },
-    timeout: 300000, // 5 минут для больших документов
+    timeout: 1800000, // 30 минут для файлов до 2 ГБ
     onUploadProgress: onProgress ? (progressEvent) => {
       const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
       onProgress(percent);
@@ -571,6 +571,7 @@ export const getZoomPoolStats = () => apiClient.get('zoom-pool/zoom-accounts/sta
 // =============== SUBMISSIONS ===============
 
 export const gradeSubmission = (submissionId, grade, feedback = '') => apiClient.post(`submissions/${submissionId}/grade/`, { grade, feedback });
+export const sendForRevision = (submissionId, data) => apiClient.post(`submissions/${submissionId}/send_for_revision/`, data);
 
 // =============== BILLING / SUBSCRIPTIONS ===============
 export const getSubscription = () => apiClient.get('subscription/');

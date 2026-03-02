@@ -146,6 +146,8 @@ class HomeworkSerializer(serializers.ModelSerializer):
     assigned_groups = serializers.SerializerMethodField(read_only=True)
     group_assignments = serializers.SerializerMethodField(read_only=True)
     assigned_students = serializers.SerializerMethodField(read_only=True)
+    # Доработка: связь с оригиналом
+    revision_for_student_name = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Homework
@@ -162,6 +164,8 @@ class HomeworkSerializer(serializers.ModelSerializer):
             'ai_grading_enabled', 'ai_provider', 'ai_grading_prompt',
             # Student-facing settings
             'student_instructions', 'allow_view_answers',
+            # Revision fields
+            'revision_of', 'revision_for_student', 'revision_for_student_name', 'revision_comment',
         ]
         read_only_fields = ['teacher']
 
@@ -170,6 +174,12 @@ class HomeworkSerializer(serializers.ModelSerializer):
 
     def get_submissions_count(self, obj):
         return obj.submissions.count()
+
+    def get_revision_for_student_name(self, obj):
+        if obj.revision_for_student:
+            name = f"{obj.revision_for_student.first_name} {obj.revision_for_student.last_name}".strip()
+            return name or obj.revision_for_student.email
+        return None
 
     def get_assigned_groups(self, obj):
         """Возвращает список групп для переназначения (обратная совместимость)."""
