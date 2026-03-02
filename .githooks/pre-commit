@@ -1,13 +1,22 @@
 #!/bin/sh
 # Guard: block commits on wrong branch + ban tenant code
-REQUIRED_BRANCH="new-prod"
+# Allowed branches: new-prod (production), staging (staging environment)
+ALLOWED_BRANCHES="new-prod staging"
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
 
-if [ "$CURRENT_BRANCH" != "$REQUIRED_BRANCH" ]; then
+IS_ALLOWED=0
+for branch in $ALLOWED_BRANCHES; do
+    if [ "$CURRENT_BRANCH" = "$branch" ]; then
+        IS_ALLOWED=1
+        break
+    fi
+done
+
+if [ "$IS_ALLOWED" = "0" ]; then
     echo "" >&2
-    echo "BLOCKED: Commits only allowed on $REQUIRED_BRANCH branch!" >&2
+    echo "BLOCKED: Commits only allowed on: $ALLOWED_BRANCHES" >&2
     echo "Current branch: $CURRENT_BRANCH" >&2
-    echo "To switch: git checkout $REQUIRED_BRANCH" >&2
+    echo "To switch: git checkout new-prod" >&2
     echo "To bypass: git commit --no-verify" >&2
     echo "" >&2
     exit 1

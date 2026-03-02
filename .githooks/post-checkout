@@ -1,14 +1,16 @@
 #!/bin/sh
-# Guard: warn when leaving new-prod branch
-REQUIRED_BRANCH="new-prod"
+# Guard: warn when leaving allowed branches (new-prod, staging)
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
-if [ "$CURRENT_BRANCH" != "$REQUIRED_BRANCH" ] && [ -n "$CURRENT_BRANCH" ]; then
+if [ "$CURRENT_BRANCH" != "new-prod" ] && [ "$CURRENT_BRANCH" != "staging" ] && [ -n "$CURRENT_BRANCH" ]; then
     echo "" >&2
     echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2
-    echo "!!! WARNING: You LEFT the $REQUIRED_BRANCH branch !!!" >&2
-    echo "!!! Current branch: $CURRENT_BRANCH" >&2
-    echo "!!! Production work MUST be on: $REQUIRED_BRANCH" >&2
-    echo "!!! Run: git checkout $REQUIRED_BRANCH" >&2
+    echo "!!! WARNING: You are on branch: $CURRENT_BRANCH" >&2
+    echo "!!! Allowed branches: new-prod (prod), staging (stage)" >&2
+    echo "!!! Run: git checkout new-prod  OR  git checkout staging" >&2
     echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2
+    echo "" >&2
+elif [ "$CURRENT_BRANCH" = "staging" ]; then
+    echo "" >&2
+    echo "[info] On STAGING branch — changes here will NOT reach production" >&2
     echo "" >&2
 fi
