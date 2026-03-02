@@ -171,6 +171,15 @@ if (-not $DryRun) {
 }
 
 # ===================================================================
+# ШАГ 2.5: Снятие immutable-флагов (чтобы git reset мог обновить файлы)
+# ===================================================================
+Write-Host "  Снимаем immutable-флаги для деплоя..." -ForegroundColor Gray
+if (-not $DryRun) {
+    ssh tp "sudo chattr -i /var/www/teaching_panel/frontend/build/index.html /var/www/teaching_panel/frontend/build/favicon.svg /var/www/teaching_panel/frontend/src/App.js /var/www/teaching_panel/teaching_panel/teaching_panel/settings.py 2>/dev/null || true"
+    Write-OK "Immutable-флаги сняты"
+}
+
+# ===================================================================
 # ШАГ 3: Git - получить изменения (БЕЗ применения)
 # ===================================================================
 Write-Step 3 9 "Проверка git изменений..."
@@ -352,10 +361,10 @@ if (-not $DryRun) {
     # Ждём старта
     Start-Sleep -Seconds 5
     
-    $status = ssh tp "systemctl is-active teaching-panel"
+    $status = ssh tp "systemctl is-active teaching_panel"
     if ($status -ne "active") {
         Write-Fail "Сервис не запустился!"
-        ssh tp "sudo journalctl -u teaching-panel -n 30 --no-pager" | ForEach-Object { Write-Host $_ -ForegroundColor Red }
+        ssh tp "sudo journalctl -u teaching_panel -n 30 --no-pager" | ForEach-Object { Write-Host $_ -ForegroundColor Red }
         Rollback-Changes
         exit 1
     }
@@ -391,6 +400,15 @@ if (-not $DryRun) {
     
 } else {
     Write-Host "  [DRY-RUN] Smoke tests были бы выполнены" -ForegroundColor Gray
+}
+
+# ===================================================================
+# ШАГ 10: Восстановление immutable-флагов
+# ===================================================================
+Write-Host "  Восстанавливаем immutable-флаги..." -ForegroundColor Gray
+if (-not $DryRun) {
+    ssh tp "sudo chattr +i /var/www/teaching_panel/frontend/build/index.html /var/www/teaching_panel/frontend/build/favicon.svg /var/www/teaching_panel/frontend/src/App.js /var/www/teaching_panel/teaching_panel/teaching_panel/settings.py 2>/dev/null || true"
+    Write-OK "Immutable-флаги восстановлены (deploy_monitor не будет спамить)"
 }
 
 # ===================================================================

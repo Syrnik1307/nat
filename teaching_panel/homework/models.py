@@ -68,6 +68,7 @@ class Homework(models.Model):
         ('none', 'Без AI'),
         ('deepseek', 'DeepSeek'),
         ('openai', 'OpenAI'),
+        ('gemini', 'Google Gemini'),
     )
     
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='homeworks', limit_choices_to={'role': 'teacher'})
@@ -112,7 +113,7 @@ class Homework(models.Model):
     
     # AI проверка
     ai_grading_enabled = models.BooleanField(default=False, help_text='Включить AI проверку текстовых ответов')
-    ai_provider = models.CharField(max_length=20, choices=AI_PROVIDER_CHOICES, default='deepseek', help_text='Провайдер AI для проверки')
+    ai_provider = models.CharField(max_length=20, choices=AI_PROVIDER_CHOICES, default='gemini', help_text='Провайдер AI для проверки')
     ai_grading_prompt = models.TextField(blank=True, help_text='Дополнительные инструкции для AI при проверке (контекст темы, критерии оценки)')
     
     # Настройки отображения для ученика
@@ -170,6 +171,7 @@ class Question(models.Model):
         ('FILL_BLANKS', 'Заполнение пропусков'),
         ('HOTSPOT', 'Хотспот на изображении'),
         ('CODE', 'Программирование'),
+        ('FILE_UPLOAD', 'Загрузка файла'),
     )
     homework = models.ForeignKey(Homework, on_delete=models.CASCADE, related_name='questions')
     prompt = models.TextField(blank=True, default='')  # blank allowed for image-only questions
@@ -205,11 +207,42 @@ class Choice(models.Model):
         return self.text
 
 
+class QuestionAttachment(models.Model):
+    """Вложение (файл) к вопросу, хранится на Google Drive."""
+    question = models.ForeignKey(
+        Question,
+        on_delete=models.CASCADE,
+        related_name='attachments',
+        verbose_name='Вопрос',
+    )
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='uploaded_attachments',
+        verbose_name='Загрузил',
+    )
+    original_name = models.CharField(max_length=255, verbose_name='Имя файла')
+    mime_type = models.CharField(max_length=100, verbose_name='MIME-тип')
+    size = models.PositiveIntegerField(verbose_name='Размер (байт)')
+    gdrive_file_id = models.CharField(max_length=100, db_index=True, verbose_name='Google Drive File ID')
+    gdrive_url = models.URLField(max_length=500, blank=True, verbose_name='Google Drive URL')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата загрузки')
+
+    class Meta:
+        verbose_name = 'вложение вопроса'
+        verbose_name_plural = 'вложения вопросов'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.original_name} ({self.question})"
+
+
 class StudentSubmission(models.Model):
     STATUS_CHOICES = (
         ('in_progress', 'В процессе'),
         ('submitted', 'Отправлено'),
         ('graded', 'Проверено'),
+        ('revision', 'На доработке'),
     )
     homework = models.ForeignKey(Homework, on_delete=models.CASCADE, related_name='submissions')
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='homework_submissions', limit_choices_to={'role': 'student'})
@@ -219,6 +252,15 @@ class StudentSubmission(models.Model):
         default=dict,
         blank=True,
         help_text='Общий комментарий учителя к работе: {"text": "...", "attachments": [...]}'
+    )
+    revision_comment = models.TextField(
+        blank=True,
+        default='',
+        help_text='Комментарий учителя при отправке на доработку'
+    )
+    revision_count = models.IntegerField(
+        default=0,
+        help_text='Сколько раз работа отправлялась на доработку'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
@@ -276,6 +318,7 @@ class Answer(models.Model):
     teacher_score = models.IntegerField(null=True, blank=True, help_text='Оценка учителя (переопределяет auto_score)')
     teacher_feedback = models.TextField(blank=True, help_text='Комментарий учителя')
     needs_manual_review = models.BooleanField(default=False)
+    needs_revision = models.BooleanField(default=False, help_text='Отмечен учителем для доработки (балл < макс)')
     
     # Прикреплённые файлы к ответу (фото, документы)
     attachments = models.JSONField(
