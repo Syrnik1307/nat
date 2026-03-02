@@ -166,11 +166,11 @@ class AdminGrowthOverviewViewTests(APITestCase):
         self.assertIn('periods', response.data)
         self.assertIsInstance(response.data['periods'], list)
         self.assertGreaterEqual(len(response.data['periods']), 3)
-        self.assertIn('top_sources', response.data)
+        self.assertIn('sources', response.data)
 
         day = next((p for p in response.data['periods'] if p['key'] == 'day'), None)
         self.assertIsNotNone(day)
-        self.assertGreaterEqual(day['registrations_teachers'], 1)
+        self.assertGreaterEqual(day['registrations'], 1)
         self.assertGreaterEqual(day['payments_succeeded'], 1)
         self.assertGreaterEqual(day['revenue'], 0)
 

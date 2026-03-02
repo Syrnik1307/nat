@@ -115,9 +115,7 @@
   letter-spacing: 0.01em;
 }
 
-.hero-badge-icon {
-  font-size: 1rem;
-}
+/* hero-badge-icon removed — badges no longer use emoji icons */
 
 .recording-player-hero h2 {
   margin: 0;
@@ -273,7 +271,10 @@
 }
 
 .placeholder-icon {
-  font-size: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
 }
 
 /* Google Drive placeholder */

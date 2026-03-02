@@ -534,28 +534,36 @@ function TeacherRecordingsPage() {
       {/* Статистика */}
       <div className="teacher-stats-grid" data-tour="rec-stats">
         <div className="teacher-stat-card">
-          <div className="teacher-stat-icon"></div>
+          <div className="teacher-stat-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
+          </div>
           <div className="teacher-stat-info">
             <div className="teacher-stat-value">{stats.total + activeUploadsCount}</div>
             <div className="teacher-stat-label">Всего записей</div>
           </div>
         </div>
         <div className="teacher-stat-card teacher-stat-success">
-          <div className="teacher-stat-icon"></div>
+          <div className="teacher-stat-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+          </div>
           <div className="teacher-stat-info">
             <div className="teacher-stat-value">{stats.ready}</div>
             <div className="teacher-stat-label">Готово</div>
           </div>
         </div>
         <div className="teacher-stat-card teacher-stat-warning">
-          <div className="teacher-stat-icon"></div>
+          <div className="teacher-stat-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+          </div>
           <div className="teacher-stat-info">
             <div className="teacher-stat-value">{stats.processing + activeUploadsCount}</div>
             <div className="teacher-stat-label">Обрабатывается</div>
           </div>
         </div>
         <div className="teacher-stat-card teacher-stat-danger">
-          <div className="teacher-stat-icon"></div>
+          <div className="teacher-stat-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+          </div>
           <div className="teacher-stat-info">
             <div className="teacher-stat-value">{stats.failed}</div>
             <div className="teacher-stat-label">Ошибка</div>
@@ -615,7 +623,9 @@ function TeacherRecordingsPage() {
         </div>
       ) : filteredRecordings.length === 0 ? (
         <div className="teacher-recordings-empty">
-          <div className="teacher-empty-icon"></div>
+          <div className="teacher-empty-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
+          </div>
           <h3>Записей не найдено</h3>
           <p>
             {recordings.length === 0
@@ -716,7 +726,9 @@ function TeacherRecordingsPage() {
                 >
                   {uploadForm.file ? (
                     <div className="teacher-file-preview">
-                      <div className="teacher-file-icon"></div>
+                      <div className="teacher-file-icon">
+                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
+                    </div>
                       <div className="teacher-file-info">
                         <div className="teacher-file-name">{uploadForm.file.name}</div>
                         <div className="teacher-file-size">
@@ -728,12 +740,14 @@ function TeacherRecordingsPage() {
                         className="teacher-file-remove"
                         onClick={() => setUploadForm({...uploadForm, file: null})}
                       >
-                        ✕
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                       </button>
                     </div>
                   ) : (
                     <>
-                      <div className="teacher-dropzone-icon"></div>
+                      <div className="teacher-dropzone-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                      </div>
                       <p className="teacher-dropzone-text">
                         Перетащите видео сюда или
                       </p>

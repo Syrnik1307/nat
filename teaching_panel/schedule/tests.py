@@ -1,7 +1,7 @@
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APITestCase
 from django.urls import reverse
 from datetime import timedelta
 from unittest.mock import patch
@@ -158,8 +158,8 @@ class LessonEndAndArchiveTests(TestCase):
 		self.assertEqual(len(data), 1)
 
 
-@override_settings(ZOOM_ACCOUNT_ID='test_acc_id', ZOOM_CLIENT_ID='test_client_id', ZOOM_CLIENT_SECRET='test_secret')
-class LessonStartNewAPITests(TestCase):
+@override_settings(ZOOM_ACCOUNT_ID='test_acc_id', ZOOM_CLIENT_ID='test_client_id', ZOOM_CLIENT_SECRET='test_secret', ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'])
+class LessonStartNewAPITests(APITestCase):
 	def setUp(self):
 		self.User = get_user_model()
 		self.teacher = self.User.objects.create_user(email='teacher@example.com', password='Pass1234', role='teacher')
@@ -188,21 +188,28 @@ class LessonStartNewAPITests(TestCase):
 		self.assertEqual(resp.status_code, 400)
 		self.assertIn('15 минут', resp.data['detail'])
 
-	def test_start_new_503_without_accounts(self):
-		# Тест: когда нет ZoomAccount в пуле, возвращаем 503
+	def test_start_new_400_without_zoom_credentials(self):
+		# Тест: когда у учителя нет Zoom credentials, возвращаем 400
 		self.lesson.start_time = timezone.now() + timedelta(minutes=5)
 		self.lesson.save()
-		# Убедимся что нет аккаунтов в пуле
-		ZoomAccount.objects.all().delete()
+		# Убедимся что у учителя нет Zoom credentials
+		self.teacher.zoom_account_id = ''
+		self.teacher.zoom_client_id = ''
+		self.teacher.zoom_client_secret = ''
+		self.teacher.save()
 		url = reverse('schedule-lesson-start-new', args=[self.lesson.id])
 		resp = self.client.post(url, {})
-		self.assertEqual(resp.status_code, 503)
-		self.assertIn('заняты', resp.data['detail'])
+		self.assertEqual(resp.status_code, 400)
+		self.assertEqual(resp.data['code'], 'no_zoom_configured')
 
-	def test_start_new_success_with_account(self):
+	def test_start_new_success_with_credentials(self):
 		self.lesson.start_time = timezone.now() + timedelta(minutes=5)
 		self.lesson.save()
-		ZoomAccount.objects.create(email='zoom@test.com', api_key='k', api_secret='s', max_concurrent_meetings=1)
+		# Настраиваем личные Zoom credentials у учителя
+		self.teacher.zoom_account_id = 'test_acc_id'
+		self.teacher.zoom_client_id = 'test_client_id'
+		self.teacher.zoom_client_secret = 'test_secret'
+		self.teacher.save()
 		url = reverse('schedule-lesson-start-new', args=[self.lesson.id])
 		with patch('schedule.zoom_client.ZoomAPIClient.create_meeting') as mocked:
 			mocked.return_value = {
@@ -215,11 +222,8 @@ class LessonStartNewAPITests(TestCase):
 		self.assertEqual(resp.status_code, 200)
 		self.assertIn('zoom_join_url', resp.data)
 		self.lesson.refresh_from_db()
-		self.assertIsNotNone(self.lesson.zoom_account)
-		account = self.lesson.zoom_account
-		# current_meetings может синхронизироваться отдельной метрикой и не обязан
-		# быть равен 1 прямо в момент ответа.
-		self.assertIsNotNone(account.id)
+		# Персональные credentials — zoom_account не назначается из пула
+		self.assertIsNone(self.lesson.zoom_account)
 
 
 class LessonJoinAPITests(TestCase):

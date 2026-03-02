@@ -16,7 +16,10 @@
 			"label": "git: status",
 			"type": "shell",
 			"command": "git",
-			"args": ["status", "--porcelain"],
+			"args": [
+				"status",
+				"--porcelain"
+			],
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "build"
@@ -25,7 +28,10 @@
 			"label": "git: diff names",
 			"type": "shell",
 			"command": "git",
-			"args": ["diff", "--name-only"],
+			"args": [
+				"diff",
+				"--name-only"
+			],
 			"isBackground": false,
 			"problemMatcher": []
 		},
@@ -33,7 +39,10 @@
 			"label": "prod: ssh check",
 			"type": "shell",
 			"command": "ssh",
-			"args": ["tp", "echo SSH_OK"],
+			"args": [
+				"tp",
+				"echo SSH_OK"
+			],
 			"isBackground": false,
 			"problemMatcher": []
 		},
@@ -52,7 +61,10 @@
 			"label": "prod: services active",
 			"type": "shell",
 			"command": "ssh",
-			"args": ["tp", "sudo systemctl is-active teaching_panel nginx"],
+			"args": [
+				"tp",
+				"sudo systemctl is-active teaching_panel nginx"
+			],
 			"isBackground": false,
 			"problemMatcher": []
 		},
@@ -60,7 +72,10 @@
 			"label": "prod: check frontend build exists",
 			"type": "shell",
 			"command": "ssh",
-			"args": ["tp", "ls -la /var/www/teaching_panel/frontend/build | head -n 20"],
+			"args": [
+				"tp",
+				"ls -la /var/www/teaching_panel/frontend/build | head -n 20"
+			],
 			"isBackground": false,
 			"problemMatcher": []
 		},
@@ -68,7 +83,10 @@
 			"label": "prod: check app logs",
 			"type": "shell",
 			"command": "ssh",
-			"args": ["tp", "sudo tail -n 50 /var/log/teaching_panel/error.log"],
+			"args": [
+				"tp",
+				"sudo tail -n 50 /var/log/teaching_panel/error.log"
+			],
 			"isBackground": false,
 			"problemMatcher": []
 		},
@@ -76,7 +94,10 @@
 			"label": "prod: check permissions",
 			"type": "shell",
 			"command": "ssh",
-			"args": ["tp", "ls -la /var/www/teaching_panel/teaching_panel"],
+			"args": [
+				"tp",
+				"ls -la /var/www/teaching_panel/teaching_panel"
+			],
 			"isBackground": false,
 			"problemMatcher": []
 		},
@@ -84,7 +105,10 @@
 			"label": "prod: check urls.py",
 			"type": "shell",
 			"command": "ssh",
-			"args": ["tp", "cat /var/www/teaching_panel/teaching_panel/teaching_panel/urls.py"],
+			"args": [
+				"tp",
+				"cat /var/www/teaching_panel/teaching_panel/teaching_panel/urls.py"
+			],
 			"isBackground": false,
 			"problemMatcher": []
 		},
@@ -92,7 +116,10 @@
 			"label": "prod: check apps.py",
 			"type": "shell",
 			"command": "ssh",
-			"args": ["tp", "cat /var/www/teaching_panel/teaching_panel/schedule/apps.py"],
+			"args": [
+				"tp",
+				"cat /var/www/teaching_panel/teaching_panel/schedule/apps.py"
+			],
 			"isBackground": false,
 			"problemMatcher": []
 		},
@@ -100,7 +127,10 @@
 			"label": "prod: cat nginx config",
 			"type": "shell",
 			"command": "ssh",
-			"args": ["tp", "cat /etc/nginx/sites-enabled/lectiospace.ru"],
+			"args": [
+				"tp",
+				"cat /etc/nginx/sites-enabled/lectiospace.ru"
+			],
 			"isBackground": false,
 			"problemMatcher": []
 		},
@@ -108,7 +138,10 @@
 			"label": "prod: check smoke logs",
 			"type": "shell",
 			"command": "ssh",
-			"args": ["tp", "tail -50 /var/log/smoke_check.log"],
+			"args": [
+				"tp",
+				"tail -50 /var/log/smoke_check.log"
+			],
 			"isBackground": false,
 			"problemMatcher": []
 		},
@@ -116,7 +149,10 @@
 			"label": "prod: grep stream debug logs",
 			"type": "shell",
 			"command": "ssh",
-			"args": ["tp", "sudo tail -n 100 /var/log/teaching_panel/error.log | grep STREAM_DEBUG"],
+			"args": [
+				"tp",
+				"sudo tail -n 100 /var/log/teaching_panel/error.log | grep STREAM_DEBUG"
+			],
 			"isBackground": false,
 			"problemMatcher": []
 		},
@@ -244,6 +280,17 @@
 			"label": "reset memory alert state",
 			"type": "shell",
 			"command": "ssh tp 'sudo rm -f /var/run/lectio-monitor/memory_alert_state && echo State reset'"
+		},
+		{
+			"label": "frontend: build",
+			"type": "shell",
+			"command": "cd C:\\Users\\User\\Desktop\\nat\\frontend && npm run build",
+			"isBackground": false
+		},
+		{
+			"label": "build-no-ci",
+			"type": "shell",
+			"command": "cmd /c \"set CI=false && cd /d c:\\Users\\User\\Desktop\\nat\\frontend && npm run build\""
 		}
 	]
 }

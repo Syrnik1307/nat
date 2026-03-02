@@ -284,6 +284,14 @@ const HomeworkAnswersView = () => {
                 )}
               </div>
 
+              {/* Правильный ответ (показывается после проверки, если ответ неправильный) */}
+              {currentQuestion.correct_answer && answerInfo?.isCorrect === false && (
+                <div className="hav-correct-answer-block">
+                  <div className="hav-correct-answer-label">Правильный ответ:</div>
+                  <div className="hav-correct-answer-text">{currentQuestion.correct_answer}</div>
+                </div>
+              )}
+
               {/* Прикреплённые файлы к ответу */}
               {currentAnswer?.attachments?.length > 0 && (
                 <div className="hav-attachments">

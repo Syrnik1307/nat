@@ -98,8 +98,10 @@
 }
 
 .teacher-stat-icon {
-  font-size: 2.5rem;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary, #6366f1);
 }
 
 .teacher-stat-info {
@@ -124,12 +126,24 @@
   color: var(--color-primary);
 }
 
+.teacher-stat-success .teacher-stat-icon {
+  color: var(--color-primary, #6366f1);
+}
+
 .teacher-stat-warning .teacher-stat-value {
   color: var(--color-error);
 }
 
+.teacher-stat-warning .teacher-stat-icon {
+  color: #f59e0b;
+}
+
 .teacher-stat-danger .teacher-stat-value {
   color: var(--color-error);
+}
+
+.teacher-stat-danger .teacher-stat-icon {
+  color: var(--color-error, #ef4444);
 }
 
 /* Фильтры */
@@ -307,9 +321,12 @@
 }
 
 .teacher-empty-icon {
-  font-size: 5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 1rem;
   opacity: 0.5;
+  color: var(--text-muted, #94a3b8);
 }
 
 .teacher-recordings-empty h3 {
@@ -378,7 +395,12 @@
   }
 
   .teacher-stat-icon {
-    font-size: 2rem;
+    /* SVG scales via width/height attrs */
+  }
+
+  .teacher-stat-icon svg {
+    width: 24px;
+    height: 24px;
   }
 
   .teacher-stat-value {
@@ -438,8 +460,9 @@
     padding: 2rem 1rem;
   }
 
-  .teacher-dropzone-icon {
-    font-size: 2.5rem;
+  .teacher-dropzone-icon svg {
+    width: 36px;
+    height: 36px;
   }
 
   .teacher-upload-actions {
@@ -512,8 +535,9 @@
     font-size: 0.8rem;
   }
 
-  .teacher-empty-icon {
-    font-size: 3rem;
+  .teacher-empty-icon svg {
+    width: 48px;
+    height: 48px;
   }
 
   .teacher-recordings-empty h3 {
@@ -794,9 +818,12 @@
 }
 
 .teacher-dropzone-icon {
-  font-size: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 1rem;
   opacity: 0.6;
+  color: var(--text-muted, #94a3b8);
 }
 
 .teacher-dropzone-text {
@@ -848,7 +875,10 @@
 }
 
 .teacher-file-icon {
-  font-size: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary, #6366f1);
 }
 
 .teacher-file-info {

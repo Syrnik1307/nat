@@ -123,3 +123,6 @@ test_jwt.json
 # Temp debug files
 _local_js.txt
 _prod_js.txt
+build_log.txt
+build_output.txt
+test_output.txt

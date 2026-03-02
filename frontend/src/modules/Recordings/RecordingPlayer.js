@@ -67,9 +67,9 @@ function RecordingPlayer({ recording, onClose }) {
       : null;
 
   const chips = [
-    groupName && { icon: '', text: groupName },
-    recording.duration_display && { icon: '', text: `${recording.duration_display} мин` },
-    availableDaysText && { icon: '', text: `Еще ${availableDaysText}` }
+    groupName && { text: groupName },
+    recording.duration_display && { text: `${recording.duration_display} мин` },
+    availableDaysText && { text: `Еще ${availableDaysText}` }
   ].filter(Boolean);
 
   const heroMeta = [
@@ -235,7 +235,6 @@ function RecordingPlayer({ recording, onClose }) {
             <div className="hero-badges">
               {chips.map((chip) => (
                 <span key={chip.text} className="hero-badge">
-                  <span className="hero-badge-icon">{chip.icon}</span>
                   {chip.text}
                 </span>
               ))}
@@ -301,7 +300,10 @@ function RecordingPlayer({ recording, onClose }) {
                 </>
               ) : (
                 <div className="player-video-placeholder">
-                  <span className="placeholder-icon"></span>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="23 7 16 12 23 17 23 7" />
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                  </svg>
                   <p>Видео недоступно</p>
                 </div>
               )}

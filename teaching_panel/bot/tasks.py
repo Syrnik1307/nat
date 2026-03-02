@@ -141,7 +141,7 @@ def cleanup_old_broadcast_logs():
     cutoff = timezone.now() - timedelta(days=30)
     
     # Удаляем старые логи
-    deleted_logs = BroadcastLog.objects.filter(created_at__lt=cutoff).delete()
+    deleted_logs = BroadcastLog.objects.filter(started_at__lt=cutoff).delete()
     
     # Удаляем старые rate limit записи (hour_key - строка формата YYYY-MM-DD-HH)
     rate_cutoff = (timezone.now() - timedelta(hours=25)).strftime('%Y-%m-%d-%H')

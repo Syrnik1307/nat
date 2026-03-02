@@ -68,7 +68,9 @@
 }
 
 .error-icon {
-  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 /* Фильтры и поиск */
