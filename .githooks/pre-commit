@@ -1,0 +1,25 @@
+#!/bin/sh
+# Guard: block commits on wrong branch + ban tenant code
+REQUIRED_BRANCH="new-prod"
+CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
+
+if [ "$CURRENT_BRANCH" != "$REQUIRED_BRANCH" ]; then
+    echo "" >&2
+    echo "BLOCKED: Commits only allowed on $REQUIRED_BRANCH branch!" >&2
+    echo "Current branch: $CURRENT_BRANCH" >&2
+    echo "To switch: git checkout $REQUIRED_BRANCH" >&2
+    echo "To bypass: git commit --no-verify" >&2
+    echo "" >&2
+    exit 1
+fi
+
+# Ban tenant code in staged files
+STAGED=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null)
+if [ -n "$STAGED" ]; then
+    TENANT_FILES=$(echo "$STAGED" | grep -i "tenant" 2>/dev/null || true)
+    if [ -n "$TENANT_FILES" ]; then
+        echo "BLOCKED: Files with tenant in name!" >&2
+        echo "$TENANT_FILES" >&2
+        exit 1
+    fi
+fi

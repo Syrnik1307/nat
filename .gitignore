@@ -87,3 +87,39 @@ prod_join_temp_lesson_script_preview.sh
 prod_join_smoke_output.txt
 prod_*_smoke_output_*.txt
 prod_*_output_*.txt
+
+# Temp debug/check scripts (keep root clean)
+check_*.py
+check_*.sh
+check_*.bat
+check_*.ps1
+debug_*.py
+debug_*.sh
+fix_*.py
+fix_*.sh
+test_*.py
+test_*.sh
+test_*.ps1
+tmp_*.py
+tmp_*.sh
+tmp_*.conf
+remote*.sh
+remotecmd*.sh
+run_debug*.sh
+deploy_output_*.txt
+zoom_check_output*.txt
+*_result.txt
+*_result2.txt
+*_output.txt
+
+# One-off artifacts
+*.tar.gz
+ngrok.exe
+*.mp3
+tempCodeRunnerFile.*
+token_*.json
+test_jwt.json
+*_headers.txt
+# Temp debug files
+_local_js.txt
+_prod_js.txt

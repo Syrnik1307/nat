@@ -1436,6 +1436,20 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             answers_payload = request.data.get('answers')
             if answers_payload:
                 self._upsert_answers(submission, answers_payload)
+            else:
+                # Даже без нового payload — пере-оцениваем все ответы,
+                # которые ещё не были автоматически проверены.
+                # Это защита от случаев, когда ответы были созданы обходным
+                # путём (send_for_revision, direct DB) без вызова evaluate().
+                homework = submission.homework
+                use_ai = homework.ai_grading_enabled
+                unevaluated = submission.answers.filter(
+                    auto_score__isnull=True
+                ).select_related('question')
+                if unevaluated.exists():
+                    for answer in unevaluated:
+                        answer.evaluate(use_ai=use_ai)
+                    submission.compute_auto_score()
 
             submission.submitted_at = timezone.now()
             

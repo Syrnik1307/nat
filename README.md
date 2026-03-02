@@ -1,228 +1,99 @@
-# 📚 Teaching Panel
+# Lectio Space
 
-> Полноценная LMS (Learning Management System) для управления курсами, уроками и домашними заданиями с интеграцией Zoom.
+> LMS-платформа для преподавателей: уроки, домашние задания, записи, Zoom-интеграция, подписки.
 
-**🚀 [Начните здесь: START_HERE.md](START_HERE.md)** | **📊 [Полное резюме: SUMMARY.md](SUMMARY.md)**
+**[Полное руководство](docs/GUIDES.md)** | **[AI-инструкции](.github/copilot-instructions.md)** | **[UX-правила](FRONTEND_SMOOTHNESS_RULES.md)**
 
 ---
 
-## 🚀 Технологический стек
+## Технологический стек
 
-- **Backend**: Django 4.2 + Django REST Framework
-- **Frontend**: React 18
-- **Database**: SQLite (для разработки) / PostgreSQL (для production)
-- **API Integration**: Zoom API v2
+- **Backend**: Django 5.2 + Django REST Framework + JWT
+- **Frontend**: React 18 + React Router v6
+- **Database**: SQLite (dev) / PostgreSQL (production)
+- **Payments**: YooKassa + T-Bank
+- **Integrations**: Zoom API (Server-to-Server OAuth), Telegram Bot, Google Drive, Google Meet
+- **Production**: lectiospace.ru, VPS 72.56.81.163
 
-## 📁 Структура проекта
+## Структура проекта
 
 ```
-WEB panel/
-├── teaching_panel/          # Django backend
-│   ├── manage.py
-│   ├── requirements.txt
-│   ├── teaching_panel/      # Настройки проекта
-│   │   ├── settings.py
-│   │   ├── urls.py
-│   │   └── ...
-│   └── core/                # Основное приложение
-│       ├── models.py        # Модели данных
-│       ├── serializers.py   # DRF сериализаторы
-│       ├── views.py         # API views
-│       ├── zoom_service.py  # Интеграция с Zoom
-│       └── ...
-└── frontend/                # React frontend
-    ├── package.json
-    ├── public/
-    └── src/
-        ├── App.js
-        ├── apiService.js    # API клиент
-        └── ...
+nat/
+├── teaching_panel/              # Django backend
+│   ├── accounts/                # Аутентификация, подписки, платежи
+│   ├── schedule/                # Уроки, группы, записи, посещаемость
+│   ├── homework/                # Домашние задания и сдачи
+│   ├── analytics/               # Журнал, контрольные точки, статистика
+│   ├── zoom_pool/               # Пул Zoom-аккаунтов
+│   ├── support/                 # Тикеты поддержки + Telegram
+│   ├── core/                    # Legacy courses module
+│   └── teaching_panel/settings.py
+├── frontend/                    # React SPA
+│   ├── src/apiService.js        # Axios + JWT auto-refresh
+│   ├── src/auth.js              # AuthContext
+│   ├── src/components/          # Страницы
+│   ├── src/modules/             # Фичи (homework-analytics, Recordings, chat)
+│   └── src/shared/components/   # Button, Input, Modal, Card, Badge
+├── docs/                        # Документация
+│   ├── GUIDES.md                # Сводное руководство по всем интеграциям
+│   ├── ERRORS/                  # Решения известных ошибок
+│   └── knowledge/               # FAQ и troubleshooting для пользователей
+└── deploy/                      # Конфигурации деплоя и масштабирования
 ```
 
-## 🛠️ Установка и запуск
+## Быстрый старт
 
-### Backend (Django)
+### Backend
 
-1. Перейдите в папку с Django проектом:
 ```powershell
-cd "teaching_panel"
-```
-
-2. Создайте виртуальное окружение:
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-```
-
-3. Установите зависимости:
-```powershell
+cd teaching_panel
+..\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
-
-4. Создайте файл `.env` (скопируйте из `.env.example`):
-```powershell
-cp .env.example .env
-```
-
-5. Выполните миграции:
-```powershell
-python manage.py makemigrations
 python manage.py migrate
+python manage.py runserver          # http://127.0.0.1:8000
 ```
 
-6. Создайте суперпользователя:
+### Frontend
+
 ```powershell
-python manage.py createsuperuser
-```
-
-7. Запустите сервер:
-```powershell
-python manage.py runserver
-```
-
-Backend будет доступен на `http://127.0.0.1:8000`
-Admin панель: `http://127.0.0.1:8000/admin`
-API: `http://127.0.0.1:8000/api/`
-
-### Frontend (React)
-
-1. Перейдите в папку frontend:
-```powershell
-cd ..\frontend
-```
-
-2. Установите зависимости:
-```powershell
+cd frontend
 npm install
-```
+npm start                           # http://localhost:3000
+> Django ДОЛЖЕН быть запущен до тестирования фронтенда.
 
-3. Запустите development сервер:
-```powershell
-npm start
-```
-
-Frontend будет доступен на `http://localhost:3000`
-
-## 📚 API Endpoints
-
-### Courses
-- `GET /api/courses/` - Список всех курсов
-- `POST /api/courses/` - Создать курс
-- `GET /api/courses/{id}/` - Детали курса
-- `PUT /api/courses/{id}/` - Обновить курс
-- `DELETE /api/courses/{id}/` - Удалить курс
-- `POST /api/courses/{id}/add_student/` - Добавить студента
-- `POST /api/courses/{id}/remove_student/` - Удалить студента
-
-### Lessons
-- `GET /api/lessons/` - Список уроков
-- `GET /api/lessons/?course={id}` - Уроки по курсу
-- `POST /api/lessons/` - Создать урок
-- `POST /api/lessons/{id}/create_zoom_meeting/` - Создать Zoom встречу
-
-### Assignments
-- `GET /api/assignments/` - Список заданий
-- `GET /api/assignments/?lesson={id}` - Задания по уроку
-- `POST /api/assignments/` - Создать задание
-- `GET /api/assignments/{id}/submissions/` - Сдачи задания
-
-### Submissions
-- `GET /api/submissions/` - Список сдач
-- `POST /api/submissions/` - Сдать задание
-- `POST /api/submissions/{id}/grade/` - Поставить оценку
-
-## 🎥 Интеграция с Zoom
-
-Для работы с Zoom API нужно:
-
-1. Зарегистрироваться на [Zoom Marketplace](https://marketplace.zoom.us/)
-2. Создать JWT App
-3. Получить API Key и API Secret
-4. Добавить их в файл `.env`:
-```
-ZOOM_API_KEY=your_api_key
-ZOOM_API_SECRET=your_api_secret
-```
-
-## 🚀 Деплой на production
-
-### Быстрый деплой с Windows (рекомендуется)
-
-Используйте автоматизированный скрипт для быстрого обновления production сервера:
+## Деплой
 
 ```powershell
-.\auto_deploy.ps1
+.\auto_deploy.ps1                    # Автоматический деплой (интерактивное меню)
+.\deploy_fast.ps1 -SkipDeps         # Быстрый деплой без обновления зависимостей
+.\deploy_to_production.ps1           # Production деплой с бэкапом БД
 ```
 
-**Возможности:**
-- 🚀 Полный деплой (код + бэкенд + фронтенд)
-- 🐍 Обновление только бэкенда (Django)
-- ⚛️ Обновление только фронтенда (React)
-- 🗄️ Применение миграций БД
-- 🔄 Перезапуск сервисов
-- 📊 Мониторинг статуса и логов
-- 🧹 Обслуживание системы
+Подробности: [docs/GUIDES.md](docs/GUIDES.md#2-деплой)
 
-**Документация:**
-- **`AUTO_DEPLOY_GUIDE_NEW.md`** - подробное руководство
-- **`DEPLOY_QUICK_REFERENCE.md`** - краткая справка
-- **`AUTODEPLOY_FIXED.md`** - описание улучшений
+## Ключевые API
 
-### Первая установка на новый сервер
-
-Для первой установки на новый сервер используйте Bash скрипт:
-
-```bash
-cd teaching_panel/deployment
-sudo bash deploy.sh
+```
+POST /api/jwt/token/                       # Логин -> {access, refresh}
+POST /api/jwt/register/                    # Регистрация
+POST /api/schedule/lessons/{id}/start-new/ # Запуск урока через Zoom Pool
+POST /api/schedule/lessons/quick-start/    # Быстрый урок
+POST /api/subscription/create-payment/     # Создать платёж
+GET  /api/me/                              # Текущий пользователь
 ```
 
-Скрипт автоматически установит все зависимости, настроит сервисы и получит SSL сертификат.
+Полный API reference: [docs/GUIDES.md](docs/GUIDES.md#22-api-reference)
 
-## 🔧 Модели данных
+## Документация
 
-### Course (Курс)
-- title - Название
-- description - Описание
-- teacher - Преподаватель (ForeignKey to User)
-- students - Студенты (ManyToMany to User)
+| Документ | Описание |
+|----------|----------|
+| [docs/GUIDES.md](docs/GUIDES.md) | Сводное руководство (деплой, Zoom, GDrive, платежи, Telegram, и т.д.) |
+| [.github/copilot-instructions.md](.github/copilot-instructions.md) | Инструкции для AI-агента, архитектура, конвенции |
+| [FRONTEND_SMOOTHNESS_RULES.md](FRONTEND_SMOOTHNESS_RULES.md) | Правила плавного UI |
+| [docs/ERRORS/](docs/ERRORS/) | Решения известных production-ошибок |
+| [docs/knowledge/](docs/knowledge/) | FAQ и troubleshooting для пользователей |
 
-### Lesson (Урок)
-- course - Курс
-- title - Название
-- start_time - Время начала
-- end_time - Время окончания
-- zoom_meeting_id - ID встречи Zoom
-- zoom_join_url - Ссылка на встречу
-
-### Assignment (Задание)
-- lesson - Урок
-- title - Название
-- description - Описание
-- due_date - Срок сдачи
-- max_points - Максимальный балл
-
-### Submission (Сдача)
-- assignment - Задание
-- student - Студент
-- content - Содержание работы
-- grade - Оценка
-- feedback - Обратная связь
-
-## 📝 TODO
-
-- [ ] Добавить аутентификацию JWT
-- [ ] Создать компоненты для управления уроками
-- [ ] Создать компоненты для домашних заданий
-- [ ] Добавить календарь расписания
-- [ ] Реализовать загрузку файлов
-- [ ] Добавить уведомления
-- [ ] Интеграция с Google Calendar
-
-## 🤝 Разработка с GitHub Copilot
-
-Этот проект создан с использованием GitHub Copilot. Prompts для генерации кода находятся в комментариях.
-
-## 📄 Лицензия
+## Лицензия
 
 MIT

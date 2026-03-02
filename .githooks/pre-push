@@ -1,10 +1,23 @@
 #!/usr/bin/env sh
 # Safe pre-push checks (opt-in via scripts/setup_git_hooks.ps1)
+# - Blocks push from wrong branch
 # - Runs Django checks.
 # - Frontend build is optional: set RUN_FRONTEND_CHECKS=1
 # - To bypass: export SKIP_HOOKS=1
 
 set -eu
+
+# === BRANCH GUARD ===
+REQUIRED_BRANCH="new-prod"
+CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
+if [ "$CURRENT_BRANCH" != "$REQUIRED_BRANCH" ]; then
+    echo "" >&2
+    echo "BLOCKED: Push only allowed from '$REQUIRED_BRANCH' branch!" >&2
+    echo "Current branch: $CURRENT_BRANCH" >&2
+    echo "To switch: git checkout $REQUIRED_BRANCH" >&2
+    echo "" >&2
+    exit 1
+fi
 
 if [ "${SKIP_HOOKS:-}" = "1" ]; then
   echo "[hooks] SKIP_HOOKS=1: skipping pre-push checks" >&2

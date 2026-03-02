@@ -1,0 +1,14 @@
+#!/bin/sh
+# Guard: warn when leaving new-prod branch
+REQUIRED_BRANCH="new-prod"
+CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
+if [ "$CURRENT_BRANCH" != "$REQUIRED_BRANCH" ] && [ -n "$CURRENT_BRANCH" ]; then
+    echo "" >&2
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2
+    echo "!!! WARNING: You LEFT the $REQUIRED_BRANCH branch !!!" >&2
+    echo "!!! Current branch: $CURRENT_BRANCH" >&2
+    echo "!!! Production work MUST be on: $REQUIRED_BRANCH" >&2
+    echo "!!! Run: git checkout $REQUIRED_BRANCH" >&2
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2
+    echo "" >&2
+fi

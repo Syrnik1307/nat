@@ -488,9 +488,8 @@ const HomeworkTake = () => {
                 homeworkId={id}
               />
 
-              {/* Прикрепление файлов к ответу (для всех типов кроме FILE_UPLOAD) */}
-              {currentQuestion.question_type !== 'FILE_UPLOAD' && (
-                <AnswerAttachment
+              {/* Прикрепление файлов к ответу (для всех типов вопросов) */}
+              <AnswerAttachment
                   attachments={answers[`${currentQuestion.id}_attachments`] || []}
                   onChange={(files) => {
                     if (!isLocked) {
@@ -502,7 +501,6 @@ const HomeworkTake = () => {
                   maxFiles={3}
                   maxSizeMB={10}
                 />
-              )}
 
               <div className="ht-controls">
                 <Button

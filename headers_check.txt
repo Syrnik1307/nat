@@ -1,1 +1,0 @@
-bash: security: command not found

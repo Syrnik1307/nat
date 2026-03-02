@@ -179,15 +179,15 @@ $script:currentCommit = ssh tp "cd /var/www/teaching_panel && git rev-parse --sh
 Write-Host "  Текущий коммит: $script:currentCommit" -ForegroundColor Gray
 
 # Fetch без применения
-ssh tp "cd /var/www/teaching_panel && sudo git fetch origin main 2>/dev/null" | Out-Null
-$remoteCommit = ssh tp "cd /var/www/teaching_panel && git rev-parse --short origin/main"
+ssh tp "cd /var/www/teaching_panel && sudo git fetch origin new-prod 2>/dev/null" | Out-Null
+$remoteCommit = ssh tp "cd /var/www/teaching_panel && git rev-parse --short origin/new-prod"
 Write-Host "  Удалённый коммит: $remoteCommit" -ForegroundColor Gray
 
 if ($script:currentCommit -eq $remoteCommit) {
     Write-OK "Код уже актуален"
 } else {
     # Показать что изменится
-    $changedFiles = ssh tp "cd /var/www/teaching_panel && git diff --name-only $script:currentCommit origin/main 2>/dev/null | head -20"
+    $changedFiles = ssh tp "cd /var/www/teaching_panel && git diff --name-only $script:currentCommit origin/new-prod 2>/dev/null | head -20"
     Write-Host "  Изменённые файлы:" -ForegroundColor Gray
     Write-Host $changedFiles -ForegroundColor Gray
     
@@ -199,7 +199,7 @@ if ($script:currentCommit -eq $remoteCommit) {
             exit 1
         }
         
-        ssh tp "cd /var/www/teaching_panel && sudo git reset --hard origin/main"
+        ssh tp "cd /var/www/teaching_panel && sudo git reset --hard origin/new-prod"
         $script:codeChanged = $true
         Write-OK "Код обновлён: $script:currentCommit -> $remoteCommit"
     } else {

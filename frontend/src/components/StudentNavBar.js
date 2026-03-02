@@ -56,6 +56,7 @@ const navItems = [
   { to: '/student/recordings', label: 'Записи уроков' },
   { to: '/student/materials', label: 'Материалы' },
   { to: '/student/stats', label: 'Моя статистика' },
+  { to: '/profile', label: 'Профиль' },
 ];
 
 const StudentNavBar = () => {
@@ -277,6 +278,18 @@ const StudentNavBar = () => {
                 </NavLink>
               ))}
             </nav>
+            <div className="student-mobile-menu-footer">
+              <div className="student-mobile-user-info">
+                {user?.first_name || user?.email || 'Ученик'}
+              </div>
+              <button
+                type="button"
+                className="student-mobile-logout-btn"
+                onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+              >
+                Выйти
+              </button>
+            </div>
           </div>
         </>,
         document.body
