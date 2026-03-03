@@ -8,8 +8,11 @@
 # - Path traversal
 # - Подозрительные User-Agents (сканеры)
 # - Аномальный трафик с одного IP
+# - Headless-браузеры / Selenium / Puppeteer   [NEW 2026-03]
+# - Enumeration: .git, .env, secrets           [NEW 2026-03]
+# - Rate limit abuse (429)                     [NEW 2026-03]
 #
-# Запуск: каждые 15 минут
+# Запуск: каждые 15 минут (cron)
 # Расположение: /opt/lectio-monitor/security_check.sh
 # ============================================================
 
@@ -31,9 +34,12 @@ ERRORS_BOT_TOKEN="${ERRORS_BOT_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}"
 ERRORS_CHAT_ID="${ERRORS_CHAT_ID:-${TELEGRAM_CHAT_ID:-}}"
 
 # Пороги
-BRUTE_FORCE_THRESHOLD=50    # 401/403 за 15 минут с одного IP
-REQUESTS_THRESHOLD=500      # Запросов за 15 минут с одного IP
-SCAN_PATTERNS_THRESHOLD=10  # Подозрительных запросов за 15 минут
+BRUTE_FORCE_THRESHOLD=50      # 401/403 за 15 минут с одного IP
+REQUESTS_THRESHOLD=500         # Запросов за 15 минут с одного IP
+SCAN_PATTERNS_THRESHOLD=10     # Подозрительных запросов за 15 минут
+HEADLESS_THRESHOLD=5           # Headless-запросов за 15 минут
+GIT_ENUM_THRESHOLD=3           # Попыток .git/.env enumeration за 15 минут
+RATE_LIMIT_ABUSE_THRESHOLD=30  # 429 ответов за 15 минут с одного IP
 
 # Антиспам
 ALERT_COOLDOWN=1800  # 30 минут
@@ -236,6 +242,82 @@ detect_exploitation() {
     return 0
 }
 
+# ==================== НОВЫЕ ДЕТЕКТОРЫ (2026-03) ====================
+
+# 7. Headless-браузеры (Selenium, Puppeteer, Playwright, HTTP-библиотеки)
+detect_headless_bots() {
+    if [[ ! -f "$NGINX_ACCESS_LOG" ]]; then
+        return 0
+    fi
+
+    local headless_patterns="[Ss]elenium|[Hh]eadless[Cc]hrome|[Pp]hantom[Jj][Ss]|[Pp]uppeteer|[Pp]laywright|[Ww]eb[Dd]river|[Cc]hrome-lighthouse|[Zz]ombie\.js|python-requests|python-urllib|httpx|aiohttp|go-http-client|java/|apache-httpclient|wget/"
+
+    local headless_hits
+    headless_hits=$(grep -iE "$headless_patterns" "$NGINX_ACCESS_LOG" 2>/dev/null | wc -l)
+
+    if [[ "$headless_hits" -ge "$HEADLESS_THRESHOLD" ]]; then
+        local sample_ips
+        sample_ips=$(grep -iE "$headless_patterns" "$NGINX_ACCESS_LOG" 2>/dev/null | awk '{print $1}' | sort | uniq -c | sort -rn | head -5)
+        echo "HEADLESS_BOT:$headless_hits requests from headless/automated browsers. Top IPs: $sample_ips"
+        return 1
+    fi
+
+    return 0
+}
+
+# 8. Git/env/secrets enumeration (попытки найти утечки конфигов/секретов)
+detect_git_enumeration() {
+    if [[ ! -f "$NGINX_ACCESS_LOG" ]]; then
+        return 0
+    fi
+
+    # Паттерны: .git/, .env, secrets.json, .aws, .ssh, wp-config, web.config, id_rsa, .htpasswd, .svn
+    local enum_patterns="/\.git/|/\.git$|/\.env|/\.aws|/\.ssh|/id_rsa|/\.htpasswd|/\.svn|/secrets\.json|/config\.php|/wp-config|/web\.config|/\.docker|/\.kube|/credentials|/\.npmrc|/\.pypirc|/\.netrc"
+
+    local enum_hits
+    enum_hits=$(grep -iE "$enum_patterns" "$NGINX_ACCESS_LOG" 2>/dev/null | wc -l)
+
+    if [[ "$enum_hits" -ge "$GIT_ENUM_THRESHOLD" ]]; then
+        local enum_ips
+        enum_ips=$(grep -iE "$enum_patterns" "$NGINX_ACCESS_LOG" 2>/dev/null | awk '{print $1}' | sort | uniq -c | sort -rn | head -5)
+        local sample_paths
+        sample_paths=$(grep -iE "$enum_patterns" "$NGINX_ACCESS_LOG" 2>/dev/null | awk '{print $7}' | sort -u | head -10)
+        echo "GIT_ENUM:$enum_hits secret/config enumeration attempts. IPs: $enum_ips Paths: $sample_paths"
+        return 1
+    fi
+
+    return 0
+}
+
+# 9. Rate limit abuse (много 429 — кто-то целенаправленно бьётся в rate limit)
+detect_rate_limit_abuse() {
+    if [[ ! -f "$NGINX_ACCESS_LOG" ]]; then
+        return 0
+    fi
+
+    local abuse_ips
+    abuse_ips=$(awk -v threshold="$RATE_LIMIT_ABUSE_THRESHOLD" '
+        $9 == "429" {
+            ip=$1
+            count[ip]++
+        }
+        END {
+            for (ip in count) {
+                if (count[ip] >= threshold) {
+                    print ip, count[ip]
+                }
+            }
+        }
+    ' "$NGINX_ACCESS_LOG" 2>/dev/null | sort -k2 -nr | head -5)
+
+    if [[ -n "$abuse_ips" ]]; then
+        echo "RATE_LIMIT_ABUSE:IPs repeatedly hitting rate limits: $abuse_ips"
+        return 1
+    fi
+
+    return 0
+}
+
 # ==================== MAIN ====================
 
 main() {
@@ -281,6 +363,29 @@ main() {
     
     # Exploitation
     res=$(detect_exploitation) && true
+    if [[ -n "$res" ]]; then
+        log "ALERT" "$res"
+        alerts+=("$res")
+    fi
+
+    # --- NEW DETECTORS (2026-03) ---
+
+    # Headless bots (Selenium, Puppeteer, Playwright)
+    res=$(detect_headless_bots) && true
+    if [[ -n "$res" ]]; then
+        log "ALERT" "$res"
+        alerts+=("$res")
+    fi
+
+    # Git/env/secrets enumeration
+    res=$(detect_git_enumeration) && true
+    if [[ -n "$res" ]]; then
+        log "ALERT" "$res"
+        alerts+=("$res")
+    fi
+
+    # Rate limit abuse (429s)
+    res=$(detect_rate_limit_abuse) && true
     if [[ -n "$res" ]]; then
         log "ALERT" "$res"
         alerts+=("$res")

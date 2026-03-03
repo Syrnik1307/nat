@@ -182,6 +182,17 @@ class Question(models.Model):
         default='',
         help_text='Пояснение для ученика (показывается под вопросом перед ответом)'
     )
+    # Knowledge Map integration (feature-flagged, nullable)
+    # Links question to exam topic for knowledge map scoring
+    # Safe: nullable FK, no data loss if knowledge_map module is disabled/removed
+    topic = models.ForeignKey(
+        'knowledge_map.Topic',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='questions',
+        help_text='Тема экзамена для карты знаний (опционально)'
+    )
 
     class Meta:
         ordering = ['order']

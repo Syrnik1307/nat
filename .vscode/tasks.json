@@ -282,15 +282,41 @@
 			"command": "ssh tp 'sudo rm -f /var/run/lectio-monitor/memory_alert_state && echo State reset'"
 		},
 		{
-			"label": "frontend: build",
+			"label": "archive: bundle frontend-v2",
 			"type": "shell",
-			"command": "cd C:\\Users\\User\\Desktop\\nat\\frontend && npm run build",
-			"isBackground": false
+			"command": "git bundle create archive/frontend-v2-experiment.bundle HEAD -- frontend-v2/ && echo BUNDLE_OK || echo BUNDLE_FAIL"
 		},
 		{
-			"label": "build-no-ci",
+			"label": "check: is frontend-v2 tracked",
 			"type": "shell",
-			"command": "cmd /c \"set CI=false && cd /d c:\\Users\\User\\Desktop\\nat\\frontend && npm run build\""
+			"command": "git log --oneline -- frontend-v2/ | head -5 && echo '---' && git ls-files frontend-v2/ | head -5"
+		},
+		{
+			"label": "check: frontend-v2 in git",
+			"type": "shell",
+			"command": "cmd /c \"cd /d C:\\Users\\User\\Desktop\\nat && git ls-files frontend-v2/ | head -3 2>&1 || git ls-files frontend-v2/\""
+		},
+		{
+			"label": "prod: deploy security_check + cron",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"sudo cp /var/www/teaching_panel/scripts/monitoring/security_check.sh /opt/lectio-monitor/security_check.sh && sudo chmod +x /opt/lectio-monitor/security_check.sh && (sudo crontab -l 2>/dev/null | grep -q security_check || (sudo crontab -l 2>/dev/null; echo '*/15 * * * * /opt/lectio-monitor/security_check.sh >> /var/log/lectio-monitor/security.log 2>&1') | sudo crontab -) && echo SECURITY_CHECK_DEPLOYED"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "prod: deploy nginx hardened",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"sudo cp /var/www/teaching_panel/deploy/nginx/lectiospace.ru /etc/nginx/sites-available/lectiospace.ru && sudo nginx -t && sudo systemctl reload nginx && echo NGINX_HARDENED_OK"
+			],
+			"isBackground": false,
+			"group": "build"
 		}
 	]
 }

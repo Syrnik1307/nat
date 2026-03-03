@@ -198,14 +198,36 @@ def calculate_bot_score(request, fp_data: dict, behavioral_data: dict = None) ->
     
     behavioral_data = behavioral_data or {}
     
-    # 1. Проверка User-Agent
+    # 1. Проверка User-Agent (расширено 2026-03-03)
     user_agent = request.headers.get('User-Agent', '')
     if not user_agent:
         score += 30
         reasons.append('missing_user_agent')
-    elif any(bot in user_agent.lower() for bot in ['bot', 'crawler', 'spider', 'headless', 'phantom', 'selenium']):
-        score += 50
-        reasons.append('bot_user_agent')
+    else:
+        ua_lower = user_agent.lower()
+        # Tier 1: Definite automation tools (+50)
+        automation_markers = [
+            'headless', 'phantom', 'selenium', 'puppeteer', 'playwright',
+            'webdriver', 'headlesschrome', 'zombie',
+        ]
+        # Tier 2: Known bot/crawler UAs (+30)
+        bot_markers = ['bot', 'crawler', 'spider', 'scrapy', 'lighthouse']
+        # Tier 3: HTTP libraries (often legitimate, but suspicious on browser endpoints) (+15)
+        http_lib_markers = [
+            'python-requests', 'python-urllib', 'httpx', 'aiohttp',
+            'go-http-client', 'java/', 'apache-httpclient', 'wget/',
+            'curl/', 'node-fetch', 'axios/',
+        ]
+
+        if any(m in ua_lower for m in automation_markers):
+            score += 50
+            reasons.append('automation_user_agent')
+        elif any(m in ua_lower for m in bot_markers):
+            score += 30
+            reasons.append('bot_user_agent')
+        elif any(m in ua_lower for m in http_lib_markers):
+            score += 15
+            reasons.append('http_library_user_agent')
     
     # 2. Проверка заголовков браузера
     expected_headers = ['Accept', 'Accept-Language', 'Accept-Encoding']
@@ -236,6 +258,11 @@ def calculate_bot_score(request, fp_data: dict, behavioral_data: dict = None) ->
         if cpu_cores == 0 or cpu_cores > 128:
             score += 5  # Было 10 - мобильные могут скрывать эту информацию
             reasons.append('unrealistic_cpu')
+
+        # navigator.webdriver=true — прямой маркер автоматизации (Selenium/Puppeteer/Playwright)
+        if fp_data.get('webdriver') or fp_data.get('navigatorWebdriver'):
+            score += 80
+            reasons.append('webdriver_detected')
     
     # 4. Поведенческий анализ
     if behavioral_data:

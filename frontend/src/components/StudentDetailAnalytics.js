@@ -3,6 +3,10 @@ import { apiClient } from '../apiService';
 import './StudentDetailAnalytics.css';
 import ActivityHeatmap from './ActivityHeatmap';
 
+// Knowledge Map (feature-flagged)
+import { isKnowledgeMapEnabled } from '../knowledgeMapService';
+const KnowledgeMapPanel = React.lazy(() => import('./KnowledgeMapPanel'));
+
 // SVG Icons - чистые иконки без эмодзи
 const IconCalendar = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -72,13 +76,25 @@ const IconActivity = () => (
     </svg>
 );
 
-const TABS = [
+const IconBrain = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"/>
+        <line x1="9" y1="21" x2="15" y2="21"/>
+    </svg>
+);
+
+const BASE_TABS = [
     { id: 'overview', label: 'Обзор', Icon: IconUser },
     { id: 'attendance', label: 'Посещаемость', Icon: IconCalendar },
     { id: 'participation', label: 'Участие', Icon: IconMic },
     { id: 'homework', label: 'Домашние задания', Icon: IconBook },
     { id: 'activity', label: 'Карта активности', Icon: IconActivity },
 ];
+
+// Knowledge Map tab added only if feature is enabled
+const TABS = isKnowledgeMapEnabled()
+    ? [...BASE_TABS, { id: 'knowledge', label: 'Карта знаний', Icon: IconBrain }]
+    : BASE_TABS;
 
 function StatCard({ title, value, subtitle, icon: Icon, color, trend }) {
     return (
@@ -523,6 +539,11 @@ function StudentDetailAnalytics({ studentId, groupId, onBack }) {
                 {activeTab === 'homework' && renderHomework()}
                 {activeTab === 'activity' && (
                     <ActivityHeatmap studentId={studentId} />
+                )}
+                {activeTab === 'knowledge' && isKnowledgeMapEnabled() && (
+                    <React.Suspense fallback={<div style={{ padding: '40px 0', textAlign: 'center', color: '#94a3b8' }}>Загрузка...</div>}>
+                        <KnowledgeMapPanel studentId={studentId} />
+                    </React.Suspense>
                 )}
             </div>
         </div>

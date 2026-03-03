@@ -9,6 +9,15 @@ class ControlPoint(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.SET_NULL, null=True, blank=True, related_name='control_points')
     title = models.CharField(max_length=255)
     max_points = models.IntegerField(default=100)
+    # Knowledge Map integration (feature-flagged, nullable)
+    topic = models.ForeignKey(
+        'knowledge_map.Topic',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='control_points_analytics',
+        help_text='Тема экзамена для карты знаний (опционально)'
+    )
     date = models.DateField(db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 

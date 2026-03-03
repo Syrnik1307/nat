@@ -132,6 +132,9 @@ const Calendar = lazy(calendarImport);
 const ProfilePage = lazy(profileImport);
 const ChatPage = lazy(() => import('./components/ChatPage'));
 
+// Knowledge Map (feature-flagged)
+const StudentKnowledgeMapPage = lazy(() => import('./components/StudentKnowledgeMapPage'));
+
 // Preload основных страниц после загрузки приложения
 const preloadPages = (role) => {
   // Используем requestIdleCallback для загрузки в фоне без блокировки UI
@@ -271,6 +274,7 @@ const AppRoutes = () => {
           <Route path="/homework" element={<Protected allowRoles={['student']}><HomeworkList /></Protected>} />
           <Route path="/student/homework/:id" element={<Protected allowRoles={['student']}><HomeworkTake /></Protected>} />
           <Route path="/homework/:id/answers" element={<Protected allowRoles={['student']}><HomeworkAnswersView /></Protected>} />
+          <Route path="/student/knowledge-map" element={<Protected allowRoles={['student']}><StudentKnowledgeMapPage /></Protected>} />
         
           {/* Admin */}
           <Route path="/admin" element={<Navigate to="/admin-home" replace />} />

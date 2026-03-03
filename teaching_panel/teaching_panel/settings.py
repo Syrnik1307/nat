@@ -104,6 +104,20 @@ INSTALLED_APPS = [
     'django_celery_beat',
 ]
 
+# ===================================================================
+# FEATURE-FLAGGED: Knowledge Map (карта знаний)
+# Enable: KNOWLEDGE_MAP_ENABLED=1 in .env
+# Default: DISABLED — never activates on production
+# ===================================================================
+from knowledge_map.feature_flag import KNOWLEDGE_MAP_ENABLED as _KM_ENABLED
+if _KM_ENABLED:
+    INSTALLED_APPS.append('knowledge_map')
+    import warnings as _km_warnings
+    _km_warnings.warn("Knowledge Map module is ENABLED (KNOWLEDGE_MAP_ENABLED=1)", RuntimeWarning)
+
+# Expose flag for URL guard
+KNOWLEDGE_MAP_ENABLED = _KM_ENABLED
+
 # SAFETY: Multi-tenant system is BANNED (broke production 2026-02-08)
 # This check prevents anyone from re-adding it
 _BANNED_APPS = ['tenants']

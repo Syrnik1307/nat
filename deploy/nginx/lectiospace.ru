@@ -1,3 +1,10 @@
+# ============================================================
+# Rate limiting zones (SECURITY - 2026-03-03)
+# ============================================================
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=30r/s;
+limit_req_zone $binary_remote_addr zone=login_limit:10m rate=5r/m;
+limit_conn_zone $binary_remote_addr zone=conn_limit:10m;
+
 upstream django_lectiospace {
     server 127.0.0.1:8000;
 }
@@ -27,14 +34,14 @@ server {
     ssl_ciphers HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
 
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    # Security headers (hardened 2026-03-03)
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
     add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Frame-Options "DENY" always;
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    # Force upgrade HTTP to HTTPS for any mixed content
     add_header Content-Security-Policy "upgrade-insecure-requests" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
 
     client_max_body_size 500M;
 
@@ -87,8 +94,45 @@ server {
         add_header Cache-Control "public";
     }
 
+    # ============================================================
+    # Rate-limited auth endpoints (login + register)
+    # ============================================================
+    location = /api/jwt/token/ {
+        limit_req zone=login_limit burst=3 nodelay;
+        proxy_pass http://django_lectiospace;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout 300s;
+    }
+
+    location = /api/jwt/register/ {
+        limit_req zone=login_limit burst=3 nodelay;
+        proxy_pass http://django_lectiospace;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout 300s;
+    }
+
+    location = /api/jwt/token/refresh/ {
+        limit_req zone=login_limit burst=5 nodelay;
+        proxy_pass http://django_lectiospace;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout 300s;
+    }
+
     # Accounts API
     location /accounts/ {
+        limit_req zone=api_limit burst=50 nodelay;
         proxy_pass http://django_lectiospace/accounts/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -98,7 +142,7 @@ server {
         proxy_read_timeout 300s;
     }
 
-    # Zoom Webhook (recording.completed events from Zoom)
+    # Zoom Webhook (recording.completed events from Zoom) — NO rate limit
     location /schedule/webhook/ {
         proxy_pass http://django_lectiospace/schedule/webhook/;
         proxy_set_header Host $host;
@@ -111,6 +155,8 @@ server {
 
     # Schedule API direct path (for /schedule/api/*)
     location /schedule/api/ {
+        limit_req zone=api_limit burst=50 nodelay;
+        limit_conn conn_limit 20;
         proxy_pass http://django_lectiospace/schedule/api/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -120,7 +166,10 @@ server {
         proxy_read_timeout 300s;
     }
 
+    # General API
     location /api/ {
+        limit_req zone=api_limit burst=50 nodelay;
+        limit_conn conn_limit 20;
         proxy_pass http://django_lectiospace;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -143,6 +192,7 @@ server {
     }
 
     location /admin/ {
+        limit_req zone=login_limit burst=5 nodelay;
         proxy_pass http://django_lectiospace;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

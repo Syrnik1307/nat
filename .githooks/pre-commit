@@ -1,13 +1,22 @@
 #!/bin/sh
-# Guard: block commits on wrong branch + ban tenant code
-REQUIRED_BRANCH="new-prod"
+# Guard: block commits on wrong branch + ban tenant code + scan for secrets
+# Allowed branches: new-prod (production), staging (staging environment)
+ALLOWED_BRANCHES="new-prod staging"
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
 
-if [ "$CURRENT_BRANCH" != "$REQUIRED_BRANCH" ]; then
+IS_ALLOWED=0
+for branch in $ALLOWED_BRANCHES; do
+    if [ "$CURRENT_BRANCH" = "$branch" ]; then
+        IS_ALLOWED=1
+        break
+    fi
+done
+
+if [ "$IS_ALLOWED" = "0" ]; then
     echo "" >&2
-    echo "BLOCKED: Commits only allowed on $REQUIRED_BRANCH branch!" >&2
+    echo "BLOCKED: Commits only allowed on: $ALLOWED_BRANCHES" >&2
     echo "Current branch: $CURRENT_BRANCH" >&2
-    echo "To switch: git checkout $REQUIRED_BRANCH" >&2
+    echo "To switch: git checkout new-prod" >&2
     echo "To bypass: git commit --no-verify" >&2
     echo "" >&2
     exit 1
@@ -21,5 +30,99 @@ if [ -n "$STAGED" ]; then
         echo "BLOCKED: Files with tenant in name!" >&2
         echo "$TENANT_FILES" >&2
         exit 1
+    fi
+fi
+
+# ============================================================
+# SECRET SCANNING - Block commits containing potential secrets
+# Added 2026-03-03
+# ============================================================
+if [ -n "$STAGED" ]; then
+    # Skip binary/lock/minified files
+    SCANNABLE=$(echo "$STAGED" | grep -vE '\.(lock|min\.js|min\.css|woff2?|ttf|eot|png|jpg|jpeg|gif|ico|svg|pdf|zip|gz|sqlite3)$' | grep -v 'package-lock\.json' | grep -v 'node_modules/' || true)
+
+    if [ -n "$SCANNABLE" ]; then
+        SECRET_FOUND=""
+
+        for file in $SCANNABLE; do
+            # Get only the staged content (new lines added)
+            CONTENT=$(git diff --cached -p -- "$file" | grep '^+' | grep -v '^+++' || true)
+            if [ -z "$CONTENT" ]; then
+                continue
+            fi
+
+            # AWS Access Key IDs
+            MATCH=$(echo "$CONTENT" | grep -E 'AKIA[0-9A-Z]{16}' || true)
+            if [ -n "$MATCH" ]; then
+                SECRET_FOUND="${SECRET_FOUND}\n  AWS Key in $file"
+            fi
+
+            # GitHub Personal Access Tokens
+            MATCH=$(echo "$CONTENT" | grep -E 'ghp_[a-zA-Z0-9]{36}' || true)
+            if [ -n "$MATCH" ]; then
+                SECRET_FOUND="${SECRET_FOUND}\n  GitHub PAT in $file"
+            fi
+
+            # GitHub OAuth tokens
+            MATCH=$(echo "$CONTENT" | grep -E 'gho_[a-zA-Z0-9]{36}' || true)
+            if [ -n "$MATCH" ]; then
+                SECRET_FOUND="${SECRET_FOUND}\n  GitHub OAuth in $file"
+            fi
+
+            # Slack tokens
+            MATCH=$(echo "$CONTENT" | grep -E 'xox[bprs]-[a-zA-Z0-9-]+' || true)
+            if [ -n "$MATCH" ]; then
+                SECRET_FOUND="${SECRET_FOUND}\n  Slack token in $file"
+            fi
+
+            # Google API keys
+            MATCH=$(echo "$CONTENT" | grep -E 'AIza[0-9A-Za-z_-]{35}' || true)
+            if [ -n "$MATCH" ]; then
+                SECRET_FOUND="${SECRET_FOUND}\n  Google API key in $file"
+            fi
+
+            # Private keys (PEM)
+            MATCH=$(echo "$CONTENT" | grep -E '\-\-\-\-\-BEGIN.*(PRIVATE|RSA|DSA|EC)' || true)
+            if [ -n "$MATCH" ]; then
+                SECRET_FOUND="${SECRET_FOUND}\n  Private key in $file"
+            fi
+
+            # Stripe keys
+            MATCH=$(echo "$CONTENT" | grep -E '(sk|rk)_(live|test)_[a-zA-Z0-9]{20,}' || true)
+            if [ -n "$MATCH" ]; then
+                SECRET_FOUND="${SECRET_FOUND}\n  Stripe key in $file"
+            fi
+
+            # Telegram bot tokens
+            MATCH=$(echo "$CONTENT" | grep -E '[0-9]{8,10}:[a-zA-Z0-9_-]{35}' || true)
+            if [ -n "$MATCH" ]; then
+                SECRET_FOUND="${SECRET_FOUND}\n  Telegram bot token in $file"
+            fi
+
+            # Generic hardcoded secrets (password=, secret_key=, api_key= with literal values)
+            MATCH=$(echo "$CONTENT" | grep -iE '(password|secret_key|api_key|api_secret|access_token)\s*=\s*['"'"'"][^'"'"'"]{8,}['"'"'"]' | grep -v 'os\.environ\|getenv\|settings\.\|config\.\|env(' || true)
+            if [ -n "$MATCH" ]; then
+                SECRET_FOUND="${SECRET_FOUND}\n  Hardcoded secret in $file"
+            fi
+
+            # Django SECRET_KEY hardcoded (not from env)
+            MATCH=$(echo "$CONTENT" | grep -E "SECRET_KEY\s*=\s*['\"][a-zA-Z0-9!@#\$%^&*()_+=-]{20,}" | grep -v 'os\.environ\|getenv' || true)
+            if [ -n "$MATCH" ]; then
+                SECRET_FOUND="${SECRET_FOUND}\n  Django SECRET_KEY hardcoded in $file"
+            fi
+        done
+
+        if [ -n "$SECRET_FOUND" ]; then
+            echo "" >&2
+            echo "============================================" >&2
+            echo "BLOCKED: Potential secrets detected in commit!" >&2
+            echo "============================================" >&2
+            printf "%b\n" "$SECRET_FOUND" >&2
+            echo "" >&2
+            echo "If this is a false positive, use: git commit --no-verify" >&2
+            echo "============================================" >&2
+            echo "" >&2
+            exit 1
+        fi
     fi
 fi

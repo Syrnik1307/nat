@@ -258,6 +258,14 @@ urlpatterns = [
     path('schedule/webhook/zoom/', zoom_webhook_receiver, name='zoom_webhook'),
 ]
 
+# Knowledge Map (feature-flagged, never on production)
+try:
+    from knowledge_map.feature_flag import KNOWLEDGE_MAP_ENABLED as _KM_URLS_ENABLED
+    if _KM_URLS_ENABLED:
+        urlpatterns.append(path('api/knowledge-map/', include('knowledge_map.urls')))
+except ImportError:
+    pass  # knowledge_map app not installed, safe to ignore
+
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

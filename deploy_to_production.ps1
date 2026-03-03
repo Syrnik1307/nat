@@ -92,6 +92,20 @@ if ($tenantCheck -or $tenantDir -or $tenantImports) {
 Write-OK "Нет запрещённого tenant-кода"
 
 # ===================================================================
+# GUARD: Knowledge Map must NOT be enabled on production
+# ===================================================================
+Write-Step "X" 9 "Проверка knowledge_map feature flag..."
+
+$kmEnvCheck = ssh tp "grep -cE 'KNOWLEDGE_MAP_ENABLED=(1|true|yes)' /var/www/teaching_panel/.env 2>/dev/null || echo 0"
+if ($kmEnvCheck -match "^[1-9]") {
+    Write-Fail "KNOWLEDGE_MAP включён на production! Деплой ЗАПРЕЩЁН!"
+    Write-Host "  knowledge_map — ТОЛЬКО для dev/stage." -ForegroundColor Red
+    Write-Host "  Уберите KNOWLEDGE_MAP_ENABLED из production .env" -ForegroundColor Red
+    exit 1
+}
+Write-OK "knowledge_map НЕ активен на production"
+
+# ===================================================================
 # ШАГ 0: Проверка production - ОН ДОЛЖЕН РАБОТАТЬ ДО НАЧАЛА
 # ===================================================================
 Write-Step 0 9 "Проверка текущего состояния production..."
