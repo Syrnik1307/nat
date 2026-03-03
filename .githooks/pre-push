@@ -8,13 +8,17 @@
 set -eu
 
 # === BRANCH GUARD ===
-REQUIRED_BRANCH="new-prod"
+ALLOWED_BRANCHES="new-prod staging"
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
-if [ "$CURRENT_BRANCH" != "$REQUIRED_BRANCH" ]; then
+BRANCH_OK=0
+for b in $ALLOWED_BRANCHES; do
+    if [ "$CURRENT_BRANCH" = "$b" ]; then BRANCH_OK=1; fi
+done
+if [ "$BRANCH_OK" = "0" ]; then
     echo "" >&2
-    echo "BLOCKED: Push only allowed from '$REQUIRED_BRANCH' branch!" >&2
+    echo "BLOCKED: Push only allowed from: $ALLOWED_BRANCHES" >&2
     echo "Current branch: $CURRENT_BRANCH" >&2
-    echo "To switch: git checkout $REQUIRED_BRANCH" >&2
+    echo "To switch: git checkout new-prod  or  git checkout staging" >&2
     echo "" >&2
     exit 1
 fi
