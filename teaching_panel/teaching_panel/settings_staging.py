@@ -12,6 +12,10 @@ ALLOWED_HOSTS = ['stage.lectiospace.ru', 'localhost', '127.0.0.1']
 FEATURE_YOOKASSA_PAYMENTS = True
 FEATURE_TELEGRAM_SUPPORT = True
 
+# Knowledge Map -- required because analytics/homework have FK to it
+if 'knowledge_map' not in INSTALLED_APPS:
+    INSTALLED_APPS.append('knowledge_map')
+
 # Frontend URL
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://stage.lectiospace.ru')
 
