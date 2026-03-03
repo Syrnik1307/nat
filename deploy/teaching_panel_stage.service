@@ -17,6 +17,7 @@ Environment="ALLOWED_HOSTS=stage.lectiospace.ru,localhost,127.0.0.1"
 Environment="GUNICORN_WORKERS=2"
 Environment="GUNICORN_BIND=127.0.0.1:8001"
 Environment="GUNICORN_TIMEOUT=120"
+Environment="GUNICORN_WORKER_CLASS=sync"
 
 ExecStart=/var/www/teaching-panel-stage/venv/bin/gunicorn teaching_panel.wsgi:application \
   --bind ${GUNICORN_BIND} \
