@@ -52,8 +52,9 @@ function Rollback-Changes {
         Write-Host "4. sudo systemctl restart teaching-panel" -ForegroundColor White
         if ($script:backupName) {
             Write-Host ""
-            Write-Host "Бэкап БД: /tmp/$script:backupName.sqlite3" -ForegroundColor White
-                Write-Host "Восстановить: sudo cp /tmp/$script:backupName.sqlite3 teaching_panel/teaching_panel/db.sqlite3" -ForegroundColor White
+            Write-Host "Бэкап БД: /tmp/$script:backupName.pgdump или .sqlite3" -ForegroundColor White
+            Write-Host "Восстановить PostgreSQL: sudo -u postgres pg_restore --clean --dbname=teaching_panel /tmp/$script:backupName.pgdump" -ForegroundColor White
+            Write-Host "Восстановить SQLite: sudo cp /tmp/$script:backupName.sqlite3 teaching_panel/teaching_panel/db.sqlite3" -ForegroundColor White
         }
     }
 }
@@ -119,8 +120,7 @@ if ($prodBefore -ne "200") {
 Write-OK "Production работает (код $prodBefore)"
 
 # Проверка места на диске
-# ВАЖНО: избегаем awk '$5' внутри PowerShell строки (PowerShell интерпретирует `$5` как переменную)
-$diskSpace = ssh tp "df -P --output=pcent /var/www | tail -n 1 | tr -dc '0-9'"
+$diskSpace = ssh tp "df -P /var/www | tail -n 1 | awk '{print `$5}' | tr -dc '0-9'"
 if ([int]$diskSpace -gt 90) {
     Write-Fail "Мало места на диске: ${diskSpace}%"
     exit 1
@@ -152,36 +152,74 @@ Write-Step 2 9 "Создание бэкапа production..."
 $script:backupName = "deploy_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 
 if (-not $DryRun) {
-    # Бэкап SQLite файла (быстро и надежно)
+    # Определяем тип БД
+    $dbVendor = ssh tp "cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && python manage.py shell -c 'from django.db import connection; print(connection.vendor)' 2>/dev/null | tail -1"
+    
+    if ($dbVendor -match "postgresql") {
+        # PostgreSQL: pg_dump
+        Write-Host "  БД: PostgreSQL — делаем pg_dump..." -ForegroundColor Gray
+        $pgResult = ssh tp "cd /var/www/teaching_panel/teaching_panel && source ../venv/bin/activate && python -c 'import dj_database_url,os; c=dj_database_url.config(default=os.environ.get(chr(68)+chr(65)+chr(84)+chr(65)+chr(66)+chr(65)+chr(83)+chr(69)+chr(95)+chr(85)+chr(82)+chr(76))); print(c.get(chr(78)+chr(65)+chr(77)+chr(69),chr(0)))' 2>/dev/null | tail -1"
+        $backupResult = ssh tp "sudo -u postgres pg_dump -Fc -f /tmp/$script:backupName.pgdump 2>&1 && stat -c '%s' /tmp/$script:backupName.pgdump"
+        
+        $pgBackupBytes = 0
+        [void][int64]::TryParse(($backupResult | Select-Object -Last 1), [ref]$pgBackupBytes)
+        if ($pgBackupBytes -le 0) {
+            Write-Fail "pg_dump завершился с ошибкой или пустой бэкап!"
+            Write-Host $backupResult -ForegroundColor Red
+            exit 1
+        }
+        
+        $pgBackupHuman = ssh tp "numfmt --to=iec-i --suffix=B $pgBackupBytes 2>/dev/null || echo '$pgBackupBytes bytes'"
+        Write-OK "PostgreSQL бэкап: /tmp/$script:backupName.pgdump ($pgBackupHuman)"
+        
+        # Верификация бэкапа
+        $verifyResult = ssh tp "pg_restore --list /tmp/$script:backupName.pgdump 2>/dev/null | wc -l"
+        $tableCount = 0
+        [void][int]::TryParse($verifyResult, [ref]$tableCount)
+        if ($tableCount -lt 10) {
+            Write-Fail "Бэкап подозрительно мал ($tableCount объектов)"
+            exit 1
+        }
+        Write-OK "Бэкап верифицирован ($tableCount объектов)"
+    } else {
+        # SQLite: cp + integrity check
+        Write-Host "  БД: SQLite — копируем файл..." -ForegroundColor Gray
         $sqliteBackup = ssh tp "cd /var/www/teaching_panel && sudo cp teaching_panel/db.sqlite3 /tmp/$script:backupName.sqlite3 2>&1 && (stat -c '%s' /tmp/$script:backupName.sqlite3 2>/dev/null || echo 0)"
-    
-    if (-not $sqliteBackup -or $sqliteBackup -match "No such file") {
-        Write-Fail "Не удалось создать бэкап SQLite!"
-        exit 1
-    }
+        
+        if (-not $sqliteBackup -or $sqliteBackup -match "No such file") {
+            Write-Fail "Не удалось создать бэкап SQLite!"
+            exit 1
+        }
 
-    $sqliteBackupBytes = 0
-    [void][int]::TryParse(($sqliteBackup | Select-Object -First 1), [ref]$sqliteBackupBytes)
-    if ($sqliteBackupBytes -le 0) {
-        Write-Fail "Бэкап SQLite выглядит пустым (0 bytes) — останавливаем деплой"
-        exit 1
+        $sqliteBackupBytes = 0
+        [void][int]::TryParse(($sqliteBackup | Select-Object -First 1), [ref]$sqliteBackupBytes)
+        if ($sqliteBackupBytes -le 0) {
+            Write-Fail "Бэкап SQLite выглядит пустым (0 bytes)"
+            exit 1
+        }
+        Write-OK "SQLite бэкап: /tmp/$script:backupName.sqlite3"
+        
+        $integrityCheck = ssh tp "sqlite3 /tmp/$script:backupName.sqlite3 'PRAGMA integrity_check;' 2>&1"
+        if ($integrityCheck -ne "ok") {
+            Write-Fail "Бэкап повреждён! integrity_check: $integrityCheck"
+            exit 1
+        }
+        Write-OK "Бэкап прошёл integrity check"
     }
-
-    $sqliteBackupHuman = ssh tp "numfmt --to=iec-i --suffix=B $sqliteBackupBytes 2>/dev/null || echo '${sqliteBackupBytes} bytes'"
-    Write-OK "SQLite бэкап: /tmp/$script:backupName.sqlite3 ($sqliteBackupHuman)"
-    
-    # Проверка целостности бэкапа
-    $integrityCheck = ssh tp "sqlite3 /tmp/$script:backupName.sqlite3 'PRAGMA integrity_check;' 2>&1"
-    if ($integrityCheck -ne "ok") {
-        Write-Fail "Бэкап повреждён! integrity_check: $integrityCheck"
-        exit 1
-    }
-    Write-OK "Бэкап прошёл integrity check"
     
     # JSON дамп (дополнительно, для отладки)
     ssh tp "cd /var/www/teaching_panel && sudo -u www-data venv/bin/python teaching_panel/manage.py dumpdata --natural-foreign --natural-primary --exclude contenttypes --exclude auth.Permission -o /tmp/$script:backupName.json 2>/dev/null" | Out-Null
 } else {
     Write-Host "  [DRY-RUN] Бэкап был бы создан: /tmp/$script:backupName.*" -ForegroundColor Gray
+}
+
+# ===================================================================
+# ШАГ 2.5: Снятие immutable-флагов (чтобы git reset мог обновить файлы)
+# ===================================================================
+Write-Host "  Снимаем immutable-флаги для деплоя..." -ForegroundColor Gray
+if (-not $DryRun) {
+    ssh tp "sudo chattr -i /var/www/teaching_panel/frontend/build/index.html /var/www/teaching_panel/frontend/build/favicon.svg /var/www/teaching_panel/frontend/src/App.js /var/www/teaching_panel/teaching_panel/teaching_panel/settings.py 2>/dev/null || true"
+    Write-OK "Immutable-флаги сняты"
 }
 
 # ===================================================================
@@ -366,10 +404,10 @@ if (-not $DryRun) {
     # Ждём старта
     Start-Sleep -Seconds 5
     
-    $status = ssh tp "systemctl is-active teaching-panel"
+    $status = ssh tp "systemctl is-active teaching_panel"
     if ($status -ne "active") {
         Write-Fail "Сервис не запустился!"
-        ssh tp "sudo journalctl -u teaching-panel -n 30 --no-pager" | ForEach-Object { Write-Host $_ -ForegroundColor Red }
+        ssh tp "sudo journalctl -u teaching_panel -n 30 --no-pager" | ForEach-Object { Write-Host $_ -ForegroundColor Red }
         Rollback-Changes
         exit 1
     }
@@ -405,6 +443,15 @@ if (-not $DryRun) {
     
 } else {
     Write-Host "  [DRY-RUN] Smoke tests были бы выполнены" -ForegroundColor Gray
+}
+
+# ===================================================================
+# ШАГ 10: Восстановление immutable-флагов
+# ===================================================================
+Write-Host "  Восстанавливаем immutable-флаги..." -ForegroundColor Gray
+if (-not $DryRun) {
+    ssh tp "sudo chattr +i /var/www/teaching_panel/frontend/build/index.html /var/www/teaching_panel/frontend/build/favicon.svg /var/www/teaching_panel/frontend/src/App.js /var/www/teaching_panel/teaching_panel/teaching_panel/settings.py 2>/dev/null || true"
+    Write-OK "Immutable-флаги восстановлены (deploy_monitor не будет спамить)"
 }
 
 # ===================================================================

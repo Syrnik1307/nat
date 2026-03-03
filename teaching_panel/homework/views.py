@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.db.models import Q
 from core.models import AuditLog
 from accounts.notifications import send_telegram_notification
-from .models import Homework, StudentSubmission, Answer
+from .models import Homework, StudentSubmission, Answer, Choice
 from .serializers import HomeworkSerializer, HomeworkStudentSerializer, StudentSubmissionSerializer
 from .permissions import IsTeacherHomework, IsStudentSubmission
 
@@ -1080,17 +1080,28 @@ class HomeworkViewSet(viewsets.ModelViewSet):
         if submission.status == 'in_progress':
             return Response({'error': 'Сначала завершите и сдайте работу'}, status=status.HTTP_400_BAD_REQUEST)
         
+        # Показываем правильные ответы только для проверенных работ
+        show_correct = submission.status == 'graded'
+
         # Собираем вопросы
         questions = []
-        for q in homework.questions.all().order_by('order'):
-            questions.append({
+        for q in homework.questions.all().order_by('order').prefetch_related('choices'):
+            q_data = {
                 'id': q.id,
                 'prompt': q.prompt,
                 'question_type': 'MULTIPLE_CHOICE' if q.question_type == 'MULTI_CHOICE' else q.question_type,
                 'points': q.points,
                 'order': q.order,
                 'config': q.config or {},
-            })
+            }
+
+            # Добавляем правильные ответы для проверенных работ
+            if show_correct:
+                correct_answer = self._get_correct_answer_for_question(q)
+                if correct_answer is not None:
+                    q_data['correct_answer'] = correct_answer
+
+            questions.append(q_data)
         
         # Собираем ответы
         answers = []
@@ -1140,6 +1151,79 @@ class HomeworkViewSet(viewsets.ModelViewSet):
             'questions': questions,
             'answers': answers,
         })
+
+    @staticmethod
+    def _get_correct_answer_for_question(q):
+        """
+        Возвращает правильный ответ для вопроса в человекочитаемом виде.
+        Используется для отображения ученику после проверки.
+        """
+        config = q.config or {}
+        qtype = q.question_type
+
+        if qtype == 'TEXT':
+            correct = config.get('correctAnswer', '').strip()
+            return correct if correct else None
+
+        if qtype == 'SINGLE_CHOICE':
+            correct_id = config.get('correctOptionId')
+            if correct_id:
+                try:
+                    choice = q.choices.get(id=int(correct_id))
+                    return choice.text
+                except (Choice.DoesNotExist, ValueError, TypeError):
+                    pass
+            # Fallback: is_correct=True
+            correct_choice = q.choices.filter(is_correct=True).first()
+            return correct_choice.text if correct_choice else None
+
+        if qtype == 'MULTI_CHOICE':
+            correct_ids = config.get('correctOptionIds', [])
+            if correct_ids:
+                try:
+                    ids = [int(cid) for cid in correct_ids]
+                    correct_choices = q.choices.filter(id__in=ids).order_by('id')
+                    texts = [c.text for c in correct_choices]
+                    return ', '.join(texts) if texts else None
+                except (ValueError, TypeError):
+                    pass
+            # Fallback: is_correct=True
+            correct_choices = q.choices.filter(is_correct=True)
+            texts = [c.text for c in correct_choices]
+            return ', '.join(texts) if texts else None
+
+        if qtype == 'FILL_BLANKS':
+            answers = config.get('answers', [])
+            return ', '.join(str(a) for a in answers) if answers else None
+
+        if qtype == 'MATCHING':
+            pairs = config.get('pairs', [])
+            if pairs:
+                return '; '.join(f"{p.get('left', '')} — {p.get('right', '')}" for p in pairs)
+            return None
+
+        if qtype == 'DRAG_DROP':
+            correct_order = config.get('correctOrder', [])
+            items = config.get('items', [])
+            if correct_order and items:
+                items_map = {str(item.get('id', '')): item.get('text', '') for item in items}
+                ordered = [items_map.get(str(oid), str(oid)) for oid in correct_order]
+                return ' → '.join(ordered)
+            return None
+
+        if qtype == 'LISTENING':
+            sub_questions = config.get('subQuestions', [])
+            if sub_questions:
+                parts = []
+                for subq in sub_questions:
+                    ans = subq.get('answer', '')
+                    if ans:
+                        parts.append(ans)
+                return ', '.join(parts) if parts else None
+            return None
+
+        # HOTSPOT, CODE — правильный ответ сложно отобразить текстом
+        return None
 
 
 class StudentSubmissionViewSet(viewsets.ModelViewSet):

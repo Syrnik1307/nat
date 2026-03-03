@@ -8,19 +8,32 @@
 set -eu
 
 # === BRANCH GUARD ===
+# Allow push from new-prod (production) and staging
 ALLOWED_BRANCHES="new-prod staging"
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
-BRANCH_OK=0
-for b in $ALLOWED_BRANCHES; do
-    if [ "$CURRENT_BRANCH" = "$b" ]; then BRANCH_OK=1; fi
+
+IS_ALLOWED=0
+for branch in $ALLOWED_BRANCHES; do
+    if [ "$CURRENT_BRANCH" = "$branch" ]; then
+        IS_ALLOWED=1
+        break
+    fi
 done
-if [ "$BRANCH_OK" = "0" ]; then
+
+if [ "$IS_ALLOWED" = "0" ]; then
     echo "" >&2
     echo "BLOCKED: Push only allowed from: $ALLOWED_BRANCHES" >&2
     echo "Current branch: $CURRENT_BRANCH" >&2
-    echo "To switch: git checkout new-prod  or  git checkout staging" >&2
+    echo "To switch: git checkout new-prod" >&2
     echo "" >&2
     exit 1
+fi
+
+# === STAGING SAFETY: warn if pushing staging changes to new-prod remote ===
+if [ "$CURRENT_BRANCH" = "staging" ]; then
+    echo "" >&2
+    echo "[hooks] Pushing STAGING branch — changes will NOT go to production" >&2
+    echo "" >&2
 fi
 
 if [ "${SKIP_HOOKS:-}" = "1" ]; then
@@ -96,3 +109,4 @@ fi
 
 echo "[hooks] OK" >&2
 exit 0
+
