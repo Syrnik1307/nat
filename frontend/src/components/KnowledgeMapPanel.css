@@ -1,0 +1,198 @@
+/* Knowledge Map Panel - feature-flagged component */
+
+.km-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.km-subject-selector {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.km-subject-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 14px;
+}
+
+.km-subject-btn:hover {
+    border-color: #4F46E5;
+    background: #f8fafc;
+}
+
+.km-subject-btn.active {
+    border-color: #4F46E5;
+    background: #EEF2FF;
+    font-weight: 600;
+}
+
+.km-subject-name {
+    color: #1e293b;
+}
+
+.km-subject-badge {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.km-chart-wrapper {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #f1f5f9;
+}
+
+.km-overall {
+    display: flex;
+    gap: 24px;
+}
+
+.km-overall-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.km-overall-label {
+    font-size: 12px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.km-overall-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.km-topics-table {
+    overflow-x: auto;
+}
+
+.km-topics-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.km-topics-table th {
+    text-align: left;
+    padding: 8px 12px;
+    color: #64748b;
+    font-weight: 500;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.km-topics-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.km-topic-num {
+    color: #94a3b8;
+    font-weight: 600;
+    width: 40px;
+}
+
+.km-topic-title {
+    color: #1e293b;
+}
+
+.km-progress-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 120px;
+}
+
+.km-progress-bar-wrapper {
+    position: relative;
+    background: #f1f5f9;
+    border-radius: 3px;
+    height: 6px;
+    flex: 1;
+    overflow: hidden;
+}
+
+.km-progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    border-radius: 3px;
+    transition: width 280ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.km-progress-text {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 600;
+    min-width: 35px;
+    text-align: right;
+}
+
+.km-attempts {
+    color: #64748b;
+    text-align: center;
+}
+
+.km-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 0;
+    color: #94a3b8;
+    font-size: 14px;
+}
+
+.km-error {
+    padding: 20px;
+    color: #dc2626;
+    background: #fef2f2;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.km-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 20px;
+    text-align: center;
+}
+
+.km-empty-icon {
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.km-empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #334155;
+    margin: 0 0 8px 0;
+}
+
+.km-empty-subtitle {
+    font-size: 14px;
+    color: #94a3b8;
+    max-width: 360px;
+    margin: 0;
+    line-height: 1.5;
+}
