@@ -58,7 +58,6 @@ const navItems = [
   { to: '/student/materials', label: 'Материалы' },
   { to: '/student/stats', label: 'Моя статистика' },
   { to: '/support', label: 'Поддержка' },
-  { to: '/profile', label: 'Профиль' },
 ];
 
 const StudentNavBar = () => {
