@@ -14,11 +14,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.AddField(
-            model_name='group',
-            name='invite_code',
-            field=models.CharField(blank=True, help_text='Уникальный код для присоединения учеников к группе', max_length=8, null=True, unique=True, verbose_name='код приглашения'),
-        ),
-        migrations.AddField(
             model_name='lessonrecording',
             name='teacher',
             field=models.ForeignKey(blank=True, help_text='Преподаватель-владелец записи (для standalone записей)', limit_choices_to={'role': 'teacher'}, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='owned_recordings', to=settings.AUTH_USER_MODEL, verbose_name='преподаватель'),
