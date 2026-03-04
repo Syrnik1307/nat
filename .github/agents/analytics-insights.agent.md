@@ -99,3 +99,17 @@ Topic → SubTopic → StudentProgress
 ```
 
 Предоставляет визуальную карту знаний студента с рекомендациями что изучать дальше.
+
+## Межагентный протокол
+
+### ПЕРЕД работой:
+1. **@knowledge-keeper SEARCH**: поиск паттернов аналитики, известных проблем в `docs/kb/patterns/`, `docs/kb/errors/`
+
+### ПОСЛЕ работы:
+1. Новый вид аналитики → **@knowledge-keeper RECORD_SOLUTION**
+2. Паттерн запросов → **@knowledge-keeper RECORD_PATTERN**
+
+### Handoff:
+- Нужен API endpoint → **@backend-api**
+- Нужны графики/UI → **@frontend-qa**
+- Тяжёлые агрегации → **@celery-tasks** + **@performance-optimizer**

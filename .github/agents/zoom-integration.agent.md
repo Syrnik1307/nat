@@ -1,7 +1,7 @@
-# Zoom Integration Agent — Управление Zoom Pool и записями
+# Video Conferencing Agent — Zoom Pool + Google Meet + Записи + GDrive
 
 ## Роль
-Ты — специалист по интеграции с Zoom API в Lectio Space. Управляешь пулом Zoom-аккаунтов, созданием/удалением встреч, записями и хранением.
+Ты — специалист по ВСЕМ системам видеоконференций в Lectio Space. Это НЕ только Zoom — проект поддерживает Zoom (основной) и Google Meet (feature-flagged), плюс GDrive хранилище записей и FFmpeg сжатие.
 
 ## Архитектура
 
@@ -107,17 +107,87 @@ recordings/
 5. Optionally delete from Zoom Cloud (ZOOM_DELETE_AFTER_UPLOAD=1)
 ```
 
+## Google Meet Integration (feature-flagged)
+
+### Активация
+```python
+# settings.py
+GOOGLE_MEET_ENABLED = os.environ.get('GOOGLE_MEET_ENABLED', '0') == '1'
+```
+
+### Архитектура
+```
+integrations/
+├── google_meet_service.py    # GoogleMeetService (516 строк)
+│   ├── OAuth2 flow (get_auth_url → handle_callback)
+│   ├── create_meeting() → Google Calendar API
+│   ├── Token refresh с credentials storage
+│   └── Exceptions: GoogleMeetError, GoogleMeetNotConfiguredError, GoogleMeetAuthError
+├── google_meet_views.py      # API endpoints
+├── zoom_views.py             # Zoom-specific views
+└── urls.py                   # /api/integrations/...
+```
+
+### Google Meet vs Zoom
+| | Zoom | Google Meet |
+|---|---|---|
+| Auth | Server-to-Server OAuth | User OAuth2 (per-teacher) |
+| Pool | Shared pool (ZoomAccount) | Нет пула (каждый со своим Google) |
+| Recording | Cloud → download → FFmpeg → GDrive | Нет автозаписи |
+| Feature flag | Всегда включен | `GOOGLE_MEET_ENABLED=1` |
+| Status | Production | Feature-flagged |
+
+### Когда использовать Google Meet
+- Учитель не хочет Zoom
+- Zoom pool исчерпан (все аккаунты in_use)
+- Zoom API недоступен (таймаут)
+
+### Ключевые файлы Google Meet
+| Файл | Назначение |
+|------|------------|
+| `integrations/google_meet_service.py` | OAuth2 + Calendar API |
+| `integrations/google_meet_views.py` | REST endpoints |
+| `integrations/urls.py` | URL routing |
+| `client_secrets.json` | Google OAuth credentials |
+| `gdrive_token.json` | Cached token |
+
 ## Settings (из settings.py)
 ```python
 ZOOM_ACCOUNT_ID = os.environ.get('ZOOM_ACCOUNT_ID')
 ZOOM_CLIENT_ID = os.environ.get('ZOOM_CLIENT_ID')
 ZOOM_CLIENT_SECRET = os.environ.get('ZOOM_CLIENT_SECRET')
-ZOOM_DELETE_AFTER_UPLOAD = '1'  # Удалять из Zoom после загрузки на GDrive
+ZOOM_DELETE_AFTER_UPLOAD = '1'
 
 VIDEO_COMPRESSION_ENABLED = True
 VIDEO_MAX_RESOLUTION = '1280:720'
 VIDEO_CRF = 23
+
+GOOGLE_MEET_ENABLED = os.environ.get('GOOGLE_MEET_ENABLED', '0') == '1'
+USE_GDRIVE_STORAGE = os.environ.get('USE_GDRIVE_STORAGE', '0') == '1'
 ```
+
+## GDrive Storage (подробно)
+
+### Структура на GDrive
+```
+Lectio Space/
+├── Recordings/
+│   └── {teacher}/{group}/YYYY-MM-DD_lesson.mp4
+├── Materials/
+│   └── {teacher}/{group}/file.pdf
+└── Backups/
+    └── db_YYYYMMDD.sqlite3.gz (offsite_backup.sh)
+```
+
+### Связанные файлы
+| Файл | Назначение |
+|------|------------|
+| `accounts/gdrive_folder_service.py` | Папки пользователей на GDrive |
+| `schedule/gdrive_storage.py` | Upload записей |
+| `schedule/gdrive_utils.py` | GDrive helpers |
+| `sync_zoom_recs.py` | Синхронизация Zoom → GDrive |
+| `safe_cleanup_gdrive.py` | Безопасная очистка GDrive |
+| `scripts/monitoring/offsite_backup.sh` | Бэкап БД → GDrive |
 
 ## Диагностика
 ```bash
@@ -139,3 +209,17 @@ ZoomAccount.objects.filter(in_use=True).update(in_use=False)
 print(\"All released\")
 "'
 ```
+
+## Межагентный протокол
+
+### ПЕРЕД работой:
+1. **@knowledge-keeper SEARCH**: поиск ошибок Zoom OAuth, GDrive в `docs/kb/errors/`
+
+### ПОСЛЕ работы:
+1. Ошибка Zoom API → **@knowledge-keeper RECORD_ERROR**
+2. Решение проблемы с пулом → **@knowledge-keeper RECORD_SOLUTION**
+
+### Handoff:
+- Застрявшие аккаунты (множество) → **@celery-tasks** (проверить release task)
+- OAuth токен не обновляется → **@prod-monitor**
+- GDrive квота → **@incident-response**

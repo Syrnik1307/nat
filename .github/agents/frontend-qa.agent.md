@@ -88,3 +88,16 @@ grep -rn "transition:.*[0-9]ms" src/ --include="*.css" | grep -v "var(--"
 # Поиск display:none без animation
 grep -rn "display:\s*none" src/ --include="*.css"
 ```
+
+## Межагентный протокол
+
+### ПЕРЕД проверкой:
+1. **@knowledge-keeper SEARCH**: поиск известных UI-багов и паттернов в `docs/kb/errors/`, `docs/kb/patterns/`
+
+### ПОСЛЕ проверки:
+1. Найдены нарушения → **@knowledge-keeper RECORD_ERROR**
+2. Новый UI-паттерн → **@knowledge-keeper RECORD_PATTERN**
+
+### Handoff:
+- Нужен рефакторинг CSS → **@performance-optimizer**
+- Нужны тесты → **@test-writer**

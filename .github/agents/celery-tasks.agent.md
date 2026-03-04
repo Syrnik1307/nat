@@ -100,3 +100,17 @@ ssh tp 'sudo systemctl restart teaching_panel-celery-worker teaching_panel-celer
 - `CELERY_WORKER_MAX_MEMORY_PER_CHILD = 150000` — 150MB лимит
 - `CELERY_WORKER_PREFETCH_MULTIPLIER = 1` — по 1 задаче
 - Heavy задачи в отдельную очередь (не блокируют notifications)
+
+## Межагентный протокол
+
+### ПЕРЕД работой:
+1. **@knowledge-keeper SEARCH**: поиск известных проблем с Celery и задачами в `docs/kb/errors/`
+
+### ПОСЛЕ работы:
+1. Ошибка задачи → **@knowledge-keeper RECORD_ERROR**
+2. Новый паттерн надёжности → **@knowledge-keeper RECORD_SOLUTION**
+
+### Handoff:
+- Worker падает по OOM → **@performance-optimizer**
+- Задача не запускается → **@prod-monitor** (проверить Redis, systemd)
+- Нужна новая periodic task → **@sprint-planner** для приоритизации

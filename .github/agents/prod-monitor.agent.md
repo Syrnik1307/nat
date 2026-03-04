@@ -116,3 +116,18 @@ ssh tp 'redis-cli dbsize'
 ### Рекомендации:
 1. ...
 ```
+
+## Межагентный протокол
+
+### ПЕРЕД диагностикой:
+1. **@knowledge-keeper SEARCH**: поиск прошлых инцидентов с похожими симптомами в `docs/kb/errors/`, `docs/kb/incidents/`
+
+### ПОСЛЕ диагностики:
+1. Найдена новая проблема → **@knowledge-keeper RECORD_ERROR**
+2. Повторяющийся паттерн → **@knowledge-keeper RECORD_PATTERN**
+
+### Handoff:
+- Критическая проблема (сервис down) → **@incident-response**
+- Memory/CPU проблемы → **@performance-optimizer**
+- Celery worker упал → **@celery-tasks**
+- SSL/security issue → **@security-reviewer**

@@ -123,3 +123,18 @@ git log --format="%ad" --date=short --since="1 month ago" | sort | uniq -c | sor
 2. Запросы пользователей
 3. Technical debt
 4. Burnout prevention (не перегружать)
+
+## Межагентный протокол
+
+### ПЕРЕД планированием:
+1. **@knowledge-keeper SEARCH**: чтение VSEX категорий KB для оценки состояния проекта
+2. Чтение `docs/kb/incidents/` и `docs/kb/deployments/` для оценки стабильности
+
+### ПОСЛЕ планирования:
+1. План спринта → не пишет в KB (результат в чате)
+
+### Handoff:
+- Задача на бэкенд → **@backend-api**
+- Задача на фронтенд → **@frontend-qa**
+- Нужен деплой → **@deploy-agent**
+- Tech debt → соответствующий агент

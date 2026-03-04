@@ -125,3 +125,16 @@ python manage.py inspectdb > schema_dump.txt
 git shortlog -sn --since="2026-01-01"
 git log --oneline --since="1 week ago"
 ```
+
+## Межагентный протокол
+
+### ПЕРЕД работой:
+1. **@knowledge-keeper SEARCH**: чтение всех категорий KB для актуальности документации
+
+### ПОСЛЕ работы:
+1. Обновлена документация → **@knowledge-keeper RECORD_SOLUTION** (что задокументировано)
+
+### Handoff:
+- Нужна информация об API → **@backend-api**
+- Нужна информация о frontend → **@frontend-qa**
+- Нужна информация об infra → **@prod-monitor**

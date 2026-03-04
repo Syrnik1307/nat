@@ -317,6 +317,33 @@
 			],
 			"isBackground": false,
 			"group": "build"
+		},
+		{
+			"label": "agent-check: staged",
+			"type": "shell",
+			"command": "python",
+			"args": ["scripts/agent_checks.py"],
+			"group": "test",
+			"presentation": { "reveal": "always", "panel": "shared" },
+			"problemMatcher": []
+		},
+		{
+			"label": "agent-check: all files",
+			"type": "shell",
+			"command": "python",
+			"args": ["scripts/agent_checks.py", "--all"],
+			"group": "test",
+			"presentation": { "reveal": "always", "panel": "shared" },
+			"problemMatcher": []
+		},
+		{
+			"label": "agent-check: changed files",
+			"type": "shell",
+			"command": "python",
+			"args": ["scripts/agent_checks.py", "--changed"],
+			"group": "test",
+			"presentation": { "reveal": "always", "panel": "shared" },
+			"problemMatcher": []
 		}
 	]
 }

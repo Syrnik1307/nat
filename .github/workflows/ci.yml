@@ -2,9 +2,12 @@ name: CI
 
 on:
   push:
+    branches: [staging, new-prod]
   pull_request:
+    branches: [staging, new-prod]
 
 jobs:
+  # ── Backend: Django checks + tests + safety ──
   backend:
     runs-on: ubuntu-latest
     defaults:
@@ -48,6 +51,63 @@ jobs:
           python manage.py check
           python manage.py check --deploy --fail-level WARNING
 
+      # ── НОВОЕ: Запуск тестов ──
+      - name: Run tests
+        run: python manage.py test --verbosity=2 --parallel
+        continue-on-error: false
+
+      # ── НОВОЕ: Проверка миграций ──
+      - name: Check for missing migrations
+        run: python manage.py makemigrations --check --dry-run
+
+      # ── НОВОЕ: Опасные миграции ──
+      - name: Check dangerous migrations
+        run: |
+          echo "Checking for dangerous migration operations..."
+          DANGEROUS=$(grep -rn "RemoveField\|DeleteModel\|RunSQL.*DROP\|RunSQL.*DELETE\|RunSQL.*TRUNCATE" */migrations/*.py 2>/dev/null | grep -v "__pycache__" || true)
+          if [ -n "$DANGEROUS" ]; then
+            echo "::warning::Dangerous migration operations found:"
+            echo "$DANGEROUS"
+          fi
+
+  # ── НОВОЕ: Блокировка запрещённого кода ──
+  safety:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Block tenant code (BANNED FOREVER)
+        run: |
+          echo "Checking for banned tenant code..."
+          TENANT_FILES=$(find teaching_panel/ -name "*.py" -not -path "*/__pycache__/*" -not -path "*/migrations/*" | xargs grep -l "from tenants\|import tenants\|TenantMiddleware\|TenantModelMixin\|TenantViewSetMixin\|set_current_tenant" 2>/dev/null || true)
+          if [ -n "$TENANT_FILES" ]; then
+            echo "::error::TENANT CODE DETECTED! This is BANNED forever (broke production 2026-02-08)"
+            echo "$TENANT_FILES"
+            exit 1
+          fi
+          echo "No tenant code found. OK."
+
+      - name: Block emoji in frontend
+        run: |
+          echo "Checking for emoji in React components..."
+          EMOJI=$(grep -rn '[😀-🧿🌀-🗿🚀-🛿☀-⭕✂-➰🇦-🇿]' frontend/src/components/ frontend/src/modules/ frontend/src/shared/ 2>/dev/null || true)
+          if [ -n "$EMOJI" ]; then
+            echo "::warning::Emoji found in UI components (use lucide-react icons instead):"
+            echo "$EMOJI"
+          fi
+
+      - name: Check production-banned features
+        run: |
+          echo "Checking for production-banned feature flags in code..."
+          BANNED=$(grep -rn "KNOWLEDGE_MAP_ENABLED.*=.*1\|SUPPORT_V2_ENABLED.*=.*1" teaching_panel/teaching_panel/settings.py 2>/dev/null | grep -v "environ\|os.environ\|#" || true)
+          if [ -n "$BANNED" ]; then
+            echo "::error::Production-banned feature enabled in settings.py:"
+            echo "$BANNED"
+            exit 1
+          fi
+
+  # ── Frontend ──
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -68,4 +128,19 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: CI=false npm run build
+        run: npm run build
+        env:
+          CI: false
+
+      # ── НОВОЕ: Размер бандла ──
+      - name: Check bundle size
+        run: |
+          MAIN_JS=$(find build/static/js -name "main.*.js" -not -name "*.map" | head -1)
+          if [ -n "$MAIN_JS" ]; then
+            SIZE=$(wc -c < "$MAIN_JS")
+            SIZE_KB=$((SIZE / 1024))
+            echo "Main bundle: ${SIZE_KB} KB"
+            if [ "$SIZE_KB" -gt 512 ]; then
+              echo "::warning::Main bundle is ${SIZE_KB} KB (threshold: 512 KB)"
+            fi
+          fi

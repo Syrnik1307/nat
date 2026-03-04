@@ -104,3 +104,17 @@ python manage.py migrate
 python manage.py test
 python manage.py test schedule.tests
 ```
+
+## Межагентный протокол
+
+### ПЕРЕД работой:
+1. **@knowledge-keeper SEARCH**: поиск известных проблем настройки в `docs/kb/errors/`
+
+### ПОСЛЕ работы:
+1. Новая проблема настройки → **@knowledge-keeper RECORD_ERROR**
+2. Решение → **@knowledge-keeper RECORD_SOLUTION**
+
+### Handoff:
+- Проблема с зависимостями → **@dependency-manager**
+- Проблема с БД → **@db-guardian**
+- Нужны тесты → **@test-writer**

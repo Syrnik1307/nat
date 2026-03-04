@@ -1,0 +1,64 @@
+name: Feature Request
+description: Request a new feature for Copilot Coding Agent to implement
+title: "[Feature] "
+labels: ["enhancement", "copilot-eligible"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Опишите задачу. Назначьте Issue на @copilot для автоматической реализации.
+
+        **ВАЖНО**: Copilot следует правилам из `.github/copilot-instructions.md`:
+        - НЕ создаёт tenant-код
+        - НЕ делает опасные миграции
+        - НЕ использует эмодзи в UI
+        - Соблюдает FRONTEND_SMOOTHNESS_RULES
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание фичи
+      description: Что нужно реализовать?
+      placeholder: |
+        Добавить кнопку "Экспорт в PDF" на странице аналитики.
+        Кнопка должна генерировать PDF-отчёт с оценками студентов.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Критерии приёмки
+      description: Когда задача считается выполненной?
+      placeholder: |
+        - [ ] Кнопка отображается на странице /teacher/analytics
+        - [ ] PDF содержит таблицу с оценками
+        - [ ] Работает для групп с >50 студентами
+    validations:
+      required: true
+
+  - type: textarea
+    id: files
+    attributes:
+      label: Файлы для изменения
+      description: Укажите файлы, которые нужно изменить/создать
+      placeholder: |
+        Изменить:
+        - frontend/src/modules/homework-analytics/AnalyticsPage.js
+        Создать:
+        - teaching_panel/analytics/pdf_export.py
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Область
+      options:
+        - Backend (Django)
+        - Frontend (React)
+        - Backend + Frontend
+        - Celery tasks
+        - Telegram bot
+        - DevOps / CI
+        - Other
+    validations:
+      required: true

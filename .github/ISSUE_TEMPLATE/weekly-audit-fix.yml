@@ -1,0 +1,46 @@
+name: Audit Fix
+description: Fix findings from weekly audit (auto-created)
+title: "[Audit] "
+labels: ["audit", "copilot-eligible", "maintenance"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Этот шаблон для задач из Weekly Audit.
+        Назначьте на @copilot для автоматического исправления.
+
+  - type: textarea
+    id: findings
+    attributes:
+      label: Что найдено аудитом
+      description: Вставьте результаты из Weekly Audit Report
+      placeholder: |
+        pip-audit нашёл 3 уязвимости:
+        - django 5.2.0 → CVE-2026-XXXX (обновить до 5.2.1)
+        - pillow 10.0.0 → heap overflow (обновить до 10.0.1)
+    validations:
+      required: true
+
+  - type: textarea
+    id: action
+    attributes:
+      label: Требуемое действие
+      description: Что конкретно нужно сделать?
+      placeholder: |
+        1. Обновить django в requirements.txt до >=5.2.1
+        2. Обновить pillow до >=10.0.1
+        3. Проверить что тесты проходят
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Приоритет
+      options:
+        - Critical (security vulnerability)
+        - High (breaking change incoming)
+        - Medium (outdated dependency)
+        - Low (code cleanup)
+    validations:
+      required: true

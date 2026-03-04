@@ -77,3 +77,17 @@ python manage.py migrate --plan
 # Проверка целостности БД
 sqlite3 teaching_panel/db.sqlite3 "PRAGMA integrity_check;"
 ```
+
+## Межагентный протокол
+
+### ПЕРЕД проверкой:
+1. **@knowledge-keeper SEARCH**: поиск прошлых проблем с миграциями в `docs/kb/errors/`
+2. Помнить о tenant-катастрофе 2026-02-08 (docs/kb/errors/2026-02-08_tenant-migration-disaster.md)
+
+### ПОСЛЕ проверки:
+1. Опасная миграция → **@knowledge-keeper RECORD_ERROR** + блокировка
+2. Безопасная миграция → одобрение для **@deploy-agent**
+
+### Handoff:
+- Готово к деплою → **@deploy-agent**
+- Нужна правка модели → **@backend-api**

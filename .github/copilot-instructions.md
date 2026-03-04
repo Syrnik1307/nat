@@ -502,6 +502,117 @@ transition:
 --ease-out-soft: cubic-bezier(0.33, 1, 0.68, 1);
 ```
 
+## Custom AI Agents (`.github/agents/`)
+
+Проект содержит **28 специализированных агентов** для разных задач.
+
+### Как работает система агентов
+
+**Главный принцип: @orchestrator — единая точка входа.**
+
+Вместо вызова отдельных агентов, используй `@orchestrator` — он **сам загружает** файлы нужных агентов (`read_file(".github/agents/<name>.agent.md")`), применяет их правила и выполняет работу в рамках одной сессии. Агенты НЕ общаются между собой напрямую — orchestrator читает их инструкции и применяет последовательно.
+
+```
+Ты → @orchestrator "добавь фильтрацию в аналитику"
+     │
+     ├─→ Читает safe-feature-dev.agent.md → применяет чеклист
+     ├─→ Читает backend-api.agent.md → пишет API
+     ├─→ Читает test-writer.agent.md → пишет тесты
+     ├─→ Читает db-guardian.agent.md → проверяет миграции
+     └─→ Записывает результат в docs/kb/
+```
+
+**Прямой вызов отдельных агентов** (`@backend-api`, `@db-guardian` и т.д.) тоже работает — для узких задач, когда знаешь какой агент нужен.
+
+**Handoff-секции** в файлах агентов — это метаданные для orchestrator: он читает "Handoff: нужны тесты → @test-writer" и сам загружает test-writer.agent.md.
+
+### Координация (2)
+- **orchestrator** — диспетчер, делегирует задачи нужным агентам
+- **knowledge-keeper** — управляет базой знаний (`docs/kb/`)
+
+### Инфраструктура (6)
+- **deploy-agent** — деплой на production/staging через `deploy_to_production.ps1`
+- **db-guardian** — безопасность миграций, бэкапы SQLite
+- **ci-cd-pipeline** — GitHub Actions CI/CD, weekly audit
+- **server-watchdog** — мониторинг VPS (Guardian, ops_bot, healthcheck)
+- **prod-monitor** — логи, метрики, алерты production
+- **security-reviewer** — аудит безопасности, OWASP, rate limiting
+
+### Разработка (8)
+- **backend-api** — Django views, serializers, DRF patterns
+- **frontend-qa** — React компоненты, smooth transitions, дизайн-система
+- **test-writer** — Django TestCase, pytest, coverage
+- **code-reviewer** — код-ревью, стандарты, best practices
+- **performance-optimizer** — N+1, select_related, кэширование, 2GB RAM
+- **documentation** — docstrings, README, API docs
+- **dev-environment** — local setup, venv, Docker, proxy
+- **dependency-manager** — pip/npm зависимости, уязвимости
+
+### Интеграции (5)
+- **celery-tasks** — 30+ задач, 4 очереди, Celery Beat
+- **telegram-bot** — 5 ботов (main, payments, requests, errors, ops)
+- **payment-system** — T-Bank (primary), YooKassa (fallback), подписки
+- **zoom-integration** — Zoom pool + Google Meet + GDrive recordings
+- **homework-ai-grading** — 8 типов вопросов, AI-проверка (Gemini/DeepSeek)
+
+### Процессы (5)
+- **git-workflow** — ветвление (staging → new-prod), PR, merge
+- **safe-feature-dev** — feature flags, безопасное развёртывание
+- **project-cleanup** — dead code, мусорные файлы, unused apps
+- **redesign-safe** — рефакторинг без поломки production
+- **sprint-planner** — планирование задач, приоритизация
+
+### Аналитика (2)
+- **analytics-insights** — gradebook, контрольные точки, статистика
+- **incident-response** — P0-P3 инциденты, runbooks, post-mortem
+
+## Copilot Coding Agent (Автономные PR)
+
+GitHub Copilot Coding Agent может автоматически создавать PR из Issues.
+
+**Как использовать:**
+1. Создай Issue через шаблон (Bug Report / Feature Request / Audit Fix)
+2. Назначь Issue на **@copilot** (Assignees → copilot)
+3. Copilot создаст ветку, напишет код, откроет PR
+4. Ты ревьюишь и мержишь
+
+**Issue шаблоны:** `.github/ISSUE_TEMPLATE/`
+- `bug-report.yml` — баг-репорты
+- `feature-request.yml` — новые фичи
+- `weekly-audit-fix.yml` — исправления из еженедельного аудита
+
+**Автоматический цикл:**
+1. Weekly Audit (понедельник 12:00 MSK) → создаёт Issue с результатами
+2. Ты назначаешь Issue на @copilot → Copilot создаёт PR
+3. CI проверяет PR (тесты, tenant-check, миграции) → ты мержишь
+
+## Knowledge Base (`docs/kb/`)
+
+Агенты записывают и читают из общей базы знаний:
+
+- `docs/kb/errors/` — известные ошибки с решениями
+- `docs/kb/incidents/` — post-mortem инцидентов (tenant-disaster, etc.)
+- `docs/kb/patterns/` — архитектурные паттерны (2GB RAM, Celery)
+- `docs/kb/solutions/` — проверенные решения
+- `docs/kb/deployments/` — лог деплоев
+
+## CI/CD Pipeline
+
+### CI (`.github/workflows/ci.yml`)
+Запускается на push/PR в `staging` и `new-prod`:
+- **backend**: Django checks + tests + migration safety check
+- **safety**: tenant code block + emoji check + banned features
+- **frontend**: npm build + bundle size check
+
+### Weekly Audit (`.github/workflows/weekly-audit.yml`)
+Запускается каждый понедельник в 12:00 MSK:
+- pip-audit (Python уязвимости)
+- npm audit (Node уязвимости)
+- outdated packages
+- codebase health (dead files, TODOs, migration count)
+- tenant contamination check
+- Создаёт Issue с результатами
+
 ## Emergency Debugging
 
 If система полностью сломана:
@@ -512,7 +623,8 @@ If система полностью сломана:
 4. **Test backend directly**: `curl http://127.0.0.1:8000/api/me/ -H "Authorization: Bearer <token>"`
 5. **Check Celery logs** if background tasks involved
 6. **Restart everything**: Kill all Python/Node processes, restart Django + React
+7. **Invoke agent**: `@incident-response` в Copilot Chat для пошагового runbook
 
 ---
 
-**Last Updated**: January 14, 2026
+**Last Updated**: July 2025

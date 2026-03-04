@@ -1,0 +1,168 @@
+name: Weekly Audit
+
+on:
+  schedule:
+    # Каждый понедельник в 09:00 UTC (12:00 MSK)
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Ручной запуск
+
+jobs:
+  # ── Аудит Python-зависимостей ──
+  python-audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: teaching_panel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pip-audit
+
+      - name: Run pip-audit
+        run: |
+          echo "## Python Dependency Audit" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          pip-audit --format=columns 2>&1 | tee audit.txt || true
+          cat audit.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Check outdated packages
+        run: |
+          echo "## Outdated Python Packages" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          pip list --outdated --format=columns 2>&1 | head -30 | tee outdated.txt
+          cat outdated.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ── Аудит Node-зависимостей ──
+  node-audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: |
+          echo "## Node.js Dependency Audit" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          npm audit --production 2>&1 | tee audit.txt || true
+          cat audit.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Check outdated packages
+        run: |
+          echo "## Outdated Node Packages" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          npm outdated 2>&1 | head -30 | tee outdated.txt || true
+          cat outdated.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ── Аудит кодовой базы ──
+  codebase-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dead code check
+        run: |
+          echo "## Codebase Health" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Git-tracked debug files (.txt in root)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          ls -la *.txt 2>/dev/null | wc -l | xargs -I{} echo "{} .txt files in project root"
+          ls *.txt 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "None" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "### TODO/FIXME/HACK in code" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -rn "TODO\|FIXME\|HACK\|XXX" teaching_panel/ --include="*.py" -c 2>/dev/null | awk -F: '{s+=$2} END {print s " occurrences across Python files"}' >> $GITHUB_STEP_SUMMARY
+          grep -rn "TODO\|FIXME\|HACK\|XXX" frontend/src/ --include="*.js" --include="*.jsx" -c 2>/dev/null | awk -F: '{s+=$2} END {print s " occurrences across JS files"}' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "### Large files (>500KB)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          find . -type f -size +500k -not -path "./.git/*" -not -path "*/node_modules/*" -not -path "*/build/*" -not -path "*/media/*" -not -path "*/__pycache__/*" -not -name "*.sqlite3" -not -name "*.bundle" | head -20 >> $GITHUB_STEP_SUMMARY || echo "None" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Migration count check
+        run: |
+          echo "### Migration Stats" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          for app in teaching_panel/*/migrations; do
+            APP_NAME=$(basename $(dirname "$app"))
+            COUNT=$(ls "$app"/*.py 2>/dev/null | grep -v __init__ | wc -l)
+            if [ "$COUNT" -gt 10 ]; then
+              echo "WARNING: $APP_NAME has $COUNT migrations (consider squashing)"
+            else
+              echo "$APP_NAME: $COUNT migrations"
+            fi
+          done >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Tenant contamination check
+        run: |
+          echo "### Tenant Code Check (MUST be 0)" >> $GITHUB_STEP_SUMMARY
+          TENANT_COUNT=$(grep -rn "tenant" teaching_panel/ --include="*.py" -l 2>/dev/null | grep -v "__pycache__" | grep -v "migrations" | grep -v ".pyc" | wc -l)
+          if [ "$TENANT_COUNT" -gt 0 ]; then
+            echo ":x: **$TENANT_COUNT files contain 'tenant' references**" >> $GITHUB_STEP_SUMMARY
+            grep -rn "tenant" teaching_panel/ --include="*.py" -l 2>/dev/null | grep -v "__pycache__" | grep -v "migrations" | head -10 >> $GITHUB_STEP_SUMMARY
+          else
+            echo ":white_check_mark: No tenant code found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ── Создание Issue с результатами ──
+  create-report:
+    needs: [python-audit, node-audit, codebase-audit]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Create audit issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const date = new Date().toISOString().split('T')[0];
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Weekly Audit Report - ${date}`,
+              labels: ['audit', 'automated'],
+              body: [
+                `## Weekly Audit - ${date}`,
+                '',
+                `See [workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) for detailed results.`,
+                '',
+                '### Jobs Status',
+                `- Python audit: ${{ needs.python-audit.result }}`,
+                `- Node audit: ${{ needs.node-audit.result }}`,
+                `- Codebase audit: ${{ needs.codebase-audit.result }}`,
+                '',
+                '---',
+                '*This issue was created automatically by the weekly audit workflow.*',
+                '*Assign to @copilot for automated fixes.*'
+              ].join('\n')
+            });
+            console.log(`Created issue #${issue.number}`);

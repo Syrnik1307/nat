@@ -85,3 +85,21 @@ ssh tp 'sudo systemctl restart teaching_panel'
 # Если сломана БД:
 ssh tp 'cd /var/www/teaching_panel/teaching_panel && sudo cp /tmp/backup_LATEST.sqlite3 db.sqlite3 && sudo chown www-data:www-data db.sqlite3 && sudo systemctl restart teaching_panel'
 ```
+
+## Межагентный протокол
+
+### ПЕРЕД деплоем — вызвать:
+1. **@knowledge-keeper SEARCH**: поиск прошлых проблем с деплоями (`docs/kb/deployments/`, `docs/kb/incidents/`)
+2. **@db-guardian**: проверка миграций (если есть)
+3. **@code-reviewer**: ревью staged changes
+4. **@security-reviewer**: если менялись auth/payments/uploads
+5. **@frontend-qa**: если менялся frontend
+
+### ПОСЛЕ деплоя — записать:
+1. **@knowledge-keeper RECORD_DEPLOY**: что задеплоено, миграции, результат
+2. Если был rollback → **@knowledge-keeper RECORD_INCIDENT**
+3. Если обнаружена новая ошибка → **@knowledge-keeper RECORD_ERROR**
+
+### Handoff:
+- Если проблема при деплое → handoff → **@incident-response**
+- Если нужен анализ перфоманса → handoff → **@performance-optimizer**

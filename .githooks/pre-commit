@@ -1,5 +1,5 @@
 #!/bin/sh
-# Guard: block commits on wrong branch + ban tenant code
+# Guard: block commits on wrong branch + ban tenant code + multi-agent checks
 # Allowed branches: new-prod (production), staging (staging environment)
 ALLOWED_BRANCHES="new-prod staging"
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
@@ -29,6 +29,35 @@ if [ -n "$STAGED" ]; then
     if [ -n "$TENANT_FILES" ]; then
         echo "BLOCKED: Files with tenant in name!" >&2
         echo "$TENANT_FILES" >&2
+        exit 1
+    fi
+fi
+
+# ── Multi-Agent Checks (6 agents) ──
+# Runs agent_checks.py on staged files. Exit 1 = BLOCK findings.
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+AGENT_SCRIPT="$REPO_ROOT/scripts/agent_checks.py"
+if [ -f "$AGENT_SCRIPT" ]; then
+    # Find python
+    if [ -f "$REPO_ROOT/.venv/Scripts/python.exe" ]; then
+        PY="$REPO_ROOT/.venv/Scripts/python.exe"
+    elif [ -f "$REPO_ROOT/venv/Scripts/python.exe" ]; then
+        PY="$REPO_ROOT/venv/Scripts/python.exe"
+    elif [ -f "$REPO_ROOT/.venv/bin/python" ]; then
+        PY="$REPO_ROOT/.venv/bin/python"
+    elif [ -f "$REPO_ROOT/venv/bin/python" ]; then
+        PY="$REPO_ROOT/venv/bin/python"
+    else
+        PY="python"
+    fi
+
+    echo "[pre-commit] Running multi-agent checks..." >&2
+    "$PY" "$AGENT_SCRIPT" --staged
+    AGENT_EXIT=$?
+    if [ "$AGENT_EXIT" = "1" ]; then
+        echo "" >&2
+        echo "BLOCKED by agent checks. Fix BLOCK issues above." >&2
+        echo "To bypass: git commit --no-verify" >&2
         exit 1
     fi
 fi

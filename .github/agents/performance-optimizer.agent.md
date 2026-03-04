@@ -148,3 +148,18 @@ ssh tp 'ls -lh /var/www/teaching_panel/teaching_panel/db.sqlite3'
 | Frontend LCP | < 2.5s | > 4s |
 | Bundle size (main) | < 200KB | > 500KB |
 | Memory (server total) | < 1.5GB | > 1.8GB |
+
+## Межагентный протокол
+
+### ПЕРЕД работой:
+1. **@knowledge-keeper SEARCH**: поиск прошлых OOM/тормозов в `docs/kb/errors/`, `docs/kb/patterns/`
+
+### ПОСЛЕ работы:
+1. Найдено узкое место → **@knowledge-keeper RECORD_ERROR**
+2. Паттерн оптимизации → **@knowledge-keeper RECORD_PATTERN**
+
+### Handoff:
+- Нужна оптимизация Celery → **@celery-tasks**
+- Нужна оптимизация SQL → **@backend-api**
+- Frontend bundle слишком большой → **@frontend-qa**
+- Нужен мониторинг метрик → **@prod-monitor**

@@ -109,3 +109,17 @@ npm test       # Проверка тестов
 `requirements-production.txt` может отличаться от `requirements.txt`:
 - Production: `gunicorn`, `sentry-sdk`, `django-redis`
 - Dev only: `django-debug-toolbar`, `factory-boy`, `coverage`
+
+## Межагентный протокол
+
+### ПЕРЕД работой:
+1. **@knowledge-keeper SEARCH**: поиск прошлых проблем с зависимостями в `docs/kb/errors/`
+
+### ПОСЛЕ работы:
+1. Найдена уязвимость → **@knowledge-keeper RECORD_ERROR**
+2. Успешное обновление → **@knowledge-keeper RECORD_SOLUTION**
+
+### Handoff:
+- Уязвимость в пакете → **@security-reviewer**
+- Breaking change после обновления → **@test-writer** (прогнать тесты)
+- Готово к деплою → **@deploy-agent**

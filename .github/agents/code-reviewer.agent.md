@@ -89,3 +89,18 @@ git diff HEAD~1 --name-only   # Last commit
 # Одна команда для быстрой проверки
 git diff --cached | head -200  # Первые 200 строк staged changes
 ```
+
+## Межагентный протокол
+
+### ПЕРЕД ревью:
+1. **@knowledge-keeper SEARCH**: поиск известных проблем с изменёнными модулями в `docs/kb/errors/`
+
+### ПОСЛЕ ревью:
+1. Если найден повторяющийся антипаттерн → **@knowledge-keeper RECORD_PATTERN**
+2. Если найдена уязвимость → **@knowledge-keeper RECORD_ERROR** + **@security-reviewer**
+
+### Handoff:
+- Есть миграции в diff → **@db-guardian**
+- Есть CSS/JSX изменения → **@frontend-qa**
+- Есть Celery tasks → **@celery-tasks**
+- Есть payment код → **@payment-system** + **@security-reviewer**

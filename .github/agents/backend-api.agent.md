@@ -139,3 +139,19 @@ def my_task(self, arg1, arg2):
 | integrations | Google Meet, external platform connections |
 | knowledge_map | Feature-flagged knowledge map |
 | concierge | Onboarding, actions, services |
+
+## Межагентный протокол
+
+### ПЕРЕД работой:
+1. **@knowledge-keeper SEARCH**: поиск похожих решений в `docs/kb/solutions/` и `docs/kb/patterns/`
+2. Если найдено — использовать как основу
+
+### ПОСЛЕ работы:
+1. **@knowledge-keeper RECORD_SOLUTION**: задача, подход, файлы
+2. Если нашли повторяющийся паттерн → **@knowledge-keeper RECORD_PATTERN**
+
+### Handoff:
+- Нужны тесты → **@test-writer**
+- Есть миграции → **@db-guardian**
+- Трогали auth/payments → **@security-reviewer**
+- Нужен frontend → описать API для **@frontend-qa**

@@ -1,0 +1,61 @@
+name: Bug Report
+description: Report a bug for Copilot Coding Agent to fix
+title: "[Bug] "
+labels: ["bug", "copilot-eligible"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Опишите баг. Если назначить этот Issue на @copilot, он автоматически создаст PR с фиксом.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание бага
+      description: Что происходит и что должно происходить?
+      placeholder: |
+        При нажатии кнопки "Сохранить" на странице уроков появляется ошибка 500.
+        Ожидается: урок сохраняется и показывается уведомление.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Шаги воспроизведения
+      description: Как воспроизвести баг?
+      placeholder: |
+        1. Зайти как учитель
+        2. Открыть расписание
+        3. Нажать "Создать урок"
+        4. Заполнить форму и нажать "Сохранить"
+
+  - type: textarea
+    id: files
+    attributes:
+      label: Файлы для исправления
+      description: Укажите конкретные файлы, если знаете где баг
+      placeholder: |
+        - teaching_panel/schedule/views.py (метод create)
+        - frontend/src/modules/core/LessonForm.js
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Область
+      options:
+        - Backend (Django)
+        - Frontend (React)
+        - Celery tasks
+        - Telegram bot
+        - Zoom integration
+        - Payments
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Дополнительный контекст
+      description: Логи ошибок, скриншоты, environment

@@ -103,3 +103,17 @@ curl -X POST http://127.0.0.1:8000/api/payments/tbank/webhook/ \
   -H "Content-Type: application/json" \
   -d '{"TerminalKey":"test","OrderId":"test_order","Status":"CONFIRMED","Success":true,"PaymentId":"12345","Amount":99000}'
 ```
+
+## Межагентный протокол
+
+### ПЕРЕД работой:
+1. **@knowledge-keeper SEARCH**: поиск прошлых платёжных инцидентов в `docs/kb/errors/`, `docs/kb/incidents/`
+
+### ПОСЛЕ работы:
+1. Ошибка платежа → **@knowledge-keeper RECORD_ERROR**
+2. Инцидент (потеря денег, двойное списание) → **@knowledge-keeper RECORD_INCIDENT**
+
+### Handoff:
+- Подозрение на мошенничество → **@security-reviewer**
+- Платёж не дошёл (webhook) → **@prod-monitor** + **@incident-response**
+- Нужен UI для нового плана → **@frontend-qa**

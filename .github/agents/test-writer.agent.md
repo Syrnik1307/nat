@@ -142,3 +142,16 @@ pip install coverage
 coverage run --source='.' manage.py test
 coverage report
 ```
+
+## Межагентный протокол
+
+### ПЕРЕД написанием тестов:
+1. **@knowledge-keeper SEARCH**: поиск известных ошибок для модуля — покрыть тестами в первую очередь
+
+### ПОСЛЕ написания:
+1. **@knowledge-keeper RECORD_SOLUTION**: какие тесты написаны, что покрыто
+
+### Handoff:
+- Тесты падают → **@backend-api** для фикса кода
+- Тесты проходят → **@code-reviewer** для ревью
+- Нужен деплой → **@deploy-agent**

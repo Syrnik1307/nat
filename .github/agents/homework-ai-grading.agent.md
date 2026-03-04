@@ -106,3 +106,17 @@ POST   /api/homework/submissions/{id}/grade/ # Оценить (учитель)
 'reset-daily-api-key-usage' # ежедневно 00:05 — сброс счётчиков
 'send-ai-usage-weekly-report' # пн 09:30 — отчёт по использованию
 ```
+
+## Межагентный протокол
+
+### ПЕРЕД работой:
+1. **@knowledge-keeper SEARCH**: поиск проблем AI grading, API limits в `docs/kb/errors/`, `docs/kb/solutions/`
+
+### ПОСЛЕ работы:
+1. Ошибка API (rate limit, неверная оценка) → **@knowledge-keeper RECORD_ERROR**
+2. Новый паттерн промпта/грейдинга → **@knowledge-keeper RECORD_SOLUTION**
+
+### Handoff:
+- Очередь проверки застряла → **@celery-tasks**
+- Нужны тесты на grading → **@test-writer**
+- Проблемы доступности AI API → **@prod-monitor**

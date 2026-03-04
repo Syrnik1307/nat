@@ -103,3 +103,17 @@ print(f\"COOKIE_SECURE: {settings.SESSION_COOKIE_SECURE}\")
 
 ### Общий статус: PASS / FAIL (deploy blocked)
 ```
+
+## Межагентный протокол
+
+### ПЕРЕД аудитом:
+1. **@knowledge-keeper SEARCH**: поиск прошлых security issues в `docs/kb/errors/`, `docs/kb/patterns/`
+
+### ПОСЛЕ аудита:
+1. CRITICAL/HIGH issues → **@knowledge-keeper RECORD_ERROR**
+2. Повторяющиеся уязвимости → **@knowledge-keeper RECORD_PATTERN** (anti-pattern)
+
+### Handoff:
+- Блокирующий issue → **@backend-api** для фикса
+- Уязвимость в зависимостях → **@dependency-manager**
+- Infra проблема → **@prod-monitor**

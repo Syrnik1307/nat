@@ -138,8 +138,19 @@ print(f\"Active: {active}, Expired: {expired}\")
 "'
 ```
 
-## После инцидента
-1. Записать в incident log (создать docs/ERRORS/ файл)
-2. Если повторяющийся — добавить monitoring/alert
-3. Если нужен hotfix — деплой через deploy agent
-4. Уведомить пользователей если был длительный downtime
+## Межагентный протокол
+
+### ПЕРЕД диагностикой:
+1. **@knowledge-keeper SEARCH**: поиск похожих инцидентов в `docs/kb/incidents/` и `docs/kb/errors/`
+2. Если найдено — применить известное решение вместо диагностики с нуля
+
+### ПОСЛЕ инцидента (ОБЯЗАТЕЛЬНО):
+1. **@knowledge-keeper RECORD_INCIDENT**: timeline, root cause, fix, impact
+2. **@knowledge-keeper RECORD_ERROR**: техническая ошибка для будущего поиска
+3. Если повторяющийся — **@knowledge-keeper RECORD_PATTERN**
+
+### Handoff:
+- Нужен hotfix деплой → **@deploy-agent**
+- Нужен тест на regression → **@test-writer**
+- Проблема безопасности → **@security-reviewer**
+- Проблема перформанса → **@performance-optimizer**
