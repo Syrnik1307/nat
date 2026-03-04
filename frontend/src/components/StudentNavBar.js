@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { prefetch, TTL } from '../utils/dataCache';
-import { getLessons, getHomeworkList, getSubmissions, getGroups } from '../apiService';
+import { getLessons, getHomeworkList, getSubmissions, getGroups, supportApi } from '../apiService';
+import { featureFlags } from '../config/featureFlags';
 import '../styles/StudentNavBar.css';
 
 // SVG Icons для мобильного меню
@@ -56,6 +57,7 @@ const navItems = [
   { to: '/student/recordings', label: 'Записи уроков' },
   { to: '/student/materials', label: 'Материалы' },
   { to: '/student/stats', label: 'Моя статистика' },
+  { to: '/support', label: 'Поддержка' },
   { to: '/profile', label: 'Профиль' },
 ];
 
@@ -66,7 +68,24 @@ const StudentNavBar = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
+  const [supportUnread, setSupportUnread] = useState(0);
   const profileButtonRef = useRef(null);
+
+  // Polling unread support tickets
+  useEffect(() => {
+    if (!featureFlags.supportV2) return;
+
+    const fetchUnread = async () => {
+      try {
+        const res = await supportApi.getUnreadCount();
+        setSupportUnread(res.data?.unread_count ?? 0);
+      } catch { /* best-effort */ }
+    };
+
+    fetchUnread();
+    const timer = setInterval(fetchUnread, 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Закрываем мобильное меню при переходе на другую страницу
   useEffect(() => {
@@ -175,6 +194,9 @@ const StudentNavBar = () => {
               onTouchStart={item.prefetch}
             >
               {item.label}
+              {item.to === '/support' && supportUnread > 0 && (
+                <span className="student-nav-badge">{supportUnread > 9 ? '9+' : supportUnread}</span>
+              )}
             </NavLink>
           ))}
         </div>
@@ -275,6 +297,9 @@ const StudentNavBar = () => {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {item.label}
+                  {item.to === '/support' && supportUnread > 0 && (
+                    <span className="student-nav-badge">{supportUnread > 9 ? '9+' : supportUnread}</span>
+                  )}
                 </NavLink>
               ))}
             </nav>

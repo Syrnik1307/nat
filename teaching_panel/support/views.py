@@ -1,19 +1,44 @@
+import os
+import uuid
+import mimetypes
+
+from django.conf import settings
+from django.http import FileResponse, Http404
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.utils import timezone
-from django.conf import settings
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import SupportTicket, SupportMessage, QuickSupportResponse
 from accounts.telegram_utils import generate_link_code_for_user
 from .serializers import (
     SupportTicketSerializer,
     SupportTicketCreateSerializer,
+    SupportTicketListSerializer,
     SupportMessageSerializer,
     QuickSupportResponseSerializer
 )
 from .telegram_notifications import notify_admins_new_message
+
+# Условный импорт для feature-flagged функциональности
+try:
+    from .models import SupportAttachment
+    _HAS_ATTACHMENT = True
+except ImportError:
+    _HAS_ATTACHMENT = False
+
+
+# ======================== Константы ========================
+
+ALLOWED_MIME_TYPES = {
+    'image/png', 'image/jpeg', 'image/gif', 'image/webp',
+    'image/svg+xml', 'application/pdf',
+}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+MAX_FILES_PER_TICKET = 10
 
 
 class SupportTicketViewSet(viewsets.ModelViewSet):
@@ -27,6 +52,8 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'create':
             return SupportTicketCreateSerializer
+        if self.action == 'list':
+            return SupportTicketListSerializer
         return SupportTicketSerializer
     
     def get_queryset(self):
@@ -35,20 +62,37 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return SupportTicket.objects.none()
         
+        qs = SupportTicket.objects.all()
+
         # Только админы видят все тикеты (они - поддержка)
-        if user.role == 'admin':
-            return SupportTicket.objects.all().order_by('-created_at')
-        
-        # Все остальные (учителя, студенты) видят только свои тикеты
-        return SupportTicket.objects.filter(user=user).order_by('-created_at')
+        if user.role != 'admin':
+            qs = qs.filter(user=user)
+
+        # Фильтры (для админ-панели)
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+
+        priority_filter = self.request.query_params.get('priority')
+        if priority_filter:
+            qs = qs.filter(priority=priority_filter)
+
+        assigned_filter = self.request.query_params.get('assigned_to')
+        if assigned_filter == 'me':
+            qs = qs.filter(assigned_to=user)
+        elif assigned_filter == 'unassigned':
+            qs = qs.filter(assigned_to__isnull=True)
+
+        return qs.order_by('-created_at')
     
     @action(detail=True, methods=['post'])
     def add_message(self, request, pk=None):
         """Добавить сообщение к тикету"""
         ticket = self.get_object()
         message_text = request.data.get('message', '').strip()
+        attachment_ids = request.data.get('attachment_ids', [])
         
-        if not message_text:
+        if not message_text and not attachment_ids:
             return Response(
                 {'detail': 'Сообщение не может быть пустым'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -66,10 +110,19 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
             read_by_staff=is_staff_reply,  # Если пишет поддержка, сразу помечаем как прочитанное
             read_by_user=not is_staff_reply  # Если пишет пользователь, он уже прочитал
         )
+
+        # Привязываем вложения к сообщению
+        if attachment_ids and _HAS_ATTACHMENT:
+            SupportAttachment.objects.filter(
+                id__in=attachment_ids,
+                ticket__isnull=True,
+                message__isnull=True,
+            ).update(ticket=ticket, message=message)
         
         # Обновляем статус тикета
         if is_staff_reply:
             ticket.status = 'waiting_user'
+            ticket.record_first_response()
         else:
             if ticket.status == 'waiting_user':
                 ticket.status = 'in_progress'
@@ -98,18 +151,9 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def resolve(self, request, pk=None):
-        """Пометить тикет как решённый"""
+        """Пометить тикет как решённый (могут и пользователь, и админ)"""
         ticket = self.get_object()
-        
-        # Только админ-поддержка может закрывать тикеты
-        if request.user.role != 'admin':
-            return Response(
-                {'detail': 'Недостаточно прав'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         ticket.mark_resolved()
-        
         serializer = self.get_serializer(ticket)
         return Response(serializer.data)
     
@@ -120,10 +164,144 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
         ticket.status = 'in_progress'
         ticket.resolved_at = None
         ticket.save()
-        
         serializer = self.get_serializer(ticket)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'])
+    def assign(self, request, pk=None):
+        """Назначить тикет на себя (только админы)"""
+        if request.user.role != 'admin':
+            return Response({'detail': 'Недостаточно прав'}, status=status.HTTP_403_FORBIDDEN)
+        ticket = self.get_object()
+        ticket.assigned_to = request.user
+        if ticket.status == 'new':
+            ticket.status = 'in_progress'
+        ticket.save()
+        serializer = self.get_serializer(ticket)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def set_priority(self, request, pk=None):
+        """Изменить приоритет (только админы)"""
+        if request.user.role != 'admin':
+            return Response({'detail': 'Недостаточно прав'}, status=status.HTTP_403_FORBIDDEN)
+        ticket = self.get_object()
+        new_priority = request.data.get('priority')
+        if new_priority not in dict(SupportTicket.PRIORITY_CHOICES):
+            return Response({'detail': 'Неверный приоритет'}, status=status.HTTP_400_BAD_REQUEST)
+        ticket.priority = new_priority
+        ticket.save(update_fields=['priority'])
+        serializer = self.get_serializer(ticket)
+        return Response(serializer.data)
+
+
+# ======================== File Attachments (SUPPORT_V2 only) ========================
+
+class SupportAttachmentUploadView(APIView):
+    """Загрузка файлов для тикетов поддержки.
+
+    POST /api/support/attachments/upload/
+    Принимает multipart/form-data с полем 'file'.
+    Возвращает {id, url, original_name, size}.
+    """
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        if not _HAS_ATTACHMENT:
+            return Response(
+                {'detail': 'Вложения не поддерживаются'},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+
+        uploaded_file = request.FILES.get('file')
+        if not uploaded_file:
+            return Response({'detail': 'Файл не передан'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Валидация размера
+        if uploaded_file.size > MAX_FILE_SIZE:
+            return Response(
+                {'detail': f'Файл слишком большой. Максимум {MAX_FILE_SIZE // (1024*1024)} МБ'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Валидация типа
+        content_type = uploaded_file.content_type or ''
+        if content_type not in ALLOWED_MIME_TYPES:
+            guessed, _ = mimetypes.guess_type(uploaded_file.name or '')
+            if guessed not in ALLOWED_MIME_TYPES:
+                return Response(
+                    {'detail': 'Недопустимый тип файла. Разрешены: PNG, JPG, GIF, WebP, PDF'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            content_type = guessed
+
+        # Сохранение на диск
+        file_id = uuid.uuid4().hex
+        ext = os.path.splitext(uploaded_file.name or '')[1].lower()[:10]
+        upload_dir = os.path.join(settings.MEDIA_ROOT, 'support_files')
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, f'{file_id}{ext}')
+
+        with open(file_path, 'wb') as dst:
+            for chunk in uploaded_file.chunks():
+                dst.write(chunk)
+
+        attachment = SupportAttachment.objects.create(
+            id=file_id,
+            uploaded_by=request.user,
+            original_name=uploaded_file.name or 'file',
+            mime_type=content_type,
+            size=uploaded_file.size,
+            local_path=file_path,
+        )
+
+        return Response({
+            'id': attachment.id,
+            'url': f'/api/support/attachments/{attachment.id}/',
+            'original_name': attachment.original_name,
+            'size': attachment.size,
+        }, status=status.HTTP_201_CREATED)
+
+
+class SupportAttachmentDownloadView(APIView):
+    """Прокси для скачивания вложений.
+
+    GET /api/support/attachments/<id>/
+    Отдаёт файл с Content-Disposition: inline.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, attachment_id):
+        if not _HAS_ATTACHMENT:
+            raise Http404
+
+        try:
+            attachment = SupportAttachment.objects.get(id=attachment_id)
+        except SupportAttachment.DoesNotExist:
+            raise Http404
+
+        # Проверка доступа: автор загрузки, владелец тикета или админ
+        user = request.user
+        can_access = (
+            user.role == 'admin'
+            or attachment.uploaded_by == user
+            or (attachment.ticket and attachment.ticket.user == user)
+        )
+        if not can_access:
+            return Response({'detail': 'Доступ запрещён'}, status=status.HTTP_403_FORBIDDEN)
+
+        if not attachment.local_path or not os.path.exists(attachment.local_path):
+            raise Http404
+
+        return FileResponse(
+            open(attachment.local_path, 'rb'),
+            content_type=attachment.mime_type,
+            filename=attachment.original_name,
+        )
+
+
+# ======================== Standalone endpoints ========================
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

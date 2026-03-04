@@ -17,3 +17,18 @@ urlpatterns = [
     path('categories/', views.ticket_categories, name='ticket-categories'),
     path('priorities/', views.ticket_priorities, name='ticket-priorities'),
 ]
+
+# Feature-flagged: File attachments (SUPPORT_V2 only)
+try:
+    from .feature_flag import SUPPORT_V2_ENABLED
+    if SUPPORT_V2_ENABLED:
+        urlpatterns += [
+            path('attachments/upload/',
+                 views.SupportAttachmentUploadView.as_view(),
+                 name='support-attachment-upload'),
+            path('attachments/<str:attachment_id>/',
+                 views.SupportAttachmentDownloadView.as_view(),
+                 name='support-attachment-download'),
+        ]
+except ImportError:
+    pass

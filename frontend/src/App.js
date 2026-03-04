@@ -135,6 +135,10 @@ const ChatPage = lazy(() => import('./components/ChatPage'));
 // Knowledge Map (feature-flagged)
 const StudentKnowledgeMapPage = lazy(() => import('./components/StudentKnowledgeMapPage'));
 
+// Support V2 (feature-flagged, dev/staging only)
+const SupportPage = lazy(() => import('./components/SupportPage'));
+const AdminSupportPage = lazy(() => import('./components/AdminSupportPage'));
+
 // Preload основных страниц после загрузки приложения
 const preloadPages = (role) => {
   // Используем requestIdleCallback для загрузки в фоне без блокировки UI
@@ -275,12 +279,16 @@ const AppRoutes = () => {
           <Route path="/student/homework/:id" element={<Protected allowRoles={['student']}><HomeworkTake /></Protected>} />
           <Route path="/homework/:id/answers" element={<Protected allowRoles={['student']}><HomeworkAnswersView /></Protected>} />
           <Route path="/student/knowledge-map" element={<Protected allowRoles={['student']}><StudentKnowledgeMapPage /></Protected>} />
+
+          {/* Support */}
+          <Route path="/support" element={<Protected allowRoles={['teacher', 'student', 'admin']}><SupportPage /></Protected>} />
         
           {/* Admin */}
           <Route path="/admin" element={<Navigate to="/admin-home" replace />} />
           <Route path="/admin-home" element={<Protected allowRoles={['admin']}><AdminHomePage /></Protected>} />
           <Route path="/admin/teacher-heatmap" element={<Protected allowRoles={['admin']}><TeacherHeatmapTable /></Protected>} />
           <Route path="/admin/teacher-heatmap/:teacherId" element={<Protected allowRoles={['admin']}><TeacherHeatmapDetail /></Protected>} />
+          <Route path="/admin/support" element={<Protected allowRoles={['admin']}><AdminSupportPage /></Protected>} />
           
           {/* Common */}
           <Route path="/calendar" element={<Protected allowRoles={['teacher', 'student']}><Calendar /></Protected>} />

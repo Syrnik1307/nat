@@ -12,6 +12,7 @@ export { default as TimePicker } from './TimePicker';
 export { default as DatePicker } from './DatePicker';
 export { default as Toast, ToastContainer } from './Toast';
 export { default as RichTextEditor } from './RichTextEditor';
+export { default as FileDropzone } from './FileDropzone';
 
 // Skeleton loaders
 export { 

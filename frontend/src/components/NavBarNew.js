@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { getAccessToken, getLessons, getGroups, getHomeworkList, getTeacherStatsSummary } from '../apiService';
+import { getAccessToken, getLessons, getGroups, getHomeworkList, getTeacherStatsSummary, supportApi } from '../apiService';
+import { featureFlags } from '../config/featureFlags';
 import { prefetch, getCached, TTL } from '../utils/dataCache';
 import Logo from './Logo';
 import './NavBar.css';
@@ -237,6 +238,24 @@ const NavBar = () => {
     };
   }, [showLessonsMenu]);
 
+  // Unread support tickets badge
+  const [supportUnread, setSupportUnread] = useState(0);
+
+  useEffect(() => {
+    if (!accessTokenValid || !featureFlags.supportV2) return;
+
+    const fetchUnread = async () => {
+      try {
+        const res = await supportApi.getUnreadCount();
+        setSupportUnread(res.data?.unread_count ?? 0);
+      } catch { /* best-effort */ }
+    };
+
+    fetchUnread();
+    const timer = setInterval(fetchUnread, 60_000);
+    return () => clearInterval(timer);
+  }, [accessTokenValid]);
+
   const homePath = (() => {
     if (!accessTokenValid) return '/auth-new';
     if (role === 'teacher') return '/home-new';
@@ -422,6 +441,16 @@ const NavBar = () => {
             <span className="nav-icon"></span>
             <span>Аналитика</span>
           </Link>
+
+          <Link 
+            to="/support" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>Поддержка</span>
+            {supportUnread > 0 && <span className="navbar-link-badge">{supportUnread > 9 ? '9+' : supportUnread}</span>}
+          </Link>
         </>
       )}
 
@@ -457,6 +486,16 @@ const NavBar = () => {
             <span className="nav-icon"></span>
             <span>Календарь</span>
           </Link>
+
+          <Link 
+            to="/support" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>Поддержка</span>
+            {supportUnread > 0 && <span className="navbar-link-badge">{supportUnread > 9 ? '9+' : supportUnread}</span>}
+          </Link>
         </>
       )}
 
@@ -479,6 +518,16 @@ const NavBar = () => {
           >
             <span className="nav-icon"></span>
             <span>Аналитика</span>
+          </Link>
+
+          <Link 
+            to="/admin/support" 
+            className="nav-link"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            <span className="nav-icon"></span>
+            <span>Поддержка</span>
+            {supportUnread > 0 && <span className="navbar-link-badge">{supportUnread > 9 ? '9+' : supportUnread}</span>}
           </Link>
         </>
       )}

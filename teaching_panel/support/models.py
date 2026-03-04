@@ -410,3 +410,60 @@ class QuickSupportResponse(models.Model):
     
     def __str__(self):
         return self.title
+
+
+class SupportAttachment(models.Model):
+    """Файловые вложения к тикетам/сообщениям поддержки.
+
+    Паттерн хранения аналогичен HomeworkFile: файл сохраняется
+    на диск в MEDIA_ROOT/support_files/, доступ через прокси-endpoint.
+    """
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=32,
+        editable=False,
+        default='',
+    )
+    ticket = models.ForeignKey(
+        SupportTicket,
+        on_delete=models.CASCADE,
+        related_name='attachments',
+        verbose_name='Тикет',
+        null=True,
+        blank=True,
+    )
+    message = models.ForeignKey(
+        SupportMessage,
+        on_delete=models.CASCADE,
+        related_name='file_attachments',
+        verbose_name='Сообщение',
+        null=True,
+        blank=True,
+    )
+    uploaded_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Загрузил',
+    )
+    original_name = models.CharField('Имя файла', max_length=255)
+    mime_type = models.CharField('MIME-тип', max_length=100)
+    size = models.PositiveIntegerField('Размер (байт)', default=0)
+    local_path = models.CharField('Путь на диске', max_length=500, blank=True, default='')
+    created_at = models.DateTimeField('Создано', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Вложение поддержки'
+        verbose_name_plural = 'Вложения поддержки'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.original_name} ({self.size} bytes)"
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            import uuid
+            self.id = uuid.uuid4().hex
+        super().save(*args, **kwargs)

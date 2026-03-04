@@ -47,4 +47,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 # reCAPTCHA disabled on staging
 RECAPTCHA_ENABLED = False
 
+# Support V2 -- full ticket UI + file attachments (always ON for staging)
+os.environ.setdefault('SUPPORT_V2_ENABLED', '1')
+
 print("[Staging] Settings loaded: stage.lectiospace.ru")

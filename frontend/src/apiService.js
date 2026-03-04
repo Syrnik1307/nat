@@ -653,5 +653,70 @@ export const downloadLessonIcs = (lessonId) => {
 // Regenerate calendar token (invalidates old subscription links)
 export const regenerateCalendarToken = () => apiClient.post('calendar/regenerate-token/', {}, withScheduleApiBase());
 
+// ======================== Support V2 API ========================
+
+export const supportApi = {
+  // Список тикетов (пользовательских или всех для админа)
+  getTickets: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiClient.get(`/support/tickets/${query ? '?' + query : ''}`);
+  },
+
+  // Детали тикета с сообщениями
+  getTicket: (id) => apiClient.get(`/support/tickets/${id}/`),
+
+  // Создать тикет
+  createTicket: (data) => apiClient.post('/support/tickets/', data),
+
+  // Добавить сообщение
+  addMessage: (ticketId, message, attachmentIds = []) =>
+    apiClient.post(`/support/tickets/${ticketId}/add_message/`, {
+      message,
+      attachment_ids: attachmentIds,
+    }),
+
+  // Отметить прочитанным
+  markRead: (ticketId) =>
+    apiClient.post(`/support/tickets/${ticketId}/mark_read/`),
+
+  // Решить тикет
+  resolve: (ticketId) =>
+    apiClient.post(`/support/tickets/${ticketId}/resolve/`),
+
+  // Переоткрыть
+  reopen: (ticketId) =>
+    apiClient.post(`/support/tickets/${ticketId}/reopen/`),
+
+  // Назначить на себя (админ)
+  assign: (ticketId) =>
+    apiClient.post(`/support/tickets/${ticketId}/assign/`),
+
+  // Изменить приоритет (админ)
+  setPriority: (ticketId, priority) =>
+    apiClient.post(`/support/tickets/${ticketId}/set_priority/`, { priority }),
+
+  // Непрочитанные
+  getUnreadCount: () => apiClient.get('/support/unread-count/'),
+
+  // Статистика (админ)
+  getStats: () => apiClient.get('/support/stats/'),
+
+  // Быстрые ответы (админ)
+  getQuickResponses: () => apiClient.get('/support/quick-responses/'),
+
+  // Загрузка файла
+  uploadFile: (file, onProgress) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/support/attachments/upload/', formData, {
+      headers: { 'Content-Type': undefined },
+      timeout: 60000,
+      onUploadProgress: onProgress
+        ? (e) => onProgress(Math.round((e.loaded * 100) / (e.total || 1)))
+        : undefined,
+    });
+  },
+};
+
 export default apiClient;
 

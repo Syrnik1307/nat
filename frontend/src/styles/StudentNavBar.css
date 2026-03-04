@@ -102,6 +102,29 @@
   border-radius: 3px 3px 0 0;
 }
 
+/* Unread support badge */
+.student-nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1;
+  margin-left: 6px;
+  transform: translateY(-1px);
+}
+
+.student-nav-link.active .student-nav-badge {
+  background: #fff;
+  color: var(--color-primary, #4f46e5);
+}
+
 .student-navbar-right {
   flex-shrink: 0;
   display: flex;

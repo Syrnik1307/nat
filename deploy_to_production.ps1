@@ -107,6 +107,20 @@ if ($kmEnvCheck -match "^[1-9]") {
 Write-OK "knowledge_map НЕ активен на production"
 
 # ===================================================================
+# GUARD: Support V2 must NOT be enabled on production
+# ===================================================================
+Write-Step "X" 9 "Проверка support_v2 feature flag..."
+
+$sv2EnvCheck = ssh tp "grep -cE 'SUPPORT_V2_ENABLED=(1|true|yes)' /var/www/teaching_panel/.env 2>/dev/null || echo 0"
+if ($sv2EnvCheck -match "^[1-9]") {
+    Write-Fail "SUPPORT_V2 включён на production! Деплой ЗАПРЕЩЁН!"
+    Write-Host "  support_v2 — ТОЛЬКО для dev/stage." -ForegroundColor Red
+    Write-Host "  Уберите SUPPORT_V2_ENABLED из production .env" -ForegroundColor Red
+    exit 1
+}
+Write-OK "support_v2 НЕ активен на production"
+
+# ===================================================================
 # ШАГ 0: Проверка production - ОН ДОЛЖЕН РАБОТАТЬ ДО НАЧАЛА
 # ===================================================================
 Write-Step 0 9 "Проверка текущего состояния production..."

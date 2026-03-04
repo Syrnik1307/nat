@@ -84,10 +84,10 @@ def notify_user_staff_reply(*, ticket, message) -> None:
     if not token:
         return
 
-    site_url = (getattr(settings, 'SITE_URL', '') or os.getenv('SITE_URL', '') or '').strip()
-    hint = "Откройте Teaching Panel, чтобы продолжить диалог."
+    site_url = (getattr(settings, 'SITE_URL', '') or os.getenv('SITE_URL', '') or '').strip().rstrip('/')
+    hint = "Откройте раздел Поддержка на сайте, чтобы продолжить диалог."
     if site_url:
-        hint = f"Откройте {site_url}, чтобы продолжить диалог."
+        hint = f"Откройте {site_url}/support, чтобы продолжить диалог."
 
     text = (
         f"🛟 *Поддержка ответила по тикету #{ticket.id}*\n\n"
