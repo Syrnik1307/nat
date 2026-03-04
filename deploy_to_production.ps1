@@ -480,6 +480,26 @@ Write-Host "Бэкап БД:    /tmp/$script:backupName.sqlite3" -ForegroundColo
 Write-Host "Коммит:      $remoteCommit" -ForegroundColor Gray
 Write-Host "Production:  https://lectiospace.ru" -ForegroundColor Gray
 Write-Host ""
+
+# ===================================================================
+# POST-DEPLOY MANUAL SMOKE CHECKLIST
+# ===================================================================
+Write-Host "========================================" -ForegroundColor Yellow
+Write-Host "  POST-DEPLOY CHECKLIST (обязательно!)  " -ForegroundColor Yellow
+Write-Host "========================================" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  Открой в браузере и проверь:" -ForegroundColor White
+Write-Host "  [ ] 1. https://lectiospace.ru — главная загружается" -ForegroundColor Cyan
+Write-Host "  [ ] 2. Логин учителя работает" -ForegroundColor Cyan
+Write-Host "  [ ] 3. /homework/constructor — конструктор ДЗ открывается" -ForegroundColor Cyan
+Write-Host "  [ ] 4. Пикер групп кликабелен, группы отображаются" -ForegroundColor Cyan
+Write-Host "  [ ] 5. /teacher/lessons — расписание загружается" -ForegroundColor Cyan
+Write-Host "  [ ] 6. /teacher/recordings — записи загружаются" -ForegroundColor Cyan
+Write-Host "  [ ] 7. Логин студента работает" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "  Или запусти E2E тест:" -ForegroundColor White
+Write-Host "  npx playwright test scripts/e2e-smoke.spec.js" -ForegroundColor White
+Write-Host ""
 Write-Host "Следи за логами (первые 15 минут):" -ForegroundColor Yellow
 Write-Host "  ssh tp 'sudo tail -f /var/log/teaching-panel-error.log'" -ForegroundColor White
 Write-Host ""

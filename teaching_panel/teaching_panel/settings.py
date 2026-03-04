@@ -1013,6 +1013,11 @@ LOGGING = {
             'level': 'DEBUG' if os.environ.get('SQL_DEBUG') == '1' else 'INFO',
             'propagate': False,
         },
+        'frontend': {
+            'handlers': ['console', 'telegram'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
     },
     'root': {
         'handlers': ['console', 'db_errors'],

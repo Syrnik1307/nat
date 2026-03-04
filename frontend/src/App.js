@@ -4,6 +4,7 @@ import './App.css';
 import { AuthProvider, useAuth, Protected } from './auth';
 import { NotificationProvider } from './shared/context/NotificationContext';
 import { AuthCheckingSkeleton } from './shared/components';
+import ErrorBoundary from './shared/components/ErrorBoundary';
 
 // Навбары загружаются синхронно - они нужны сразу
 // Мемоизируем их чтобы избежать ререндеров при смене страницы
@@ -306,16 +307,18 @@ const AppRoutes = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true
-      }}>
-        <NotificationProvider>
-          <AppRoutes />
-        </NotificationProvider>
-      </BrowserRouter>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true
+        }}>
+          <NotificationProvider>
+            <AppRoutes />
+          </NotificationProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

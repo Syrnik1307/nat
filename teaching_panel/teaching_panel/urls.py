@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
 from django.views.generic import TemplateView
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.routers import DefaultRouter
 from core import views as core_views
 from schedule import views as schedule_views
@@ -93,6 +94,39 @@ def health(request):
         'message': 'Backend running. React frontend is on port 3000.',
     })
 
+
+# --- Frontend error reporting ---
+import json as _json
+import logging as _logging
+
+_frontend_logger = _logging.getLogger('frontend')
+
+@csrf_exempt
+def frontend_error_report(request):
+    """Accept JS errors from frontend and log them (→ Telegram via logging handler)."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'method not allowed'}, status=405)
+    try:
+        body = _json.loads(request.body.decode('utf-8', errors='replace')[:8192])
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({'error': 'bad json'}, status=400)
+    
+    msg = str(body.get('message', 'Unknown frontend error'))[:500]
+    source = str(body.get('source', ''))[:50]
+    url = str(body.get('url', ''))[:200]
+    stack = str(body.get('stack', ''))[:2000]
+    component_stack = str(body.get('componentStack', ''))[:1000]
+    
+    log_msg = f"[FRONTEND] {msg}\nURL: {url}\nSource: {source}"
+    if stack:
+        log_msg += f"\nStack: {stack[:500]}"
+    if component_stack:
+        log_msg += f"\nComponent: {component_stack[:300]}"
+    
+    _frontend_logger.error(log_msg)
+    return JsonResponse({'status': 'ok'})
+
+
 def health_check(request):
     """Deep healthcheck with DB validation for monitoring."""
     import time
@@ -128,6 +162,7 @@ from .prometheus_metrics import metrics_view
 urlpatterns = [
     path('', health, name='root'),
     path('api/health/', health_check, name='health-check'),
+    path('api/frontend-errors/', frontend_error_report, name='frontend-error-report'),
     path('metrics/', metrics_view, name='prometheus-metrics'),
     path('admin/', admin.site.urls),  # Django admin для управления БД
     
