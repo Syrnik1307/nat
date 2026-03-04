@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Optional
 
@@ -51,10 +52,23 @@ def notify_admins_new_message(*, ticket, message) -> None:
     for chat_id in recipients:
         try:
             url = f"https://api.telegram.org/bot{token}/sendMessage"
+            inline_keyboard = {
+                'inline_keyboard': [
+                    [
+                        {'text': 'Ответить', 'callback_data': f'reply_{ticket.id}'},
+                        {'text': 'Назначить себе', 'callback_data': f'assign_{ticket.id}'},
+                    ],
+                    [
+                        {'text': 'В работу', 'callback_data': f'progress_{ticket.id}'},
+                        {'text': 'Решён', 'callback_data': f'resolve_{ticket.id}'},
+                    ],
+                ]
+            }
             data = {
                 'chat_id': chat_id,
                 'text': text,
                 'parse_mode': 'Markdown',
+                'reply_markup': json.dumps(inline_keyboard),
             }
             requests.post(url, json=data, timeout=5)
         except Exception:

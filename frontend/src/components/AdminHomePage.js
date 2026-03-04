@@ -102,6 +102,13 @@ const Icons = {
       <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
     </svg>
   ),
+  support: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  ),
   close: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="6" x2="6" y2="18" />
@@ -314,6 +321,10 @@ const AdminHomePage = () => {
           <button type="button" className="admin-nav-item" onClick={() => setShowStatusMessages(true)}>
             <span className="admin-nav-icon">{Icons.messages}</span>
             Сообщения
+          </button>
+          <button type="button" className="admin-nav-item" onClick={() => navigate('/admin/support')}>
+            <span className="admin-nav-icon">{Icons.support}</span>
+            Поддержка
           </button>
           <button type="button" className="admin-nav-item" onClick={() => setShowSystemSettings(true)}>
             <span className="admin-nav-icon">{Icons.settings}</span>

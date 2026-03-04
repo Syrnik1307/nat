@@ -37,6 +37,7 @@ django.setup()
 
 from accounts.models import CustomUser
 from support.models import SupportTicket, SupportMessage, SystemStatus
+from support.telegram_notifications import notify_user_staff_reply as _sync_notify_user
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -47,6 +48,12 @@ logger = logging.getLogger(__name__)
 
 # Словарь для хранения контекста {telegram_id: {'ticket_id': int, 'mode': 'admin'|'user', 'creating_ticket': {...}}}
 user_context = {}
+
+
+@sync_to_async
+def _notify_user_reply(ticket, message):
+    """Async-safe wrapper для уведомления пользователя об ответе поддержки"""
+    _sync_notify_user(ticket=ticket, message=message)
 
 
 # =============================================================================
@@ -135,7 +142,6 @@ def get_user_last_open_ticket(user):
 @sync_to_async
 def add_message_to_ticket(ticket, user, message_text, is_staff_reply=False):
     """Добавить сообщение к существующему тикету (async-safe)"""
-    from .support.models import SupportMessage
     msg = SupportMessage.objects.create(
         ticket=ticket,
         author=user,
@@ -288,8 +294,8 @@ async def support_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def my_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Команда /my_tickets - мои обращения"""
+async def user_my_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /my_tickets - мои обращения (для пользователей)"""
     telegram_id = update.effective_user.id
     
     try:
@@ -303,15 +309,15 @@ async def my_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Получаем тикеты пользователя
-    my_tickets_qs = await get_user_tickets(user)
+    user_tickets_list = await get_user_tickets(user)
     
-    if not my_tickets_qs:
+    if not user_tickets_list:
         await update.message.reply_text("📭 У вас нет открытых обращений")
         return
     
-    message = f"📋 *Ваши обращения ({my_tickets_qs.count()}):*\n\n"
+    message = f"📋 *Ваши обращения ({len(user_tickets_list)}):*\n\n"
     
-    for ticket in my_tickets_qs:
+    for ticket in user_tickets_list:
         status_emoji = {
             'new': '🆕',
             'in_progress': '🔄',
@@ -384,8 +390,8 @@ async def tickets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message, parse_mode='Markdown')
 
 
-async def my_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Команда /my - мои назначенные тикеты"""
+async def admin_my_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /my - мои назначенные тикеты (для админов)"""
     telegram_id = update.effective_user.id
     
     try:
@@ -561,7 +567,7 @@ async def reply_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Создаём сообщение
-    await create_support_message(ticket, user, message_text, is_staff_reply=True)
+    msg = await create_support_message(ticket, user, message_text, is_staff_reply=True)
     
     # Обновляем статус тикета
     if ticket.status == 'new':
@@ -570,6 +576,12 @@ async def reply_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ticket.status = 'in_progress'
     
     await save_ticket(ticket)
+    
+    # Уведомляем пользователя в ТГ и на сайте
+    try:
+        await _notify_user_reply(ticket, msg)
+    except Exception as e:
+        logger.warning(f"Failed to notify user for ticket #{ticket_id}: {e}")
     
     await update.message.reply_text(
         f"✅ Ответ отправлен на тикет #{ticket_id}\n"
@@ -700,7 +712,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Создаём ответ
         message_text = update.message.text
         
-        await create_support_message(ticket, user, message_text, is_staff_reply=True)
+        msg = await create_support_message(ticket, user, message_text, is_staff_reply=True)
         
         # Обновляем статус
         if ticket.status == 'new':
@@ -709,6 +721,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ticket.status = 'in_progress'
         
         await save_ticket(ticket)
+        
+        # Уведомляем пользователя
+        try:
+            await _notify_user_reply(ticket, msg)
+        except Exception as e:
+            logger.warning(f"Failed to notify user for ticket #{ticket_id}: {e}")
         
         await update.message.reply_text(
             f"Ответ отправлен на тикет #{ticket_id}"
@@ -1197,10 +1215,10 @@ def main():
     # Регистрация обработчиков
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("tickets", tickets))
-    application.add_handler(CommandHandler("my", my_tickets))
+    application.add_handler(CommandHandler("my", admin_my_tickets))
     application.add_handler(CommandHandler("support_request", support_request))
     application.add_handler(CommandHandler("new_ticket", support_request))  # Алиас для /support_request
-    application.add_handler(CommandHandler("my_tickets", my_tickets))
+    application.add_handler(CommandHandler("my_tickets", user_my_tickets))
     application.add_handler(CommandHandler("stats", stats))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("reply", reply_ticket))
