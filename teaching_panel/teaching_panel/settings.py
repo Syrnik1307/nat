@@ -636,6 +636,23 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'bot.tasks.cleanup_old_broadcast_logs',
         'schedule': 604800.0,  # каждую неделю
     },
+    # --- AI Grading Tasks ---
+    'process-ai-grading-queue': {
+        'task': 'homework.tasks.process_ai_grading_queue',
+        'schedule': 30.0,  # каждые 30 секунд
+    },
+    'reset-daily-api-key-usage': {
+        'task': 'homework.tasks.reset_daily_api_key_usage',
+        'schedule': crontab(hour='0', minute='5'),  # ежедневно в 00:05 UTC
+    },
+    'send-ai-usage-weekly-report': {
+        'task': 'homework.tasks.send_ai_usage_weekly_report',
+        'schedule': crontab(day_of_week='monday', hour='9', minute='0'),  # понедельник 09:00 UTC
+    },
+    'check-ai-pool-capacity': {
+        'task': 'homework.tasks.check_ai_pool_capacity',
+        'schedule': 900.0,  # каждые 15 минут
+    },
 }
 
 # Azure Cosmos DB integration (feature-flagged)
@@ -978,3 +995,15 @@ LOGGING = {
         'level': os.environ.get('DJANGO_ROOT_LOG_LEVEL', 'INFO'),
     },
 }
+
+# =============================================================================
+# AI Grading Configuration (feature-flagged OFF by default)
+# =============================================================================
+AI_GRADING_ENABLED = os.environ.get('AI_GRADING_ENABLED', '0') == '1'
+AI_GRADING_GEMINI_MODEL = os.environ.get('AI_GRADING_GEMINI_MODEL', 'gemini-2.0-flash')
+AI_GRADING_DEFAULT_MONTHLY_LIMIT = int(os.environ.get('AI_GRADING_DEFAULT_MONTHLY_LIMIT', '500000'))
+AI_GRADING_CONFIDENCE_THRESHOLD = float(os.environ.get('AI_GRADING_CONFIDENCE_THRESHOLD', '0.7'))
+AI_GRADING_QUEUE_BATCH_SIZE = int(os.environ.get('AI_GRADING_QUEUE_BATCH_SIZE', '10'))
+AI_GRADING_QUEUE_INTERVAL = int(os.environ.get('AI_GRADING_QUEUE_INTERVAL', '30'))
+AI_GRADING_MAX_RETRIES = int(os.environ.get('AI_GRADING_MAX_RETRIES', '3'))
+AI_GRADING_POOL_WARNING_PERCENT = int(os.environ.get('AI_GRADING_POOL_WARNING_PERCENT', '20'))

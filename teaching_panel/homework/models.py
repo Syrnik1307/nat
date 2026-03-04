@@ -71,6 +71,12 @@ class Homework(models.Model):
         ('gemini', 'Google Gemini'),
     )
     
+    AI_GRADING_MODE_CHOICES = (
+        ('none', 'Без AI проверки'),
+        ('auto_send', 'AI проверяет и отправляет ученику'),
+        ('teacher_review', 'AI проверяет, учитель подтверждает'),
+    )
+    
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='homeworks', limit_choices_to={'role': 'teacher'})
     lesson = models.ForeignKey(Lesson, on_delete=models.SET_NULL, null=True, blank=True, related_name='homeworks')
 
@@ -115,6 +121,16 @@ class Homework(models.Model):
     ai_grading_enabled = models.BooleanField(default=False, help_text='Включить AI проверку текстовых ответов')
     ai_provider = models.CharField(max_length=20, choices=AI_PROVIDER_CHOICES, default='gemini', help_text='Провайдер AI для проверки')
     ai_grading_prompt = models.TextField(blank=True, help_text='Дополнительные инструкции для AI при проверке (контекст темы, критерии оценки)')
+    ai_grading_mode = models.CharField(
+        max_length=20,
+        choices=AI_GRADING_MODE_CHOICES,
+        default='none',
+        help_text='Режим AI-проверки: none/auto_send/teacher_review'
+    )
+    ai_confidence_threshold = models.FloatField(
+        default=0.7,
+        help_text='Порог уверенности AI (0.0-1.0). Ниже — работа на ручную проверку'
+    )
     
     # Настройки отображения для ученика
     student_instructions = models.TextField(
@@ -184,7 +200,6 @@ class Question(models.Model):
         default='',
         help_text='Пояснение для ученика (показывается под вопросом перед ответом)'
     )
-
     class Meta:
         ordering = ['order']
         verbose_name = 'вопрос'
@@ -879,3 +894,152 @@ class HomeworkFile(models.Model):
         elif self.local_path:
             logger.warning(f"HomeworkFile {self.id}: local file not found for deletion: {self.local_path}")
 
+
+# =============================================================================
+# AI GRADING POOL — Пул ключей Gemini, очередь проверки, учёт расхода
+# Все модели активны ТОЛЬКО при AI_GRADING_ENABLED=1 (feature flag в settings)
+# =============================================================================
+
+class GeminiAPIKey(models.Model):
+    """Один API-ключ Gemini AI Studio из пула для round-robin проверки ДЗ."""
+    label = models.CharField(max_length=100, help_text='Человекопонятное имя ключа (gemini-1, gemini-2...)')
+    api_key = models.CharField(max_length=255, help_text='API key от AI Studio')
+    is_active = models.BooleanField(default=True, help_text='Ключ включён и может использоваться')
+    priority = models.IntegerField(default=0, help_text='Приоритет (выше = чаще; для платных ключей)')
+
+    # Дневные лимиты (бесплатный AI Studio)
+    daily_request_limit = models.IntegerField(default=1500, help_text='Макс запросов/день')
+    daily_token_limit = models.IntegerField(default=1_000_000, help_text='Макс токенов/день')
+    requests_used_today = models.IntegerField(default=0)
+    tokens_used_today = models.IntegerField(default=0)
+    last_reset_date = models.DateField(null=True, blank=True, help_text='Дата последнего сброса')
+
+    # Автоотключение при ошибках
+    consecutive_errors = models.IntegerField(default=0)
+    last_error = models.TextField(blank=True)
+    disabled_until = models.DateTimeField(null=True, blank=True, help_text='Временно отключён до этого момента')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Gemini API ключ'
+        verbose_name_plural = 'Gemini API ключи'
+        ordering = ['-priority', 'id']
+
+    def __str__(self):
+        status = 'ON' if self.is_active else 'OFF'
+        return f"{self.label} [{status}] ({self.requests_used_today}/{self.daily_request_limit} req)"
+
+    @property
+    def is_available(self):
+        """Ключ доступен для использования прямо сейчас."""
+        from django.utils import timezone
+        if not self.is_active:
+            return False
+        if self.disabled_until and timezone.now() < self.disabled_until:
+            return False
+        if self.requests_used_today >= self.daily_request_limit:
+            return False
+        if self.tokens_used_today >= self.daily_token_limit:
+            return False
+        return True
+
+
+class AIGradingJob(models.Model):
+    """Одна задача на AI-проверку работы ученика. Очередь обрабатывается Celery."""
+    STATUS_CHOICES = (
+        ('pending', 'В очереди'),
+        ('processing', 'Обработка'),
+        ('completed', 'Завершено'),
+        ('failed', 'Ошибка'),
+        ('manual_review', 'Ручная проверка'),
+    )
+    MODE_CHOICES = (
+        ('auto_send', 'AI + отправка ученику'),
+        ('teacher_review', 'AI + ревью учителем'),
+    )
+
+    submission = models.ForeignKey(
+        StudentSubmission, on_delete=models.CASCADE,
+        related_name='ai_grading_jobs'
+    )
+    homework = models.ForeignKey(
+        Homework, on_delete=models.CASCADE,
+        related_name='ai_grading_jobs'
+    )
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='ai_grading_jobs',
+        help_text='Учитель-владелец ДЗ (для учёта лимитов)'
+    )
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES)
+
+    # Трекинг ресурсов
+    api_key_used = models.ForeignKey(
+        GeminiAPIKey, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='jobs'
+    )
+    tokens_input = models.IntegerField(default=0, help_text='Входные токены запроса')
+    tokens_output = models.IntegerField(default=0, help_text='Выходные токены ответа')
+    result = models.JSONField(default=dict, blank=True, help_text='Полный ответ AI')
+    error_message = models.TextField(blank=True)
+    retry_count = models.IntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'задача AI-проверки'
+        verbose_name_plural = 'задачи AI-проверки'
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at'], name='ai_job_queue_idx'),
+            models.Index(fields=['teacher', 'created_at'], name='ai_job_teacher_idx'),
+        ]
+
+    def __str__(self):
+        return f"AIJob#{self.id} [{self.status}] sub={self.submission_id}"
+
+    @property
+    def total_tokens(self):
+        return self.tokens_input + self.tokens_output
+
+
+class AIGradingUsage(models.Model):
+    """Месячный расход AI-токенов по учителю. Используется для лимитов."""
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='ai_grading_usage'
+    )
+    month = models.DateField(help_text='Первое число месяца')
+    tokens_used = models.BigIntegerField(default=0)
+    requests_count = models.IntegerField(default=0)
+    submissions_graded = models.IntegerField(default=0)
+
+    class Meta:
+        verbose_name = 'расход AI по учителю'
+        verbose_name_plural = 'расход AI по учителям'
+        unique_together = ('teacher', 'month')
+        ordering = ['-month']
+
+    def __str__(self):
+        return f"{self.teacher.email} {self.month:%Y-%m}: {self.tokens_used:,} tokens"
+
+    @property
+    def monthly_limit(self):
+        """Месячный лимит токенов (из настроек или персональный)."""
+        from django.conf import settings as s
+        return getattr(s, 'AI_GRADING_DEFAULT_MONTHLY_LIMIT', 500_000)
+
+    @property
+    def is_limit_exceeded(self):
+        return self.tokens_used >= self.monthly_limit
+
+    @property
+    def tokens_remaining(self):
+        return max(0, self.monthly_limit - self.tokens_used)

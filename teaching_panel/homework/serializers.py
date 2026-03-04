@@ -162,6 +162,7 @@ class HomeworkSerializer(serializers.ModelSerializer):
             'group_assignments', 'assigned_students',
             # AI grading fields
             'ai_grading_enabled', 'ai_provider', 'ai_grading_prompt',
+            'ai_grading_mode', 'ai_confidence_threshold',
             # Student-facing settings
             'student_instructions', 'allow_view_answers',
             # Revision fields

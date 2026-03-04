@@ -1470,12 +1470,19 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             # Проверяем, есть ли ответы требующие ручной проверки
             needs_manual = submission.answers.filter(needs_manual_review=True).exists()
             
+            # --- AI Grading: если включён AI-режим, создаём задачу в очередь ---
+            ai_job_created = False
+            homework = submission.homework
+            if needs_manual and homework.ai_grading_mode in ('auto_send', 'teacher_review'):
+                ai_job_created = self._try_create_ai_grading_job(submission, homework)
+            
             if needs_manual:
                 # Есть ответы для ручной проверки — статус submitted
                 submission.status = 'submitted'
                 submission.save(update_fields=['status', 'submitted_at', 'total_score'])
-                # Уведомляем учителя о необходимости проверки
-                self._notify_teacher_submission(submission)
+                if not ai_job_created:
+                    # Уведомляем учителя о необходимости проверки (только если AI не взял)
+                    self._notify_teacher_submission(submission)
             else:
                 # Все ответы проверены автоматически — сразу graded
                 submission.status = 'graded'
@@ -1611,6 +1618,93 @@ class StudentSubmissionViewSet(viewsets.ModelViewSet):
             f"Работа проверена автоматически."
         )
         send_telegram_notification(teacher, 'homework_submitted', message)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def ai_usage(self, request):
+        """
+        GET /api/homework/homeworks/ai_usage/
+        Возвращает AI-usage текущего учителя: лимит, расход, остаток.
+        """
+        from homework.ai_grading_service import is_ai_grading_enabled, AIGradingService
+        from homework.models import AIGradingUsage, AIGradingJob
+        from datetime import date
+
+        if not is_ai_grading_enabled():
+            return Response({
+                'enabled': False,
+                'tokens_used': 0,
+                'tokens_limit': 0,
+                'tokens_remaining': 0,
+                'requests_count': 0,
+                'submissions_graded': 0,
+                'pending_jobs': 0,
+            })
+
+        teacher = request.user
+        month_start = date.today().replace(day=1)
+        usage, _ = AIGradingUsage.objects.get_or_create(
+            teacher=teacher, month=month_start,
+        )
+        pending_jobs = AIGradingJob.objects.filter(
+            teacher=teacher, status='pending',
+        ).count()
+
+        return Response({
+            'enabled': True,
+            'tokens_used': usage.tokens_used,
+            'tokens_limit': usage.monthly_limit,
+            'tokens_remaining': usage.tokens_remaining,
+            'requests_count': usage.requests_count,
+            'submissions_graded': usage.submissions_graded,
+            'pending_jobs': pending_jobs,
+        })
+
+    @staticmethod
+    def _try_create_ai_grading_job(submission, homework) -> bool:
+        """
+        Создаёт AIGradingJob если AI-проверка включена и лимит не превышен.
+        
+        Returns: True если job создан, False если нет (fallback на ручную проверку).
+        """
+        from homework.ai_grading_service import is_ai_grading_enabled, AIGradingService
+        from homework.models import AIGradingJob
+        
+        if not is_ai_grading_enabled():
+            return False
+        
+        teacher = homework.teacher
+        
+        # Проверить лимит учителя
+        if not AIGradingService.check_teacher_limit(teacher):
+            # Лимит превышен — пинг учителю + fallback на ручную проверку
+            try:
+                from accounts.notifications import send_telegram_notification
+                send_telegram_notification(
+                    teacher, 'homework_submitted',
+                    f"Лимит AI-проверки исчерпан\n"
+                    f"Работа '{homework.title}' будет ожидать ручной проверки.\n"
+                    f"Лимит обновится 1-го числа следующего месяца."
+                )
+            except Exception:
+                pass
+            return False
+        
+        try:
+            AIGradingJob.objects.create(
+                submission=submission,
+                homework=homework,
+                teacher=teacher,
+                mode=homework.ai_grading_mode,
+                status='pending',
+            )
+            return True
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to create AIGradingJob for submission %d: %s",
+                submission.id, e
+            )
+            return False
     
     @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
     def feedback(self, request, pk=None):
