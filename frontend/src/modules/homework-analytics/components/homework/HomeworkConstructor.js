@@ -35,6 +35,8 @@ const initialMeta = {
   gamificationEnabled: true,
   studentInstructions: '',
   allowViewAnswers: true,
+  aiGradingMode: 'none', // 'none' | 'auto_send' | 'teacher_review'
+  aiGradingPrompt: '',
 };
 
 const QUESTION_COMPONENTS = {
@@ -314,6 +316,8 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
         gamificationEnabled: editingHomework.gamification_enabled !== false,
         studentInstructions: editingHomework.student_instructions || '',
         allowViewAnswers: editingHomework.allow_view_answers !== false,
+        aiGradingMode: editingHomework.ai_grading_mode || 'none',
+        aiGradingPrompt: editingHomework.ai_grading_prompt || '',
       };
       
       setAssignmentMeta(meta);
@@ -856,6 +860,59 @@ const HomeworkConstructor = ({ editingHomework = null, isDuplicating = false, on
                   <span>Разрешить просмотр ответов после сдачи</span>
                 </label>
                 <span className="hc-checkbox-hint">Отключите для контрольных работ, чтобы ученики не могли делиться ответами</span>
+              </div>
+
+              {/* AI-проверка */}
+              <div className="form-group hc-ai-grading-section">
+                <label className="form-label">AI-проверка</label>
+                <div className="hc-ai-mode-selector">
+                  <label className="hc-radio-label">
+                    <input
+                      type="radio"
+                      name="aiGradingMode"
+                      value="none"
+                      checked={assignmentMeta.aiGradingMode === 'none'}
+                      onChange={() => handleMetaChange('aiGradingMode', 'none')}
+                    />
+                    <span>Выключена</span>
+                  </label>
+                  <label className="hc-radio-label">
+                    <input
+                      type="radio"
+                      name="aiGradingMode"
+                      value="auto_send"
+                      checked={assignmentMeta.aiGradingMode === 'auto_send'}
+                      onChange={() => handleMetaChange('aiGradingMode', 'auto_send')}
+                    />
+                    <span>AI проверяет и отправляет ученику</span>
+                  </label>
+                  <label className="hc-radio-label">
+                    <input
+                      type="radio"
+                      name="aiGradingMode"
+                      value="teacher_review"
+                      checked={assignmentMeta.aiGradingMode === 'teacher_review'}
+                      onChange={() => handleMetaChange('aiGradingMode', 'teacher_review')}
+                    />
+                    <span>AI проверяет, я подтверждаю</span>
+                  </label>
+                </div>
+                {assignmentMeta.aiGradingMode !== 'none' && (
+                  <div className="hc-ai-prompt-wrap">
+                    <textarea
+                      className="form-textarea"
+                      rows={2}
+                      value={assignmentMeta.aiGradingPrompt}
+                      onChange={(event) => handleMetaChange('aiGradingPrompt', event.target.value)}
+                      placeholder="Доп. инструкции для AI: критерии оценки, тема урока..."
+                    />
+                    <span className="hc-checkbox-hint">
+                      {assignmentMeta.aiGradingMode === 'auto_send'
+                        ? 'AI проверит и сразу отправит результат ученику. При низкой уверенности — работа придёт на вашу проверку.'
+                        : 'AI проверит и вы увидите его оценки/комментарии. Можно подтвердить или исправить.'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="hc-params-row hc-params-row--picker" data-tour="hw-group-selector">

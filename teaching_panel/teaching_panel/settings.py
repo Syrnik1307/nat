@@ -650,6 +650,23 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'bot.tasks.cleanup_old_broadcast_logs',
         'schedule': 604800.0,  # каждую неделю
     },
+    # --- AI Grading Queue (feature-flagged: AI_GRADING_ENABLED) ---
+    'process-ai-grading-queue': {
+        'task': 'homework.tasks.process_ai_grading_queue',
+        'schedule': float(os.environ.get('AI_GRADING_QUEUE_INTERVAL', '30')),  # каждые 30 сек
+    },
+    'reset-daily-api-key-usage': {
+        'task': 'homework.tasks.reset_daily_api_key_usage',
+        'schedule': crontab(hour='0', minute='5'),  # ежедневно 00:05 UTC
+    },
+    'send-ai-usage-weekly-report': {
+        'task': 'homework.tasks.send_ai_usage_weekly_report',
+        'schedule': crontab(day_of_week='monday', hour='9', minute='30'),
+    },
+    'check-ai-pool-capacity': {
+        'task': 'homework.tasks.check_ai_pool_capacity',
+        'schedule': 3600.0,  # каждый час
+    },
 }
 
 # Azure Cosmos DB integration (feature-flagged)
@@ -690,6 +707,18 @@ COSMOS_DB_CONTAINERS = {
 }
 
 # When disabled we avoid importing azure-cosmos in code paths.
+
+# =============================================================================
+# AI GRADING (feature-flagged — default OFF, safe for production)
+# =============================================================================
+AI_GRADING_ENABLED = os.environ.get('AI_GRADING_ENABLED', '0') == '1'
+AI_GRADING_GEMINI_MODEL = os.environ.get('AI_GRADING_GEMINI_MODEL', 'gemini-2.0-flash')
+AI_GRADING_DEFAULT_MONTHLY_LIMIT = int(os.environ.get('AI_GRADING_DEFAULT_MONTHLY_LIMIT', '500000'))  # tokens/teacher/month
+AI_GRADING_CONFIDENCE_THRESHOLD = float(os.environ.get('AI_GRADING_CONFIDENCE_THRESHOLD', '0.7'))
+AI_GRADING_QUEUE_BATCH_SIZE = int(os.environ.get('AI_GRADING_QUEUE_BATCH_SIZE', '10'))
+AI_GRADING_QUEUE_INTERVAL = int(os.environ.get('AI_GRADING_QUEUE_INTERVAL', '30'))  # seconds
+AI_GRADING_MAX_RETRIES = int(os.environ.get('AI_GRADING_MAX_RETRIES', '3'))
+AI_GRADING_POOL_WARNING_PERCENT = int(os.environ.get('AI_GRADING_POOL_WARNING_PERCENT', '20'))
 
 # =============================================================================
 # EMAIL CONFIGURATION

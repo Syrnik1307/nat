@@ -104,6 +104,13 @@ export const buildHomeworkPayload = (meta, questions) => {
   payload.student_instructions = meta.studentInstructions?.trim() || '';
   payload.allow_view_answers = meta.allowViewAnswers !== false;
 
+  // AI grading
+  const aiMode = meta.aiGradingMode || 'none';
+  payload.ai_grading_mode = aiMode;
+  payload.ai_grading_enabled = aiMode !== 'none';
+  payload.ai_provider = aiMode !== 'none' ? 'gemini' : 'none';
+  payload.ai_grading_prompt = meta.aiGradingPrompt?.trim() || '';
+
   return payload;
 };
 
@@ -161,3 +168,13 @@ export const homeworkService = {
 };
 
 export default homeworkService;
+
+// AI Usage API
+export const fetchAIUsage = async () => {
+  try {
+    const response = await apiClient.get('homework/ai_usage/');
+    return response.data;
+  } catch {
+    return { enabled: false, tokens_used: 0, tokens_limit: 0, tokens_remaining: 0 };
+  }
+};

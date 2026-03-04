@@ -725,8 +725,20 @@ const SubmissionReview = () => {
                 <div className="sr-feedback-section">
                   {item.teacher_feedback && (
                     <div className="sr-teacher-feedback">
-                      <strong>Комментарий учителя:</strong>
-                      <p>{item.teacher_feedback}</p>
+                      {item.teacher_feedback.startsWith('[AI]') ? (
+                        <>
+                          <strong>
+                            <span className="sr-ai-badge">AI</span>
+                            Комментарий AI:
+                          </strong>
+                          <p>{item.teacher_feedback.replace(/^\[AI\]\s*/, '')}</p>
+                        </>
+                      ) : (
+                        <>
+                          <strong>Комментарий учителя:</strong>
+                          <p>{item.teacher_feedback}</p>
+                        </>
+                      )}
                     </div>
                   )}
                   
