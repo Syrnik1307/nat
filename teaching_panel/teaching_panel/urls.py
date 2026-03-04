@@ -55,7 +55,6 @@ from accounts.subscriptions_views import (
 )
 from accounts.payments_views import yookassa_webhook, tbank_webhook
 from schedule.views import zoom_webhook_receiver
-from accounts.debug_views import debug_env  # Debug endpoint
 from django.conf import settings
 from django.conf.urls.static import static
 from accounts.referrals_views import MyReferralLinkView, MyReferralStatsView
@@ -131,9 +130,6 @@ urlpatterns = [
     path('api/health/', health_check, name='health-check'),
     path('metrics/', metrics_view, name='prometheus-metrics'),
     path('admin/', admin.site.urls),  # Django admin для управления БД
-    
-    # Debug endpoint (remove in production)
-    path('api/debug/env/', debug_env, name='debug-env'),
     
     # Test page for email verification
     path('test-verification/', TemplateView.as_view(template_name='test_verification.html'), name='test-verification'),

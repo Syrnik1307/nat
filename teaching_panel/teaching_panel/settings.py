@@ -940,8 +940,6 @@ TBANK_PASSWORD = os.environ.get('TBANK_PASSWORD', '')
 # Какой провайдер использовать по умолчанию: 'tbank' (YooKassa не используется)
 DEFAULT_PAYMENT_PROVIDER = os.environ.get('DEFAULT_PAYMENT_PROVIDER', 'tbank')
 
-# Frontend URL для return_url после оплаты
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 # Site URL для webhook callbacks (может отличаться от FRONTEND_URL)
 SITE_URL = os.environ.get('SITE_URL', os.environ.get('FRONTEND_URL', 'http://localhost:8000'))
 
