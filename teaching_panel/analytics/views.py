@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Avg, Count, Q, F, DurationField, ExpressionWrapper, Sum, FloatField
+from django.db.models import Avg, Count, Q, F, DurationField, ExpressionWrapper, Sum, FloatField, Exists, OuterRef
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
@@ -275,10 +275,17 @@ class TeacherStatsViewSet(viewsets.ViewSet):
             submitted_at__gte=thirty_days_ago,
         )
         
-        # 1. Среднее время проверки (дни) — по проверенным сдачам за последние 30 дней
+        # 1. Среднее время проверки (дни) — только по работам, требовавшим ручной проверки
+        #    Автопроверенные (diff≈0) исключаются, т.к. искажают метрику учителя
         graded_submissions_30d = submissions_30d.filter(status='graded', graded_at__isnull=False)
+        manually_graded_30d = graded_submissions_30d.filter(
+            Exists(Answer.objects.filter(
+                submission=OuterRef('pk'),
+                needs_manual_review=True,
+            ))
+        )
         grading_duration = ExpressionWrapper(F('graded_at') - F('submitted_at'), output_field=DurationField())
-        avg_duration = graded_submissions_30d.aggregate(avg=Avg(grading_duration)).get('avg')
+        avg_duration = manually_graded_30d.aggregate(avg=Avg(grading_duration)).get('avg')
         avg_grading_days = round(avg_duration.total_seconds() / 86400, 1) if avg_duration else 0
 
         # 2. Количество непроверенных работ (все актуальные, без ограничения по 30 дням)

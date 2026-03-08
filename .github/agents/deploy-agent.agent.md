@@ -7,7 +7,7 @@
 - **Production**: VPS 2GB RAM, Ubuntu, systemd (teaching_panel, nginx, fail2ban)
 - **Backend**: Django 5.2 + Gunicorn + Celery + Redis
 - **Frontend**: React 18 build → Nginx static
-- **Database**: SQLite на production (файл `/var/www/teaching_panel/teaching_panel/db.sqlite3`)
+- **Database**: PostgreSQL на production (`postgres://teaching_panel:***@localhost:5432/teaching_panel`)
 - **Deploy script**: `deploy_to_production.ps1`
 
 ## Инструменты
@@ -28,8 +28,8 @@
 ### 2. Если есть миграции — КРИТИЧЕСКИ ВАЖНО
 ```
 - [ ] Проверить миграции на безопасность (нет DROP/DELETE/RemoveField)
-- [ ] Бэкап БД: ssh tp 'cd /var/www/teaching_panel && sudo cp teaching_panel/db.sqlite3 /tmp/backup_$(date +%Y%m%d_%H%M%S).sqlite3'
-- [ ] Проверка бэкапа: ssh tp 'sqlite3 /tmp/backup_*.sqlite3 "PRAGMA integrity_check;"'
+- [ ] Бэкап БД: ssh tp 'sudo -u postgres pg_dump -Fc teaching_panel -f /tmp/backup_$(date +%Y%m%d_%H%M%S).pgdump'
+- [ ] Проверка бэкапа: ssh tp 'pg_restore --list /tmp/backup_*.pgdump | wc -l'  # > 10
 - [ ] ТОЛЬКО после бэкапа → миграция
 ```
 
@@ -83,7 +83,7 @@ ssh tp 'cd /var/www/teaching_panel && git checkout HEAD~1'
 ssh tp 'sudo systemctl restart teaching_panel'
 
 # Если сломана БД:
-ssh tp 'cd /var/www/teaching_panel/teaching_panel && sudo cp /tmp/backup_LATEST.sqlite3 db.sqlite3 && sudo chown www-data:www-data db.sqlite3 && sudo systemctl restart teaching_panel'
+ssh tp 'sudo -u postgres pg_restore --clean --dbname=teaching_panel /tmp/backup_LATEST.pgdump && sudo systemctl restart teaching_panel'
 ```
 
 ## Межагентный протокол

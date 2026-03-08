@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../apiService';
 import './StudentCardModal.css';
+import ParentAccessSection from '../modules/parents/ParentAccessSection';
 
 const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = false }) => {
   const [card, setCard] = useState(null);
@@ -170,7 +171,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
             onClick={onClose}
             aria-label="Закрыть"
           >
-            ✕
+            X
           </button>
         </div>
 
@@ -269,7 +270,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
                     className="edit-btn"
                     onClick={() => setEditing(!editing)}
                   >
-                    {editing ? '✓' : '✎'}
+                    {editing ? 'OK' : 'Ред.'}
                   </button>
                 </div>
 
@@ -297,7 +298,7 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
                           setNotes(card.teacher_notes || '');
                         }}
                       >
-                        ✕ Отмена
+                        Отмена
                       </button>
                     </div>
                   </div>
@@ -477,6 +478,11 @@ const StudentCardModal = ({ studentId, groupId, isOpen, onClose, isIndividual = 
                   </div>
                 )}
               </div>
+
+              {/* Доступ для родителя */}
+              {groupId && (
+                <ParentAccessSection studentId={studentId} groupId={groupId} />
+              )}
             </>
           ) : (
             <div className="empty-state">Информация не найдена</div>

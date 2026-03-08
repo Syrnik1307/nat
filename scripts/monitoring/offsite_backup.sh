@@ -39,8 +39,7 @@ send_alert() {
 }
 
 # Найти свежий бэкап (создаётся cron в 3:00)
-# Поддерживаем оба формата: pg_backup_*.sql.gz (PostgreSQL) и db_backup_*.sqlite3.gz (legacy SQLite)
-LATEST_BACKUP=$(find "$BACKUP_DIR" \( -name "pg_backup_*.sql.gz" -o -name "db_backup_*.sqlite3.gz" \) -mtime -1 2>/dev/null | sort -r | head -1)
+LATEST_BACKUP=$(find "$BACKUP_DIR" -name "pg_backup_*.sql.gz" -mtime -1 2>/dev/null | sort -r | head -1)
 
 if [[ -z "$LATEST_BACKUP" ]]; then
     log "ERROR: Свежий бэкап не найден в $BACKUP_DIR"

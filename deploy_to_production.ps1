@@ -25,6 +25,13 @@ function Write-Fail { param($msg) Write-Host "  XX $msg" -ForegroundColor Red }
 $script:currentCommit = $null
 $script:backupName = $null
 $script:codeChanged = $false
+$script:immutableRemoved = $false
+
+function Restore-Immutable {
+    Write-Host "  Восстанавливаем immutable-флаги..." -ForegroundColor Gray
+    ssh tp "sudo chattr +i /var/www/teaching_panel/frontend/build/index.html /var/www/teaching_panel/frontend/build/favicon.svg /var/www/teaching_panel/frontend/src/App.js /var/www/teaching_panel/teaching_panel/teaching_panel/settings.py 2>/dev/null || true"
+    Write-OK "Immutable-флаги восстановлены"
+}
 
 function Rollback-Changes {
     Write-Host ""
@@ -34,6 +41,8 @@ function Rollback-Changes {
         Write-Host "Возвращаем код к коммиту $script:currentCommit..." -ForegroundColor Yellow
         ssh tp "cd /var/www/teaching_panel && sudo git reset --hard $script:currentCommit"
     }
+    
+    Restore-Immutable
     
     Write-Host "Перезапускаем сервисы..." -ForegroundColor Yellow
     ssh tp "sudo systemctl restart nginx redis-server 2>/dev/null || true; (sudo systemctl restart teaching_panel 2>/dev/null || sudo systemctl restart teaching-panel 2>/dev/null || true); (sudo systemctl restart celery-worker 2>/dev/null || true); (sudo systemctl restart celery_worker 2>/dev/null || true); (sudo systemctl restart celery-beat 2>/dev/null || true)"
@@ -52,9 +61,8 @@ function Rollback-Changes {
         Write-Host "4. sudo systemctl restart teaching-panel" -ForegroundColor White
         if ($script:backupName) {
             Write-Host ""
-            Write-Host "Бэкап БД: /tmp/$script:backupName.pgdump или .sqlite3" -ForegroundColor White
+            Write-Host "Бэкап БД: /tmp/$script:backupName.pgdump" -ForegroundColor White
             Write-Host "Восстановить PostgreSQL: sudo -u postgres pg_restore --clean --dbname=teaching_panel /tmp/$script:backupName.pgdump" -ForegroundColor White
-            Write-Host "Восстановить SQLite: sudo cp /tmp/$script:backupName.sqlite3 teaching_panel/teaching_panel/db.sqlite3" -ForegroundColor White
         }
     }
 }
@@ -196,29 +204,9 @@ if (-not $DryRun) {
         }
         Write-OK "Бэкап верифицирован ($tableCount объектов)"
     } else {
-        # SQLite: cp + integrity check
-        Write-Host "  БД: SQLite — копируем файл..." -ForegroundColor Gray
-        $sqliteBackup = ssh tp "cd /var/www/teaching_panel && sudo cp teaching_panel/db.sqlite3 /tmp/$script:backupName.sqlite3 2>&1 && (stat -c '%s' /tmp/$script:backupName.sqlite3 2>/dev/null || echo 0)"
-        
-        if (-not $sqliteBackup -or $sqliteBackup -match "No such file") {
-            Write-Fail "Не удалось создать бэкап SQLite!"
-            exit 1
-        }
-
-        $sqliteBackupBytes = 0
-        [void][int]::TryParse(($sqliteBackup | Select-Object -First 1), [ref]$sqliteBackupBytes)
-        if ($sqliteBackupBytes -le 0) {
-            Write-Fail "Бэкап SQLite выглядит пустым (0 bytes)"
-            exit 1
-        }
-        Write-OK "SQLite бэкап: /tmp/$script:backupName.sqlite3"
-        
-        $integrityCheck = ssh tp "sqlite3 /tmp/$script:backupName.sqlite3 'PRAGMA integrity_check;' 2>&1"
-        if ($integrityCheck -ne "ok") {
-            Write-Fail "Бэкап повреждён! integrity_check: $integrityCheck"
-            exit 1
-        }
-        Write-OK "Бэкап прошёл integrity check"
+        Write-Fail "Неожиданный тип БД: $dbVendor. Production должен использовать PostgreSQL!"
+        Write-Fail "Проверь DATABASE_URL в .env на production"
+        exit 1
     }
     
     # JSON дамп (дополнительно, для отладки)
@@ -233,8 +221,11 @@ if (-not $DryRun) {
 Write-Host "  Снимаем immutable-флаги для деплоя..." -ForegroundColor Gray
 if (-not $DryRun) {
     ssh tp "sudo chattr -i /var/www/teaching_panel/frontend/build/index.html /var/www/teaching_panel/frontend/build/favicon.svg /var/www/teaching_panel/frontend/src/App.js /var/www/teaching_panel/teaching_panel/teaching_panel/settings.py 2>/dev/null || true"
+    $script:immutableRemoved = $true
     Write-OK "Immutable-флаги сняты"
 }
+
+try {
 
 # ===================================================================
 # ШАГ 3: Git - получить изменения (БЕЗ применения)
@@ -266,6 +257,8 @@ if ($script:currentCommit -eq $remoteCommit) {
         }
         
         ssh tp "cd /var/www/teaching_panel && sudo git reset --hard origin/new-prod"
+        # Восстановить +x на shell-скрипты (git reset сбрасывает permissions)
+        ssh tp "sudo chmod +x /var/www/teaching_panel/teaching_panel/backup_db.sh /var/www/teaching_panel/teaching_panel/restore_db.sh 2>/dev/null; sudo chmod +x /var/www/teaching_panel/scripts/monitoring/*.sh 2>/dev/null || true"
         $script:codeChanged = $true
         Write-OK "Код обновлён: $script:currentCommit -> $remoteCommit"
     } else {
@@ -365,7 +358,7 @@ if ($migrations -match "No planned migration operations") {
     Write-Host ""
     Write-Host $migrations -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "Бэкап БД: /tmp/$script:backupName.sqlite3" -ForegroundColor Cyan
+    Write-Host "Бэкап БД: /tmp/$script:backupName.pgdump" -ForegroundColor Cyan
     Write-Host ""
     
     if (-not $DryRun) {
@@ -382,7 +375,7 @@ if ($migrations -match "No planned migration operations") {
             Write-Host $migrateResult -ForegroundColor Red
             Write-Host ""
             Write-Host "ВОССТАНОВЛЕНИЕ БД:" -ForegroundColor Red
-            Write-Host "ssh tp 'cd /var/www/teaching_panel && sudo cp /tmp/$script:backupName.sqlite3 teaching_panel/teaching_panel/db.sqlite3 && sudo chown www-data:www-data teaching_panel/teaching_panel/db.sqlite3'" -ForegroundColor White
+            Write-Host "ssh tp 'sudo -u postgres pg_restore --clean --dbname=teaching_panel /tmp/$script:backupName.pgdump && sudo systemctl restart teaching_panel'" -ForegroundColor White
             Rollback-Changes
             exit 1
         }
@@ -462,10 +455,13 @@ if (-not $DryRun) {
 # ===================================================================
 # ШАГ 10: Восстановление immutable-флагов
 # ===================================================================
-Write-Host "  Восстанавливаем immutable-флаги..." -ForegroundColor Gray
-if (-not $DryRun) {
-    ssh tp "sudo chattr +i /var/www/teaching_panel/frontend/build/index.html /var/www/teaching_panel/frontend/build/favicon.svg /var/www/teaching_panel/frontend/src/App.js /var/www/teaching_panel/teaching_panel/teaching_panel/settings.py 2>/dev/null || true"
-    Write-OK "Immutable-флаги восстановлены (deploy_monitor не будет спамить)"
+# Восстановление гарантируется в finally-блоке ниже
+
+} finally {
+    # ГАРАНТИЯ: immutable восстанавливается даже при ошибке или Ctrl+C
+    if ($script:immutableRemoved -and -not $DryRun) {
+        Restore-Immutable
+    }
 }
 
 # ===================================================================
@@ -476,7 +472,7 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host "     DEPLOY COMPLETED SUCCESSFULLY     " -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Бэкап БД:    /tmp/$script:backupName.sqlite3" -ForegroundColor Gray
+Write-Host "Бэкап БД:    /tmp/$script:backupName.pgdump" -ForegroundColor Gray
 Write-Host "Коммит:      $remoteCommit" -ForegroundColor Gray
 Write-Host "Production:  https://lectiospace.ru" -ForegroundColor Gray
 Write-Host ""

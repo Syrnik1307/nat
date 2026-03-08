@@ -77,8 +77,8 @@ Write-OK "Алерты подавлены"
 # 4. Бэкап текущего состояния (на случай если откат был ошибкой)
 Write-Step 2 "Бэкап текущей версии (на всякий случай)..."
 $preRollbackBackup = "pre_rollback_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
-ssh tp "cd /var/www/teaching_panel && sudo cp teaching_panel/db.sqlite3 /tmp/${preRollbackBackup}.sqlite3 2>/dev/null || true"
-Write-OK "Бэкап: /tmp/${preRollbackBackup}.sqlite3"
+ssh tp "sudo -u postgres pg_dump -Fc teaching_panel -f /tmp/${preRollbackBackup}.pgdump 2>/dev/null || true"
+Write-OK "Бэкап: /tmp/${preRollbackBackup}.pgdump"
 
 # 5. Снимаем immutable
 Write-Step 3 "Снятие immutable флагов..."
@@ -102,10 +102,10 @@ if ($pipResult -match "PIP_OK") {
 # 8. DB restore (опционально)
 if ($DbRestore) {
     Write-Step 6 "Восстановление БД..."
-    $latestBackup = ssh tp "ls -t /tmp/deploy_*.sqlite3 /tmp/backup_*.sqlite3 2>/dev/null | head -1"
+    $latestBackup = ssh tp "ls -t /tmp/deploy_*.pgdump /tmp/backup_*.pgdump /tmp/pre_*.pgdump 2>/dev/null | head -1"
     if ($latestBackup) {
         Write-Host "  Используем бэкап: $latestBackup" -ForegroundColor Gray
-        ssh tp "cd /var/www/teaching_panel && sudo cp $latestBackup teaching_panel/db.sqlite3 && sudo chown www-data:www-data teaching_panel/db.sqlite3"
+        ssh tp "sudo -u postgres pg_restore --clean --dbname=teaching_panel $latestBackup 2>&1 || true"
         Write-OK "БД восстановлена"
     } else {
         Write-Fail "Бэкап БД не найден!"
@@ -166,6 +166,6 @@ if ($healthCode -eq "200" -and $frontCode -eq "200") {
 ssh tp "sudo rm -f /var/run/lectio-monitor/maintenance_mode /var/run/lectio-monitor/deploy_in_progress"
 
 Write-Host ""
-Write-Host "  Бэкап до отката: /tmp/${preRollbackBackup}.sqlite3" -ForegroundColor Gray
+Write-Host "  Бэкап до отката: /tmp/${preRollbackBackup}.pgdump" -ForegroundColor Gray
 Write-Host "  Чтобы отменить откат: .\emergency_rollback.ps1 -Commit $currentCommit" -ForegroundColor Gray
 Write-Host ""

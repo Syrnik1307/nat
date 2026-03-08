@@ -322,28 +322,63 @@
 			"label": "agent-check: staged",
 			"type": "shell",
 			"command": "python",
-			"args": ["scripts/agent_checks.py"],
+			"args": [
+				"scripts/agent_checks.py"
+			],
 			"group": "test",
-			"presentation": { "reveal": "always", "panel": "shared" },
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
 			"problemMatcher": []
 		},
 		{
 			"label": "agent-check: all files",
 			"type": "shell",
 			"command": "python",
-			"args": ["scripts/agent_checks.py", "--all"],
+			"args": [
+				"scripts/agent_checks.py",
+				"--all"
+			],
 			"group": "test",
-			"presentation": { "reveal": "always", "panel": "shared" },
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
 			"problemMatcher": []
 		},
 		{
 			"label": "agent-check: changed files",
 			"type": "shell",
 			"command": "python",
-			"args": ["scripts/agent_checks.py", "--changed"],
+			"args": [
+				"scripts/agent_checks.py",
+				"--changed"
+			],
 			"group": "test",
-			"presentation": { "reveal": "always", "panel": "shared" },
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
 			"problemMatcher": []
+		},
+		{
+			"label": "smoke: staging + bot",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"curl -so /dev/null -w 'stage_support:%{http_code}\\n' https://stage.lectiospace.ru/api/support/status/ && curl -so /dev/null -w 'prod_health:%{http_code}\\n' https://lectiospace.ru/api/health/ && echo bot=$(systemctl is-active support_bot) stage=$(systemctl is-active teaching_panel_stage)"
+			]
+		},
+		{
+			"label": "smoke-test",
+			"type": "shell",
+			"command": "ssh",
+			"args": [
+				"tp",
+				"echo STAGE_SUPPORT=$(curl -so /dev/null -w %{http_code} https://stage.lectiospace.ru/api/support/status/) PROD_HEALTH=$(curl -so /dev/null -w %{http_code} https://lectiospace.ru/api/health/) BOT=$(systemctl is-active support_bot) STAGE=$(systemctl is-active teaching_panel_stage)"
+			]
 		}
 	]
 }

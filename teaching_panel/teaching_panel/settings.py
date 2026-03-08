@@ -105,18 +105,25 @@ INSTALLED_APPS = [
 ]
 
 # ===================================================================
-# FEATURE-FLAGGED: Knowledge Map (карта знаний)
-# Enable: KNOWLEDGE_MAP_ENABLED=1 in .env
-# Default: DISABLED — never activates on production
+# Knowledge Map (карта знаний)
+# App always in INSTALLED_APPS (analytics.ControlPoint has FK to Topic).
+# Feature flag controls URL routes only: KNOWLEDGE_MAP_ENABLED=1 in .env
 # ===================================================================
-from knowledge_map.feature_flag import KNOWLEDGE_MAP_ENABLED as _KM_ENABLED
-if _KM_ENABLED:
-    INSTALLED_APPS.append('knowledge_map')
-    import warnings as _km_warnings
-    _km_warnings.warn("Knowledge Map module is ENABLED (KNOWLEDGE_MAP_ENABLED=1)", RuntimeWarning)
+INSTALLED_APPS.append('knowledge_map')
 
-# Expose flag for URL guard
+from knowledge_map.feature_flag import KNOWLEDGE_MAP_ENABLED as _KM_ENABLED
 KNOWLEDGE_MAP_ENABLED = _KM_ENABLED
+
+# ===================================================================
+# Parent Dashboard (дашборд для родителей)
+# DISABLED by default. ONLY for local dev and staging.
+# NEVER enable on production until explicitly approved.
+# Enable via: PARENT_DASHBOARD_ENABLED=1 in .env
+# ===================================================================
+from parents.feature_flag import PARENT_DASHBOARD_ENABLED as _PD_ENABLED
+PARENT_DASHBOARD_ENABLED = _PD_ENABLED
+if _PD_ENABLED:
+    INSTALLED_APPS.append('parents')
 
 # SAFETY: Multi-tenant system is BANNED (broke production 2026-02-08)
 # This check prevents anyone from re-adding it
@@ -669,6 +676,13 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+# --- Parent alerts (feature-flagged: PARENT_DASHBOARD_ENABLED) ---
+if _PD_ENABLED:
+    CELERY_BEAT_SCHEDULE['check-parent-alerts'] = {
+        'task': 'parents.tasks.check_parent_alerts',
+        'schedule': 86400.0,  # ежедневно
+    }
+
 # Azure Cosmos DB integration (feature-flagged)
 COSMOS_DB_ENABLED = os.environ.get('COSMOS_DB_ENABLED', '0') == '1'
 COSMOS_DB_URL = os.environ.get('COSMOS_DB_URL', 'https://localhost:8081/')  # Emulator default
@@ -820,6 +834,9 @@ TELEGRAM_PAYMENTS_BOT_TOKEN = os.environ.get('TELEGRAM_PAYMENTS_BOT_TOKEN', '')
 # Admin chat ID for payment notifications
 # Set this to your Telegram chat_id (get it from @userinfobot)
 ADMIN_PAYMENT_TELEGRAM_CHAT_ID = os.environ.get('ADMIN_PAYMENT_TELEGRAM_CHAT_ID', '')
+
+# Бот для уведомлений родителям (@lectio_parent_bot)
+TELEGRAM_PARENT_BOT_TOKEN = os.environ.get('TELEGRAM_PARENT_BOT_TOKEN', '')
 
 # Отдельный бот для уведомлений о заявках (регистрациях)
 TELEGRAM_REQUESTS_BOT_TOKEN = os.environ.get('TELEGRAM_REQUESTS_BOT_TOKEN', '')

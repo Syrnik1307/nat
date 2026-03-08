@@ -1,0 +1,480 @@
+/* ===================================
+   Parent Dashboard — Mobile-first
+   =================================== */
+
+.pd-root {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 0;
+}
+
+.pd-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* Header */
+.pd-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.pd-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pd-student-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.pd-brand {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* Tabs */
+.pd-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 4px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.pd-tabs::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.pd-tab {
+  flex-shrink: 0;
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.pd-tab:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.pd-tab--active {
+  background: #4F46E5;
+  color: #fff;
+}
+
+.pd-tab--active:hover {
+  background: #4338CA;
+  color: #fff;
+}
+
+/* Subject Tab Content */
+.pd-subject {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: pdFadeIn 0.25s ease-out;
+}
+
+@keyframes pdFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pd-teacher-name {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin: 0 0 4px 0;
+}
+
+/* Summary Cards */
+.pd-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .pd-summary {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.pd-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  text-align: center;
+}
+
+.pd-card-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.pd-card-label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.pd-card-sub {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+/* Color coding for cards */
+.pd-card--green .pd-card-value { color: #16a34a; }
+.pd-card--yellow .pd-card-value { color: #ca8a04; }
+.pd-card--red .pd-card-value { color: #dc2626; }
+
+/* Section blocks */
+.pd-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.pd-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Month selector */
+.pd-month-select {
+  padding: 6px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #334155;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.pd-month-select:focus {
+  border-color: #4F46E5;
+}
+
+/* Homework list */
+.pd-hw-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pd-hw-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  gap: 12px;
+}
+
+.pd-hw-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pd-hw-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pd-hw-dates {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.pd-hw-badge {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pd-hw-badge--done { background: #dcfce7; color: #16a34a; }
+.pd-hw-badge--pending { background: #fef3c7; color: #ca8a04; }
+.pd-hw-badge--overdue { background: #fecaca; color: #dc2626; }
+.pd-hw-badge--not_submitted { background: #f1f5f9; color: #64748b; }
+.pd-hw-badge--revision { background: #e0e7ff; color: #4F46E5; }
+
+.pd-hw-score {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+/* Control Points */
+.pd-cp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.pd-cp-item {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.pd-cp-title {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.pd-cp-date {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.pd-cp-score {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #4F46E5;
+  margin-top: 4px;
+}
+
+/* Comments */
+.pd-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pd-comment {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f0fdf4;
+  border-left: 3px solid #16a34a;
+}
+
+.pd-comment-text {
+  font-size: 0.9rem;
+  color: #1e293b;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.pd-comment-date {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 6px;
+}
+
+/* Stubs */
+.pd-stub {
+  padding: 24px;
+  text-align: center;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px dashed #e2e8f0;
+}
+
+.pd-stub-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.pd-stub-desc {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  margin: 4px 0 0 0;
+}
+
+/* Telegram connect */
+.pd-telegram {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pd-telegram-info {
+  flex: 1;
+}
+
+.pd-telegram-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px 0;
+}
+
+.pd-telegram-desc {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.pd-telegram-connected {
+  font-size: 0.85rem;
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.pd-telegram-btn {
+  padding: 8px 16px;
+  background: #0088cc;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.pd-telegram-btn:hover {
+  background: #006699;
+}
+
+/* Chart */
+.pd-chart {
+  height: 200px;
+  width: 100%;
+}
+
+/* Empty state */
+.pd-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #94a3b8;
+}
+
+.pd-empty-hw {
+  text-align: center;
+  padding: 20px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+/* Error states */
+.pd-error {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.pd-error h2 {
+  font-size: 1.2rem;
+  color: #1e293b;
+  margin: 0 0 8px 0;
+}
+
+.pd-error p {
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* Skeleton loading */
+.pd-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pd-skeleton-header,
+.pd-skeleton-tabs,
+.pd-skeleton-cards,
+.pd-skeleton-list {
+  background: #fff;
+  border-radius: 12px;
+  animation: pdPulse 1.5s ease-in-out infinite;
+}
+
+.pd-skeleton-header { height: 80px; }
+.pd-skeleton-tabs { height: 48px; }
+.pd-skeleton-cards { height: 100px; }
+.pd-skeleton-list { height: 200px; }
+
+@keyframes pdPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Footer */
+.pd-footer {
+  text-align: center;
+  padding: 24px 0 16px;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .pd-container {
+    padding: 12px;
+  }
+
+  .pd-student-name {
+    font-size: 1.25rem;
+  }
+
+  .pd-header {
+    padding: 16px;
+  }
+
+  .pd-section {
+    padding: 16px;
+  }
+
+  .pd-card-value {
+    font-size: 1.5rem;
+  }
+}

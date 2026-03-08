@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required
@@ -9,6 +11,8 @@ from .forms import RegistrationForm, LoginForm
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.dateparse import parse_date
 from .recaptcha_utils import verify_recaptcha, get_client_ip
+
+logger = logging.getLogger(__name__)
 
 
 @csrf_exempt
@@ -32,16 +36,8 @@ def register_user(request):
         import json
         data = json.loads(request.body.decode('utf-8'))
         
-        # Логирование для отладки
-        print("🔍 DEBUG: Получены данные регистрации:")
-        print(f"  - Email: {data.get('email')}")
-        print(f"  - First name: {data.get('first_name')}")
-        print(f"  - Last name: {data.get('last_name')}")
-        print(f"  - Role: {data.get('role')}")
-        print(f"  - reCAPTCHA token присутствует: {bool(data.get('recaptcha_token'))}")
-        
     except Exception as e:
-        print(f"❌ DEBUG: Ошибка парсинга JSON: {e}")
+        logger.warning('Register: invalid JSON from %s', request.META.get('REMOTE_ADDR', ''))
         return JsonResponse({'detail': 'Некорректный JSON'}, status=400)
 
     # reCAPTCHA отключена
@@ -97,12 +93,12 @@ def register_user(request):
                 user.birth_date = bd
                 user.save()
         
-        print(f"✅ DEBUG: Пользователь успешно создан: {user.email} (ID: {user.id})")
+        logger.info('User registered: id=%d, role=%s', user.id, role)
         
         return JsonResponse({'detail': 'Регистрация успешна', 'user_id': user.id}, status=201)
     except Exception as e:
-        print(f"❌ DEBUG: Ошибка создания пользователя: {e}")
-        return JsonResponse({'detail': f'Ошибка создания пользователя: {e}'}, status=400)
+        logger.exception('Register: failed to create user')
+        return JsonResponse({'detail': 'Ошибка создания пользователя'}, status=400)
 
 
 def role_selection_view(request):

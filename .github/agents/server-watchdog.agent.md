@@ -40,18 +40,13 @@ done
 
 **Рост размера БД**
 ```bash
-# Размер SQLite
-ls -lh /var/www/teaching_panel/teaching_panel/db.sqlite3
-# ALERT если > 500MB (SQLite performance degradation)
+# Размер PostgreSQL
+ssh tp 'sudo -u postgres psql teaching_panel -c "SELECT pg_size_pretty(pg_database_size(\"teaching_panel\"));"'
+# ALERT если > 2GB
 
 # Размер таблиц
-sqlite3 /var/www/teaching_panel/teaching_panel/db.sqlite3 "
-SELECT name, SUM(pgsize) as size 
-FROM dbstat 
-GROUP BY name 
-ORDER BY size DESC 
-LIMIT 10;
-"
+ssh tp 'sudo -u postgres psql teaching_panel -c "SELECT relname, pg_size_pretty(pg_total_relation_size(relid)) FROM pg_catalog.pg_statio_user_tables ORDER BY pg_total_relation_size(relid) DESC LIMIT 10;"'
+```
 ```
 
 **Рост media/ директории**
@@ -77,9 +72,9 @@ redis-cli -n 0 LLEN celery
 
 **Количество соединений с БД**
 ```bash
-# SQLite: проверить lock
-fuser /var/www/teaching_panel/teaching_panel/db.sqlite3
-# ALERT если > 5 процессов держат файл
+# PostgreSQL: проверить активные соединения
+ssh tp 'sudo -u postgres psql -c "SELECT count(*) FROM pg_stat_activity WHERE datname=\"teaching_panel\";"'
+# ALERT если > 50 соединений
 ```
 
 ### 2. Тренды (медленное ухудшение)
@@ -173,7 +168,7 @@ echo -e "\n=== TOP MEMORY ==="
 ps aux --sort=-%mem | head -7
 
 echo -e "\n=== DB SIZE ==="
-ls -lh /var/www/teaching_panel/teaching_panel/db.sqlite3
+sudo -u postgres psql teaching_panel -c "SELECT pg_size_pretty(pg_database_size('teaching_panel'));"
 
 echo -e "\n=== MEDIA SIZE ==="
 du -sh /var/www/teaching_panel/teaching_panel/media/ 2>/dev/null

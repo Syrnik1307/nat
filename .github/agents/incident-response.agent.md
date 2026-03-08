@@ -75,11 +75,11 @@ ssh tp 'journalctl -u teaching_panel --since "30 min ago" -p err --no-pager | ta
 ssh tp 'curl -s https://lectiospace.ru/api/schedule/lessons/ -H "Authorization: Bearer TOKEN" | head -100'
 
 # 3. Database integrity
-ssh tp 'sqlite3 /var/www/teaching_panel/teaching_panel/db.sqlite3 "PRAGMA integrity_check;"'
+ssh tp 'sudo -u postgres psql teaching_panel -c "SELECT count(*) FROM information_schema.tables WHERE table_schema=\"public\";"'
 
 # 4. Если проблема в миграции — ROLLBACK
-ssh tp 'ls -la /tmp/backup_*.sqlite3 | tail -3'  # Найти последний бэкап
-ssh tp 'cd /var/www/teaching_panel/teaching_panel && sudo cp /tmp/backup_LATEST.sqlite3 db.sqlite3 && sudo chown www-data:www-data db.sqlite3 && sudo systemctl restart teaching_panel'
+ssh tp 'ls -la /tmp/backup_*.pgdump /tmp/deploy_*.pgdump 2>/dev/null | tail -3'  # Найти последний бэкап
+ssh tp 'sudo -u postgres pg_restore --clean --dbname=teaching_panel /tmp/backup_LATEST.pgdump && sudo systemctl restart teaching_panel'
 ```
 
 ### Celery не обрабатывает задачи (SEV2)

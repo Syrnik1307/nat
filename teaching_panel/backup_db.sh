@@ -160,9 +160,8 @@ log "Data verification: PASSED (all counts match)"
 
 # --- Step 6: Cleanup old backups ---
 log "Cleaning backups older than $RETENTION_DAYS days..."
-# Clean both old sqlite and new pg backups
+# Clean old pg backups
 find "$BACKUP_DIR" -name "pg_backup_*.sql.gz" -type f -mtime +$RETENTION_DAYS -delete 2>/dev/null
-find "$BACKUP_DIR" -name "db_backup_*.sqlite3.gz" -type f -mtime +$RETENTION_DAYS -delete 2>/dev/null
 
 # --- Step 7: Summary ---
 PG_COUNT=$(ls -1 "$BACKUP_DIR"/pg_backup_*.sql.gz 2>/dev/null | wc -l)

@@ -297,6 +297,14 @@ try:
 except ImportError:
     pass  # knowledge_map app not installed, safe to ignore
 
+# Parent Dashboard (feature-flagged, only local + staging)
+try:
+    from parents.feature_flag import PARENT_DASHBOARD_ENABLED as _PD_URLS_ENABLED
+    if _PD_URLS_ENABLED:
+        urlpatterns.append(path('api/parents/', include('parents.urls')))
+except ImportError:
+    pass  # parents app not installed, safe to ignore
+
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

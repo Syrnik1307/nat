@@ -698,7 +698,7 @@ async def cmd_logs_guardian(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @admin_required
 async def cmd_disk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    output = run_cmd("df -h / /tmp 2>&1; echo ''; du -sh /var/www/teaching_panel/media /var/www/teaching_panel/teaching_panel/db.sqlite3 /var/log 2>/dev/null")
+    output = run_cmd("df -h / /tmp 2>&1; echo ''; du -sh /var/www/teaching_panel/media /var/log 2>/dev/null; echo ''; sudo -u postgres psql teaching_panel -t -c \"SELECT pg_size_pretty(pg_database_size('teaching_panel'));\" 2>/dev/null | xargs -I{} echo 'DB size: {}'")
     await update.message.reply_text(f"<pre>{truncate_for_tg(output)}</pre>", parse_mode="HTML")
 
 
@@ -1214,8 +1214,8 @@ async def _do_switch_branch(message, target_branch: str):
     
     # 3. Бэкап БД
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_cmd(f"cp {PROJECT_ROOT}/teaching_panel/db.sqlite3 /tmp/pre_switch_{ts}.sqlite3 2>/dev/null || true")
-    steps.append(f"3. Backup: pre_switch_{ts}.sqlite3")
+    run_cmd(f"sudo -u postgres pg_dump -Fc teaching_panel -f /tmp/pre_switch_{ts}.pgdump 2>/dev/null || true")
+    steps.append(f"3. Backup: pre_switch_{ts}.pgdump")
     
     # 4. Stash незакоммиченных изменений
     stash_out = run_cmd(f"cd {PROJECT_ROOT} && git stash 2>&1")
@@ -1866,14 +1866,14 @@ async def cmd_cleanup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Очистка старых файлов (бэкапы, кэш, логи)"""
     output = run_cmd(f"""
 echo "=== BEFORE ==="
-echo "Backups in /tmp: $(ls /tmp/*.sqlite3 2>/dev/null | wc -l) files, $(du -sh /tmp/*.sqlite3 2>/dev/null | tail -1 | awk '{{print $1}}')"
+echo "Backups in /tmp: $(ls /tmp/*.pgdump 2>/dev/null | wc -l) files, $(du -sh /tmp/*.pgdump 2>/dev/null | tail -1 | awk '{{print $1}}')"
 echo "Logs: $(du -sh /var/log/lectio-monitor 2>/dev/null | awk '{{print $1}}')"
 echo "Pycache: $(find {PROJECT_ROOT} -name __pycache__ -type d 2>/dev/null | wc -l) dirs"
 echo ""
 
 # Keep only 5 newest backups
 echo "=== CLEANING OLD BACKUPS (keep 5) ==="
-ls -t /tmp/deploy_*.sqlite3 /tmp/backup_*.sqlite3 /tmp/pre_*.sqlite3 /tmp/manual_backup_*.sqlite3 2>/dev/null | tail -n +6 | while read f; do
+ls -t /tmp/deploy_*.pgdump /tmp/backup_*.pgdump /tmp/pre_*.pgdump /tmp/manual_backup_*.pgdump 2>/dev/null | tail -n +6 | while read f; do
     echo "  Removing: $(basename $f)"
     rm -f "$f"
 done
@@ -1896,7 +1896,7 @@ echo "Done"
 echo ""
 
 echo "=== AFTER ==="
-echo "Backups in /tmp: $(ls /tmp/*.sqlite3 2>/dev/null | wc -l) files"
+echo "Backups in /tmp: $(ls /tmp/*.pgdump 2>/dev/null | wc -l) files"
 echo "Disk free: $(df / | awk 'NR==2{{print $4}}')KB"
 """, timeout=30)
     await update.message.reply_text(
@@ -2083,7 +2083,8 @@ async def menu_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
     if data == "act_disk":
         output = run_cmd(
             "df -h / /tmp 2>&1; echo ''; "
-            f"du -sh {PROJECT_ROOT}/media {PROJECT_ROOT}/teaching_panel/db.sqlite3 /var/log 2>/dev/null"
+            f"du -sh {PROJECT_ROOT}/media /var/log 2>/dev/null; echo ''; "
+            "sudo -u postgres psql teaching_panel -t -c \"SELECT pg_size_pretty(pg_database_size('teaching_panel'));\" 2>/dev/null | xargs -I{} echo 'DB size: {}'"
         )
         await msg.reply_text(f"<pre>{truncate_for_tg(output)}</pre>", parse_mode="HTML")
         return
@@ -2502,7 +2503,7 @@ done
         await query.edit_message_text("Cleaning up...")
         output = run_cmd(f"""
 echo "=== Removing old backups (keep 5) ==="
-ls -t /tmp/deploy_*.sqlite3 /tmp/backup_*.sqlite3 /tmp/pre_*.sqlite3 /tmp/manual_backup_*.sqlite3 2>/dev/null | tail -n +6 | while read f; do
+ls -t /tmp/deploy_*.pgdump /tmp/backup_*.pgdump /tmp/pre_*.pgdump /tmp/manual_backup_*.pgdump 2>/dev/null | tail -n +6 | while read f; do
     echo "  rm $(basename $f)"; rm -f "$f"
 done
 echo "=== Cleaning pycache ==="

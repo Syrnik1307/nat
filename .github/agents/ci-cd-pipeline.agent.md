@@ -182,9 +182,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /var/www/teaching_panel/teaching_panel
-            sudo cp db.sqlite3 /tmp/deploy_$(date +%Y%m%d_%H%M%S).sqlite3
-            sqlite3 /tmp/deploy_*.sqlite3 "PRAGMA integrity_check;"
+            sudo -u postgres pg_dump -Fc teaching_panel -f /tmp/deploy_$(date +%Y%m%d_%H%M%S).pgdump
+            pg_restore --list /tmp/deploy_*.pgdump | wc -l  # > 10 objects
       
       # ... остальные шаги деплоя
 ```
@@ -207,7 +206,7 @@ git diff staging...new-prod | grep -i tenant && echo "BLOCKED!" || echo "OK"
 python manage.py migrate --plan | grep -E "Delete|Remove|Drop" && echo "DANGER!" || echo "OK"
 
 # 5. Бэкап
-ssh tp 'cd /var/www/teaching_panel/teaching_panel && sudo cp db.sqlite3 /tmp/pre_deploy_$(date +%Y%m%d_%H%M%S).sqlite3'
+ssh tp 'sudo -u postgres pg_dump -Fc teaching_panel -f /tmp/pre_deploy_$(date +%Y%m%d_%H%M%S).pgdump'
 
 # 6. Staging протестирован
 curl -sf https://stage.lectiospace.ru/api/health/ && echo "Staging OK" || echo "Staging BROKEN"

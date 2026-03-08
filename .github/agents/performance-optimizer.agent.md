@@ -7,7 +7,7 @@
 - **Server**: VPS 2GB RAM, 1 CPU, Ubuntu
 - **Backend**: Django + Gunicorn (gthread workers) + Celery
 - **Frontend**: React 18 с lazy loading
-- **DB**: SQLite (dev) / может быть PostgreSQL (prod)
+- **DB**: SQLite (dev) / PostgreSQL (prod)
 - **Cache**: Redis (prod), LocMemCache (dev)
 
 ## Инструменты
@@ -136,7 +136,7 @@ ssh tp 'awk "(\$NF > 1.0)" /var/log/nginx/access.log | tail -10'
 ssh tp 'ps aux --sort=-%mem | head -10'
 
 # DB size
-ssh tp 'ls -lh /var/www/teaching_panel/teaching_panel/db.sqlite3'
+ssh tp 'sudo -u postgres psql teaching_panel -c "SELECT pg_size_pretty(pg_database_size(\"teaching_panel\"));"'
 ```
 
 ## Benchmark порoги

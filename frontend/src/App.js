@@ -140,6 +140,9 @@ const StudentKnowledgeMapPage = lazy(() => import('./components/StudentKnowledge
 const SupportPage = lazy(() => import('./components/SupportPage'));
 const AdminSupportPage = lazy(() => import('./components/AdminSupportPage'));
 
+// Parent Dashboard (feature-flagged, no auth required)
+const ParentDashboard = lazy(() => import('./modules/parents/ParentDashboard'));
+
 // Preload основных страниц после загрузки приложения
 const preloadPages = (role) => {
   // Используем requestIdleCallback для загрузки в фоне без блокировки UI
@@ -197,12 +200,13 @@ const AppRoutes = () => {
   const location = useLocation();
   const { accessTokenValid, role } = useAuth();
   const hideNavPaths = ['/auth-new', '/register', '/verify-email'];
+  const isParentDashboard = location.pathname.startsWith('/p/');
   const baseNavVisible = !hideNavPaths.includes(location.pathname);
   const isStudentView = accessTokenValid && role === 'student';
   const isAdminHomeView = accessTokenValid && role === 'admin' && location.pathname.startsWith('/admin-home');
-  const shouldShowStudentNav = baseNavVisible && isStudentView;
+  const shouldShowStudentNav = baseNavVisible && isStudentView && !isParentDashboard;
   // В админке используем собственный хедер страницы, верхний общий navbar не показываем
-  const shouldShowNav = baseNavVisible && !isStudentView && !isAdminHomeView;
+  const shouldShowNav = baseNavVisible && !isStudentView && !isAdminHomeView && !isParentDashboard;
 
   // Preload страниц после авторизации
   useEffect(() => {
@@ -298,6 +302,10 @@ const AppRoutes = () => {
           <Route path="/teacher/subscription" element={<Navigate to="/profile?tab=subscription" replace />} />
           <Route path="/chat" element={<Protected allowRoles={['teacher', 'student']}><ChatPage /></Protected>} />
           <Route path="/redirect" element={<RoleRouter />} />
+          
+          {/* Parent Dashboard (public, no auth, feature-flagged) */}
+          <Route path="/p/:token" element={<ParentDashboard />} />
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
