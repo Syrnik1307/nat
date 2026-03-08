@@ -14,7 +14,11 @@
 Или через Django:
     python manage.py test zoom_pool.tests.test_concurrency
 """
-import pytest
+try:
+    import pytest
+except ImportError:
+    pytest = None
+import unittest
 from django.test import TransactionTestCase
 from django.db import connection, transaction
 from django.utils import timezone
@@ -30,6 +34,7 @@ from accounts.models import CustomUser
 logger = logging.getLogger(__name__)
 
 
+@unittest.skipUnless(pytest, "pytest not installed")
 class ZoomPoolConcurrencyTestBase(TransactionTestCase):
     """
     Базовый класс для тестов конкурентного доступа.
