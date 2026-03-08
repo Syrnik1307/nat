@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('schedule', '0035_initial'),
+        ('schedule', '0035_group_invite_code_state'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

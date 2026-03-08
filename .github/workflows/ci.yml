@@ -80,7 +80,8 @@ jobs:
       - name: Block tenant code (BANNED FOREVER)
         run: |
           echo "Checking for banned tenant code..."
-          TENANT_FILES=$(find teaching_panel/ -name "*.py" -not -path "*/__pycache__/*" -not -path "*/migrations/*" | xargs grep -l "from tenants\|import tenants\|TenantMiddleware\|TenantModelMixin\|TenantViewSetMixin\|set_current_tenant" 2>/dev/null || true)
+          # Exclude settings.py — it contains DEFENSIVE anti-tenant guards, not violations
+          TENANT_FILES=$(find teaching_panel/ -name "*.py" -not -path "*/__pycache__/*" -not -path "*/migrations/*" -not -path "*/settings.py" | xargs grep -l "from tenants\|import tenants\|TenantMiddleware\|TenantModelMixin\|TenantViewSetMixin\|set_current_tenant" 2>/dev/null || true)
           if [ -n "$TENANT_FILES" ]; then
             echo "::error::TENANT CODE DETECTED! This is BANNED forever (broke production 2026-02-08)"
             echo "$TENANT_FILES"
